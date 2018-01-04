@@ -7,25 +7,28 @@ describe('smoke test, no hypercore', () => {
   it('1. Both Alice and Bob start with the same blank canvas. ' +
      'Both are online.', () => {
     alice1 = Automerge.change(Automerge.init('alice'), doc => {
-      doc.grid = [ 'w', 'w', 'w', 'w' ]
+      doc.x0y0 = 'w'
+      doc.x0y1 = 'w'
+      doc.x1y0 = 'w'
+      doc.x1y1 = 'w'
     })
     assert.deepEqual(alice1, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      grid: [ 'w', 'w', 'w', 'w' ]
+      x0y0: 'w', x0y1: 'w', x1y0: 'w', x1y1: 'w'
     })
     bob1 = Automerge.merge(Automerge.init('bob'), alice1)
     assert.deepEqual(bob1, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      grid: [ 'w', 'w', 'w', 'w' ]
+      x0y0: 'w', x0y1: 'w', x1y0: 'w', x1y1: 'w'
     })
   })
 
   let alice2, bob2
   it('2. Alice makes an edit', () => {
-    alice2 = Automerge.change(alice1, doc => { doc.grid[0] = 'r' })
+    alice2 = Automerge.change(alice1, doc => { doc.x0y0 = 'r' })
     assert.deepEqual(alice2, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      grid: [ 'r', 'w', 'w', 'w' ]
+      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'w'
     })
     bob2 = bob1
   })
@@ -37,18 +40,18 @@ describe('smoke test, no hypercore', () => {
     alice2a = alice2
     assert.deepEqual(bob2a, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      grid: [ 'r', 'w', 'w', 'w' ]
+      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'w'
     })
     assert.deepEqual(bob2a._conflicts, {})
   })
 
   let alice3, bob3
   it('3. Bob makes an edit', () => {
-    bob3 = Automerge.change(bob2a, doc => { doc.grid[3] = 'b' })
+    bob3 = Automerge.change(bob2a, doc => { doc.x1y1 = 'b' })
     alice3 = alice2a
     assert.deepEqual(bob3, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      grid: [ 'r', 'w', 'w', 'b' ]
+      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'b'
     })
   })
 
@@ -59,7 +62,7 @@ describe('smoke test, no hypercore', () => {
     bob3a = bob3
     assert.deepEqual(alice3a, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      grid: [ 'r', 'w', 'w', 'b' ]
+      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'b'
     })
     assert.deepEqual(alice3a._conflicts, {})
   })
@@ -73,20 +76,20 @@ describe('smoke test, no hypercore', () => {
   let alice5, bob5
   it('5. Both Alice and Bob make edits while offline', () => {
     alice5 = Automerge.change(alice4, doc => {
-      doc.grid[1] = 'g'
-      doc.grid[3] = 'r'
+      doc.x1y0 = 'g'
+      doc.x1y1 = 'r'
     })
     bob5 = Automerge.change(bob4, doc => {
-      doc.grid[1] = 'g'
-      doc.grid[3] = 'w'
+      doc.x1y0 = 'g'
+      doc.x1y1 = 'w'
     })
     assert.deepEqual(alice5, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      grid: [ 'r', 'g', 'w', 'r' ]
+      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'r'
     })
     assert.deepEqual(bob5, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      grid: [ 'r', 'g', 'w', 'w' ]
+      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
     })
   })
 
@@ -96,17 +99,29 @@ describe('smoke test, no hypercore', () => {
     const bobChanges6 = Automerge.getChanges(bob3, bob5)
     alice6 = Automerge.applyChanges(alice5, bobChanges6)
     bob6 = Automerge.applyChanges(bob5, aliceChanges6)
-    // FIXME: I was trying to get a _conflicts, but I probably
-    // did something wrong
     assert.deepEqual(alice6, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      grid: [ 'r', 'g', 'w', 'w' ]
+      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
     })
-    assert.deepEqual(alice6._conflicts, {})
+    assert.deepEqual(alice6._conflicts, {
+      x1y0: {
+        alice: 'g'
+      },
+      x1y1: {
+        alice: 'r'
+      }
+    })
     assert.deepEqual(bob6, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      grid: [ 'r', 'g', 'w', 'w' ]
+      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
     })
-    assert.deepEqual(bob6._conflicts, {})
+    assert.deepEqual(bob6._conflicts, {
+      x1y0: {
+        alice: 'g'
+      },
+      x1y1: {
+        alice: 'r'
+      }
+    })
   })
 })
