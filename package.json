@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/inkandswitch/hypermerge#readme",
   "dependencies": {
-    "automerge": "^0.6.0",
+    "automerge": "automerge/automerge#get-missing-deps",
     "debug": "^3.1.0",
     "hypercore": "^6.11.0"
   },
