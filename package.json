@@ -19,7 +19,10 @@
   "dependencies": {
     "automerge": "automerge/automerge#hypermerge-support",
     "debug": "^3.1.0",
-    "hypercore": "^6.11.0"
+    "hypercore": "^6.11.0",
+    "pump": "^2.0.0",
+    "random-access-memory": "^2.4.0",
+    "through2": "^2.0.3"
   },
   "devDependencies": {
     "mocha": "^4.1.0"
