@@ -3,9 +3,9 @@ const EventEmitter = require('events')
 const Automerge = require('automerge')
 const {WatchableDoc} = require('automerge')
 const ram = require('random-access-memory')
-const hypercore = require('hypercore')
 const pump = require('pump')
 const through2 = require('through2')
+const hypermerge = require('..')
 
 class ChangeList extends EventEmitter {
   constructor (actor, watchableDoc, feed) {
@@ -40,9 +40,11 @@ class ChangeList extends EventEmitter {
 
 function newFeed(key) {
   const promise = new Promise((resolve, reject) => {
-    const feed = hypercore(ram, key, {valueEncoding: 'json'})
-    feed.on('ready', () => resolve(feed))
-    feed.on('error', err => reject(err))
+    const hm = hypermerge(ram, key)
+    hm.on('ready', () => {
+      resolve(hm)
+    })
+    hm.on('error', err => reject(err))
   })
   return promise
 }
@@ -59,21 +61,21 @@ describe('smoke test, no hypercore, missing deps', () => {
     bobDoc = new WatchableDoc(Automerge.init('bob'))
     let online = true
 
-    aliceFeed = await newFeed()
+    aliceFeed = (await newFeed()).source
     const aliceChanges = new ChangeList('alice', aliceDoc, aliceFeed)
     aliceChanges.on('change', change => {
       const {actor, seq, ...props} = change
       // console.log('%s-%d %O', actor, seq, props)
     })
 
-    bobFeed = await newFeed()
+    bobFeed = (await newFeed()).source
     const bobChanges = new ChangeList('bob', bobDoc, bobFeed)
     bobChanges.on('change', change => {
       const {actor, seq, ...props} = change
       // console.log('%s-%d %O', actor, seq, props)
     })
 
-    aliceFeedRemote = await newFeed(aliceFeed.key)
+    aliceFeedRemote = (await newFeed(aliceFeed.key)).source
     // console.log('Jim', aliceFeed.key, aliceFeed.writable)
     // console.log('Jim2', aliceFeedRemote.key, aliceFeedRemote.writable)
     const aliceLocal = aliceFeed.replicate({live: true, encrypt: false})
@@ -130,7 +132,8 @@ describe('smoke test, no hypercore, missing deps', () => {
       }
     })
 
-    bobFeedRemote = await newFeed(bobFeed.key)
+    // bobFeedRemote = await (newFeed(bobFeed.key)).source
+    bobFeedRemote = (await newFeed(bobFeed.key)).source
     // console.log('Jim', bobFeed.key, bobFeed.writable)
     // console.log('Jim2', bobFeedRemote.key, bobFeedRemote.writable)
     const bobLocal = bobFeed.replicate({live: true, encrypt: false})
