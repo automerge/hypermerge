@@ -2,19 +2,18 @@
 
 const assert = require('assert')
 const Automerge = require('automerge')
-const {WatchableDoc} = require('automerge')
 const ram = require('random-access-memory')
 const pump = require('pump')
 const through2 = require('through2')
 const hypermerge = require('..')
 
 class ChangeList {
-  constructor (actor, watchableDoc, feed) {
-    this.actor = actor
-    this.watchableDoc = watchableDoc
+  constructor (hm) {
+    this.actor = hm.source.key.toString('hex')
+    this.watchableDoc = hm.doc
     this.watchableDoc.registerHandler(this.newChange.bind(this))
     this.previousDoc = this.watchableDoc.get()
-    this.feed = feed
+    this.feed = hm.source
   }
 
   newChange (doc) {
@@ -25,6 +24,7 @@ class ChangeList {
         .filter(change => change.seq >= this.feed.length)
         .forEach(change => {
           const {seq} = change
+          // console.log('Jim change', change)
           this.feed.append(change, err => {
             if (err) {
               console.error('Error ' + seq, err)
@@ -41,7 +41,7 @@ class ChangeList {
   }
 }
 
-function newFeed (key) {
+function newHypermerge (key) {
   const promise = new Promise((resolve, reject) => {
     const hm = hypermerge(ram, key)
     hm.on('ready', () => {
@@ -62,18 +62,20 @@ describe('smoke test, hypermerge', () => {
   // https://github.com/inkandswitch/hypermerge/wiki/Smoke-Test
 
   before(async () => {
-    aliceDoc = new WatchableDoc(Automerge.init('alice'))
-    bobDoc = new WatchableDoc(Automerge.init('bob'))
-
     /* eslint-disable no-unused-vars */
-    aliceFeed = (await newFeed()).source
-    aliceChanges = new ChangeList('alice', aliceDoc, aliceFeed)
+    const alice = await newHypermerge()
+    aliceFeed = alice.source
+    aliceDoc = alice.doc
+    aliceChanges = new ChangeList(alice)
 
-    bobFeed = (await newFeed()).source
-    bobChanges = new ChangeList('bob', bobDoc, bobFeed)
+    const bob = await newHypermerge()
+    bobFeed = bob.source
+    bobDoc = bob.doc
+    bobChanges = new ChangeList(bob)
     /* eslint-enable no-unused-vars */
 
-    aliceFeedRemote = (await newFeed(aliceFeed.key)).source
+    const aliceRemote = await newHypermerge(aliceFeed.key)
+    aliceFeedRemote = aliceRemote.source
     // console.log('Jim', aliceFeed.key, aliceFeed.writable)
     // console.log('Jim2', aliceFeedRemote.key, aliceFeedRemote.writable)
     aliceFeed.on('append', () => {
@@ -107,8 +109,8 @@ describe('smoke test, hypermerge', () => {
       }
     })
 
-    // bobFeedRemote = await (newFeed(bobFeed.key)).source
-    bobFeedRemote = (await newFeed(bobFeed.key)).source
+    const bobRemote = await newHypermerge(bobFeed.key)
+    bobFeedRemote = bobRemote.source
     // console.log('Jim', bobFeed.key, bobFeed.writable)
     // console.log('Jim2', bobFeedRemote.key, bobFeedRemote.writable)
     bobFeed.on('append', () => {
@@ -334,37 +336,76 @@ describe('smoke test, hypermerge', () => {
     goOnline()
 
     // wait for sync to happen
+    // console.log('sleep')
     setTimeout(() => {
-      assert.deepEqual(aliceDoc.get(), {
-        _objectId: '00000000-0000-0000-0000-000000000000',
-        x0y0: 'r',
-        x0y1: 'w',
-        x1y0: 'g',
-        x1y1: 'w'
-      })
-      assert.deepEqual(aliceDoc.get()._conflicts, {
-        x1y0: {
-          alice: 'g'
-        },
-        x1y1: {
-          alice: 'r'
-        }
-      })
-      assert.deepEqual(bobDoc.get(), {
-        _objectId: '00000000-0000-0000-0000-000000000000',
-        x0y0: 'r',
-        x0y1: 'w',
-        x1y0: 'g',
-        x1y1: 'w'
-      })
-      assert.deepEqual(bobDoc.get()._conflicts, {
-        x1y0: {
-          alice: 'g'
-        },
-        x1y1: {
-          alice: 'r'
-        }
-      })
+      // console.log('wake')
+      const aliceKey = aliceFeed.key.toString('hex')
+      const bobKey = bobFeed.key.toString('hex')
+      if (aliceKey < bobKey) {
+        // console.log('Bob wins')
+        assert.deepEqual(aliceDoc.get(), {
+          _objectId: '00000000-0000-0000-0000-000000000000',
+          x0y0: 'r',
+          x0y1: 'w',
+          x1y0: 'g',
+          x1y1: 'w'
+        })
+        assert.deepEqual(aliceDoc.get()._conflicts, {
+          x1y0: {
+            [aliceKey]: 'g'
+          },
+          x1y1: {
+            [aliceKey]: 'r'
+          }
+        })
+        assert.deepEqual(bobDoc.get(), {
+          _objectId: '00000000-0000-0000-0000-000000000000',
+          x0y0: 'r',
+          x0y1: 'w',
+          x1y0: 'g',
+          x1y1: 'w'
+        })
+        assert.deepEqual(bobDoc.get()._conflicts, {
+          x1y0: {
+            [aliceKey]: 'g'
+          },
+          x1y1: {
+            [aliceKey]: 'r'
+          }
+        })
+      } else {
+        // console.log('Alice wins')
+        assert.deepEqual(aliceDoc.get(), {
+          _objectId: '00000000-0000-0000-0000-000000000000',
+          x0y0: 'r',
+          x0y1: 'w',
+          x1y0: 'g',
+          x1y1: 'r'
+        })
+        assert.deepEqual(aliceDoc.get()._conflicts, {
+          x1y0: {
+            [bobKey]: 'g'
+          },
+          x1y1: {
+            [bobKey]: 'w'
+          }
+        })
+        assert.deepEqual(bobDoc.get(), {
+          _objectId: '00000000-0000-0000-0000-000000000000',
+          x0y0: 'r',
+          x0y1: 'w',
+          x1y0: 'g',
+          x1y1: 'r'
+        })
+        assert.deepEqual(bobDoc.get()._conflicts, {
+          x1y0: {
+            [bobKey]: 'g'
+          },
+          x1y1: {
+            [bobKey]: 'w'
+          }
+        })
+      }
       done()
     }, 0)
   })

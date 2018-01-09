@@ -1,10 +1,11 @@
 var events = require('events')
-// var Automerge = require('automerge')
+var Automerge = require('automerge')
 var hypercore = require('hypercore')
 var inherits = require('inherits')
 var thunky = require('thunky')
 var raf = require('random-access-file')
 var toBuffer = require('to-buffer')
+var {WatchableDoc} = Automerge
 
 module.exports = Hypermerge
 
@@ -54,6 +55,9 @@ Hypermerge.prototype._open = function (cb) {
     self.source = source
     self.key = source.key
     self.discoveryKey = source.discoveryKey
+
+    self.doc = new WatchableDoc(Automerge.init(self.key.toString('hex')))
+
     cb()
   })
 }
