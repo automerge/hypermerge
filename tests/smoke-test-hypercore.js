@@ -1,5 +1,6 @@
+/* global it, describe, before */
+
 const assert = require('assert')
-const EventEmitter = require('events')
 const Automerge = require('automerge')
 const {WatchableDoc} = require('automerge')
 const ram = require('random-access-memory')
@@ -7,9 +8,8 @@ const pump = require('pump')
 const through2 = require('through2')
 const hypermerge = require('..')
 
-class ChangeList extends EventEmitter {
+class ChangeList {
   constructor (actor, watchableDoc, feed) {
-    super()
     this.actor = actor
     this.watchableDoc = watchableDoc
     this.watchableDoc.registerHandler(this.newChange.bind(this))
@@ -24,11 +24,10 @@ class ChangeList extends EventEmitter {
         .filter(change => change.actor === this.actor)
         .filter(change => change.seq >= this.feed.length)
         .forEach(change => {
-          const {actor, seq, ...props} = change
-          this.emit('change', change)
+          const {seq} = change
           this.feed.append(change, err => {
             if (err) {
-              console.error('Error ' + change.seq, err)
+              console.error('Error ' + seq, err)
             }
             // console.log('Appended', this.feed.length)
           })
@@ -38,7 +37,7 @@ class ChangeList extends EventEmitter {
   }
 }
 
-function newFeed(key) {
+function newFeed (key) {
   const promise = new Promise((resolve, reject) => {
     const hm = hypermerge(ram, key)
     hm.on('ready', () => {
@@ -52,28 +51,22 @@ function newFeed(key) {
 let aliceDoc, bobDoc
 let aliceFeed, aliceFeedRemote
 let bobFeed, bobFeedRemote
+let online = true
 
 describe('smoke test, no hypercore, missing deps', () => {
   // https://github.com/inkandswitch/hypermerge/wiki/Smoke-Test
-  
+
   before(async () => {
     aliceDoc = new WatchableDoc(Automerge.init('alice'))
     bobDoc = new WatchableDoc(Automerge.init('bob'))
-    let online = true
 
+    /* eslint-disable no-unused-vars */
     aliceFeed = (await newFeed()).source
     const aliceChanges = new ChangeList('alice', aliceDoc, aliceFeed)
-    aliceChanges.on('change', change => {
-      const {actor, seq, ...props} = change
-      // console.log('%s-%d %O', actor, seq, props)
-    })
 
     bobFeed = (await newFeed()).source
     const bobChanges = new ChangeList('bob', bobDoc, bobFeed)
-    bobChanges.on('change', change => {
-      const {actor, seq, ...props} = change
-      // console.log('%s-%d %O', actor, seq, props)
-    })
+    /* eslint-enable no-unused-vars */
 
     aliceFeedRemote = (await newFeed(aliceFeed.key)).source
     // console.log('Jim', aliceFeed.key, aliceFeed.writable)
@@ -82,17 +75,17 @@ describe('smoke test, no hypercore, missing deps', () => {
     const aliceRemote = aliceFeedRemote.replicate({live: true, encrypt: false})
     pump(
       aliceLocal,
-			through2(function (chunk, enc, cb) {
-				// console.log('alice l --> r', chunk)
+      through2(function (chunk, enc, cb) {
+        // console.log('alice l --> r', chunk)
         if (online) this.push(chunk)
-				cb()
-			}),
+        cb()
+      }),
       aliceRemote,
-			through2(function (chunk, enc, cb) {
-				// console.log('alice l <-- r', chunk)
-				if (online) this.push(chunk)
-				cb()
-			}),
+      through2(function (chunk, enc, cb) {
+        // console.log('alice l <-- r', chunk)
+        if (online) this.push(chunk)
+        cb()
+      }),
       aliceLocal,
       err => {
         if (err) {
@@ -107,7 +100,6 @@ describe('smoke test, no hypercore, missing deps', () => {
     aliceFeedRemote.on('append', err => {
       if (err) {
         console.error('append alice error', err)
-        return
       }
       // console.log('append alice remote', aliceFeedRemote.length)
     })
@@ -140,17 +132,17 @@ describe('smoke test, no hypercore, missing deps', () => {
     const bobRemote = bobFeedRemote.replicate({live: true, encrypt: false})
     pump(
       bobLocal,
-			through2(function (chunk, enc, cb) {
-				// console.log('bob l --> r', chunk)
-				if (online) this.push(chunk)
-				cb()
-			}),
+      through2(function (chunk, enc, cb) {
+        // console.log('bob l --> r', chunk)
+        if (online) this.push(chunk)
+        cb()
+      }),
       bobRemote,
-			through2(function (chunk, enc, cb) {
-				// console.log('bob l <-- r', chunk)
-				if (online) this.push(chunk)
-				cb()
-			}),
+      through2(function (chunk, enc, cb) {
+        // console.log('bob l <-- r', chunk)
+        if (online) this.push(chunk)
+        cb()
+      }),
       bobLocal,
       err => {
         if (err) {
@@ -165,7 +157,6 @@ describe('smoke test, no hypercore, missing deps', () => {
     bobFeedRemote.on('append', err => {
       if (err) {
         console.error('append bob error', err)
-        return
       }
       // console.log('append bob remote', bobFeedRemote.length)
     })
@@ -209,12 +200,18 @@ describe('smoke test, no hypercore, missing deps', () => {
     }))
     assert.deepEqual(aliceDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'w', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'w',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
     bobDoc.set(Automerge.merge(bobDoc.get(), aliceDoc.get()))
     assert.deepEqual(bobDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'w', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'w',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
     /*
     aliceFeedRemote.once('append', () => {
@@ -224,7 +221,7 @@ describe('smoke test, no hypercore, missing deps', () => {
     */
     /*
     setTimeout(() => {
-      console.log('Remote length', aliceFeedRemote.length) 
+      console.log('Remote length', aliceFeedRemote.length)
       done()
     }, 1000)
     */
@@ -237,14 +234,20 @@ describe('smoke test, no hypercore, missing deps', () => {
     ))
     assert.deepEqual(aliceDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
   })
 
   it(`2a. Alice's edit gets synced over to Bob's canvas`, () => {
     assert.deepEqual(bobDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
     assert.deepEqual(bobDoc.get()._conflicts, {})
   })
@@ -256,7 +259,10 @@ describe('smoke test, no hypercore, missing deps', () => {
     ))
     assert.deepEqual(bobDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'b'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'b'
     })
     // setTimeout(done, 1000)
     // done()
@@ -265,11 +271,14 @@ describe('smoke test, no hypercore, missing deps', () => {
   it(`3a. Bob's edit gets synced to Alice's canvas`, () => {
     assert.deepEqual(aliceDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'b'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'b'
     })
     assert.deepEqual(aliceDoc.get()._conflicts, {})
   })
-  
+
   it('4. Alice and/or Bob go offline', () => {
     goOffline()
   })
@@ -291,11 +300,17 @@ describe('smoke test, no hypercore, missing deps', () => {
     ))
     assert.deepEqual(aliceDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'r'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'r'
     })
     assert.deepEqual(bobDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'w'
     })
   })
 
@@ -303,7 +318,10 @@ describe('smoke test, no hypercore, missing deps', () => {
     goOnline()
     assert.deepEqual(aliceDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'w'
     })
     assert.deepEqual(aliceDoc.get()._conflicts, {
       x1y0: {
@@ -315,7 +333,10 @@ describe('smoke test, no hypercore, missing deps', () => {
     })
     assert.deepEqual(bobDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'w'
     })
     assert.deepEqual(bobDoc.get()._conflicts, {
       x1y0: {

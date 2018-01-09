@@ -4,7 +4,7 @@
   "description": "why merge when you can HYPERMERGE",
   "main": "index.js",
   "scripts": {
-    "test": "mocha tests"
+    "test": "standard && mocha tests"
   },
   "repository": {
     "type": "git",
@@ -28,6 +28,7 @@
     "to-buffer": "^1.1.0"
   },
   "devDependencies": {
-    "mocha": "^4.1.0"
+    "mocha": "^4.1.0",
+    "standard": "^10.0.3"
   }
 }

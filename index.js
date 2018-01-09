@@ -1,5 +1,5 @@
 var events = require('events')
-var Automerge = require('automerge')
+// var Automerge = require('automerge')
 var hypercore = require('hypercore')
 var inherits = require('inherits')
 var thunky = require('thunky')
@@ -12,14 +12,14 @@ function Hypermerge (storage, key, opts) {
   if (!(this instanceof Hypermerge)) return new Hypermerge(storage, key, opts)
   events.EventEmitter.call(this)
 
-	if (isObject(key)) {
+  if (isObject(key)) {
     opts = key
     key = null
   }
 
-	var self = this
+  var self = this
 
-	this.key = key ? toBuffer(key, 'hex') : null
+  this.key = key ? toBuffer(key, 'hex') : null
 
   this._storage = typeof storage === 'string' ? fileStorage : storage
 
@@ -65,11 +65,11 @@ Hypermerge.prototype._createFeed = function (key, dir) {
   }
 
   if (key) {
-		if (this.local && this.local.key && this.local.key.equals(key)) {
-			return this.local
-		}
+    if (this.local && this.local.key && this.local.key.equals(key)) {
+      return this.local
+    }
     if (this.source && this.source.key && this.source.key.equals(key)) {
-			return this.source
+      return this.source
     }
   }
 
@@ -81,7 +81,7 @@ Hypermerge.prototype._createFeed = function (key, dir) {
   return feed
 
   function onerror (err) {
-    sel.emit('error', err)
+    self.emit('error', err)
   }
 
   function storage (name) {
@@ -92,4 +92,3 @@ Hypermerge.prototype._createFeed = function (key, dir) {
 function isObject (val) {
   return !!val && typeof val !== 'string' && !Buffer.isBuffer(val)
 }
-

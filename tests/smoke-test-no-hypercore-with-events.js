@@ -33,6 +33,8 @@ class ChangeList extends EventEmitter {
 }
 
 let aliceDoc, bobDoc
+/* global it, describe */
+
 describe('smoke test, no hypercore, missing deps', () => {
   // https://github.com/inkandswitch/hypermerge/wiki/Smoke-Test
 
@@ -49,10 +51,12 @@ describe('smoke test, no hypercore, missing deps', () => {
       aliceChangesOffline.push(change)
     }
   })
+  /*
   aliceChanges.on('change', change => {
     const {actor, seq, ...props} = change
     // console.log('%s-%d %O', actor, seq, props)
   })
+  */
 
   const bobChanges = new ChangeList('bob', bobDoc)
   const bobChangesOffline = []
@@ -63,10 +67,12 @@ describe('smoke test, no hypercore, missing deps', () => {
       bobChangesOffline.push(change)
     }
   })
+  /*
   bobChanges.on('change', change => {
     const {actor, seq, ...props} = change
     // console.log('%s-%d %O', actor, seq, props)
   })
+  */
 
   function goOffline () {
     online = false
@@ -90,12 +96,18 @@ describe('smoke test, no hypercore, missing deps', () => {
     }))
     assert.deepEqual(aliceDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'w', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'w',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
     bobDoc.set(Automerge.merge(bobDoc.get(), aliceDoc.get()))
     assert.deepEqual(bobDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'w', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'w',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
   })
 
@@ -106,14 +118,20 @@ describe('smoke test, no hypercore, missing deps', () => {
     ))
     assert.deepEqual(aliceDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
   })
 
   it(`2a. Alice's edit gets synced over to Bob's canvas`, () => {
     assert.deepEqual(bobDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
     assert.deepEqual(bobDoc.get()._conflicts, {})
   })
@@ -125,14 +143,20 @@ describe('smoke test, no hypercore, missing deps', () => {
     ))
     assert.deepEqual(bobDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'b'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'b'
     })
   })
 
   it(`3a. Bob's edit gets synced to Alice's canvas`, () => {
     assert.deepEqual(aliceDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'b'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'b'
     })
     assert.deepEqual(aliceDoc.get()._conflicts, {})
   })
@@ -158,11 +182,17 @@ describe('smoke test, no hypercore, missing deps', () => {
     ))
     assert.deepEqual(aliceDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'r'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'r'
     })
     assert.deepEqual(bobDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'w'
     })
   })
 
@@ -170,7 +200,10 @@ describe('smoke test, no hypercore, missing deps', () => {
     goOnline()
     assert.deepEqual(aliceDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'w'
     })
     assert.deepEqual(aliceDoc.get()._conflicts, {
       x1y0: {
@@ -182,7 +215,10 @@ describe('smoke test, no hypercore, missing deps', () => {
     })
     assert.deepEqual(bobDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'w'
     })
     assert.deepEqual(bobDoc.get()._conflicts, {
       x1y0: {

@@ -1,3 +1,5 @@
+/* global it, describe */
+
 const assert = require('assert')
 const Automerge = require('automerge')
 
@@ -14,12 +16,18 @@ describe('smoke test, no hypercore', () => {
     })
     assert.deepEqual(alice1, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'w', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'w',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
     bob1 = Automerge.merge(Automerge.init('bob'), alice1)
     assert.deepEqual(bob1, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'w', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'w',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
   })
 
@@ -28,7 +36,10 @@ describe('smoke test, no hypercore', () => {
     alice2 = Automerge.change(alice1, doc => { doc.x0y0 = 'r' })
     assert.deepEqual(alice2, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
     bob2 = bob1
   })
@@ -40,7 +51,10 @@ describe('smoke test, no hypercore', () => {
     alice2a = alice2
     assert.deepEqual(bob2a, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'w'
     })
     assert.deepEqual(bob2a._conflicts, {})
   })
@@ -51,7 +65,10 @@ describe('smoke test, no hypercore', () => {
     alice3 = alice2a
     assert.deepEqual(bob3, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'b'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'b'
     })
   })
 
@@ -62,7 +79,10 @@ describe('smoke test, no hypercore', () => {
     bob3a = bob3
     assert.deepEqual(alice3a, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'w', x1y1: 'b'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'w',
+      x1y1: 'b'
     })
     assert.deepEqual(alice3a._conflicts, {})
   })
@@ -85,11 +105,17 @@ describe('smoke test, no hypercore', () => {
     })
     assert.deepEqual(alice5, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'r'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'r'
     })
     assert.deepEqual(bob5, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'w'
     })
   })
 
@@ -101,7 +127,10 @@ describe('smoke test, no hypercore', () => {
     bob6 = Automerge.applyChanges(bob5, aliceChanges6)
     assert.deepEqual(alice6, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'w'
     })
     assert.deepEqual(alice6._conflicts, {
       x1y0: {
@@ -113,7 +142,10 @@ describe('smoke test, no hypercore', () => {
     })
     assert.deepEqual(bob6, {
       _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r', x0y1: 'w', x1y0: 'g', x1y1: 'w'
+      x0y0: 'r',
+      x0y1: 'w',
+      x1y0: 'g',
+      x1y1: 'w'
     })
     assert.deepEqual(bob6._conflicts, {
       x1y0: {
