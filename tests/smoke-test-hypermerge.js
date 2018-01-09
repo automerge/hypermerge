@@ -35,6 +35,10 @@ class ChangeList {
     }
     this.previousDoc = this.watchableDoc.get()
   }
+
+  applyChange (change) {
+    this.watchableDoc.applyChanges([change])
+  }
 }
 
 function newFeed (key) {
@@ -49,11 +53,12 @@ function newFeed (key) {
 }
 
 let aliceDoc, bobDoc
+let aliceChanges, bobChanges
 let aliceFeed, aliceFeedRemote
 let bobFeed, bobFeedRemote
 let online = true
 
-describe('smoke test, no hypercore, missing deps', () => {
+describe('smoke test, hypermerge', () => {
   // https://github.com/inkandswitch/hypermerge/wiki/Smoke-Test
 
   before(async () => {
@@ -62,37 +67,15 @@ describe('smoke test, no hypercore, missing deps', () => {
 
     /* eslint-disable no-unused-vars */
     aliceFeed = (await newFeed()).source
-    const aliceChanges = new ChangeList('alice', aliceDoc, aliceFeed)
+    aliceChanges = new ChangeList('alice', aliceDoc, aliceFeed)
 
     bobFeed = (await newFeed()).source
-    const bobChanges = new ChangeList('bob', bobDoc, bobFeed)
+    bobChanges = new ChangeList('bob', bobDoc, bobFeed)
     /* eslint-enable no-unused-vars */
 
     aliceFeedRemote = (await newFeed(aliceFeed.key)).source
     // console.log('Jim', aliceFeed.key, aliceFeed.writable)
     // console.log('Jim2', aliceFeedRemote.key, aliceFeedRemote.writable)
-    const aliceLocal = aliceFeed.replicate({live: true, encrypt: false})
-    const aliceRemote = aliceFeedRemote.replicate({live: true, encrypt: false})
-    pump(
-      aliceLocal,
-      through2(function (chunk, enc, cb) {
-        // console.log('alice l --> r', chunk)
-        if (online) this.push(chunk)
-        cb()
-      }),
-      aliceRemote,
-      through2(function (chunk, enc, cb) {
-        // console.log('alice l <-- r', chunk)
-        if (online) this.push(chunk)
-        cb()
-      }),
-      aliceLocal,
-      err => {
-        if (err) {
-          console.error('Alice replicate error', err)
-        }
-      }
-    )
     aliceFeed.on('append', () => {
       // console.log('append alice')
     })
@@ -119,7 +102,7 @@ describe('smoke test, no hypercore, missing deps', () => {
             return
           }
           // console.log('Fetched alice', i, change)
-          bobDoc.applyChanges([change])
+          bobChanges.applyChange(change)
         })
       }
     })
@@ -128,28 +111,6 @@ describe('smoke test, no hypercore, missing deps', () => {
     bobFeedRemote = (await newFeed(bobFeed.key)).source
     // console.log('Jim', bobFeed.key, bobFeed.writable)
     // console.log('Jim2', bobFeedRemote.key, bobFeedRemote.writable)
-    const bobLocal = bobFeed.replicate({live: true, encrypt: false})
-    const bobRemote = bobFeedRemote.replicate({live: true, encrypt: false})
-    pump(
-      bobLocal,
-      through2(function (chunk, enc, cb) {
-        // console.log('bob l --> r', chunk)
-        if (online) this.push(chunk)
-        cb()
-      }),
-      bobRemote,
-      through2(function (chunk, enc, cb) {
-        // console.log('bob l <-- r', chunk)
-        if (online) this.push(chunk)
-        cb()
-      }),
-      bobLocal,
-      err => {
-        if (err) {
-          console.error('Bob replicate error', err)
-        }
-      }
-    )
     bobFeed.on('append', () => {
       // console.log('append bob')
     })
@@ -176,22 +137,91 @@ describe('smoke test, no hypercore, missing deps', () => {
             return
           }
           // console.log('Fetched bob', i, change)
-          aliceDoc.applyChanges([change])
+          aliceChanges.applyChange(change)
         })
       }
     })
   })
 
   function goOffline () {
+    // console.log('Go offline')
     online = false
   }
 
   function goOnline () {
+    // console.log('Go online')
+
+    // alice
+    const aliceLocal = aliceFeed.replicate({live: true, encrypt: false})
+    const aliceRemote = aliceFeedRemote.replicate({live: true, encrypt: false})
+    pump(
+      aliceLocal,
+      through2(function (chunk, enc, cb) {
+        // console.log('alice l --> r', chunk)
+        if (online) {
+          this.push(chunk)
+          cb()
+        } else {
+          cb(new Error('Offline'))
+        }
+      }),
+      aliceRemote,
+      through2(function (chunk, enc, cb) {
+        // console.log('alice l <-- r', chunk)
+        if (online) {
+          this.push(chunk)
+          cb()
+        } else {
+          cb(new Error('Offline'))
+        }
+      }),
+      aliceLocal,
+      err => {
+        if (err && err.message !== 'Offline') {
+          console.error('Alice replicate error', err)
+        }
+      }
+    )
+
+    // bob
+    const bobLocal = bobFeed.replicate({live: true, encrypt: false})
+    const bobRemote = bobFeedRemote.replicate({live: true, encrypt: false})
+    pump(
+      bobLocal,
+      through2(function (chunk, enc, cb) {
+        // console.log('bob l --> r', chunk)
+        if (online) {
+          this.push(chunk)
+          cb()
+        } else {
+          cb(new Error('Offline'))
+        }
+      }),
+      bobRemote,
+      through2(function (chunk, enc, cb) {
+        // console.log('bob l <-- r', chunk)
+        if (online) {
+          this.push(chunk)
+          cb()
+        } else {
+          cb(new Error('Offline'))
+        }
+      }),
+      bobLocal,
+      err => {
+        if (err && err.message !== 'Offline') {
+          console.error('Bob replicate error', err)
+        }
+      }
+    )
+
     online = true
   }
 
   it('1. Both Alice and Bob start with the same blank canvas. ' +
      'Both are online.', () => {
+    goOnline()
+
     aliceDoc.set(Automerge.change(aliceDoc.get(), 'blank canvas', doc => {
       doc.x0y0 = 'w'
       doc.x0y1 = 'w'
@@ -213,18 +243,6 @@ describe('smoke test, no hypercore, missing deps', () => {
       x1y0: 'w',
       x1y1: 'w'
     })
-    /*
-    aliceFeedRemote.once('append', () => {
-      console.log('test 1. append remote')
-      done()
-    })
-    */
-    /*
-    setTimeout(() => {
-      console.log('Remote length', aliceFeedRemote.length)
-      done()
-    }, 1000)
-    */
   })
 
   it('2. Alice makes an edit', () => {
@@ -264,8 +282,6 @@ describe('smoke test, no hypercore, missing deps', () => {
       x1y0: 'w',
       x1y1: 'b'
     })
-    // setTimeout(done, 1000)
-    // done()
   })
 
   it(`3a. Bob's edit gets synced to Alice's canvas`, () => {
@@ -314,37 +330,42 @@ describe('smoke test, no hypercore, missing deps', () => {
     })
   })
 
-  it('6. Alice and Bob both go back online, and re-sync', () => {
+  it('6. Alice and Bob both go back online, and re-sync', done => {
     goOnline()
-    assert.deepEqual(aliceDoc.get(), {
-      _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r',
-      x0y1: 'w',
-      x1y0: 'g',
-      x1y1: 'w'
-    })
-    assert.deepEqual(aliceDoc.get()._conflicts, {
-      x1y0: {
-        alice: 'g'
-      },
-      x1y1: {
-        alice: 'r'
-      }
-    })
-    assert.deepEqual(bobDoc.get(), {
-      _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r',
-      x0y1: 'w',
-      x1y0: 'g',
-      x1y1: 'w'
-    })
-    assert.deepEqual(bobDoc.get()._conflicts, {
-      x1y0: {
-        alice: 'g'
-      },
-      x1y1: {
-        alice: 'r'
-      }
-    })
+
+    // wait for sync to happen
+    setTimeout(() => {
+      assert.deepEqual(aliceDoc.get(), {
+        _objectId: '00000000-0000-0000-0000-000000000000',
+        x0y0: 'r',
+        x0y1: 'w',
+        x1y0: 'g',
+        x1y1: 'w'
+      })
+      assert.deepEqual(aliceDoc.get()._conflicts, {
+        x1y0: {
+          alice: 'g'
+        },
+        x1y1: {
+          alice: 'r'
+        }
+      })
+      assert.deepEqual(bobDoc.get(), {
+        _objectId: '00000000-0000-0000-0000-000000000000',
+        x0y0: 'r',
+        x0y1: 'w',
+        x1y0: 'g',
+        x1y1: 'w'
+      })
+      assert.deepEqual(bobDoc.get()._conflicts, {
+        x1y0: {
+          alice: 'g'
+        },
+        x1y1: {
+          alice: 'r'
+        }
+      })
+      done()
+    }, 0)
   })
 })

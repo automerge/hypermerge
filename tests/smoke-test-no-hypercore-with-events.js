@@ -35,7 +35,7 @@ class ChangeList extends EventEmitter {
 let aliceDoc, bobDoc
 /* global it, describe */
 
-describe('smoke test, no hypercore, missing deps', () => {
+describe('smoke test, no hypercore with events', () => {
   // https://github.com/inkandswitch/hypermerge/wiki/Smoke-Test
 
   aliceDoc = new WatchableDoc(Automerge.init('alice'))
