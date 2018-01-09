@@ -56,9 +56,20 @@ Hypermerge.prototype._open = function (cb) {
     self.key = source.key
     self.discoveryKey = source.discoveryKey
 
-    self.doc = new WatchableDoc(Automerge.init(self.key.toString('hex')))
+    if (source.writable) {
+      self.doc = new WatchableDoc(Automerge.init(self.key.toString('hex')))
+      return cb()
+    }
 
-    cb()
+    var local = self._createFeed(null, 'local')
+
+    local.on('ready', function () {
+      self.local = local
+      self.doc = new WatchableDoc(
+        Automerge.init(self.local.key.toString('hex'))
+      )
+      cb()
+    })
   })
 }
 
@@ -89,6 +100,7 @@ Hypermerge.prototype._createFeed = function (key, dir) {
   }
 
   function storage (name) {
+    // console.log('Jim', dir + '/' + name)
     return self._storage(dir + '/' + name)
   }
 }

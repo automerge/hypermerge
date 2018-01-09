@@ -8,12 +8,13 @@ const through2 = require('through2')
 const hypermerge = require('..')
 
 class ChangeList {
-  constructor (hm) {
-    this.actor = hm.source.key.toString('hex')
+  constructor (name, hm) {
+    this.name = name
     this.watchableDoc = hm.doc
     this.watchableDoc.registerHandler(this.newChange.bind(this))
     this.previousDoc = this.watchableDoc.get()
-    this.feed = hm.source
+    this.feed = hm.local ? hm.local : hm.source
+    this.actor = this.feed.key.toString('hex')
   }
 
   newChange (doc) {
@@ -24,12 +25,12 @@ class ChangeList {
         .filter(change => change.seq >= this.feed.length)
         .forEach(change => {
           const {seq} = change
-          // console.log('Jim change', change)
+          // console.log('Jim change', this.name, this.feed.length, change)
           this.feed.append(change, err => {
             if (err) {
               console.error('Error ' + seq, err)
             }
-            // console.log('Appended', this.feed.length)
+            // console.log('Appended', this.name, this.feed.length)
           })
         })
     }
@@ -37,13 +38,14 @@ class ChangeList {
   }
 
   applyChange (change) {
+    // console.log('Jim applyChange', this.name, change)
     this.watchableDoc.applyChanges([change])
   }
 }
 
-function newHypermerge (key) {
+function newHypermerge (storage, key) {
   const promise = new Promise((resolve, reject) => {
-    const hm = hypermerge(ram, key)
+    const hm = hypermerge(storage, key)
     hm.on('ready', () => {
       resolve(hm)
     })
@@ -63,19 +65,20 @@ describe('smoke test, hypermerge', () => {
 
   before(async () => {
     /* eslint-disable no-unused-vars */
-    const alice = await newHypermerge()
+    // const alice = await newHypermerge('./alice')
+    const alice = await newHypermerge(ram)
     aliceFeed = alice.source
     aliceDoc = alice.doc
-    aliceChanges = new ChangeList(alice)
+    aliceChanges = new ChangeList('alice', alice)
 
-    const bob = await newHypermerge()
-    bobFeed = bob.source
+    // const bob = await newHypermerge('./bob', alice.key.toString('hex'))
+    const bob = await newHypermerge(ram, alice.key.toString('hex'))
+    bobFeed = bob.local
+    aliceFeedRemote = bob.source
     bobDoc = bob.doc
-    bobChanges = new ChangeList(bob)
+    bobChanges = new ChangeList('bob', bob)
     /* eslint-enable no-unused-vars */
 
-    const aliceRemote = await newHypermerge(aliceFeed.key)
-    aliceFeedRemote = aliceRemote.source
     // console.log('Jim', aliceFeed.key, aliceFeed.writable)
     // console.log('Jim2', aliceFeedRemote.key, aliceFeedRemote.writable)
     aliceFeed.on('append', () => {
@@ -104,12 +107,13 @@ describe('smoke test, hypermerge', () => {
             return
           }
           // console.log('Fetched alice', i, change)
+          // console.log('Applying changes to bob')
           bobChanges.applyChange(change)
         })
       }
     })
 
-    const bobRemote = await newHypermerge(bobFeed.key)
+    const bobRemote = await newHypermerge(ram, bobFeed.key)
     bobFeedRemote = bobRemote.source
     // console.log('Jim', bobFeed.key, bobFeed.writable)
     // console.log('Jim2', bobFeedRemote.key, bobFeedRemote.writable)
@@ -280,14 +284,16 @@ describe('smoke test, hypermerge', () => {
   })
 
   it(`3a. Bob's edit gets synced to Alice's canvas`, () => {
-    assert.deepEqual(aliceDoc.get(), {
-      _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'r',
-      x0y1: 'w',
-      x1y0: 'w',
-      x1y1: 'b'
-    })
-    assert.deepEqual(aliceDoc.get()._conflicts, {})
+    setTimeout(() => {
+      assert.deepEqual(aliceDoc.get(), {
+        _objectId: '00000000-0000-0000-0000-000000000000',
+        x0y0: 'r',
+        x0y1: 'w',
+        x1y0: 'w',
+        x1y1: 'b'
+      })
+      assert.deepEqual(aliceDoc.get()._conflicts, {})
+    }, 0)
   })
 
   it('4. Alice and/or Bob go offline', () => {
