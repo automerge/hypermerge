@@ -54,6 +54,16 @@ function newHypermerge (storage, key) {
   return promise
 }
 
+function connectPeer (hm, key) {
+  const promise = new Promise((resolve, reject) => {
+    hm.connectPeer(key, (err, peer) => {
+      if (err) return reject(err)
+      resolve(peer)
+    })
+  })
+  return promise
+}
+
 let aliceDoc, bobDoc
 let aliceChanges, bobChanges
 let aliceFeed, aliceFeedRemote
@@ -113,8 +123,8 @@ describe('smoke test, hypermerge', () => {
       }
     })
 
-    const bobRemote = await newHypermerge(ram, bobFeed.key)
-    bobFeedRemote = bobRemote.source
+    bobFeedRemote = await connectPeer(alice, bobFeed.key)
+    // console.log('Jim bobFeedRemote', bobFeedRemote)
     // console.log('Jim', bobFeed.key, bobFeed.writable)
     // console.log('Jim2', bobFeedRemote.key, bobFeedRemote.writable)
     bobFeed.on('append', () => {
