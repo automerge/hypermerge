@@ -220,10 +220,11 @@ describe('smoke test, hypermerge', () => {
     online = true
   }
 
-  it('1. Both Alice and Bob start with the same blank canvas. ' +
-     'Both are online.', () => {
+  it(`1. Alice starts with a blank canvas and is online. Bob is also ` +
+      `online, has joined, but hasn't synced yet`, () => {
     goOnline()
 
+    bobDoc.set(Automerge.merge(bobDoc.get(), aliceDoc.get()))
     aliceDoc.set(Automerge.change(aliceDoc.get(), 'blank canvas', doc => {
       doc.x0y0 = 'w'
       doc.x0y1 = 'w'
@@ -231,14 +232,6 @@ describe('smoke test, hypermerge', () => {
       doc.x1y1 = 'w'
     }))
     assert.deepEqual(aliceDoc.get(), {
-      _objectId: '00000000-0000-0000-0000-000000000000',
-      x0y0: 'w',
-      x0y1: 'w',
-      x1y0: 'w',
-      x1y1: 'w'
-    })
-    bobDoc.set(Automerge.merge(bobDoc.get(), aliceDoc.get()))
-    assert.deepEqual(bobDoc.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
       x0y0: 'w',
       x0y1: 'w',
