@@ -228,7 +228,6 @@ describe('smoke test, hypermerge', () => {
       `online, has joined, but hasn't synced yet`, () => {
     goOnline()
 
-    bobDoc.set(Automerge.merge(bobDoc.get(), aliceDoc.get()))
     aliceDoc.set(Automerge.change(aliceDoc.get(), 'blank canvas', doc => {
       doc.x0y0 = 'w'
       doc.x0y1 = 'w'

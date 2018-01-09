@@ -65,9 +65,13 @@ Hypermerge.prototype._open = function (cb) {
 
     local.on('ready', function () {
       self.local = local
+      const sourceDoc = new WatchableDoc(
+        Automerge.init(self.key.toString('hex'))
+      )
       self.doc = new WatchableDoc(
         Automerge.init(self.local.key.toString('hex'))
       )
+      self.doc.set(Automerge.merge(self.doc.get(), sourceDoc.get()))
       cb()
     })
   })
