@@ -7,37 +7,6 @@ const pump = require('pump')
 const through2 = require('through2')
 const hypermerge = require('..')
 
-class ChangeList {
-  constructor (name, hm) {
-    this.name = name
-    this.watchableDoc = hm.doc
-    this.watchableDoc.registerHandler(this.newChange.bind(this))
-    this.previousDoc = this.watchableDoc.get()
-    this.feed = hm.local ? hm.local : hm.source
-    this.actor = this.feed.key.toString('hex')
-  }
-
-  newChange (doc) {
-    if (this.previousDoc) {
-      const changes = Automerge.getChanges(this.previousDoc, doc)
-      changes
-        .filter(change => change.actor === this.actor)
-        .filter(change => change.seq >= this.feed.length)
-        .forEach(change => {
-          const {seq} = change
-          // console.log('Jim change', this.name, this.feed.length, change)
-          this.feed.append(change, err => {
-            if (err) {
-              console.error('Error ' + seq, err)
-            }
-            // console.log('Appended', this.name, this.feed.length)
-          })
-        })
-    }
-    this.previousDoc = this.watchableDoc.get()
-  }
-}
-
 function newHypermerge (storage, key) {
   const promise = new Promise((resolve, reject) => {
     const hm = hypermerge(storage, key)
@@ -60,7 +29,6 @@ function connectPeer (hm, key) {
 }
 
 let aliceDoc, bobDoc
-let aliceChanges, bobChanges // eslint-disable-line no-unused-vars
 let aliceFeed, aliceFeedRemote
 let bobFeed, bobFeedRemote
 let online = true
@@ -73,13 +41,11 @@ describe('smoke test, hypermerge', () => {
     const alice = await newHypermerge(ram)
     aliceFeed = alice.source
     aliceDoc = alice.doc
-    aliceChanges = new ChangeList('alice', alice)
 
     const bob = await newHypermerge(ram, alice.key.toString('hex'))
     bobFeed = bob.local
     aliceFeedRemote = bob.source
     bobDoc = bob.doc
-    bobChanges = new ChangeList('bob', bob)
     bobFeedRemote = await connectPeer(alice, bobFeed.key)
   })
 

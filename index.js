@@ -60,6 +60,8 @@ Hypermerge.prototype._open = function (cb) {
 
     if (source.writable) {
       self.doc = new WatchableDoc(Automerge.init(self.key.toString('hex')))
+      self.doc.registerHandler(self._newChanges.bind(self))
+      self.previousDoc = self.doc.get()
       return cb()
     }
 
@@ -76,6 +78,8 @@ Hypermerge.prototype._open = function (cb) {
         Automerge.init(self.local.key.toString('hex'))
       )
       self.doc.set(Automerge.merge(self.doc.get(), sourceDoc.get()))
+      self.doc.registerHandler(self._newChanges.bind(self))
+      self.previousDoc = self.doc.get()
       cb()
     })
   })
@@ -157,6 +161,25 @@ Hypermerge.prototype._onSync = function (feed) {
       self.doc.applyChanges([change])
     })
   }
+}
+
+Hypermerge.prototype._newChanges = function (doc) {
+  const changes = Automerge.getChanges(this.previousDoc, doc)
+  const feed = this.local ? this.local : this.source
+  const key = feed.key.toString('hex')
+  changes
+    .filter(change => change.actor === key)
+    .filter(change => change.seq >= feed.length)
+    .forEach(change => {
+      const {seq} = change
+      // console.log('Jim change', feed.length, change)
+      feed.append(change, err => {
+        if (err) {
+          console.error('Error ' + seq, err)
+        }
+      })
+    })
+  this.previousDoc = this.doc.get()
 }
 
 function isObject (val) {
