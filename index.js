@@ -210,6 +210,18 @@ Hypermerge.prototype.replicate = function (opts) {
   return stream
 }
 
+Hypermerge.prototype.get = function () {
+  return this.doc.get()
+}
+
+Hypermerge.prototype.set = function () {
+  return this.doc.set()
+}
+
+Hypermerge.prototype.change = function (...args) {
+  return this.doc.set(Automerge.change(this.doc.get(), ...args))
+}
+
 function isObject (val) {
   return !!val && typeof val !== 'string' && !Buffer.isBuffer(val)
 }

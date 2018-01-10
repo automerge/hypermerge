@@ -1,7 +1,6 @@
 /* global it, describe, before */
 
 const assert = require('assert')
-const Automerge = require('automerge')
 const ram = require('random-access-memory')
 const hypermerge = require('..')
 const OnlineOfflinePump = require('./lib/online-offline-pump')
@@ -44,13 +43,13 @@ describe('smoke test, hypermerge', () => {
       `online, has joined, but hasn't synced yet`, () => {
     pump.goOnline()
 
-    alice.doc.set(Automerge.change(alice.doc.get(), 'blank canvas', doc => {
+    alice.change('blank canvas', doc => {
       doc.x0y0 = 'w'
       doc.x0y1 = 'w'
       doc.x1y0 = 'w'
       doc.x1y1 = 'w'
-    }))
-    assert.deepEqual(alice.doc.get(), {
+    })
+    assert.deepEqual(alice.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
       x0y0: 'w',
       x0y1: 'w',
@@ -60,11 +59,8 @@ describe('smoke test, hypermerge', () => {
   })
 
   it('2. Alice makes an edit', () => {
-    alice.doc.set(Automerge.change(
-      alice.doc.get(), 'alice adds red pixel',
-      doc => { doc.x0y0 = 'r' }
-    ))
-    assert.deepEqual(alice.doc.get(), {
+    alice.change('alice adds red pixel', doc => { doc.x0y0 = 'r' })
+    assert.deepEqual(alice.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
       x0y0: 'r',
       x0y1: 'w',
@@ -74,22 +70,19 @@ describe('smoke test, hypermerge', () => {
   })
 
   it(`2a. Alice's edit gets synced over to Bob's canvas`, () => {
-    assert.deepEqual(bob.doc.get(), {
+    assert.deepEqual(bob.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
       x0y0: 'r',
       x0y1: 'w',
       x1y0: 'w',
       x1y1: 'w'
     })
-    assert.deepEqual(bob.doc.get()._conflicts, {})
+    assert.deepEqual(bob.get()._conflicts, {})
   })
 
   it('3. Bob makes an edit', () => {
-    bob.doc.set(Automerge.change(
-      bob.doc.get(), 'bob adds blue pixel',
-      doc => { doc.x1y1 = 'b' }
-    ))
-    assert.deepEqual(bob.doc.get(), {
+    bob.change('bob adds blue pixel', doc => { doc.x1y1 = 'b' })
+    assert.deepEqual(bob.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
       x0y0: 'r',
       x0y1: 'w',
@@ -101,14 +94,14 @@ describe('smoke test, hypermerge', () => {
   it(`3a. Bob's edit gets synced to Alice's canvas`, () => {
     // wait for sync to happen
     setTimeout(() => {
-      assert.deepEqual(alice.doc.get(), {
+      assert.deepEqual(alice.get(), {
         _objectId: '00000000-0000-0000-0000-000000000000',
         x0y0: 'r',
         x0y1: 'w',
         x1y0: 'w',
         x1y1: 'b'
       })
-      assert.deepEqual(alice.doc.get()._conflicts, {})
+      assert.deepEqual(alice.get()._conflicts, {})
     }, 0)
   })
 
@@ -117,28 +110,28 @@ describe('smoke test, hypermerge', () => {
   })
 
   it('5. Both Alice and Bob make edits while offline', () => {
-    alice.doc.set(Automerge.change(
-      alice.doc.get(), 'alice adds green and red pixels',
+    alice.change(
+      'alice adds green and red pixels',
       doc => {
         doc.x1y0 = 'g'
         doc.x1y1 = 'r'
       }
-    ))
-    bob.doc.set(Automerge.change(
-      bob.doc.get(), 'bob adds green and white pixels',
+    )
+    bob.change(
+      'bob adds green and white pixels',
       doc => {
         doc.x1y0 = 'g'
         doc.x1y1 = 'w'
       }
-    ))
-    assert.deepEqual(alice.doc.get(), {
+    )
+    assert.deepEqual(alice.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
       x0y0: 'r',
       x0y1: 'w',
       x1y0: 'g',
       x1y1: 'r'
     })
-    assert.deepEqual(bob.doc.get(), {
+    assert.deepEqual(bob.get(), {
       _objectId: '00000000-0000-0000-0000-000000000000',
       x0y0: 'r',
       x0y1: 'w',
@@ -156,14 +149,14 @@ describe('smoke test, hypermerge', () => {
       const bobKey = bob.local.key.toString('hex')
       if (aliceKey < bobKey) {
         // console.log('Bob wins')
-        assert.deepEqual(alice.doc.get(), {
+        assert.deepEqual(alice.get(), {
           _objectId: '00000000-0000-0000-0000-000000000000',
           x0y0: 'r',
           x0y1: 'w',
           x1y0: 'g',
           x1y1: 'w'
         })
-        assert.deepEqual(alice.doc.get()._conflicts, {
+        assert.deepEqual(alice.get()._conflicts, {
           x1y0: {
             [aliceKey]: 'g'
           },
@@ -171,14 +164,14 @@ describe('smoke test, hypermerge', () => {
             [aliceKey]: 'r'
           }
         })
-        assert.deepEqual(bob.doc.get(), {
+        assert.deepEqual(bob.get(), {
           _objectId: '00000000-0000-0000-0000-000000000000',
           x0y0: 'r',
           x0y1: 'w',
           x1y0: 'g',
           x1y1: 'w'
         })
-        assert.deepEqual(bob.doc.get()._conflicts, {
+        assert.deepEqual(bob.get()._conflicts, {
           x1y0: {
             [aliceKey]: 'g'
           },
@@ -188,14 +181,14 @@ describe('smoke test, hypermerge', () => {
         })
       } else {
         // console.log('Alice wins')
-        assert.deepEqual(alice.doc.get(), {
+        assert.deepEqual(alice.get(), {
           _objectId: '00000000-0000-0000-0000-000000000000',
           x0y0: 'r',
           x0y1: 'w',
           x1y0: 'g',
           x1y1: 'r'
         })
-        assert.deepEqual(alice.doc.get()._conflicts, {
+        assert.deepEqual(alice.get()._conflicts, {
           x1y0: {
             [bobKey]: 'g'
           },
@@ -203,14 +196,14 @@ describe('smoke test, hypermerge', () => {
             [bobKey]: 'w'
           }
         })
-        assert.deepEqual(bob.doc.get(), {
+        assert.deepEqual(bob.get(), {
           _objectId: '00000000-0000-0000-0000-000000000000',
           x0y0: 'r',
           x0y1: 'w',
           x1y0: 'g',
           x1y1: 'r'
         })
-        assert.deepEqual(bob.doc.get()._conflicts, {
+        assert.deepEqual(bob.get()._conflicts, {
           x1y0: {
             [bobKey]: 'g'
           },
