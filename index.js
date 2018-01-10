@@ -93,6 +93,9 @@ Hypermerge.prototype.connectPeer = function (key, cb) {
 
     peer.on('ready', function () {
       self.peers[keyString] = peer
+
+      peer.on('sync', self._onSync.bind(self, peer))
+
       cb(null, peer)
     })
 

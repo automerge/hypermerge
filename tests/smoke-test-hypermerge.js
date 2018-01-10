@@ -36,11 +36,6 @@ class ChangeList {
     }
     this.previousDoc = this.watchableDoc.get()
   }
-
-  applyChange (change) {
-    // console.log('Jim applyChange', this.name, change)
-    this.watchableDoc.applyChanges([change])
-  }
 }
 
 function newHypermerge (storage, key) {
@@ -74,67 +69,18 @@ describe('smoke test, hypermerge', () => {
   // https://github.com/inkandswitch/hypermerge/wiki/Smoke-Test
 
   before(async () => {
-    /* eslint-disable no-unused-vars */
     // const alice = await newHypermerge('./alice')
     const alice = await newHypermerge(ram)
     aliceFeed = alice.source
     aliceDoc = alice.doc
     aliceChanges = new ChangeList('alice', alice)
 
-    // const bob = await newHypermerge('./bob', alice.key.toString('hex'))
     const bob = await newHypermerge(ram, alice.key.toString('hex'))
     bobFeed = bob.local
     aliceFeedRemote = bob.source
     bobDoc = bob.doc
     bobChanges = new ChangeList('bob', bob)
-    /* eslint-enable no-unused-vars */
-
-    // console.log('Jim', aliceFeed.key, aliceFeed.writable)
-    // console.log('Jim2', aliceFeedRemote.key, aliceFeedRemote.writable)
-    aliceFeed.on('append', () => {
-      // console.log('append alice')
-    })
-    aliceFeedRemote.on('append', err => {
-      if (err) {
-        console.error('append alice error', err)
-      }
-      // console.log('append alice remote', aliceFeedRemote.length)
-    })
-
     bobFeedRemote = await connectPeer(alice, bobFeed.key)
-    // console.log('Jim bobFeedRemote', bobFeedRemote)
-    // console.log('Jim', bobFeed.key, bobFeed.writable)
-    // console.log('Jim2', bobFeedRemote.key, bobFeedRemote.writable)
-    bobFeed.on('append', () => {
-      // console.log('append bob')
-    })
-    let lastSeenBob = 0
-    bobFeedRemote.on('append', err => {
-      if (err) {
-        console.error('append bob error', err)
-      }
-      // console.log('append bob remote', bobFeedRemote.length)
-    })
-    bobFeedRemote.on('sync', err => {
-      if (err) {
-        console.error('sync bob error', err)
-        return
-      }
-      // console.log('sync bob remote', bobFeedRemote.length)
-      const prevLastSeenBob = lastSeenBob
-      lastSeenBob = bobFeedRemote.length
-      for (let i = prevLastSeenBob + 1; i <= lastSeenBob; i++) {
-        // console.log('Fetch bob', i)
-        bobFeedRemote.get(i - 1, (err, change) => {
-          if (err) {
-            console.error('Error bob remote', i, err)
-            return
-          }
-          // console.log('Fetched bob', i, change)
-          aliceChanges.applyChange(change)
-        })
-      }
-    })
   })
 
   function goOffline () {
