@@ -28,6 +28,7 @@ function connectPeer (hm, key) {
   return promise
 }
 
+let alice, bob
 let aliceDoc, bobDoc
 let aliceFeed, aliceFeedRemote
 let bobFeed, bobFeedRemote
@@ -38,13 +39,11 @@ describe('smoke test, hypermerge', () => {
 
   before(async () => {
     // const alice = await newHypermerge('./alice')
-    const alice = await newHypermerge(ram)
-    aliceFeed = alice.source
+    alice = await newHypermerge(ram)
     aliceDoc = alice.doc
 
-    const bob = await newHypermerge(ram, alice.key.toString('hex'))
+    bob = await newHypermerge(ram, alice.key.toString('hex'))
     bobFeed = bob.local
-    aliceFeedRemote = bob.source
     bobDoc = bob.doc
     bobFeedRemote = await connectPeer(alice, bobFeed.key)
   })
@@ -58,12 +57,12 @@ describe('smoke test, hypermerge', () => {
     // console.log('Go online')
 
     // alice
-    const aliceLocal = aliceFeed.replicate({live: true, encrypt: false})
-    const aliceRemote = aliceFeedRemote.replicate({live: true, encrypt: false})
+    const aliceStream = alice.replicate({live: true, encrypt: false})
+    const bobStream = bob.replicate({live: true, encrypt: false})
     pump(
-      aliceLocal,
+      aliceStream,
       through2(function (chunk, enc, cb) {
-        // console.log('alice l --> r', chunk)
+        // console.log('l --> r', chunk)
         if (online) {
           this.push(chunk)
           cb()
@@ -71,9 +70,9 @@ describe('smoke test, hypermerge', () => {
           cb(new Error('Offline'))
         }
       }),
-      aliceRemote,
+      bobStream,
       through2(function (chunk, enc, cb) {
-        // console.log('alice l <-- r', chunk)
+        // console.log('l <-- r', chunk)
         if (online) {
           this.push(chunk)
           cb()
@@ -81,10 +80,10 @@ describe('smoke test, hypermerge', () => {
           cb(new Error('Offline'))
         }
       }),
-      aliceLocal,
+      aliceStream,
       err => {
         if (err && err.message !== 'Offline') {
-          console.error('Alice replicate error', err)
+          console.error('Replicate error', err)
         }
       }
     )
@@ -237,7 +236,7 @@ describe('smoke test, hypermerge', () => {
     // console.log('sleep')
     setTimeout(() => {
       // console.log('wake')
-      const aliceKey = aliceFeed.key.toString('hex')
+      const aliceKey = alice.key.toString('hex')
       const bobKey = bobFeed.key.toString('hex')
       if (aliceKey < bobKey) {
         // console.log('Bob wins')

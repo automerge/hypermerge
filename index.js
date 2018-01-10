@@ -182,6 +182,17 @@ Hypermerge.prototype._newChanges = function (doc) {
   this.previousDoc = this.doc.get()
 }
 
+Hypermerge.prototype.replicate = function (opts) {
+  if (!opts) opts = {}
+
+  opts.expectedFeeds = 1
+
+  var self = this
+  var stream = this.source.replicate(opts)
+
+  return stream
+}
+
 function isObject (val) {
   return !!val && typeof val !== 'string' && !Buffer.isBuffer(val)
 }
