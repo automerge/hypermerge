@@ -1,0 +1,19 @@
+{
+  "name": "pixelpusher-mini",
+  "version": "0.0.1",
+  "description": "A console pixel editor limited to 2x2 canvases",
+  "main": "pp-mini.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^2.3.0",
+    "diffy": "^1.3.1",
+    "hypercore": "^6.11.0",
+    "hyperdiscovery": "^7.0.0",
+    "minimist": "^1.2.0"
+  }
+}
