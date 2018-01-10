@@ -4,27 +4,6 @@ const assert = require('assert')
 const hypermerge = require('..')
 const OnlineOfflinePump = require('./lib/online-offline-pump')
 
-function newHypermerge (key) {
-  const promise = new Promise((resolve, reject) => {
-    const hm = hypermerge({key})
-    hm.on('ready', () => {
-      resolve(hm)
-    })
-    hm.on('error', err => reject(err))
-  })
-  return promise
-}
-
-function connectPeer (hm, key) {
-  const promise = new Promise((resolve, reject) => {
-    hm.connectPeer(key, (err, peer) => {
-      if (err) return reject(err)
-      resolve(peer)
-    })
-  })
-  return promise
-}
-
 describe('smoke test, hypermerge', () => {
   // https://github.com/inkandswitch/hypermerge/wiki/Smoke-Test
 
@@ -32,10 +11,14 @@ describe('smoke test, hypermerge', () => {
   let pump
 
   before(async () => {
-    alice = await newHypermerge()
-    bob = await newHypermerge(alice.key)
-    await connectPeer(alice, bob.local.key)
-    pump = new OnlineOfflinePump(alice, bob)
+    alice = hypermerge()
+    alice.on('ready', () => {
+      bob = hypermerge({key: alice.key})
+      bob.on('ready', () => {
+        alice.connectPeer(bob.local.key)
+        pump = new OnlineOfflinePump(alice, bob)
+      })
+    })
   })
 
   it(`1. Alice starts with a blank canvas and is online. Bob is also ` +

@@ -24,8 +24,10 @@ function Hypermerge (storage, opts) {
 
   var self = this
 
+  opts = opts || {}
   this.key = opts.key ? toBuffer(opts.key, 'hex') : null
 
+  if (!storage) storage = ram
   this._storage = typeof storage === 'string' ? fileStorage : storage
 
   this.ready = thunky(open)
@@ -93,6 +95,7 @@ Hypermerge.prototype.connectPeer = function (key, cb) {
   var self = this
   var keyBuffer = toBuffer(key, 'hex')
   var keyString = keyBuffer.toString('hex')
+  cb = cb || noop
   this.ready(function () {
     if (self.peers[keyString]) {
       return cb(null, self.peers[keyString])
@@ -229,3 +232,5 @@ Hypermerge.prototype.change = function (...args) {
 function isObject (val) {
   return !!val && typeof val !== 'string' && !Buffer.isBuffer(val)
 }
+
+function noop () {}
