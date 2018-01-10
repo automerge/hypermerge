@@ -10,13 +10,14 @@ describe('smoke test, hypermerge', () => {
   let alice, bob
   let pump
 
-  before(async () => {
+  before(done => {
     alice = hypermerge()
     alice.on('ready', () => {
       bob = hypermerge({key: alice.key})
       bob.on('ready', () => {
         alice.connectPeer(bob.local.key)
         pump = new OnlineOfflinePump(alice, bob)
+        done()
       })
     })
   })
