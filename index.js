@@ -190,7 +190,7 @@ Hypermerge.prototype.replicate = function (opts) {
 
   var self = this
   var stream = self.source.replicate(opts)
-  opts.stream = stream
+  opts = {...opts, stream}
 
   if (self.local) {
     stream.expectedFeeds += 1
