@@ -1,13 +1,12 @@
 /* global it, describe, before */
 
 const assert = require('assert')
-const ram = require('random-access-memory')
 const hypermerge = require('..')
 const OnlineOfflinePump = require('./lib/online-offline-pump')
 
-function newHypermerge (storage, key) {
+function newHypermerge (key) {
   const promise = new Promise((resolve, reject) => {
-    const hm = hypermerge(storage, key)
+    const hm = hypermerge({key})
     hm.on('ready', () => {
       resolve(hm)
     })
@@ -33,8 +32,8 @@ describe('smoke test, hypermerge', () => {
   let pump
 
   before(async () => {
-    alice = await newHypermerge(ram)
-    bob = await newHypermerge(ram, alice.key.toString('hex'))
+    alice = await newHypermerge()
+    bob = await newHypermerge(alice.key)
     await connectPeer(alice, bob.local.key)
     pump = new OnlineOfflinePump(alice, bob)
   })

@@ -4,23 +4,27 @@ var hypercore = require('hypercore')
 var inherits = require('inherits')
 var thunky = require('thunky')
 var raf = require('random-access-file')
+var ram = require('random-access-memory')
 var toBuffer = require('to-buffer')
 var {WatchableDoc} = Automerge
 
 module.exports = Hypermerge
 
-function Hypermerge (storage, key, opts) {
-  if (!(this instanceof Hypermerge)) return new Hypermerge(storage, key, opts)
+function Hypermerge (storage, opts) {
+  if (!(this instanceof Hypermerge)) return new Hypermerge(storage, opts)
   events.EventEmitter.call(this)
 
-  if (isObject(key)) {
-    opts = key
-    key = null
+  if (isObject(storage) && !storage.open) {
+    // First arg doesn't look like an object that implements
+    // abstract-random-access ... must be options. Default to
+    // using random-access-memory
+    opts = storage
+    storage = ram
   }
 
   var self = this
 
-  this.key = key ? toBuffer(key, 'hex') : null
+  this.key = opts.key ? toBuffer(opts.key, 'hex') : null
 
   this._storage = typeof storage === 'string' ? fileStorage : storage
 
