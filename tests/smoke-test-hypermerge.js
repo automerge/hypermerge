@@ -30,8 +30,6 @@ function connectPeer (hm, key) {
 
 let alice, bob
 let aliceDoc, bobDoc
-let aliceFeed, aliceFeedRemote
-let bobFeed, bobFeedRemote
 let online = true
 
 describe('smoke test, hypermerge', () => {
@@ -43,9 +41,8 @@ describe('smoke test, hypermerge', () => {
     aliceDoc = alice.doc
 
     bob = await newHypermerge(ram, alice.key.toString('hex'))
-    bobFeed = bob.local
     bobDoc = bob.doc
-    bobFeedRemote = await connectPeer(alice, bobFeed.key)
+    await connectPeer(alice, bob.local.key)
   })
 
   function goOffline () {
@@ -84,38 +81,6 @@ describe('smoke test, hypermerge', () => {
       err => {
         if (err && err.message !== 'Offline') {
           console.error('Replicate error', err)
-        }
-      }
-    )
-
-    // bob
-    const bobLocal = bobFeed.replicate({live: true, encrypt: false})
-    const bobRemote = bobFeedRemote.replicate({live: true, encrypt: false})
-    pump(
-      bobLocal,
-      through2(function (chunk, enc, cb) {
-        // console.log('bob l --> r', chunk)
-        if (online) {
-          this.push(chunk)
-          cb()
-        } else {
-          cb(new Error('Offline'))
-        }
-      }),
-      bobRemote,
-      through2(function (chunk, enc, cb) {
-        // console.log('bob l <-- r', chunk)
-        if (online) {
-          this.push(chunk)
-          cb()
-        } else {
-          cb(new Error('Offline'))
-        }
-      }),
-      bobLocal,
-      err => {
-        if (err && err.message !== 'Offline') {
-          console.error('Bob replicate error', err)
         }
       }
     )
@@ -237,7 +202,7 @@ describe('smoke test, hypermerge', () => {
     setTimeout(() => {
       // console.log('wake')
       const aliceKey = alice.key.toString('hex')
-      const bobKey = bobFeed.key.toString('hex')
+      const bobKey = bob.local.key.toString('hex')
       if (aliceKey < bobKey) {
         // console.log('Bob wins')
         assert.deepEqual(aliceDoc.get(), {

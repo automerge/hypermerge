@@ -97,6 +97,7 @@ Hypermerge.prototype.connectPeer = function (key, cb) {
 
     peer.on('ready', function () {
       self.peers[keyString] = peer
+      self.emit('_connectPeer', keyString)
 
       peer.on('sync', self._onSync.bind(self, peer))
 
@@ -188,7 +189,23 @@ Hypermerge.prototype.replicate = function (opts) {
   opts.expectedFeeds = 1
 
   var self = this
-  var stream = this.source.replicate(opts)
+  var stream = self.source.replicate(opts)
+  opts.stream = stream
+
+  if (self.local) {
+    stream.expectedFeeds += 1
+    self.local.replicate(opts)
+  }
+
+  Object.keys(self.peers).forEach(function (key) {
+    stream.expectedFeeds += 1
+    self.peers[key].replicate(opts)
+  })
+
+  self.on('_connectPeer', function (key) {
+    stream.expectedFeeds += 1
+    self.peers[key].replicate(opts)
+  })
 
   return stream
 }
