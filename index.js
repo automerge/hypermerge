@@ -56,17 +56,20 @@ Hypermerge.prototype._open = function (cb) {
     self.key = source.key
     self.discoveryKey = source.discoveryKey
     self.peers = {}
+    self.lastSeen = {}
 
     if (source.writable) {
       self.doc = new WatchableDoc(Automerge.init(self.key.toString('hex')))
       return cb()
     }
 
+    self.source.on('sync', self._onSync.bind(self, self.source))
+
     var local = self._createFeed(null, 'local')
 
     local.on('ready', function () {
       self.local = local
-      const sourceDoc = new WatchableDoc(
+      var sourceDoc = new WatchableDoc(
         Automerge.init(self.key.toString('hex'))
       )
       self.doc = new WatchableDoc(
@@ -127,6 +130,29 @@ Hypermerge.prototype._createFeed = function (key, dir) {
 
   function storage (name) {
     return self._storage(dir + '/' + name)
+  }
+}
+
+Hypermerge.prototype._onSync = function (feed) {
+  var key = feed.key.toString('hex')
+  var self = this
+  // console.log('Jim sync', feed.key.toString('hex'))
+  try {
+    var prevLastSeen = self.lastSeen[key] || 0
+  } catch (e) {
+    console.error('Exception', e)
+  }
+  self.lastSeen[key] = feed.length
+  for (let i = prevLastSeen + 1; i <= self.lastSeen[key]; i++) {
+    // console.log('Fetch', i)
+    feed.get(i - 1, (err, change) => {
+      if (err) {
+        console.error('Error _onSync', i, err)
+        return
+      }
+      // console.log('Fetched', i, change)
+      self.doc.applyChanges([change])
+    })
   }
 }
 

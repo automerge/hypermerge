@@ -65,7 +65,7 @@ function connectPeer (hm, key) {
 }
 
 let aliceDoc, bobDoc
-let aliceChanges, bobChanges
+let aliceChanges, bobChanges // eslint-disable-line no-unused-vars
 let aliceFeed, aliceFeedRemote
 let bobFeed, bobFeedRemote
 let online = true
@@ -94,33 +94,11 @@ describe('smoke test, hypermerge', () => {
     aliceFeed.on('append', () => {
       // console.log('append alice')
     })
-    let lastSeenAlice = 0
     aliceFeedRemote.on('append', err => {
       if (err) {
         console.error('append alice error', err)
       }
       // console.log('append alice remote', aliceFeedRemote.length)
-    })
-    aliceFeedRemote.on('sync', err => {
-      if (err) {
-        console.error('sync alice error', err)
-        return
-      }
-      // console.log('sync alice remote', aliceFeedRemote.length)
-      const prevLastSeenAlice = lastSeenAlice
-      lastSeenAlice = aliceFeedRemote.length
-      for (let i = prevLastSeenAlice + 1; i <= lastSeenAlice; i++) {
-        // console.log('Fetch', i)
-        aliceFeedRemote.get(i - 1, (err, change) => {
-          if (err) {
-            console.error('Error alice remote', i, err)
-            return
-          }
-          // console.log('Fetched alice', i, change)
-          // console.log('Applying changes to bob')
-          bobChanges.applyChange(change)
-        })
-      }
     })
 
     bobFeedRemote = await connectPeer(alice, bobFeed.key)
