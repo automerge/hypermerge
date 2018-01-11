@@ -67,16 +67,17 @@ Hypermerge.prototype._open = function (cb) {
     self.peers = {}
     self.lastSeen = {}
 
-    self._onSync(self.source)
-
     if (source.writable) {
       self.doc = new WatchableDoc(Automerge.init(self.key.toString('hex')))
       self.doc.registerHandler(self._newChanges.bind(self))
       self.previousDoc = self.doc.get()
-      return cb()
+
+      return self._syncToAutomerge(self.source, () => {
+        self._findMissingPeers(cb)
+      })
     }
 
-    self.source.on('sync', self._onSync.bind(self, self.source))
+    self.source.on('sync', self._syncToAutomerge.bind(self, self.source))
 
     var local = self._createFeed(null, 'local')
 
@@ -91,9 +92,33 @@ Hypermerge.prototype._open = function (cb) {
       self.doc.set(Automerge.merge(self.doc.get(), sourceDoc.get()))
       self.doc.registerHandler(self._newChanges.bind(self))
       self.previousDoc = self.doc.get()
-      cb()
+
+      self._syncToAutomerge(self.source, () => {
+        self._syncToAutomerge(self.local, cb)
+      })
     })
   })
+}
+
+Hypermerge.prototype._findMissingPeers = function (cb) {
+  self = this
+  const missingDeps = Automerge.getMissingDeps(self.doc.get())
+  self._debugLog(`Missing deps before: ${JSON.stringify(missingDeps)}`)
+  const missingPeers = Object.keys(missingDeps)
+
+  connectMissingPeers(() => {
+    const missingDeps = Automerge.getMissingDeps(self.doc.get())
+    self._debugLog(`Missing deps after: ${JSON.stringify(missingDeps)}`)
+    cb()
+  })
+
+  function connectMissingPeers (cb) {
+    const key = missingPeers.pop()
+    if (!key) return cb()
+    self.connectPeer(key, () => {
+      connectMissingPeers(cb)
+    })
+  }
 }
 
 Hypermerge.prototype.connectPeer = function (key, cb) {
@@ -101,24 +126,29 @@ Hypermerge.prototype.connectPeer = function (key, cb) {
   var keyBuffer = toBuffer(key, 'hex')
   var keyString = keyBuffer.toString('hex')
   cb = cb || noop
-  this.ready(function () {
-    if (self.peers[keyString]) {
-      return cb(null, self.peers[keyString])
-    }
-    var peer = self._createFeed(keyBuffer)
-    self.peers[keyString] = peer
+  if (self.source.key.toString('hex') === keyString) {
+    return cb()
+  }
+  if (self.local && self.local.key.toString('hex') === keyString) {
+    return cb()
+  }
+  if (self.peers[keyString]) {
+    return cb(null, self.peers[keyString])
+  }
+  var peer = self._createFeed(keyBuffer)
+  self.peers[keyString] = peer
 
-    peer.on('ready', function () {
-      self.emit('_connectPeer', keyString)
+  peer.on('ready', function () {
+    self.emit('_connectPeer', keyString)
 
-      peer.on('sync', self._onSync.bind(self, peer))
-
+    self._syncToAutomerge(peer, () => {
+      peer.on('sync', self._syncToAutomerge.bind(self, peer))
       cb(null, peer)
     })
+  })
 
-    peer.on('error', function (err) {
-      cb(err)
-    })
+  peer.on('error', function (err) {
+    cb(err)
   })
 }
 
@@ -153,31 +183,31 @@ Hypermerge.prototype._createFeed = function (key, dir) {
   }
 }
 
-Hypermerge.prototype._onSync = function (feed) {
-  var key = feed.key.toString('hex')
-  var self = this
-  // console.log('Jim sync', feed.key.toString('hex'))
-  try {
-    var prevLastSeen = self.lastSeen[key] || 0
-  } catch (e) {
-    console.error('Exception', e)
-  }
+Hypermerge.prototype._syncToAutomerge = function (feed, cb) {
+  cb = cb || noop
+  const key = feed.key.toString('hex')
+  const self = this
+  const prevLastSeen = self.lastSeen[key] || 0
   self.lastSeen[key] = feed.length
-
   const changes = []
+
+  if (prevLastSeen === self.lastSeen[key]) {
+    return cb()
+  }
 
   fetchRecords(prevLastSeen + 1, self.lastSeen[key], () => {
     self.doc.applyChanges(changes)
+    cb()
   })
 
   function fetchRecords(from, to, cb) {
-    self._debugLog(`Fetch seq ${from}`)
+    // self._debugLog(`Fetch seq ${from}`)
     feed.get(from - 1, (err, change) => {
       if (err) {
-        console.error('Error _onSync', i, err)
+        console.error('Error _syncToAutomerge', i, err)
         return
       }
-      self._debugLog(`Fetched seq ${from}`)
+      // self._debugLog(`Fetched seq ${from}`)
       // console.log('Fetched', i, change)
       changes.push(change)
       if (from < to) {
@@ -198,7 +228,6 @@ Hypermerge.prototype._newChanges = function (doc) {
     .filter(change => change.seq >= feed.length)
     .forEach(change => {
       const {seq} = change
-      // console.log('Jim change', feed.length, change)
       feed.append(change, err => {
         if (err) {
           console.error('Error ' + seq, err)

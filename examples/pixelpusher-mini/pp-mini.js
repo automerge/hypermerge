@@ -41,6 +41,7 @@ hm.on('ready', () => {
   }
   if (hm.local) {
     userData.key = hm.local.key.toString('hex')
+    hm.local.on('append', r)
   }
   const sw = hyperdiscovery(hm, {
     stream: () => {
@@ -74,11 +75,9 @@ hm.on('ready', () => {
     r()
   })
 
-  hm.doc.registerHandler(() => {
-    r()
-  })
+  hm.doc.registerHandler(r)
 
-  if (!opts.key) {
+  if (!opts.key && hm.source.length === 0) {
     hm.change('blank canvas', doc => {
       doc.x0y0 = 'w'
       doc.x0y1 = 'w'
@@ -103,6 +102,11 @@ hm.on('ready', () => {
     {
       const feed = hm.source
       const key = hm.key.toString('hex')
+      output += `${key} ${feed.length} (${feed.peers.length})\n`
+    }
+    if (hm.local) {
+      const feed = hm.local
+      const key = hm.local.key.toString('hex')
       output += `${key} ${feed.length} (${feed.peers.length})\n`
     }
     Object.keys(hm.peers).forEach(key => {
