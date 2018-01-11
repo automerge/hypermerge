@@ -17,6 +17,7 @@ if (argv.help || !argv.name || argv._.length > 1) {
 }
 
 const cursor = {x: 0, y: 0}
+const debugLog = []
 
 const opts = {}
 if (argv._.length === 1) {
@@ -40,7 +41,7 @@ hm.on('ready', () => {
   })
   sw.on('connection', (peer, type) => {
     try {
-      const userData = peer.remoteUserData.toString()
+      const userData = JSON.parse(peer.remoteUserData.toString())
       if (userData.key) {
         hm.connectPeer(userData.key)
       }
@@ -94,6 +95,10 @@ hm.on('ready', () => {
         process.exit(1)
       }
     })
+    if (debugLog.length > 0) {
+      output +='\nDebug Log:\n'
+      debugLog.forEach(line => { output += line + '\n' })
+    }
     return output
   }
   function r () { diffy.render(render) }
