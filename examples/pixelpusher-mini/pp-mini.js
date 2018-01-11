@@ -24,6 +24,7 @@ if (argv._.length === 1) {
   opts.key = argv._[0]
 }
 const hm = hypermerge(opts)
+hm.on('log', message => debugLog.push(message))
 hm.on('ready', () => {
   const userData = {
     name: argv.name
@@ -32,17 +33,24 @@ hm.on('ready', () => {
     userData.key = hm.local.key.toString('hex')
   }
   const sw = hyperdiscovery(hm, {
-    stream: () => hm.replicate({
-      live: true,
-      upload: true,
-      download: true,
-      userData: JSON.stringify(userData)
-    })
+    stream: () => {
+      const stream = hm.replicate({
+        live: true,
+        upload: true,
+        download: true,
+        userData: JSON.stringify(userData)
+      })
+      debugLog.push('New stream')
+      stream.on('feed', () => { debugLog.push('New feed'); r() })
+      stream.on('close', () => { debugLog.push('Stream close'); r() })
+      return stream
+    }
   })
   sw.on('connection', (peer, type) => {
     try {
       const userData = JSON.parse(peer.remoteUserData.toString())
       if (userData.key) {
+        debugLog.push(`Connect ${userData.name} ${userData.key}`)
         hm.connectPeer(userData.key)
       }
       r()
@@ -50,6 +58,10 @@ hm.on('ready', () => {
       console.error('Error parsing JSON', e)
       process.exit(1)
     }
+  })
+  sw.on('close', () => {
+    debugLog.push('Close')
+    r()
   })
 
   hm.doc.registerHandler(() => {
@@ -76,7 +88,18 @@ hm.on('ready', () => {
     let output = ''
     output += `Source: ${hm.source.key.toString('hex')}\n`
     output += `Your Name: ${argv.name}\n`
-    output += `Connected to ${sw.connections.length} peers\n\n`
+    output += `${sw.connections.length} connections, ` +
+      `${Object.keys(hm.peers).length + 1 + (hm.local ? 1 : 0)} actors\n\n`
+    {
+      const feed = hm.source
+      const key = hm.key.toString('hex')
+      output += `${key} ${feed.length} (${feed.peers.length})\n`
+    }
+    Object.keys(hm.peers).forEach(key => {
+      const feed = hm.peers[key]
+      output += `${key} ${feed.length} (${feed.peers.length})\n`
+    })
+    output += '\n'
     const gridRenderer = renderGrid({cursor, grid: hm.get()})
     const help = onscreenHelp()
     while (true) {
@@ -95,9 +118,11 @@ hm.on('ready', () => {
         process.exit(1)
       }
     })
-    if (debugLog.length > 0) {
-      output +='\nDebug Log:\n'
-      debugLog.forEach(line => { output += line + '\n' })
+    if (argv.debug) {
+      if (debugLog.length > 0) {
+        output +='\nDebug Log:\n'
+        debugLog.forEach(line => { output += line + '\n' })
+      }
     }
     return output
   }
@@ -122,7 +147,11 @@ hm.on('ready', () => {
 
   const colorKeys = ['r', 'g', 'b', 'w']
   input.on('keypress', (ch, key) => {
-    if (key.name === 'q') process.exit(0)
+    if (key.name === 'q') {
+      sw.close(() => {
+        process.exit(0)
+      })
+    }
     if ('rgbw'.indexOf(key.name) >= 0) {
       hm.change(doc => {
         doc[`x${cursor.x}y${cursor.y}`] = key.name

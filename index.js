@@ -49,6 +49,7 @@ function Hypermerge (storage, opts) {
   function fileStorage (name) {
     return raf(name, {directory: storage})
   }
+
 }
 
 inherits(Hypermerge, events.EventEmitter)
@@ -101,9 +102,9 @@ Hypermerge.prototype.connectPeer = function (key, cb) {
       return cb(null, self.peers[keyString])
     }
     var peer = self._createFeed(keyBuffer)
+    self.peers[keyString] = peer
 
     peer.on('ready', function () {
-      self.peers[keyString] = peer
       self.emit('_connectPeer', keyString)
 
       peer.on('sync', self._onSync.bind(self, peer))
@@ -196,6 +197,11 @@ Hypermerge.prototype.replicate = function (opts) {
   opts.expectedFeeds = 1
 
   var self = this
+  /*
+  const myObject = {};
+  Error.captureStackTrace(myObject)
+  self.emit('log', `Jim1 replicate ${myObject.stack}`)
+  */
   var stream = self.source.replicate(opts)
   opts = {...opts, stream}
 
@@ -209,9 +215,15 @@ Hypermerge.prototype.replicate = function (opts) {
     self.peers[key].replicate(opts)
   })
 
-  self.on('_connectPeer', function (key) {
+  const connectPeerListener = function (key) {
     stream.expectedFeeds += 1
     self.peers[key].replicate(opts)
+  }
+
+  self.on('_connectPeer', connectPeerListener)
+  stream.on('close', () => {
+    self.emit('close stream')
+    self.removeListener('_connectPeer', connectPeerListener)
   })
 
   return stream
