@@ -24,8 +24,32 @@ if (argv._.length === 1) {
 }
 const hm = hypermerge(opts)
 hm.on('ready', () => {
-  const sw = hyperdiscovery(hm, {live: true})
-  sw.on('connection', r)
+  const userData = {
+    name: argv.name
+  }
+  if (hm.local) {
+    userData.key = hm.local.key.toString('hex')
+  }
+  const sw = hyperdiscovery(hm, {
+    stream: () => hm.replicate({
+      live: true,
+      upload: true,
+      download: true,
+      userData: JSON.stringify(userData)
+    })
+  })
+  sw.on('connection', (peer, type) => {
+    try {
+      const userData = peer.remoteUserData.toString()
+      if (userData.key) {
+        hm.connectPeer(userData.key)
+      }
+      r()
+    } catch (e) {
+      console.error('Error parsing JSON', e)
+      process.exit(1)
+    }
+  })
 
   hm.doc.registerHandler(() => {
     r()
@@ -40,13 +64,36 @@ hm.on('ready', () => {
     })
   }
 
+  function *onscreenHelp () {
+    yield `Keys:`
+    yield `  \u2191 \u2193 \u2190 \u2192  | Move Cursor`
+    yield `  r g b w  | Set Colors`
+    yield `  q        | Quit `
+  }
+
   function render () {
     let output = ''
     output += `Source: ${hm.source.key.toString('hex')}\n`
     output += `Your Name: ${argv.name}\n`
     output += `Connected to ${sw.connections.length} peers\n\n`
     const gridRenderer = renderGrid({cursor, grid: hm.get()})
-    for (line of gridRenderer) { output += line + '\n' }
+    const help = onscreenHelp()
+    while (true) {
+      const gridLine = gridRenderer.next()
+      const helpLine = help.next()
+      if (gridLine.done && helpLine.done) break
+      output += `${gridLine.value}    ${helpLine.value || ''}\n`
+    }
+    output += '\nPeers:\n'
+    sw.connections.forEach(connection => {
+      try {
+        const userData = JSON.parse(connection.remoteUserData.toString())
+        output += `  ${userData.name}\n`
+      } catch (e) {
+        console.error('Error parsing JSON', e)
+        process.exit(1)
+      }
+    })
     return output
   }
   function r () { diffy.render(render) }
