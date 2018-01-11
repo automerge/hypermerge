@@ -118,11 +118,16 @@ hm.on('ready', () => {
         process.exit(1)
       }
     })
-    if (argv.debug) {
-      if (debugLog.length > 0) {
-        output +='\nDebug Log:\n'
-        debugLog.forEach(line => { output += line + '\n' })
-      }
+    if (argv.debug && debugLog.length > 0) {
+      output +='\nDebug Log:\n\n'
+      const numLines = output.split('\n').length
+      const maxLines = diffy.height - numLines - 2
+      const start = Math.max(debugLog.length - maxLines, 0)
+      debugLog.forEach((line, index) => {
+        if (index >= start) {
+          output += line + '\n'
+        }
+      })
     }
     return output
   }
