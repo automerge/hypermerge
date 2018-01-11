@@ -7,11 +7,16 @@ const renderGrid = require('./render-grid')
 const hypermerge = require('../..')
 const {min, max} = Math
 
-const argv = minimist(process.argv.slice(2))
+const argv = minimist(
+  process.argv.slice(2),
+  {
+    boolean: ['debug']
+  }
+)
 
 if (argv.help || !argv.name || argv._.length > 1) {
   console.log(
-    'Usage: node pp-mini --name=<name> [key]\n'
+    'Usage: node pp-mini --name=<name> [--save=<dir>] [--debug] [key]\n'
   )
   process.exit(0)
 }
@@ -19,12 +24,17 @@ if (argv.help || !argv.name || argv._.length > 1) {
 const cursor = {x: 0, y: 0}
 const debugLog = []
 
-const opts = {}
+const opts = {debugLog: argv.debug}
 if (argv._.length === 1) {
   opts.key = argv._[0]
 }
-const hm = hypermerge(opts)
-hm.on('log', message => debugLog.push(message))
+let hm
+if (argv.save) {
+  hm = hypermerge(argv.save, opts)
+} else {
+  hm = hypermerge(opts)
+}
+hm.on('debugLog', message => debugLog.push(message))
 hm.on('ready', () => {
   const userData = {
     name: argv.name

@@ -30,6 +30,8 @@ function Hypermerge (storage, opts) {
   if (!storage) storage = ram
   this._storage = typeof storage === 'string' ? fileStorage : storage
 
+  this.opts = opts
+
   this.ready = thunky(open)
   this.ready(onready)
 
@@ -64,6 +66,8 @@ Hypermerge.prototype._open = function (cb) {
     self.discoveryKey = source.discoveryKey
     self.peers = {}
     self.lastSeen = {}
+
+    self._onSync(self.source)
 
     if (source.writable) {
       self.doc = new WatchableDoc(Automerge.init(self.key.toString('hex')))
@@ -159,15 +163,28 @@ Hypermerge.prototype._onSync = function (feed) {
     console.error('Exception', e)
   }
   self.lastSeen[key] = feed.length
-  for (let i = prevLastSeen + 1; i <= self.lastSeen[key]; i++) {
-    // console.log('Fetch', i)
-    feed.get(i - 1, (err, change) => {
+
+  const changes = []
+
+  fetchRecords(prevLastSeen + 1, self.lastSeen[key], () => {
+    self.doc.applyChanges(changes)
+  })
+
+  function fetchRecords(from, to, cb) {
+    self._debugLog(`Fetch seq ${from}`)
+    feed.get(from - 1, (err, change) => {
       if (err) {
         console.error('Error _onSync', i, err)
         return
       }
+      self._debugLog(`Fetched seq ${from}`)
       // console.log('Fetched', i, change)
-      self.doc.applyChanges([change])
+      changes.push(change)
+      if (from < to) {
+        fetchRecords(from + 1, to, cb)
+      } else {
+        cb()
+      }
     })
   }
 }
@@ -197,11 +214,6 @@ Hypermerge.prototype.replicate = function (opts) {
   opts.expectedFeeds = 1
 
   var self = this
-  /*
-  const myObject = {};
-  Error.captureStackTrace(myObject)
-  self.emit('log', `Jim1 replicate ${myObject.stack}`)
-  */
   var stream = self.source.replicate(opts)
   opts = {...opts, stream}
 
@@ -222,11 +234,17 @@ Hypermerge.prototype.replicate = function (opts) {
 
   self.on('_connectPeer', connectPeerListener)
   stream.on('close', () => {
-    self.emit('close stream')
+    self._debugLog('close stream')
     self.removeListener('_connectPeer', connectPeerListener)
   })
 
   return stream
+}
+
+Hypermerge.prototype._debugLog = function (message) {
+  if (this.opts.debugLog) {
+    this.emit('debugLog', message)
+  }
 }
 
 Hypermerge.prototype.get = function () {
