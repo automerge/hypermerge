@@ -100,21 +100,23 @@ hm.on('ready', () => {
       output += `Your Name: ${argv.name}\n`
       output += `${sw.connections.length} connections, ` +
         `${Object.keys(hm.peers).length + 1 + (hm.local ? 1 : 0)} actors\n\n`
-      {
-        const feed = hm.source
-        const key = hm.key.toString('hex')
-        output += `${key} ${feed.length} (${feed.peers.length})\n`
+      if (argv.debug) {
+        {
+          const feed = hm.source
+          const key = hm.key.toString('hex')
+          output += `${key} ${feed.length} (${feed.peers.length})\n`
+        }
+        if (hm.local) {
+          const feed = hm.local
+          const key = hm.local.key.toString('hex')
+          output += `${key} ${feed.length} (${feed.peers.length})\n`
+        }
+        Object.keys(hm.peers).forEach(key => {
+          const feed = hm.peers[key]
+          output += `${key} ${feed.length} (${feed.peers.length})\n`
+        })
+        output += '\n'
       }
-      if (hm.local) {
-        const feed = hm.local
-        const key = hm.local.key.toString('hex')
-        output += `${key} ${feed.length} (${feed.peers.length})\n`
-      }
-      Object.keys(hm.peers).forEach(key => {
-        const feed = hm.peers[key]
-        output += `${key} ${feed.length} (${feed.peers.length})\n`
-      })
-      output += '\n'
     }
     const gridRenderer = renderGrid({cursor, grid: hm.get()})
     const help = onscreenHelp()
