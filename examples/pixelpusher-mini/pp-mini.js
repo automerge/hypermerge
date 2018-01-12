@@ -7,6 +7,8 @@ const renderGrid = require('./render-grid')
 const hypermerge = require('../..')
 const {min, max} = Math
 
+require('events').EventEmitter.prototype._maxListeners = 100
+
 const argv = minimist(
   process.argv.slice(2),
   {
@@ -16,7 +18,7 @@ const argv = minimist(
 
 if (argv.help || !argv.name || argv._.length > 1) {
   console.log(
-    'Usage: node pp-mini --name=<name> [--save=<dir>] [--debug] [key]\n'
+    'Usage: node pp-mini --name=<name> [--save=<dir>] [--debug] [--quiet] [key]\n'
   )
   process.exit(0)
 }
@@ -95,43 +97,51 @@ hm.on('ready', () => {
 
   function render () {
     let output = ''
-    output += `Source: ${hm.source.key.toString('hex')}\n`
-    output += `Your Name: ${argv.name}\n`
-    output += `${sw.connections.length} connections, ` +
-      `${Object.keys(hm.peers).length + 1 + (hm.local ? 1 : 0)} actors\n\n`
-    {
-      const feed = hm.source
-      const key = hm.key.toString('hex')
-      output += `${key} ${feed.length} (${feed.peers.length})\n`
+    if (!argv.quiet) {
+      output += `Source: ${hm.source.key.toString('hex')}\n`
+      output += `Your Name: ${argv.name}\n`
+      output += `${sw.connections.length} connections, ` +
+        `${Object.keys(hm.peers).length + 1 + (hm.local ? 1 : 0)} actors\n\n`
+      {
+        const feed = hm.source
+        const key = hm.key.toString('hex')
+        output += `${key} ${feed.length} (${feed.peers.length})\n`
+      }
+      if (hm.local) {
+        const feed = hm.local
+        const key = hm.local.key.toString('hex')
+        output += `${key} ${feed.length} (${feed.peers.length})\n`
+      }
+      Object.keys(hm.peers).forEach(key => {
+        const feed = hm.peers[key]
+        output += `${key} ${feed.length} (${feed.peers.length})\n`
+      })
+      output += '\n'
     }
-    if (hm.local) {
-      const feed = hm.local
-      const key = hm.local.key.toString('hex')
-      output += `${key} ${feed.length} (${feed.peers.length})\n`
-    }
-    Object.keys(hm.peers).forEach(key => {
-      const feed = hm.peers[key]
-      output += `${key} ${feed.length} (${feed.peers.length})\n`
-    })
-    output += '\n'
     const gridRenderer = renderGrid({cursor, grid: hm.get()})
     const help = onscreenHelp()
     while (true) {
       const gridLine = gridRenderer.next()
       const helpLine = help.next()
       if (gridLine.done && helpLine.done) break
-      output += `${gridLine.value}    ${helpLine.value || ''}\n`
-    }
-    output += '\nPeers:\n'
-    sw.connections.forEach(connection => {
-      try {
-        const userData = JSON.parse(connection.remoteUserData.toString())
-        output += `  ${userData.name}\n`
-      } catch (e) {
-        console.error('Error parsing JSON', e)
-        process.exit(1)
+      if (argv.quiet) {
+        output += gridLine.value + '\n'
+      } else {
+        output += `${gridLine.value}    ${helpLine.value || ''}\n`
       }
-    })
+    }
+    if (!argv.quiet) {
+      output += '\nPeers:\n'
+      sw.connections.forEach(connection => {
+        try {
+          const userData = JSON.parse(connection.remoteUserData.toString())
+          output += `  ${userData.name}\n`
+        } catch (e) {
+          console.error('Error parsing JSON', e)
+          process.exit(1)
+        }
+      })
+    }
     if (argv.debug && debugLog.length > 0) {
       output +='\nDebug Log:\n\n'
       const numLines = output.split('\n').length
