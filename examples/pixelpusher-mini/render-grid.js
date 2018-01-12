@@ -2,7 +2,7 @@ const chalk = require('chalk')
 
 module.exports = renderGrid
 
-function *renderGrid (state) {
+function * renderGrid (state) {
   const {
     cursor: {x: cursorX, y: cursorY},
     grid: {x0y0, x0y1, x1y0, x1y1}
@@ -10,7 +10,7 @@ function *renderGrid (state) {
 
   function c (color, selected) {
     let display
-    let chalkChain = selected ? chalk.bold.underline : chalk;
+    let chalkChain = selected ? chalk.bold.underline : chalk
     switch (color) {
       case 'w':
         display = chalkChain.white('w')
