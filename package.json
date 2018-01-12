@@ -20,6 +20,7 @@
     "automerge": "github:automerge/automerge#hypermerge-support",
     "hypercore": "^6.11.0",
     "random-access-file": "^1.8.1",
+    "random-access-memory": "^2.4.0",
     "thunky": "^1.0.2",
     "to-buffer": "^1.1.0"
   },
@@ -27,7 +28,6 @@
     "debug": "^3.1.0",
     "mocha": "^4.1.0",
     "pump": "^2.0.0",
-    "random-access-memory": "^2.4.0",
     "standard": "^10.0.3",
     "through2": "^2.0.3"
   }
