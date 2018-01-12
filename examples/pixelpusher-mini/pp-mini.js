@@ -1,11 +1,9 @@
 const minimist = require('minimist')
 const diffy = require('diffy')({fullscreen: true})
 const input = require('diffy/input')()
-const chalk = require('chalk')
 const hyperdiscovery = require('hyperdiscovery')
 const renderGrid = require('./render-grid')
 const hypermerge = require('../..')
-const {min, max} = Math
 
 const argv = minimist(
   process.argv.slice(2),
@@ -86,7 +84,7 @@ hm.on('ready', () => {
     })
   }
 
-  function *onscreenHelp () {
+  function * onscreenHelp () {
     yield `Keys:`
     yield `  \u2191 \u2193 \u2190 \u2192  | Move Cursor`
     yield `  r g b w  | Set Colors`
@@ -133,7 +131,7 @@ hm.on('ready', () => {
       }
     })
     if (argv.debug && debugLog.length > 0) {
-      output +='\nDebug Log:\n\n'
+      output += '\nDebug Log:\n\n'
       const numLines = output.split('\n').length
       const maxLines = diffy.height - numLines - 2
       const start = Math.max(debugLog.length - maxLines, 0)
@@ -164,7 +162,6 @@ hm.on('ready', () => {
     r()
   })
 
-  const colorKeys = ['r', 'g', 'b', 'w']
   input.on('keypress', (ch, key) => {
     if (key.name === 'q') {
       sw.close(() => {
