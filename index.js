@@ -51,7 +51,6 @@ function Hypermerge (storage, opts) {
   function fileStorage (name) {
     return raf(name, {directory: storage})
   }
-
 }
 
 inherits(Hypermerge, events.EventEmitter)
@@ -101,7 +100,7 @@ Hypermerge.prototype._open = function (cb) {
 }
 
 Hypermerge.prototype._findMissingPeers = function (cb) {
-  self = this
+  const self = this
   const missingDeps = Automerge.getMissingDeps(self.doc.get())
   self._debugLog(`Missing deps before: ${JSON.stringify(missingDeps)}`)
   const missingPeers = Object.keys(missingDeps)
@@ -200,11 +199,11 @@ Hypermerge.prototype._syncToAutomerge = function (feed, cb) {
     cb()
   })
 
-  function fetchRecords(from, to, cb) {
+  function fetchRecords (from, to, cb) {
     // self._debugLog(`Fetch seq ${from}`)
     feed.get(from - 1, (err, change) => {
       if (err) {
-        console.error('Error _syncToAutomerge', i, err)
+        console.error('Error _syncToAutomerge seq', from, err)
         return
       }
       // self._debugLog(`Fetched seq ${from}`)
