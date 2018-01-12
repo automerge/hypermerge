@@ -68,7 +68,7 @@ Hypermerge.prototype._open = function (cb) {
     self.lastSeen = {}
 
     if (source.writable) {
-      self.doc = new WatchableDoc(Automerge.init(self.key.toString('hex')))
+      self.doc = new WatchableDoc(Automerge.initImmutable(self.key.toString('hex')))
       self.doc.registerHandler(self._newChanges.bind(self))
       self.previousDoc = self.doc.get()
 
@@ -84,10 +84,10 @@ Hypermerge.prototype._open = function (cb) {
     local.on('ready', function () {
       self.local = local
       var sourceDoc = new WatchableDoc(
-        Automerge.init(self.key.toString('hex'))
+        Automerge.initImmutable(self.key.toString('hex'))
       )
       self.doc = new WatchableDoc(
-        Automerge.init(self.local.key.toString('hex'))
+        Automerge.initImmutable(self.local.key.toString('hex'))
       )
       self.doc.set(Automerge.merge(self.doc.get(), sourceDoc.get()))
       self.doc.registerHandler(self._newChanges.bind(self))
@@ -244,7 +244,7 @@ Hypermerge.prototype.replicate = function (opts) {
 
   var self = this
   var stream = self.source.replicate(opts)
-  opts = {...opts, stream}
+  opts = Object.assign({}, opts, {stream})
 
   if (self.local) {
     stream.expectedFeeds += 1
