@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/inkandswitch/hypermerge#readme",
   "dependencies": {
-    "automerge": "github:automerge/automerge#hypermerge-support",
+    "automerge": "github:inkandswitch/automerge#pixelpusher-support",
     "hypercore": "^6.11.0",
     "random-access-file": "^1.8.1",
     "random-access-memory": "^2.4.0",
