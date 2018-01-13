@@ -1,0 +1,15 @@
+{
+  "name": "usage-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "first-computer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "hyperdiscovery": "^7.0.0"
+  }
+}
