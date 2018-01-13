@@ -23,7 +23,37 @@ npm install --save hypermerge
 * can run entirely in memory
 * optionally, storage can be persisted to disk
 
-## Usage
+## Synopsis
+
+``` js
+// Create a document
+const hm = hypermerge()
+console.log(hm.key.toString('hex')) // Source key
+// 636fdeeee07bdd6ebcd4cf0e5770bec3a81150e60388e08781f7c4a1cd90f79e
+
+// Join a document and add another writer
+const hm = hypermerge({key: '636fdeeee07bdd6ebcd4cf0e5770bec3a81150e60388e08781f7c4a1cd90f79e'})
+console.log(hm.local.key.toString('hex')) // Local writer key
+// b85720613b574c7ad0574f6dcbaae3da334ab5e0a7d5284d6db9cfe48a1780ca
+
+// Make a change
+hm.change(doc => { doc.title = 'CRDTs are fun' })
+
+// Get latest Automerge doc (immutable)
+const doc = hm.get()
+
+// Watch for updates to the doc
+hm.doc.registerHandler(doc => { console.log(doc) })
+
+// Subscribe to changes from another writer
+// (changes will be automatically merged into doc)
+hm.connectPeer('b85720613b574c7ad0574f6dcbaae3da334ab5e0a7d5284d6db9cfe48a1780ca')
+
+// Get replication stream (hypercore-protocol based)
+const stream = hm.replicate()
+```
+
+## Peer-to-Peer Example
 
 Here is a simple distributed "To do" list implemented in Node.js, with a similar model to what you'd find in a [TodoMVC](http://todomvc.com/) example...
 
