@@ -34,7 +34,7 @@ hm.on('ready', () => {
   function update () {
     if (!updated) {
       updated = true
-      
+
       console.log('Before:\n', hm.get().todos)
 
       // Change the todo list item to be 'done'
