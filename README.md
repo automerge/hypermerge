@@ -125,6 +125,61 @@ hm.on('ready', () => {
 })
 ```
 
+To run the example, on the first computer:
+
+```
+$ node first-computer
+Key: d5af48a1dd962e6df21a206ec4a285e2f4bec2ee4ed5009f41d2ddcdd20ae448
+Waiting for connections...
+Initial todos:
+ [ { _objectId: '4d523ebb-f5e5-45b9-ae2d-c30f46ece181',
+    id: 1,
+    title: 'Read JSON CRDT paper',
+    done: false } ]
+
+... waits ...
+```
+
+The program will create a simple "to do" list document, and wait for a connection on the peer-to-peer network.
+
+On the second computer, pass the 'key' from above to the second program, and it will initiate a peer-to-peer connection to the first computer. Once it connects, it will mark the "to do" as done, and exit.
+
+```
+$ node second-computer d5af48a1dd962e6df21a206ec4a285e2f4bec2ee4ed5009f41d2ddcdd20ae448
+connected to 1 peers
+connected to 2 peers
+Before:
+ [ { _objectId: '4d523ebb-f5e5-45b9-ae2d-c30f46ece181',
+    id: 1,
+    title: 'Read JSON CRDT paper',
+    done: false } ]
+After marking first todo as "done":
+ [ { _objectId: '4d523ebb-f5e5-45b9-ae2d-c30f46ece181',
+    id: 1,
+    title: 'Read JSON CRDT paper',
+    done: true } ]
+
+... exits
+```
+
+Back on the first computer
+
+```
+... waiting ...
+
+connected to 1 peers
+connected to 2 peers
+Doc changed:
+ [ { _objectId: '4d523ebb-f5e5-45b9-ae2d-c30f46ece181',
+    id: 1,
+    title: 'Read JSON CRDT paper',
+    done: true } ]
+
+... exits    
+```
+
+A more sophisticated example app demonstrating multiple writers and synchronization can be found in: [/examples/pixelpusher-mini](/examples/pixelpusher-mini)
+
 ## API
 
 ## LICENSE
