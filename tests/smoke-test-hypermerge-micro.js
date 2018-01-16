@@ -1,7 +1,7 @@
 /* global it, describe, before */
 
 const assert = require('assert')
-const hypermerge = require('..')
+const {hypermergeMicro} = require('..')
 const OnlineOfflinePump = require('./lib/online-offline-pump')
 
 describe('smoke test, hypermerge', () => {
@@ -11,9 +11,9 @@ describe('smoke test, hypermerge', () => {
   let pump
 
   before(done => {
-    alice = hypermerge()
+    alice = hypermergeMicro()
     alice.on('ready', () => {
-      bob = hypermerge({key: alice.key})
+      bob = hypermergeMicro({key: alice.key})
       bob.on('ready', () => {
         alice.connectPeer(bob.local.key)
         pump = new OnlineOfflinePump(alice, bob)

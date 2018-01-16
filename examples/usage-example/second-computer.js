@@ -1,4 +1,4 @@
-const hypermerge = require('../..')
+const {hypermergeMicro} = require('../..')
 const hyperdiscovery = require('hyperdiscovery')
 
 // Create a "local" hypermerge using the key of the "source" hypermerge
@@ -10,7 +10,7 @@ if (!key) {
 }
 
 const opts = {key}
-const hm = hypermerge(opts) // This is different than on the first
+const hm = hypermergeMicro(opts) // This is different than on the first
  // computer, as we are passing in the key of the source hypermerge
 
 hm.on('ready', () => {

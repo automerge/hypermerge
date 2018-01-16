@@ -1,8 +1,8 @@
-const hypermerge = require('../..')
+const {hypermergeMicro} = require('../..')
 const hyperdiscovery = require('hyperdiscovery')
 
 // Create a "source" hypermerge
-const hm = hypermerge()
+const hm = hypermergeMicro()
 
 hm.on('ready', () => {
   // Display the public key that other nodes will use to connect
