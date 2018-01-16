@@ -12,7 +12,58 @@ It uses the the [multicore](README-multicore.md) library to manage many hypercor
 ## Synopsis
 
 ``` js
-// FIXME: Put some js code snippets here
+alice, bob, and chuck want to work on a document together
+
+// initial creation
+// storage is a directory where all the bits land
+var mydoc = hyperdoc(archiver, {identity: myIdentity()})
+
+view = mydoc.view()
+
+var writer = mydoc.writer()
+// -> the hypercore feed public key
+view.change((doc) => {
+    doc.title = "AWESOME DRAWING!!!!!!!"
+    doc.pixels[0][0] = 'REALLY RED'
+})
+
+mydoc.listSessions() // [writableSession('Jim')]
+
+mydoc.id // -> 'deadb33fc0dedeafd00ddeadb33fc0dedeafd00d'
+mydoc.join() // post to a hash of ^^^^ in the DHT
+
+///////////////////// MEANWHILE ON CYBERTRON /////////////////
+
+// get a hyperdoc share id somehow
+share_id = 'deadb33fc0dedeafd00ddeadb33fc0dedeafd00d'
+
+var otherdoc = hyperdoc(storage, share_id) // since we're loading one?
+otherdoc.join() // this populates the feeds
+otherdoc.listSessions() // [writableSession('Peter'), session('Jim')]
+
+render(otherDoc.view()) // this looks really cool
+
+// .... later
+writer.id // -> the hypercore feed public key
+// this gets broadcast via the 
+view.change(writer, (doc) => {
+    doc.pixels[1][1] = 'RESPLENDENT GREEN'
+})
+
+//////////////////////// LATER ///////////////////////
+// restricted views 
+// (right now we render everything we can get our hands on)
+jimpeterView = mydoc.view(Peter, Jim) // but not jeff
+
+// multiple local writers
+writer.
+
+// fork this doc: my writes stop propagating, 
+//                i stop pulling in others' writes
+forkDoc.fork() // return same doc with different mydoc.id
+
+// time travel
+mydoc.viewAsOf([some old vector clock?])
 ```
 
 ## Concepts
