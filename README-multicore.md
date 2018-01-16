@@ -3,6 +3,10 @@
 Multicore is a system for managing and organizing multiple hypercores and connecting them to the
 peer-to-peer swarm
 
+See also: [hypercore-archiver](https://github.com/mafintosh/hypercore-archiver)
+
+We may not need multicore if hypercore-archiver does what we need.
+
 ## Synopsis
 
 ``` js
