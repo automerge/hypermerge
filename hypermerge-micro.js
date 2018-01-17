@@ -1,5 +1,6 @@
 var events = require('events')
 var Automerge = require('automerge')
+var Multicore = require('./multicore')
 var hypercore = require('hypercore')
 var inherits = require('inherits')
 var thunky = require('thunky')
@@ -29,6 +30,8 @@ function Hypermerge (storage, opts) {
 
   if (!storage) storage = ram
   this._storage = typeof storage === 'string' ? fileStorage : storage
+
+  this.multicore = new Multicore(storage)
 
   this.opts = opts
 

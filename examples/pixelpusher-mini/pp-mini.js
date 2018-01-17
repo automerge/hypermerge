@@ -3,7 +3,7 @@ const diffy = require('diffy')({fullscreen: true})
 const input = require('diffy/input')()
 const hyperdiscovery = require('hyperdiscovery')
 const renderGrid = require('./render-grid')
-const hypermerge = require('../..')
+const hypermergeMicro = require('../../hypermerge-micro')
 
 require('events').EventEmitter.prototype._maxListeners = 100
 
@@ -30,9 +30,9 @@ if (argv._.length === 1) {
 }
 let hm
 if (argv.save) {
-  hm = hypermerge(argv.save, opts)
+  hm = hypermergeMicro(argv.save, opts)
 } else {
-  hm = hypermerge(opts)
+  hm = hypermergeMicro(opts)
 }
 hm.on('debugLog', message => debugLog.push(message))
 hm.on('ready', () => {
