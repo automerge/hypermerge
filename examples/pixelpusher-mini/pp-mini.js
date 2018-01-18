@@ -4,19 +4,21 @@ const input = require('diffy/input')()
 const hyperdiscovery = require('hyperdiscovery')
 const renderGrid = require('./render-grid')
 const hypermergeMicro = require('../../hypermerge-micro')
+const raf = require('random-access-file')
 
 require('events').EventEmitter.prototype._maxListeners = 100
 
 const argv = minimist(
   process.argv.slice(2),
   {
-    boolean: ['debug']
+    boolean: ['debug', 'new-source', 'new-actor']
   }
 )
 
 if (argv.help || !argv.name || argv._.length > 1) {
   console.log(
-    'Usage: node pp-mini --name=<name> [--save=<dir>] [--debug] [--quiet] [key]\n'
+    'Usage: node pp-mini --name=<name> [--save=<dir>] [--debug] ' +
+    '[--quiet] [--new-source] [--new-actor] [key]\n'
   )
   process.exit(0)
 }
@@ -31,14 +33,27 @@ const opts = {
 if (argv._.length === 1) {
   opts.key = argv._[0]
 }
-let hm
+let hm, sourceFile
 if (argv.save) {
-  hm = hypermergeMicro(argv.save, opts)
+  const fileStorage = name => raf(name, {directory: argv.save})
+  sourceFile = fileStorage('source')
+  sourceFile.read(0, 32, (_, key) => {
+    if (!opts.key && key && !argv['new-source']) {
+      opts.key = key.toString('hex')
+    }
+    hm = hypermergeMicro(argv.save, opts)
+    hm.on('ready', _ready)
+  })
 } else {
   hm = hypermergeMicro(opts)
+  hm.on('ready', _ready)
 }
-hm.on('debugLog', message => debugLog.push(message))
-hm.on('ready', () => {
+
+function _ready () {
+  hm.on('debugLog', message => debugLog.push(message))
+  if (sourceFile) {
+    sourceFile.write(0, hm.key, () => sourceFile.close())
+  }
   const userData = {
     name: argv.name
   }
@@ -197,4 +212,4 @@ hm.on('ready', () => {
   })
 
   r()
-})
+}
