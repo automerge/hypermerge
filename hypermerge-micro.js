@@ -1,7 +1,6 @@
 var events = require('events')
 var Automerge = require('automerge')
 var Multicore = require('./multicore')
-var hypercore = require('hypercore')
 var inherits = require('inherits')
 var thunky = require('thunky')
 var raf = require('random-access-file')
@@ -31,7 +30,7 @@ function Hypermerge (storage, opts) {
   if (!storage) storage = ram
   this._storage = typeof storage === 'string' ? fileStorage : storage
 
-  this.multicore = new Multicore(storage)
+  this.multicore = new Multicore(storage, {joinSwarm: opts.joinSwarm})
 
   this.opts = opts
 
@@ -48,7 +47,9 @@ function Hypermerge (storage, opts) {
   }
 
   function open (cb) {
-    self._open(cb)
+    self.multicore.ready(() => {
+      self._open(cb)
+    })
   }
 
   function fileStorage (name) {
@@ -62,7 +63,7 @@ Hypermerge.prototype._open = function (cb) {
   var self = this
   var source = this._createFeed(this.key, 'source')
 
-  source.on('ready', function () {
+  source.ready(function () {
     self.source = source
     self.key = source.key
     self.discoveryKey = source.discoveryKey
@@ -83,7 +84,7 @@ Hypermerge.prototype._open = function (cb) {
 
     var local = self._createFeed(null, 'local')
 
-    local.on('ready', function () {
+    local.ready(function () {
       self.local = local
       var sourceDoc = new WatchableDoc(
         Automerge.init(self.key.toString('hex'))
@@ -140,7 +141,7 @@ Hypermerge.prototype.connectPeer = function (key, cb) {
   var peer = self._createFeed(keyBuffer)
   self.peers[keyString] = peer
 
-  peer.on('ready', function () {
+  peer.ready(function () {
     self.emit('_connectPeer', keyString)
 
     self._syncToAutomerge(peer, () => {
@@ -155,11 +156,6 @@ Hypermerge.prototype.connectPeer = function (key, cb) {
 }
 
 Hypermerge.prototype._createFeed = function (key, dir) {
-  if (!dir) {
-    dir = key.toString('hex')
-    dir = 'peers/' + dir.slice(0, 2) + '/' + dir.slice(2)
-  }
-
   if (key) {
     if (this.local && this.local.key && this.local.key.equals(key)) {
       return this.local
@@ -169,20 +165,11 @@ Hypermerge.prototype._createFeed = function (key, dir) {
     }
   }
 
-  var self = this
-  var feed = hypercore(storage, key, {valueEncoding: 'json'})
-
-  feed.on('error', onerror)
+  // var feed = this.multicore.createFeed(key, {valueEncoding: 'json'})
+  var feed = this.multicore.createFeed(key)
+  feed.on('error', err => { this.emit(err) })
 
   return feed
-
-  function onerror (err) {
-    self.emit('error', err)
-  }
-
-  function storage (name) {
-    return self._storage(dir + '/' + name)
-  }
 }
 
 Hypermerge.prototype._syncToAutomerge = function (feed, cb) {
@@ -204,13 +191,19 @@ Hypermerge.prototype._syncToAutomerge = function (feed, cb) {
 
   function fetchRecords (from, to, cb) {
     // self._debugLog(`Fetch seq ${from}`)
-    feed.get(from - 1, (err, change) => {
+    feed.get(from - 1, (err, data) => {
       if (err) {
         console.error('Error _syncToAutomerge seq', from, err)
         return
       }
+      let change
+      try {
+        change = JSON.parse(data.toString())
+      } catch (e) {
+        return cb(e)
+      }
       // self._debugLog(`Fetched seq ${from}`)
-      // console.log('Fetched', i, change)
+      // console.log('Fetched seq', from - 1, change)
       changes.push(change)
       if (from < to) {
         fetchRecords(from + 1, to, cb)
@@ -230,7 +223,7 @@ Hypermerge.prototype._newChanges = function (doc) {
     .filter(change => change.seq >= feed.length)
     .forEach(change => {
       const {seq} = change
-      feed.append(change, err => {
+      feed.append(JSON.stringify(change), err => {
         if (err) {
           console.error('Error ' + seq, err)
         }
@@ -288,6 +281,10 @@ Hypermerge.prototype.set = function () {
 
 Hypermerge.prototype.change = function (...args) {
   return this.doc.set(Automerge.change(this.doc.get(), ...args))
+}
+
+Hypermerge.prototype.getArchiverKey = function () {
+  return this.multicore.archiver.changes.key
 }
 
 function isObject (val) {

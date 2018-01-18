@@ -24,7 +24,10 @@ if (argv.help || !argv.name || argv._.length > 1) {
 const cursor = {x: 0, y: 0}
 const debugLog = []
 
-const opts = {debugLog: argv.debug}
+const opts = {
+  joinSwarm: true,
+  debugLog: argv.debug
+}
 if (argv._.length === 1) {
   opts.key = argv._[0]
 }
@@ -97,6 +100,11 @@ hm.on('ready', () => {
     let output = ''
     if (!argv.quiet) {
       output += `Source: ${hm.source.key.toString('hex')}\n`
+      if (argv.debug) {
+        output += `Archiver: ${hm.getArchiverKey().toString('hex')}\n`
+        output += `Archive Changes Length: ` +
+          `${hm.multicore.archiver.changes.length}\n`
+      }
       output += `Your Name: ${argv.name}\n`
       output += `${sw.connections.length} connections, ` +
         `${Object.keys(hm.peers).length + 1 + (hm.local ? 1 : 0)} actors\n\n`
