@@ -33,7 +33,7 @@ const opts = {
 if (argv._.length === 1) {
   opts.key = argv._[0]
 }
-let hm, sourceFile
+let hm, sourceFile, localFile
 if (argv.save) {
   const fileStorage = name => raf(name, {directory: argv.save})
   sourceFile = fileStorage('source')
@@ -41,8 +41,14 @@ if (argv.save) {
     if (!opts.key && key && !argv['new-source']) {
       opts.key = key.toString('hex')
     }
-    hm = hypermergeMicro(argv.save, opts)
-    hm.on('ready', _ready)
+    localFile = fileStorage('local')
+    localFile.read(0, 32, (_, localKey) => {
+      if (!opts.localKey && localKey && !argv['new-actor']) {
+        opts.localKey = localKey.toString('hex')
+      }
+      hm = hypermergeMicro(argv.save, opts)
+      hm.on('ready', _ready)
+    })
   })
 } else {
   hm = hypermergeMicro(opts)
@@ -51,13 +57,12 @@ if (argv.save) {
 
 function _ready () {
   hm.on('debugLog', message => debugLog.push(message))
-  if (sourceFile) {
-    sourceFile.write(0, hm.key, () => sourceFile.close())
-  }
+  sourceFile.write(0, hm.key, () => sourceFile.close())
   const userData = {
     name: argv.name
   }
   if (hm.local) {
+    localFile.write(0, hm.local.key, () => sourceFile.close())
     userData.key = hm.local.key.toString('hex')
     hm.local.on('append', r)
   }

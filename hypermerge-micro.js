@@ -26,6 +26,7 @@ function Hypermerge (storage, opts) {
 
   opts = opts || {}
   this.key = opts.key ? toBuffer(opts.key, 'hex') : null
+  this.localKey = opts.localKey ? toBuffer(opts.localKey, 'hex') : null
 
   if (!storage) storage = ram
   this._storage = typeof storage === 'string' ? fileStorage : storage
@@ -82,7 +83,7 @@ Hypermerge.prototype._open = function (cb) {
 
     self.source.on('sync', self._syncToAutomerge.bind(self, self.source))
 
-    var local = self._createFeed(null, 'local')
+    var local = self._createFeed(self.localKey)
 
     local.ready(function () {
       self.local = local
@@ -155,7 +156,7 @@ Hypermerge.prototype.connectPeer = function (key, cb) {
   })
 }
 
-Hypermerge.prototype._createFeed = function (key, dir) {
+Hypermerge.prototype._createFeed = function (key) {
   if (key) {
     if (this.local && this.local.key && this.local.key.equals(key)) {
       return this.local
