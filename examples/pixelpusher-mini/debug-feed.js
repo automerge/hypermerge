@@ -23,7 +23,7 @@ feed.on('ready', () => {
 function onSync () {
   printChanges(0, done)
 
-  function printChanges(from, cb) {
+  function printChanges (from, cb) {
     if (from >= feed.length) return cb()
     feed.get(from, (err, data) => {
       if (err) {

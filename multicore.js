@@ -4,6 +4,7 @@ var protocol = require('hypercore-protocol')
 const hypercore = require('hypercore')
 const crypto = require('hypercore/lib/crypto')
 const thunky = require('thunky')
+const toBuffer = require('to-buffer')
 const swarm = require('./multicore-swarm')
 
 // Monkey-patch hypercore-archiver so we can create a Hypercore
