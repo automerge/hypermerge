@@ -17,7 +17,7 @@ const argv = minimist(
 if (argv.help || !argv.name || argv._.length > 1) {
   console.log(
     'Usage: node pp-mini --name=<name> [--save=<dir>] [--debug] ' +
-    '[--quiet] [--new-source] [--new-actor] [key]\n'
+    '[--quiet] [--new-source] [--new-actor] [--actor=<key>] [key]\n'
   )
   process.exit(0)
 }
@@ -36,11 +36,17 @@ if (argv.save) {
   const fileStorage = name => raf(name, {directory: argv.save})
   sourceFile = fileStorage('source')
   sourceFile.read(0, 32, (_, key) => {
+    if (opts.key && key && key.toString('hex') !== opts.key) {
+      // If the provided source key is different than the previous
+      // run, force --new-actor
+      opts['new-actor'] = true
+    }
     if (!opts.key && key && !argv['new-source']) {
       opts.key = key.toString('hex')
     }
     localFile = fileStorage('local')
     localFile.read(0, 32, (_, localKey) => {
+      opts.localKey = argv.actor
       if (!opts.localKey && localKey && !argv['new-actor']) {
         opts.localKey = localKey.toString('hex')
       }
