@@ -31,7 +31,8 @@ function Hypermerge (storage, opts) {
   if (!storage) storage = ram
   this._storage = typeof storage === 'string' ? fileStorage : storage
 
-  this.multicore = new Multicore(storage, {joinSwarm: opts.joinSwarm})
+  this.multicore = new Multicore(storage)
+  this.multicore.on('debugLog', message => this._debugLog(message))
 
   this.opts = opts
 
@@ -192,6 +193,7 @@ Hypermerge.prototype._syncToAutomerge = function (feed, cb) {
 
   function fetchRecords (from, to, cb) {
     // self._debugLog(`Fetch seq ${from}`)
+    // console.log('Fetch seq', from - 1, to)
     feed.get(from - 1, (err, data) => {
       if (err) {
         console.error('Error _syncToAutomerge seq', from, err)
@@ -286,6 +288,10 @@ Hypermerge.prototype.change = function (...args) {
 
 Hypermerge.prototype.getArchiverKey = function () {
   return this.multicore.archiver.changes.key
+}
+
+Hypermerge.prototype.joinSwarm = function (opts) {
+  return this.multicore.joinSwarm(opts)
 }
 
 function isObject (val) {

@@ -1,7 +1,6 @@
 const minimist = require('minimist')
 const diffy = require('diffy')({fullscreen: true})
 const input = require('diffy/input')()
-const hyperdiscovery = require('hyperdiscovery')
 const renderGrid = require('./render-grid')
 const hypermergeMicro = require('../../hypermerge-micro')
 const raf = require('random-access-file')
@@ -27,7 +26,6 @@ const cursor = {x: 0, y: 0}
 const debugLog = []
 
 const opts = {
-  joinSwarm: true,
   debugLog: argv.debug
 }
 if (argv._.length === 1) {
@@ -66,22 +64,12 @@ function _ready () {
     userData.key = hm.local.key.toString('hex')
     hm.local.on('append', r)
   }
-  const sw = hyperdiscovery(hm, {
-    stream: () => {
-      const stream = hm.replicate({
-        live: true,
-        upload: true,
-        download: true,
-        userData: JSON.stringify(userData)
-      })
-      debugLog.push('New stream')
-      stream.on('feed', () => { debugLog.push('New feed'); r() })
-      stream.on('close', () => { debugLog.push('Stream close'); r() })
-      return stream
-    }
-  })
+  debugLog.push('Joining swarm')
+  const sw = hm.joinSwarm({userData: JSON.stringify(userData)})
   sw.on('connection', (peer, type) => {
+    // debugLog.push(`Connect ${peer.remoteUserData}`)
     try {
+      if (!peer.remoteUserData) throw new Error('No user data')
       const userData = JSON.parse(peer.remoteUserData.toString())
       if (userData.key) {
         debugLog.push(`Connect ${userData.name} ${userData.key}`)
@@ -89,9 +77,10 @@ function _ready () {
       }
       r()
     } catch (e) {
-      console.error('Error parsing JSON', e)
-      process.exit(1)
+      debugLog.push(`Connection with no or invalid user data`)
+      // console.error('Error parsing JSON', e)
     }
+    r()
   })
   sw.on('close', () => {
     debugLog.push('Close')
@@ -165,8 +154,8 @@ function _ready () {
           const userData = JSON.parse(connection.remoteUserData.toString())
           output += `  ${userData.name}\n`
         } catch (e) {
-          console.error('Error parsing JSON', e)
-          process.exit(1)
+          output += `  no user data\n`
+          // console.error('Error parsing JSON', e)
         }
       })
     }

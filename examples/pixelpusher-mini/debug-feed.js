@@ -13,6 +13,30 @@ const sw = hyperdiscovery(feed)
 sw.on('connection', () => { console.log('Connection') })
 feed.on('ready', () => {
   console.log('Ready', feed.length)
-  feed.on('sync', () => { console.log('sync', feed.length) })
+  feed.on('sync', () => {
+    console.log('sync', feed.length)
+    onSync()
+  })
   feed.on('append', () => { console.log('append', feed.length) })
 })
+
+function onSync () {
+  printChanges(0, done)
+
+  function printChanges(from, cb) {
+    if (from >= feed.length) return cb()
+    feed.get(from, (err, data) => {
+      if (err) {
+        console.error('Error', err)
+        process.exit(1)
+      }
+      console.log(from, data.toString())
+      printChanges(from + 1, cb)
+    })
+  }
+}
+
+function done () {
+  console.log('Done.')
+  process.exit()
+}
