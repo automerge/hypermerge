@@ -100,6 +100,10 @@ function _ready () {
   let actorIncludedInDoc = false
 
   hm.doc.registerHandler(doc => {
+    if (hm.findingMissingPeers) {
+      debugLog.push('Still finding missing peers')
+      return // Still fetching dependencies
+    }
     debugLog.push('Doc updated')
     const actorId = hm.local ? hm.local.key.toString('hex')
       : hm.source.key.toString('hex')
@@ -217,10 +221,6 @@ function _ready () {
       }
     }
     if (!argv.quiet) {
-      /*
-      output += '\nActors:\n'
-      output += JSON.stringify(hm.get().actors, null, 2) + '\n'
-      */
       output += '\nPeers:\n'
       sw.connections.forEach(connection => {
         try {
@@ -233,6 +233,10 @@ function _ready () {
       })
     }
     if (argv.debug && debugLog.length > 0) {
+      /*
+      output += '\nActors:\n'
+      output += JSON.stringify(hm.get().actors, null, 2) + '\n'
+      */
       output += '\nDebug Log:\n\n'
       const numLines = output.split('\n').length
       const maxLines = diffy.height - numLines - 2

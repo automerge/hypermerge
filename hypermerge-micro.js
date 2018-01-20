@@ -119,7 +119,11 @@ Hypermerge.prototype._findMissingPeers = function (cb) {
 
   function connectMissingPeers (cb) {
     const key = missingPeers.pop()
-    if (!key) return cb()
+    if (!key) {
+      self.findingMissingPeers = false
+      return cb()
+    }
+    self.findingMissingPeers = true
     self.connectPeer(key, () => {
       connectMissingPeers(cb)
     })
@@ -232,9 +236,11 @@ Hypermerge.prototype._newChanges = function (doc) {
   const key = feed.key.toString('hex')
   changes
     .filter(change => change.actor === key)
-    .filter(change => change.seq >= feed.length)
+    .filter(change => change.seq > feed.length)
     .forEach(change => {
       const {seq} = change
+      // console.log('Jim append', change, feed.length)
+      // process.exit(1)
       feed.append(JSON.stringify(change), err => {
         if (err) {
           console.error('Error ' + seq, err)
