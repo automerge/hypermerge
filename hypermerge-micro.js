@@ -99,7 +99,9 @@ Hypermerge.prototype._open = function (cb) {
       self.previousDoc = self.doc.get()
 
       self._syncToAutomerge(self.source, () => {
-        self._syncToAutomerge(self.local, cb)
+        self._syncToAutomerge(self.local, () => {
+          self._findMissingPeers(cb)
+        })
       })
     })
   })
