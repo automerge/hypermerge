@@ -143,9 +143,8 @@ Hypermerge.prototype.connectPeer = function (key, cb) {
   var peer = self._createFeed(keyBuffer)
   self.peers[keyString] = peer
 
+  self.multicore.replicateFeed(peer)
   peer.ready(function () {
-    self.emit('_connectPeer', keyString)
-
     self._syncToAutomerge(peer, () => {
       peer.on('sync', self._syncToAutomerge.bind(self, peer))
       cb(null, peer)
@@ -169,7 +168,16 @@ Hypermerge.prototype._createFeed = function (key) {
 
   // var feed = this.multicore.createFeed(key, {valueEncoding: 'json'})
   var feed = this.multicore.createFeed(key)
+  // feed.on('ready', () => this._debugLog(`Ready ${key && key.toString('hex')}`))
   feed.on('error', err => { this.emit(err) })
+  /*
+  feed.on('sync', () => this._debugLog(
+    `sync ${feed.key.toString('hex')} ${feed.length}`
+  ))
+  feed.on('append', () => this._debugLog(
+    `append ${feed.key.toString('hex')} ${feed.length}`
+  ))
+  */
 
   return feed
 }
@@ -182,6 +190,7 @@ Hypermerge.prototype._syncToAutomerge = function (feed, cb) {
   self.lastSeen[key] = feed.length
   const changes = []
 
+  // self._debugLog(`_syncToAutomerge ${feed.key.toString('hex')} ${feed.length}`)
   if (prevLastSeen === self.lastSeen[key]) {
     return cb()
   }
@@ -233,39 +242,6 @@ Hypermerge.prototype._newChanges = function (doc) {
       })
     })
   this.previousDoc = this.doc.get()
-}
-
-Hypermerge.prototype.replicate = function (opts) {
-  if (!opts) opts = {}
-
-  opts.expectedFeeds = 1
-
-  var self = this
-  var stream = self.source.replicate(opts)
-  opts = Object.assign({}, opts, {stream})
-
-  if (self.local) {
-    stream.expectedFeeds += 1
-    self.local.replicate(opts)
-  }
-
-  Object.keys(self.peers).forEach(function (key) {
-    stream.expectedFeeds += 1
-    self.peers[key].replicate(opts)
-  })
-
-  const connectPeerListener = function (key) {
-    stream.expectedFeeds += 1
-    self.peers[key].replicate(opts)
-  }
-
-  self.on('_connectPeer', connectPeerListener)
-  stream.on('close', () => {
-    self._debugLog('close stream')
-    self.removeListener('_connectPeer', connectPeerListener)
-  })
-
-  return stream
 }
 
 Hypermerge.prototype._debugLog = function (message) {

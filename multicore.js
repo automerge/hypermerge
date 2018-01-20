@@ -66,6 +66,10 @@ Archiver.prototype.replicate = function (opts) {
   stream.on('feed', add)
   if (opts.channel || opts.discoveryKey) add(opts.channel || opts.discoveryKey)
 
+  this.on('replicateFeed', feed => {
+    add(feed.discoveryKey)
+  })
+
   function add (dk) {
     self.ready(function (err) {
       if (err) return stream.destroy(err)
@@ -160,6 +164,10 @@ class Multicore extends EventEmitter {
       })
     })
     return sw
+  }
+
+  replicateFeed (feed) {
+    this.archiver.emit('replicateFeed', feed)
   }
 }
 

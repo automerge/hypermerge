@@ -2,6 +2,24 @@ const pump = require('pump')
 const through2 = require('through2')
 const debug = require('debug')('protocol')
 
+function replicate (opts) {
+  if (!opts) opts = {}
+
+  var self = this
+  var stream = self.source.replicate(opts)
+  opts = Object.assign({}, opts, {stream})
+
+  if (self.local) {
+    self.local.replicate(opts)
+  }
+
+  Object.keys(self.peers).forEach(function (key) {
+    self.peers[key].replicate(opts)
+  })
+
+  return stream
+}
+
 class OnlineOfflinePump {
   constructor (target1, target2) {
     this.target1 = target1
@@ -12,8 +30,8 @@ class OnlineOfflinePump {
   goOnline () {
     const self = this
     const opts = {live: true, encrypt: false}
-    const stream1 = this.target1.replicate(opts)
-    const stream2 = this.target2.replicate(opts)
+    const stream1 = replicate.call(this.target1, opts)
+    const stream2 = replicate.call(this.target2, opts)
     pump(
       stream1,
       through2(function (chunk, enc, cb) {

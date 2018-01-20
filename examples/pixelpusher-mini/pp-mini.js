@@ -4,6 +4,7 @@ const input = require('diffy/input')()
 const renderGrid = require('./render-grid')
 const hypermergeMicro = require('../../hypermerge-micro')
 const raf = require('random-access-file')
+const equal = require('deep-equal')
 
 require('events').EventEmitter.prototype._maxListeners = 100
 
@@ -31,7 +32,9 @@ const opts = {
 if (argv._.length === 1) {
   opts.key = argv._[0]
 }
+
 let hm, sourceFile, localFile
+
 if (argv.save) {
   const fileStorage = name => raf(name, {directory: argv.save})
   sourceFile = fileStorage('source')
@@ -65,6 +68,7 @@ function _ready () {
   const userData = {
     name: argv.name
   }
+  hm.source.on('append', r)
   if (hm.local) {
     localFile.write(0, hm.local.key, () => sourceFile.close())
     userData.key = hm.local.key.toString('hex')
@@ -93,7 +97,66 @@ function _ready () {
     r()
   })
 
-  hm.doc.registerHandler(r)
+  let actorIncludedInDoc = false
+
+  hm.doc.registerHandler(doc => {
+    debugLog.push('Doc updated')
+    const actorId = hm.local ? hm.local.key.toString('hex')
+      : hm.source.key.toString('hex')
+    if (hm.local && !actorIncludedInDoc) {
+      actorIncludedInDoc = true
+      if (hm.local.length === 0) {
+        hm.change(doc => {
+          if (!doc.actors) {
+            doc.actors = {}
+            doc.actors[actorId] = {}
+          }
+          const seenActors = updateSeenActors(doc)
+          if (seenActors) {
+            doc.actors[actorId] = seenActors
+          }
+          // debugLog.push(`Update local actors ${JSON.stringify(doc.actors)}`)
+        })
+        debugLog.push(`Updated actors list (new actor)`)
+      }
+    } else {
+      const seenActors = updateSeenActors(doc)
+      if (seenActors) {
+        hm.change(doc => {
+          if (!doc.actors) {
+            doc.actors = {}
+          }
+          doc.actors[actorId] = seenActors
+        })
+        debugLog.push(`Updated actors list`)
+      }
+    }
+
+    r()
+
+    function updateSeenActors (doc) {
+      if (!actorId) return null
+      const actors = doc.actors || {}
+      let prevSeenActors = actors[actorId] || {}
+      if (prevSeenActors) {
+        prevSeenActors = Object.keys(prevSeenActors).reduce(
+          (acc, key) => {
+            if (key === '_objectId') return acc
+            return Object.assign({}, acc, {[key]: prevSeenActors[key]})
+          },
+          {}
+        )
+      }
+      const keys = Object.keys(actors)
+        .filter(key => (key !== actorId) && (key !== '_objectId'))
+      // debugLog.push(keys.join(','))
+      const seenActors = keys.reduce(
+        (acc, key) => Object.assign({}, acc, {[key]: true}),
+        {}
+      )
+      return !equal(seenActors, prevSeenActors) ? seenActors : null
+    }
+  })
 
   if (!opts.key && hm.source.length === 0) {
     hm.change('blank canvas', doc => {
@@ -154,6 +217,10 @@ function _ready () {
       }
     }
     if (!argv.quiet) {
+      /*
+      output += '\nActors:\n'
+      output += JSON.stringify(hm.get().actors, null, 2) + '\n'
+      */
       output += '\nPeers:\n'
       sw.connections.forEach(connection => {
         try {
