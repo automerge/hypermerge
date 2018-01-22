@@ -10,6 +10,7 @@ function swarm (archiver, opts) {
     hash: false,
     stream: function (replicateOpts) {
       replicateOpts.userData = opts.userData
+      replicateOpts.timeout = opts.timeout
       return archiver.replicate(replicateOpts)
     }
   }, opts)

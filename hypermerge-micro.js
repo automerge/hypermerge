@@ -31,10 +31,10 @@ function Hypermerge (storage, opts) {
   if (!storage) storage = ram
   this._storage = typeof storage === 'string' ? fileStorage : storage
 
-  this.multicore = new Multicore(storage)
-  this.multicore.on('debugLog', message => this._debugLog(message))
-
   this.opts = opts
+
+  this.multicore = new Multicore(storage, {debugLog: opts.debugLog})
+  this.multicore.on('debugLog', this._debugLog.bind(this))
 
   this.ready = thunky(open)
   this.ready(onready)

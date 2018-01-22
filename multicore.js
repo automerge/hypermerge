@@ -47,6 +47,8 @@ Archiver.prototype.createFeed = function (key, opts) {
   }
 }
 
+let listenerCount = 0
+
 // Override so we can pass userData
 Archiver.prototype.replicate = function (opts) {
   if (!opts) opts = {}
@@ -55,10 +57,15 @@ Archiver.prototype.replicate = function (opts) {
   if (opts.key) opts.discoveryKey = hypercore.discoveryKey(toBuffer(opts.key, 'hex'))
 
   const protocolOpts = {
-    live: true, id: this.changes.id, encrypt: opts.encrypt
+    live: true,
+    id: this.changes.id,
+    encrypt: opts.encrypt
   }
   if (opts.userData) {
     protocolOpts.userData = opts.userData
+  }
+  if (opts.timeout) {
+    protocolOpts.timeout = opts.timeout
   }
   var stream = protocol(protocolOpts)
   var self = this
@@ -66,8 +73,20 @@ Archiver.prototype.replicate = function (opts) {
   stream.on('feed', add)
   if (opts.channel || opts.discoveryKey) add(opts.channel || opts.discoveryKey)
 
-  this.on('replicateFeed', feed => {
+  this._debugLog(`Add replicateFeed listener ${++listenerCount} ${opts.userData} ${opts.timeout}`)
+  this.on('replicateFeed', addDiscoveryKey)
+  function addDiscoveryKey (feed) {
     add(feed.discoveryKey)
+  }
+  stream.on('close', () => {
+    this._debugLog(`Remove replicateFeed listener ${--listenerCount} ${opts.userData}`)
+    this.removeListener('replicateFeed', addDiscoveryKey)
+  })
+  stream.on('timeout', () => {
+    this._debugLog(`Timeout ${opts.userData}`)
+  })
+  stream.on('error', err => {
+    this._debugLog(`Error ${err}`)
   })
 
   function add (dk) {
@@ -127,11 +146,20 @@ Archiver.prototype.replicate = function (opts) {
   return stream
 }
 
+Archiver.prototype._debugLog = function (message) {
+  if (this.debugLog) {
+    this.emit('debugLog', message)
+  }
+}
+
 class Multicore extends EventEmitter {
   constructor (storage, opts) {
     super()
     opts = opts || {}
+    this.opts = opts
     this.archiver = new Archiver(storage)
+    this.archiver.debugLog = opts.debugLog
+    this.archiver.on('debugLog', this._debugLog.bind(this))
     this.ready = thunky(open)
     const self = this
 
@@ -168,6 +196,12 @@ class Multicore extends EventEmitter {
 
   replicateFeed (feed) {
     this.archiver.emit('replicateFeed', feed)
+  }
+
+  _debugLog (message) {
+    if (this.opts.debugLog) {
+      this.emit('debugLog', message)
+    }
   }
 }
 

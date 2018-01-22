@@ -75,7 +75,10 @@ function _ready () {
     hm.local.on('append', r)
   }
   debugLog.push('Joining swarm')
-  const sw = hm.joinSwarm({userData: JSON.stringify(userData)})
+  const sw = hm.joinSwarm({
+    userData: JSON.stringify(userData),
+    timeout: 1000
+  })
   sw.on('connection', (peer, type) => {
     // debugLog.push(`Connect ${peer.remoteUserData}`)
     try {
@@ -90,6 +93,14 @@ function _ready () {
       debugLog.push(`Connection with no or invalid user data`)
       // console.error('Error parsing JSON', e)
     }
+    r()
+  })
+  sw.on('peer', peer => {
+    debugLog.push(`peer ${peer.id}`)
+    r()
+  })
+  sw.on('drop', peer => {
+    debugLog.push(`drop ${peer.id}`)
     r()
   })
   sw.on('close', () => {
