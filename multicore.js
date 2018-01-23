@@ -19,7 +19,7 @@ Archiver.prototype.createFeed = function (key, opts) {
     key = keyPair.publicKey
     opts.secretKey = keyPair.secretKey
   }
-  const dk = hypercore.discoveryKey(toBuffer(key)).toString('hex')
+  const dk = hypercore.discoveryKey(toBuffer(key, 'hex')).toString('hex')
 
   if (this.feeds[dk]) {
     return this.feeds[dk]
