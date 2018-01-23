@@ -12,6 +12,7 @@ const feed = hypercore(ram, key)
 const sw = hyperdiscovery(feed)
 sw.on('connection', () => { console.log('Connection') })
 feed.on('ready', () => {
+  console.log('Discovery Key', feed.discoveryKey.toString('hex'))
   console.log('Ready', feed.length)
   feed.on('sync', () => {
     console.log('sync', feed.length)

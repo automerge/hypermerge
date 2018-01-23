@@ -175,7 +175,15 @@ Hypermerge.prototype._createFeed = function (key) {
   // var feed = this.multicore.createFeed(key, {valueEncoding: 'json'})
   var feed = this.multicore.createFeed(key)
   // feed.on('ready', () => this._debugLog(`Ready ${key && key.toString('hex')}`))
-  feed.on('error', err => { this.emit(err) })
+  feed.on('error', err => { this.emit('error', err) })
+  /*
+  feed.on('peer-add', peer => {
+    this._debugLog(`peer-add ${peer.feed.key.toString('hex')}`)
+  })
+  feed.on('peer-remove', peer => {
+    this._debugLog(`peer-remove ${peer.feed.key.toString('hex')}`)
+  })
+  */
   /*
   feed.on('sync', () => this._debugLog(
     `sync ${feed.key.toString('hex')} ${feed.length}`

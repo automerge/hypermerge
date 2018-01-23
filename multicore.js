@@ -19,7 +19,7 @@ Archiver.prototype.createFeed = function (key, opts) {
     key = keyPair.publicKey
     opts.secretKey = keyPair.secretKey
   }
-  const dk = hypercore.discoveryKey(key).toString('hex')
+  const dk = hypercore.discoveryKey(toBuffer(key)).toString('hex')
 
   if (this.feeds[dk]) {
     return this.feeds[dk]
@@ -47,8 +47,6 @@ Archiver.prototype.createFeed = function (key, opts) {
   }
 }
 
-let listenerCount = 0
-
 // Override so we can pass userData
 Archiver.prototype.replicate = function (opts) {
   if (!opts) opts = {}
@@ -73,13 +71,11 @@ Archiver.prototype.replicate = function (opts) {
   stream.on('feed', add)
   if (opts.channel || opts.discoveryKey) add(opts.channel || opts.discoveryKey)
 
-  this._debugLog(`Add replicateFeed listener ${++listenerCount} ${opts.userData} ${opts.timeout}`)
   this.on('replicateFeed', addDiscoveryKey)
   function addDiscoveryKey (feed) {
     add(feed.discoveryKey)
   }
   stream.on('close', () => {
-    this._debugLog(`Remove replicateFeed listener ${--listenerCount} ${opts.userData}`)
     this.removeListener('replicateFeed', addDiscoveryKey)
   })
   stream.on('timeout', () => {
@@ -88,6 +84,7 @@ Archiver.prototype.replicate = function (opts) {
   stream.on('error', err => {
     this._debugLog(`Error ${err}`)
   })
+  stream.on('debugLog', this._debugLog.bind(this))
 
   function add (dk) {
     self.ready(function (err) {
