@@ -43,7 +43,7 @@ let hm, sourceFile, localFile
 if (argv.save) {
   sourceFile = `${argv.save}/source`
   let key
-  if (fs.exists(sourceFile)) {
+  if (fs.existsSync(sourceFile)) {
     key = fs.readFileSync(sourceFile, 'utf8')
   }
   if (opts.key && key && key.toString('hex') !== opts.key) {
@@ -56,7 +56,7 @@ if (argv.save) {
   }
   let localKey
   localFile = `${argv.save}/local`
-  if (fs.exists(localFile)) {
+  if (fs.existsSync(localFile)) {
     localKey = fs.readFileSync(localFile, 'utf8')
   }
   opts.localKey = argv.actor
@@ -89,6 +89,9 @@ function _ready () {
   const userData = {
     name: argv.name
   }
+  if (hm.local) {
+    userData.key = hm.local.key.toString('hex')
+  }
   hm.source.on('append', r)
   if (localFile && hm.local) {
     fs.writeFileSync(localFile, hm.local.key.toString('hex'))
@@ -99,11 +102,6 @@ function _ready () {
     timeout: 1000
   })
   sw.on('connection', (peer, type) => {
-    /*
-    console.log(peer)
-    process.kill(process.pid, 'SIGKILL')
-    log(`Connect ${util.inspect(peer)}`)
-    */
     peer.on('close', () => { r(); setTimeout(r, 1000) })
     try {
       if (!peer.remoteUserData) throw new Error('No user data')
