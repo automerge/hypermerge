@@ -135,73 +135,84 @@ function _ready () {
     log('Close')
     r()
   })
-  hm.getMissing(r) // Do this after joining swarm
-
-  let actorIncludedInDoc = false
-
-  hm.doc.registerHandler(doc => {
-    if (hm.findingMissingPeers) {
-      log('Still finding missing peers')
-      return // Still fetching dependencies
-    }
-    log('Doc updated')
-    const actorId = hm.local ? hm.local.key.toString('hex')
-      : hm.source.key.toString('hex')
-    if (hm.local && !actorIncludedInDoc) {
-      actorIncludedInDoc = true
-      if (hm.local.length === 0) {
-        hm.change(doc => {
-          if (!doc.actors) {
-            doc.actors = {}
-            doc.actors[actorId] = {}
-          }
-          const seenActors = updateSeenActors(doc)
-          if (seenActors) {
-            doc.actors[actorId] = seenActors
-          }
-          // log(`Update local actors ${JSON.stringify(doc.actors)}`)
-        })
-        log(`Updated actors list (new actor)`)
-      }
-    } else {
-      const seenActors = updateSeenActors(doc)
-      if (seenActors) {
-        hm.change(doc => {
-          if (!doc.actors) {
-            doc.actors = {}
-          }
-          doc.actors[actorId] = seenActors
-        })
-        log(`Updated actors list`)
-      }
-    }
-
+  hm.getMissing(() => {
     r()
 
-    function updateSeenActors (doc) {
-      if (!actorId) return null
-      const actors = doc.actors || {}
-      let prevSeenActors = actors[actorId] || {}
-      if (prevSeenActors) {
-        prevSeenActors = Object.keys(prevSeenActors).reduce(
-          (acc, key) => {
-            if (key === '_objectId') return acc
-            return Object.assign({}, acc, {[key]: prevSeenActors[key]})
-          },
+    // Setup 'glue' actors data structure in document
+    let actorIncludedInDoc = false
+    setTimeout(() => {
+      updateActorGlue(hm.get())
+      hm.doc.registerHandler(updateActorGlue)
+      r()
+    }, 1000)
+
+    function updateActorGlue (doc) {
+      if (hm.findingMissingPeers) {
+        log('Still finding missing peers')
+        return // Still fetching dependencies
+      }
+      const actorId = hm.local ? hm.local.key.toString('hex')
+        : hm.source.key.toString('hex')
+      if (hm.local && !actorIncludedInDoc) {
+        actorIncludedInDoc = true
+        if (hm.local.length === 0) {
+          hm.change(doc => {
+            if (!doc.actors) {
+              doc.actors = {}
+              doc.actors[actorId] = {}
+            }
+            const seenActors = updateSeenActors(doc)
+            if (seenActors) {
+              doc.actors[actorId] = seenActors
+            }
+            // log(`Update local actors ${JSON.stringify(doc.actors)}`)
+          })
+          log(`Updated actors list (new actor)`)
+        }
+      } else {
+        const seenActors = updateSeenActors(doc)
+        if (seenActors) {
+          hm.change(doc => {
+            if (!doc.actors) {
+              doc.actors = {}
+            }
+            doc.actors[actorId] = seenActors
+          })
+          log(`Updated actors list`)
+        }
+      }
+
+      r()
+
+      function updateSeenActors (doc) {
+        if (!actorId) return null
+        const actors = doc.actors || {}
+        let prevSeenActors = actors[actorId] || {}
+        if (prevSeenActors) {
+          prevSeenActors = Object.keys(prevSeenActors).reduce(
+            (acc, key) => {
+              if (key === '_objectId') return acc
+              return Object.assign({}, acc, {[key]: prevSeenActors[key]})
+            },
+            {}
+          )
+        }
+        const keys = Object.keys(actors)
+          .filter(key => (key !== actorId) && (key !== '_objectId'))
+        // log(keys.join(','))
+        const seenActors = keys.reduce(
+          (acc, key) => Object.assign({}, acc, {[key]: true}),
           {}
         )
+        return !equal(seenActors, prevSeenActors) ? seenActors : null
       }
-      const keys = Object.keys(actors)
-        .filter(key => (key !== actorId) && (key !== '_objectId'))
-      // log(keys.join(','))
-      const seenActors = keys.reduce(
-        (acc, key) => Object.assign({}, acc, {[key]: true}),
-        {}
-      )
-      return !equal(seenActors, prevSeenActors) ? seenActors : null
     }
   })
 
+  hm.doc.registerHandler(doc => {
+    log('Doc updated')
+    r()
+  })
   if (!opts.key && hm.source.length === 0) {
     hm.change('blank canvas', doc => {
       doc.x0y0 = 'w'
