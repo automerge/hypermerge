@@ -212,9 +212,16 @@ Hypermerge.prototype._syncToAutomerge = function (feed, cb) {
     return cb()
   }
 
-  fetchRecords(prevLastSeen + 1, self.lastSeen[key], () => {
+  const to = self.lastSeen[key]
+  fetchRecords(prevLastSeen + 1, to, () => {
+    // self._debugLog(`applyChanges ${changes.length}`)
     self.doc.applyChanges(changes)
-    cb()
+    if (feed.length > to) {
+      // self._debugLog(`Feed grew ${feed.length} (was ${to}), loading more`)
+      self._syncToAutomerge(feed, cb)
+    } else {
+      cb()
+    }
   })
 
   function fetchRecords (from, to, cb) {

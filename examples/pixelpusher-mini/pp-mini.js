@@ -83,6 +83,11 @@ function _ready () {
   hm.on('debugLog', log)
   if (argv.headless) {
     log(`Source: ${hm.source.key.toString('hex')}`)
+    log(`Source dk: ${hm.source.discoveryKey.toString('hex')}`)
+    if (hm.local) {
+      log(`Local: ${hm.local.key.toString('hex')}`)
+      log(`Local dk: ${hm.local.discoveryKey.toString('hex')}`)
+    }
   }
   if (sourceFile) {
     fs.writeFileSync(sourceFile, hm.source.key.toString('hex'))
@@ -218,7 +223,8 @@ function _ready () {
     if (!argv.quiet) {
       output += `Source: ${hm.source.key.toString('hex')}\n`
       if (argv.debug) {
-        output += `Archiver: ${hm.getArchiverKey().toString('hex')}\n`
+        const dk = prettyHash(hm.multicore.archiver.changes.discoveryKey)
+        output += `Archiver: ${hm.getArchiverKey().toString('hex')} ${dk}\n`
         output += `Archive Changes Length: ` +
           `${hm.multicore.archiver.changes.length}\n`
       }
@@ -229,16 +235,19 @@ function _ready () {
         {
           const feed = hm.source
           const key = hm.key.toString('hex')
-          output += `${key} ${feed.length} (${feed.peers.length} peers)\n`
+          const dk = prettyHash(hm.discoveryKey)
+          output += `${key} ${dk} ${feed.length} (${feed.peers.length} peers)\n`
         }
         if (hm.local) {
           const feed = hm.local
           const key = hm.local.key.toString('hex')
-          output += `${key} ${feed.length} (${feed.peers.length} peers)\n`
+          const dk = prettyHash(hm.local.discoveryKey)
+          output += `${key} ${dk} ${feed.length} (${feed.peers.length} peers)\n`
         }
         Object.keys(hm.peers).forEach(key => {
           const feed = hm.peers[key]
-          output += `${key} ${feed.length} (${feed.peers.length} peers)\n`
+          const dk = prettyHash(feed.discoveryKey)
+          output += `${key} ${dk} ${feed.length} (${feed.peers.length} peers)\n`
         })
         output += '\n'
       }
@@ -292,7 +301,8 @@ function _ready () {
 
   input.on('keypress', (ch, key) => {
     if (key.sequence === 'c') {
-      log('Swarm connections', sw.connections.length)
+      log(`Swarm connections ${sw.connections.length}`)
+      log(`TCP connections ${sw._tcpConnections.sockets.length}`)
       for (let connection of sw.connections) {
         log(`  remoteId: ${prettyHash(connection.remoteId)} ` +
             `(${connection.feeds.length} feeds)`)

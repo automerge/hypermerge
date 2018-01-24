@@ -22,6 +22,7 @@
     "automerge": "github:inkandswitch/automerge#pixelpusher-support",
     "hypercore": "^6.12.0",
     "hypercore-archiver": "^4.4.1",
+    "pretty-hash": "^1.0.1",
     "random-access-file": "^1.8.1",
     "random-access-memory": "^2.4.0",
     "thunky": "^1.0.2",

@@ -6,6 +6,7 @@ const crypto = require('hypercore/lib/crypto')
 const thunky = require('thunky')
 const toBuffer = require('to-buffer')
 const swarm = require('./multicore-swarm')
+const prettyHash = require('pretty-hash')
 
 // Monkey-patch hypercore-archiver so we can create a Hypercore
 // directly in the archive
@@ -67,6 +68,7 @@ Archiver.prototype.replicate = function (opts) {
   }
   var stream = protocol(protocolOpts)
   var self = this
+  self._debugLog(`multicore new stream ${JSON.stringify(protocolOpts)}`)
 
   stream.on('feed', add)
   if (opts.channel || opts.discoveryKey) add(opts.channel || opts.discoveryKey)
@@ -94,6 +96,7 @@ Archiver.prototype.replicate = function (opts) {
 
       var hex = dk.toString('hex')
       var changesHex = self.changes.discoveryKey.toString('hex')
+      self._debugLog(`add feed dk ${prettyHash(hex)} ${JSON.stringify(opts)}`)
 
       var archive = self.archives[hex]
       if (archive) return onarchive()

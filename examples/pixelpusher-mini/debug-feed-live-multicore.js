@@ -71,6 +71,7 @@ input.on('keypress', (ch, key) => {
     }
   } else if (key.sequence === 'C') {
     console.log('Swarm connections', sw.connections)
+  /*
   } else if (key.sequence === 'p') {
     console.log('Peers', feed.peers.length)
     for (let peer of feed.peers) {
@@ -78,6 +79,7 @@ input.on('keypress', (ch, key) => {
     }
   } else if (key.sequence === 'P') {
     console.log('Peers', feed.peers)
+  */
   } else if (key.sequence === 'x') {
     console.log('sw._peersIds', sw._peersIds)
   } else if (key.name === 'return') {
