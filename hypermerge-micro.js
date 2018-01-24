@@ -76,8 +76,7 @@ Hypermerge.prototype._open = function (cb) {
       self.doc = new WatchableDoc(Automerge.init(self.key.toString('hex')))
       self.doc.registerHandler(self._newChanges.bind(self))
       self.previousDoc = self.doc.get()
-
-      return self._syncToAutomerge(self.source, cb)
+      return cb()
     }
 
     self.source.on('sync', self._syncToAutomerge.bind(self, self.source))
@@ -96,16 +95,30 @@ Hypermerge.prototype._open = function (cb) {
       self.doc.registerHandler(self._newChanges.bind(self))
       self.previousDoc = self.doc.get()
 
-      self._syncToAutomerge(self.source, () => {
-        self._syncToAutomerge(self.local, cb)
-      })
+      cb()
     })
   })
 }
 
 Hypermerge.prototype.getMissing = function (cb) {
   cb = cb || noop
-  this._findMissingPeers(cb)
+  const self = this
+
+  if (self.source.writable) {
+    self._syncToAutomerge(self.source, () => {
+      findMissingPeers(cb)
+    })
+  } else {
+    self._syncToAutomerge(self.source, () => {
+      self._syncToAutomerge(self.local, () => {
+        findMissingPeers(cb)
+      })
+    })
+  }
+
+  function findMissingPeers (cb) {
+    self._findMissingPeers(cb)
+  }
 }
 
 Hypermerge.prototype._findMissingPeers = function (cb) {
@@ -207,17 +220,17 @@ Hypermerge.prototype._syncToAutomerge = function (feed, cb) {
   self.lastSeen[key] = feed.length
   const changes = []
 
-  // self._debugLog(`_syncToAutomerge ${feed.key.toString('hex')} ${feed.length}`)
+  self._debugLog(`_syncToAutomerge ${feed.key.toString('hex')} ${feed.length}`)
   if (prevLastSeen === self.lastSeen[key]) {
     return cb()
   }
 
   const to = self.lastSeen[key]
   fetchRecords(prevLastSeen + 1, to, () => {
-    // self._debugLog(`applyChanges ${changes.length}`)
+    self._debugLog(`applyChanges ${changes.length}`)
     self.doc.applyChanges(changes)
     if (feed.length > to) {
-      // self._debugLog(`Feed grew ${feed.length} (was ${to}), loading more`)
+      self._debugLog(`Feed grew ${feed.length} (was ${to}), loading more`)
       self._syncToAutomerge(feed, cb)
     } else {
       cb()
@@ -270,6 +283,7 @@ Hypermerge.prototype._newChanges = function (doc) {
 
 Hypermerge.prototype._debugLog = function (message) {
   if (this.opts.debugLog) {
+    // console.log(message)
     this.emit('debugLog', message)
   }
 }
