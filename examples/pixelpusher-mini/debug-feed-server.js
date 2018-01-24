@@ -20,14 +20,14 @@ const sw = hyperdiscovery(feed, {
   utp: false,
   dht: false,
   dns: {server: [], domain: 'dat.local'},
-	stream: function (info) {
-		console.log('Jim start replicate', info)
-		return feed.replicate({
-			live: true,
-			upload: true,
-			download: true
-		})
-	}
+  stream: function (info) {
+    console.log('Jim start replicate', info)
+    return feed.replicate({
+      live: true,
+      upload: true,
+      download: true
+    })
+  }
 })
 sw.on('connection', (peer, info) => {
   console.log('Connection', prettyHash(peer.id), info, info.id.toString('hex'))
@@ -75,7 +75,12 @@ input.on('keypress', (ch, key) => {
   if (key.sequence === 'c') {
     console.log('Swarm connections', sw.connections.length)
     for (let connection of sw.connections) {
-      console.log(`  remoteId: ${prettyHash(connection.remoteId)}`)
+      console.log(`  remoteId: ${prettyHash(connection.remoteId)} ` +
+                  `(${connection.feeds.length} feeds)`)
+      for (let feed of connection.feeds) {
+        console.log(`    ${prettyHash(feed.key)} ` +
+                    `(dk: ${prettyHash(feed.discoveryKey)})`)
+      }
     }
   } else if (key.sequence === 'C') {
     console.log('Swarm connections', sw.connections)

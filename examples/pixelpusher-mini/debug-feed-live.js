@@ -1,6 +1,8 @@
 const hypercore = require('hypercore')
 const ram = require('random-access-memory')
 const hyperdiscovery = require('hyperdiscovery')
+const prettyHash = require('pretty-hash')
+const input = require('diffy/input')()
 
 const key = process.argv[2]
 if (!key) {
@@ -41,3 +43,32 @@ function done () {
   console.log('Done.')
   // process.exit()
 }
+
+input.on('keypress', (ch, key) => {
+  if (key.sequence === 'c') {
+    console.log('Swarm connections', sw.connections.length)
+    for (let connection of sw.connections) {
+      console.log(`  remoteId: ${prettyHash(connection.remoteId)} ` +
+                  `(${connection.feeds.length} feeds)`)
+      for (let feed of connection.feeds) {
+        console.log(`    ${prettyHash(feed.key)} ` +
+                    `(dk: ${prettyHash(feed.discoveryKey)})`)
+      }
+    }
+  } else if (key.sequence === 'C') {
+    console.log('Swarm connections', sw.connections)
+  } else if (key.sequence === 'p') {
+    console.log('Peers', feed.peers.length)
+    for (let peer of feed.peers) {
+      console.log(`  remoteId: ${prettyHash(peer.remoteId)}`)
+    }
+  } else if (key.sequence === 'P') {
+    console.log('Peers', feed.peers)
+  } else if (key.sequence === 'x') {
+    console.log('sw._peersIds', sw._peersIds)
+  } else if (key.name === 'return') {
+    console.log('')
+  } else {
+    console.log('key', key)
+  }
+})
