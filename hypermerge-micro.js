@@ -77,9 +77,7 @@ Hypermerge.prototype._open = function (cb) {
       self.doc.registerHandler(self._newChanges.bind(self))
       self.previousDoc = self.doc.get()
 
-      return self._syncToAutomerge(self.source, () => {
-        self._findMissingPeers(cb)
-      })
+      return self._syncToAutomerge(self.source, cb)
     }
 
     self.source.on('sync', self._syncToAutomerge.bind(self, self.source))
@@ -99,12 +97,15 @@ Hypermerge.prototype._open = function (cb) {
       self.previousDoc = self.doc.get()
 
       self._syncToAutomerge(self.source, () => {
-        self._syncToAutomerge(self.local, () => {
-          self._findMissingPeers(cb)
-        })
+        self._syncToAutomerge(self.local, cb)
       })
     })
   })
+}
+
+Hypermerge.prototype.getMissing = function (cb) {
+  cb = cb || noop
+  this._findMissingPeers(cb)
 }
 
 Hypermerge.prototype._findMissingPeers = function (cb) {
@@ -126,7 +127,9 @@ Hypermerge.prototype._findMissingPeers = function (cb) {
       return cb()
     }
     self.findingMissingPeers = true
+    self._debugLog(`Connecting missing peer ${key.toString('hex')}`)
     self.connectPeer(key, () => {
+      self._debugLog(`Connected missing peer ${key.toString('hex')}`)
       connectMissingPeers(cb)
     })
   }
@@ -249,8 +252,6 @@ Hypermerge.prototype._newChanges = function (doc) {
     .filter(change => change.seq > feed.length)
     .forEach(change => {
       const {seq} = change
-      // console.log('Jim append', change, feed.length)
-      // process.exit(1)
       feed.append(JSON.stringify(change), err => {
         if (err) {
           console.error('Error ' + seq, err)

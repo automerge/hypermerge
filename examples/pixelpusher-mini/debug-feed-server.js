@@ -21,7 +21,7 @@ const sw = hyperdiscovery(feed, {
   dht: false,
   dns: {server: [], domain: 'dat.local'},
   stream: function (info) {
-    console.log('Jim start replicate', info)
+    // console.log('Jim start replicate', info)
     return feed.replicate({
       live: true,
       upload: true,

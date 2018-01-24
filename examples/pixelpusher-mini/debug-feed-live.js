@@ -40,8 +40,7 @@ function onSync () {
 }
 
 function done () {
-  console.log('Done.')
-  // process.exit()
+  console.log('Waiting')
 }
 
 input.on('keypress', (ch, key) => {

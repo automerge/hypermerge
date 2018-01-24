@@ -3,6 +3,8 @@ const minimist = require('minimist')
 const renderGrid = require('./render-grid')
 const hypermergeMicro = require('../../hypermerge-micro')
 const equal = require('deep-equal')
+const input = require('diffy/input')()
+const prettyHash = require('pretty-hash')
 
 require('events').EventEmitter.prototype._maxListeners = 100
 
@@ -13,7 +15,6 @@ const argv = minimist(
   }
 )
 const diffy = argv.headless ? null : require('diffy')({fullscreen: true})
-const input = argv.headless ? null : require('diffy/input')()
 
 if (argv.help || !argv.name || argv._.length > 1) {
   console.log(
@@ -98,8 +99,8 @@ function _ready () {
   }
   log('Joining swarm')
   const sw = hm.joinSwarm({
-    userData: JSON.stringify(userData),
-    timeout: 1000
+    userData: JSON.stringify(userData)
+    // timeout: 1000
   })
   sw.on('connection', (peer, type) => {
     peer.on('close', () => { r(); setTimeout(r, 1000) })
@@ -129,6 +130,7 @@ function _ready () {
     log('Close')
     r()
   })
+  hm.getMissing(r) // Do this after joining swarm
 
   let actorIncludedInDoc = false
 
@@ -288,38 +290,76 @@ function _ready () {
     diffy.render(render)
   }
 
-  if (argv.headless) return
-
-  input.on('down', () => {
-    if (cursor.y === 0) cursor.y = 1
-    r()
-  })
-  input.on('up', () => {
-    if (cursor.y === 1) cursor.y = 0
-    r()
-  })
-  input.on('left', () => {
-    if (cursor.x === 1) cursor.x = 0
-    r()
-  })
-  input.on('right', () => {
-    if (cursor.x === 0) cursor.x = 1
-    r()
-  })
-
   input.on('keypress', (ch, key) => {
-    if (key.name === 'q') {
-      sw.close(() => {
-        process.exit(0)
-      })
-    }
-    if ('rgbw'.indexOf(key.name) >= 0) {
-      hm.change(doc => {
-        doc[`x${cursor.x}y${cursor.y}`] = key.name
-      })
+    if (key.sequence === 'c') {
+      log('Swarm connections', sw.connections.length)
+      for (let connection of sw.connections) {
+        log(`  remoteId: ${prettyHash(connection.remoteId)} ` +
+            `(${connection.feeds.length} feeds)`)
+        for (let feed of connection.feeds) {
+          log(`    ${prettyHash(feed.key)} ` +
+              `(dk: ${prettyHash(feed.discoveryKey)})`)
+        }
+      }
+      r()
+    } else if (key.name === 'return') {
+      log('')
       r()
     }
   })
 
-  r()
+  if (argv.headless) {
+    input.on('keypress', (ch, key) => {
+      if (key.sequence === 'C') {
+        console.log('Swarm connections', sw.connections)
+      /*
+      } else if (key.sequence === 'p') {
+        console.log('Peers', feed.peers.length)
+        for (let peer of feed.peers) {
+          console.log(`  remoteId: ${prettyHash(peer.remoteId)}`)
+        }
+      } else if (key.sequence === 'P') {
+        console.log('Peers', feed.peers)
+      */
+      } else if (key.sequence === 'x') {
+        console.log('sw._peersIds', sw._peersIds)
+      } else if (key.sequence === 'q') {
+        process.exit()
+      } else {
+        // console.log('key', key)
+      }
+    })
+  } else {
+    input.on('down', () => {
+      if (cursor.y === 0) cursor.y = 1
+      r()
+    })
+    input.on('up', () => {
+      if (cursor.y === 1) cursor.y = 0
+      r()
+    })
+    input.on('left', () => {
+      if (cursor.x === 1) cursor.x = 0
+      r()
+    })
+    input.on('right', () => {
+      if (cursor.x === 0) cursor.x = 1
+      r()
+    })
+
+    input.on('keypress', (ch, key) => {
+      if (key.name === 'q') {
+        sw.close(() => {
+          process.exit(0)
+        })
+      }
+      if ('rgbw'.indexOf(key.name) >= 0) {
+        hm.change(doc => {
+          doc[`x${cursor.x}y${cursor.y}`] = key.name
+        })
+        r()
+      }
+    })
+    r()
+  }
 }

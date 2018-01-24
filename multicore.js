@@ -73,6 +73,7 @@ Archiver.prototype.replicate = function (opts) {
 
   this.on('replicateFeed', addDiscoveryKey)
   function addDiscoveryKey (feed) {
+    self._debugLog(`addDiscoveryKey ${feed.discoveryKey.toString('hex')}`)
     add(feed.discoveryKey)
   }
   stream.on('close', () => {
