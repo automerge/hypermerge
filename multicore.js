@@ -12,6 +12,7 @@ const prettyHash = require('pretty-hash')
 // directly in the archive
 
 Archiver.prototype.createFeed = function (key, opts) {
+  this._debugLog(`archiver createFeed ${key && key.toString('hex')}`)
   const self = this
   opts = opts || {}
   if (!key) {
@@ -185,6 +186,7 @@ class Multicore extends EventEmitter {
     // this.emit('debugLog', `Swarm opts: ${JSON.stringify(opts)}`)
     const sw = swarm(this.archiver, opts)
     this.swarm = sw
+    /*
     this.archiver.ready(() => {
       const feeds = this.archiver.feeds
       Object.keys(feeds).forEach(key => {
@@ -192,6 +194,7 @@ class Multicore extends EventEmitter {
         sw.join(feed.discoveryKey)
       })
     })
+    */
     return sw
   }
 

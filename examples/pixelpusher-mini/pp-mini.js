@@ -39,7 +39,7 @@ if (argv._.length === 1) {
   opts.key = argv._[0]
 }
 
-let hm, sourceFile, localFile
+let hm, sourceFile, localFile, sw
 
 if (argv.save) {
   sourceFile = `${argv.save}/source`
@@ -103,7 +103,7 @@ function _ready () {
     fs.writeFileSync(localFile, hm.local.key.toString('hex'))
   }
   log('Joining swarm')
-  const sw = hm.joinSwarm({
+  sw = hm.joinSwarm({
     userData: JSON.stringify(userData)
     // timeout: 1000
   })
@@ -137,6 +137,7 @@ function _ready () {
   })
   hm.getMissing(() => {
     r()
+    joinSwarm()
 
     // Setup 'glue' actors data structure in document
     let actorIncludedInDoc = false
@@ -323,6 +324,8 @@ function _ready () {
         }
       }
       r()
+    } else if (key.sequence === 'j') {
+      joinSwarm()
     } else if (key.name === 'return') {
       log('')
       r()
@@ -382,5 +385,17 @@ function _ready () {
       }
     })
     r()
+  }
+}
+
+function joinSwarm () {
+  if (hm && sw) {
+    const feeds = hm.multicore.archiver.feeds
+    Object.keys(feeds).forEach(key => {
+      const feed = feeds[key]
+      sw.join(feed.discoveryKey)
+    })
+  } else {
+    log('Not ready to join swarm yet')
   }
 }

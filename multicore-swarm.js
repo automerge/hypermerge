@@ -7,9 +7,11 @@ module.exports = swarm
 function swarm (archiver, opts) {
   var port = (opts && opts.port) || 3282
   var swarmOpts = xtend({
+    /*
     utp: false,
     dht: false,
     dns: {server: [], domain: 'dat.local'},
+    */
     hash: false,
     stream: function (info) {
       // console.log('New stream', replicateOpts)
