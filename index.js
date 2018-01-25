@@ -1,12 +1,8 @@
 
-const hypermerge = require('./hypermerge')
-const hypermergeMicro = require('./hypermerge-micro')
-const hypermergeMicroImmutable = require('./hypermerge-micro-immutable')
-const multicore = require('./multicore')
+const HyperMerge = require('./HyperMerge')
+const MultiCore = require('./MultiCore')
 
 module.exports = {
-  hypermerge,
-  hypermergeMicro,
-  hypermergeMicroImmutable,
-  multicore
+  HyperMerge,
+  MultiCore
 }
