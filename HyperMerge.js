@@ -16,7 +16,7 @@ module.exports = class HyperMerge extends EventEmitter {
 
     this.port = port || 3282
 
-    this.core.ready(this._ready)
+    this.core.ready(this._ready())
   }
 
   any(f = () => true) {
@@ -143,7 +143,7 @@ module.exports = class HyperMerge extends EventEmitter {
     })
   }
 
-  _trackFeed = feed => {
+  _trackFeed(feed) {
     const hex = feed.key.toString('hex')
     this.feeds[hex] = feed
 
@@ -223,8 +223,10 @@ module.exports = class HyperMerge extends EventEmitter {
     if (!this.isMissingDeps(hex)) this.emit('document:updated', doc)
   }
 
-  _ready = () => {
-    this.emit('ready', this)
+  _ready() {
+    return () => {
+      this.emit('ready', this)
+    }
   }
 
   _joinSwarm() {
@@ -232,24 +234,30 @@ module.exports = class HyperMerge extends EventEmitter {
       port: this.port,
       encrypt: true,
     })
-    .on('listening', this._onListening)
-    .on('connection', this._onConnection)
+    .on('listening', this._onListening())
+    .on('connection', this._onConnection())
   }
 
-  _onDownload = hex => (index, data) => {
-    this._applyBlocks(hex, [data])
-    this._loadMissingBlocks(hex)
+  _onDownload(hex) {
+    return (index, data) => {
+      this._applyBlocks(hex, [data])
+      this._loadMissingBlocks(hex)
+    }
   }
 
-  _onConnection = (conn, info) => {
-    // this._debug('_onConnection', conn)
+  _onConnection() {
+    return (conn, info) => {
+      // this._debug('_onConnection', conn)
+    }
   }
 
-  _onListening = (...args) => {
-    this._debug('_onListening', ...args)
+  _onListening() {
+    return (...args) => {
+      this._debug('_onListening', ...args)
+    }
   }
 
-  _promise = f => {
+  _promise(f) {
     return new Promise((res, rej) => {
       f((err, x) => {
         err ? rej(err) : res(x)
@@ -257,7 +265,7 @@ module.exports = class HyperMerge extends EventEmitter {
     })
   }
 
-  _debug = (...args)  => {
+  _debug(...args) {
     console.log('[HyperMerge]', ...args)
   }
 }
