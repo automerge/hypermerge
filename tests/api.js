@@ -2,29 +2,27 @@ const test = require('tape')
 const {HyperMerge} = require('..')
 const tmp = require('tmp')
 
-// Snippets of code from pixelpusher (multicore branch)
-//
-// https://github.com/inkandswitch/pixelpusher/blob/multicore/src/store/sync.js
-
-// constructor
-
-/*
-const sync = global.sync = new HyperMerge({
-  peerInfo: store.getState().present.peerInfo.toJS(),
-  port: 3282 + clientId,
-  path: `./.data/pixelpusher-v7/client-${clientId}`,
-}).once('ready', _syncReady)
-*/
-
 test('constructor', t => {
   t.plan(1)
-
   const tmpdir = tmp.dirSync({unsafeCleanup: true})
-  const hm = new HyperMerge({
-    path: tmpdir.name
-  })
+  const hm = new HyperMerge({path: tmpdir.name})
   t.ok(hm, 'is truthy')
   hm.core.ready(() => {
+    hm.swarm.close()
+    tmpdir.removeCallback()
+  })
+})
+
+test('create a new actor and document', t => {
+  t.plan(1)
+  const tmpdir = tmp.dirSync({unsafeCleanup: true})
+  const hm = new HyperMerge({path: tmpdir.name})
+  hm.core.ready(() => {
+    const doc = hm.create()
+    t.deepEqual(doc.toJS(), {
+      _conflicts: {},
+      _objectId: '00000000-0000-0000-0000-000000000000'
+    }, 'expected empty automerge doc')
     hm.swarm.close()
     tmpdir.removeCallback()
   })
@@ -82,23 +80,6 @@ whenChanged(store, getProject, project => {
 /*
 whenChanged(store, state => state.peerInfo, info => {
   sync.peerInfo = info.toJS()
-})
-*/
-
-/**
- * .create()
- *
- * Creates a new hypercore feed for a new actor and returns a new
- * automerge document
- */
-
-/*
-whenChanged(store, state => state.createdProjectCount, shouldCreate => {
-  if (!shouldCreate) return
-
-  const project = Init.project(sync.create())
-
-  dispatch({type: "PROJECT_CREATED", project})
 })
 */
 
