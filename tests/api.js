@@ -1,3 +1,7 @@
+const test = require('tape')
+const {HyperMerge} = require('..')
+const tmp = require('tmp')
+
 // Snippets of code from pixelpusher (multicore branch)
 //
 // https://github.com/inkandswitch/pixelpusher/blob/multicore/src/store/sync.js
@@ -11,6 +15,20 @@ const sync = global.sync = new HyperMerge({
 	path: `./.data/pixelpusher-v7/client-${clientId}`,
 }).once('ready', _syncReady)
 */
+
+test('constructor', t => {
+  t.plan(1)
+
+  const tmpdir = tmp.dirSync({unsafeCleanup: true})
+  const hm = new HyperMerge({
+    path: tmpdir.name
+  })
+  t.ok(hm, 'is truthy')
+  hm.core.ready(() => {
+    hm.swarm.close()
+    tmpdir.removeCallback()
+  })
+})
 
 /**
  * .openAll()
