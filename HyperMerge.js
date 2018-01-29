@@ -3,7 +3,23 @@ const Automerge = require('automerge')
 const MultiCore = require('./MultiCore')
 const swarm = require('hypercore-archiver/swarm')
 
-module.exports = class HyperMerge extends EventEmitter {
+/**
+ * Create and share Automerge documents using peer-to-peer networking.
+ *
+ * @param {Object} options
+ * @param {string} options.path - path to directory used to store multiple
+ *   hypercores
+ * @param {number} [options.port=3282] - port number to listen on
+ * @param {onForkCallback} [options.onFork] - unimplemented callback?
+ */
+
+ /**
+  * onFork callback - unimplemented?
+  *
+  * @callback onForkCallback
+  */
+
+ module.exports = class HyperMerge extends EventEmitter {
   constructor({path, port, onFork}) {
     super()
 
@@ -19,6 +35,12 @@ module.exports = class HyperMerge extends EventEmitter {
     this.core.ready(this._ready())
   }
 
+  /**
+   * Have any automerge documents been built?
+   *
+   * @param {filterCallback} [f] - a filter function
+   * @returns {boolean}
+   */
   any(f = () => true) {
     return Object.values(this.docs).some(f)
   }
@@ -41,6 +63,11 @@ module.exports = class HyperMerge extends EventEmitter {
     return this.document(hex)
   }
 
+  /**
+   * Loads all the hypercore feeds from the storage directory (one per actor)
+   * and/or the network swarm, and builds automerge documents for each
+   * hypercore/actor.
+   */
   openAll() {
     Object.values(this.core.archiver.feeds).forEach(feed => {
       this.open(feed.key.toString('hex'))
@@ -93,6 +120,12 @@ module.exports = class HyperMerge extends EventEmitter {
     return doc
   }
 
+  /**
+   * Is the hypercore writable?
+   *
+   * @param {string} hex - actor id
+   * @returns {boolean}
+   */
   isWritable(hex) {
     return this.feed(hex).writable
   }
