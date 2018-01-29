@@ -50,7 +50,9 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   find (hex) {
-    if (!this.docs[hex]) throw new Error(`Cannot find document. open(hex) first. Key: ${hex}`)
+    if (!this.docs[hex]) {
+      throw new Error(`Cannot find document. open(hex) first. Key: ${hex}`)
+    }
     return this.docs[hex]
   }
 
@@ -60,6 +62,12 @@ module.exports = class HyperMerge extends EventEmitter {
     return this.docs[hex]
   }
 
+  /**
+   * Loads a single hypercore feed from the storage directory for a single actor
+   * and/or the network swarm, and builds an automerge document.
+   *
+   * @param {string} hex - key of hypercore / actor id to open
+   */
   open (hex) {
     return this.document(hex)
   }
@@ -109,6 +117,12 @@ module.exports = class HyperMerge extends EventEmitter {
     return this.set(doc)
   }
 
+  /**
+   * Creates a new actor hypercore feed and automerge document, with
+   * an empty change that depends on the document for another actor.
+   *
+   * @param {string} hex - actor to fork
+   */
   fork (hex) {
     let doc = this.create()
     doc = Automerge.merge(doc, this.find(hex))
@@ -116,6 +130,12 @@ module.exports = class HyperMerge extends EventEmitter {
     return this.update(doc)
   }
 
+  /**
+   * Takes all the changes from another actor (hex2) and adds them to
+   * the automerge doc.
+   * @param {string} hex - actor to merge changes into
+   * @param {string} hex2 - actor to copy changes from
+   */
   merge (hex, hex2) {
     const doc = Automerge.merge(this.find(hex), this.find(hex2))
     return this.update(doc)
@@ -197,6 +217,12 @@ module.exports = class HyperMerge extends EventEmitter {
 
     this._loadAllBlocks(hex)
     .then(() => {
+      /**
+       * Emitted when all the data from a hypercore feed has been downloaded.
+       *
+       * @event document:ready
+       * @type {object} - automerge document
+       */
       this.emit('document:ready', this.find(hex))
     })
 
@@ -266,7 +292,15 @@ module.exports = class HyperMerge extends EventEmitter {
   _setRemote (doc) {
     const hex = this.getHex(doc)
     this.set(doc)
-    if (!this.isMissingDeps(hex)) this.emit('document:updated', doc)
+    if (!this.isMissingDeps(hex)) {
+      /**
+       * Emitted when all the data from a hypercore feed has been downloaded.
+       *
+       * @event document:updated
+       * @type {object} - automerge document
+       */
+      this.emit('document:updated', doc)
+    }
   }
 
   _ready () {
