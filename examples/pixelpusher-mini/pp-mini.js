@@ -1,26 +1,32 @@
+const fs = require('fs')
 const minimist = require('minimist')
-const diffy = require('diffy')({fullscreen: true})
-const input = require('diffy/input')()
 const renderGrid = require('./render-grid')
 const hypermergeMicro = require('../../hypermerge-micro')
-const raf = require('random-access-file')
 const equal = require('deep-equal')
+const input = require('diffy/input')()
+const prettyHash = require('pretty-hash')
 
 require('events').EventEmitter.prototype._maxListeners = 100
 
 const argv = minimist(
   process.argv.slice(2),
   {
-    boolean: ['debug', 'new-source', 'new-actor']
+    boolean: ['debug', 'new-source', 'new-actor', 'headless']
   }
 )
+const diffy = argv.headless ? null : require('diffy')({fullscreen: true})
 
 if (argv.help || !argv.name || argv._.length > 1) {
   console.log(
     'Usage: node pp-mini --name=<name> [--save=<dir>] [--debug] ' +
-    '[--quiet] [--new-source] [--new-actor] [--actor=<key>] [key]\n'
+    '[--quiet] [--new-source] [--new-actor] [--actor=<key>] ' +
+    '[--headless] [key]\n'
   )
   process.exit(0)
+}
+
+if (argv.headless) {
+  console.log('Headless mode')
 }
 
 const cursor = {x: 0, y: 0}
@@ -33,135 +39,181 @@ if (argv._.length === 1) {
   opts.key = argv._[0]
 }
 
-let hm, sourceFile, localFile
+let hm, sourceFile, localFile, sw
 
 if (argv.save) {
-  const fileStorage = name => raf(name, {directory: argv.save})
-  sourceFile = fileStorage('source')
-  sourceFile.read(0, 32, (_, key) => {
-    if (opts.key && key && key.toString('hex') !== opts.key) {
-      // If the provided source key is different than the previous
-      // run, force --new-actor
-      opts['new-actor'] = true
-    }
-    if (!opts.key && key && !argv['new-source']) {
-      opts.key = key.toString('hex')
-    }
-    localFile = fileStorage('local')
-    localFile.read(0, 32, (_, localKey) => {
-      opts.localKey = argv.actor
-      if (!opts.localKey && localKey && !argv['new-actor']) {
-        opts.localKey = localKey.toString('hex')
-      }
-      hm = hypermergeMicro(argv.save, opts)
-      hm.on('ready', _ready)
-    })
-  })
+  sourceFile = `${argv.save}/source`
+  let key
+  if (fs.existsSync(sourceFile)) {
+    key = fs.readFileSync(sourceFile, 'utf8')
+  }
+  if (opts.key && key && key.toString('hex') !== opts.key) {
+    // If the provided source key is different than the previous
+    // run, force --new-actor
+    opts['new-actor'] = true
+  }
+  if (!opts.key && key && !argv['new-source']) {
+    opts.key = key
+  }
+  let localKey
+  localFile = `${argv.save}/local`
+  if (fs.existsSync(localFile)) {
+    localKey = fs.readFileSync(localFile, 'utf8')
+  }
+  opts.localKey = argv.actor
+  if (!opts.localKey && localKey && !argv['new-actor']) {
+    opts.localKey = localKey
+  }
+  hm = hypermergeMicro(argv.save, opts)
+  hm.on('ready', _ready)
 } else {
   hm = hypermergeMicro(opts)
   hm.on('ready', _ready)
 }
 
+function log (message) {
+  if (argv.headless) {
+    console.log(message)
+    return
+  }
+  debugLog.push(message)
+}
+
 function _ready () {
-  hm.on('debugLog', message => debugLog.push(message))
-  sourceFile.write(0, hm.key, () => sourceFile.close())
+  hm.on('debugLog', log)
+  if (argv.headless) {
+    log(`Source: ${hm.source.key.toString('hex')}`)
+    log(`Source dk: ${hm.source.discoveryKey.toString('hex')}`)
+    if (hm.local) {
+      log(`Local: ${hm.local.key.toString('hex')}`)
+      log(`Local dk: ${hm.local.discoveryKey.toString('hex')}`)
+    }
+  }
+  if (sourceFile) {
+    fs.writeFileSync(sourceFile, hm.source.key.toString('hex'))
+  }
   const userData = {
     name: argv.name
   }
-  hm.source.on('append', r)
   if (hm.local) {
-    localFile.write(0, hm.local.key, () => sourceFile.close())
     userData.key = hm.local.key.toString('hex')
-    hm.local.on('append', r)
   }
-  debugLog.push('Joining swarm')
-  const sw = hm.joinSwarm({userData: JSON.stringify(userData)})
+  hm.source.on('append', r)
+  if (localFile && hm.local) {
+    fs.writeFileSync(localFile, hm.local.key.toString('hex'))
+  }
+  log('Joining swarm')
+  sw = hm.joinSwarm({
+    userData: JSON.stringify(userData)
+    // timeout: 1000
+  })
   sw.on('connection', (peer, type) => {
-    // debugLog.push(`Connect ${peer.remoteUserData}`)
+    peer.on('close', () => { r(); setTimeout(r, 1000) })
     try {
       if (!peer.remoteUserData) throw new Error('No user data')
       const userData = JSON.parse(peer.remoteUserData.toString())
       if (userData.key) {
-        debugLog.push(`Connect ${userData.name} ${userData.key}`)
+        log(`Connect ${userData.name} ${userData.key}`)
         hm.connectPeer(userData.key)
       }
       r()
     } catch (e) {
-      debugLog.push(`Connection with no or invalid user data`)
+      log(`Connection with no or invalid user data`)
       // console.error('Error parsing JSON', e)
     }
     r()
   })
-  sw.on('close', () => {
-    debugLog.push('Close')
+  sw.on('peer', peer => {
+    log(`peer ${peer.id}`)
     r()
   })
-
-  let actorIncludedInDoc = false
-
-  hm.doc.registerHandler(doc => {
-    if (hm.findingMissingPeers) {
-      debugLog.push('Still finding missing peers')
-      return // Still fetching dependencies
-    }
-    debugLog.push('Doc updated')
-    const actorId = hm.local ? hm.local.key.toString('hex')
-      : hm.source.key.toString('hex')
-    if (hm.local && !actorIncludedInDoc) {
-      actorIncludedInDoc = true
-      if (hm.local.length === 0) {
-        hm.change(doc => {
-          if (!doc.actors) {
-            doc.actors = {}
-            doc.actors[actorId] = {}
-          }
-          const seenActors = updateSeenActors(doc)
-          if (seenActors) {
-            doc.actors[actorId] = seenActors
-          }
-          // debugLog.push(`Update local actors ${JSON.stringify(doc.actors)}`)
-        })
-        debugLog.push(`Updated actors list (new actor)`)
-      }
-    } else {
-      const seenActors = updateSeenActors(doc)
-      if (seenActors) {
-        hm.change(doc => {
-          if (!doc.actors) {
-            doc.actors = {}
-          }
-          doc.actors[actorId] = seenActors
-        })
-        debugLog.push(`Updated actors list`)
-      }
-    }
-
+  sw.on('drop', peer => {
+    log(`drop ${peer.id}`)
     r()
+  })
+  sw.on('close', () => {
+    log('Close')
+    r()
+  })
+  hm.getMissing(() => {
+    r()
+    joinSwarm()
 
-    function updateSeenActors (doc) {
-      if (!actorId) return null
-      const actors = doc.actors || {}
-      let prevSeenActors = actors[actorId] || {}
-      if (prevSeenActors) {
-        prevSeenActors = Object.keys(prevSeenActors).reduce(
-          (acc, key) => {
-            if (key === '_objectId') return acc
-            return Object.assign({}, acc, {[key]: prevSeenActors[key]})
-          },
+    // Setup 'glue' actors data structure in document
+    let actorIncludedInDoc = false
+    setTimeout(() => {
+      updateActorGlue(hm.get())
+      hm.doc.registerHandler(updateActorGlue)
+      r()
+    }, 1000)
+
+    function updateActorGlue (doc) {
+      if (hm.findingMissingPeers) {
+        log('Still finding missing peers')
+        return // Still fetching dependencies
+      }
+      const actorId = hm.local ? hm.local.key.toString('hex')
+        : hm.source.key.toString('hex')
+      if (hm.local && !actorIncludedInDoc) {
+        actorIncludedInDoc = true
+        if (hm.local.length === 0) {
+          hm.change(doc => {
+            if (!doc.actors) {
+              doc.actors = {}
+              doc.actors[actorId] = {}
+            }
+            const seenActors = updateSeenActors(doc)
+            if (seenActors) {
+              doc.actors[actorId] = seenActors
+            }
+            // log(`Update local actors ${JSON.stringify(doc.actors)}`)
+          })
+          log(`Updated actors list (new actor)`)
+        }
+      } else {
+        const seenActors = updateSeenActors(doc)
+        if (seenActors) {
+          hm.change(doc => {
+            if (!doc.actors) {
+              doc.actors = {}
+            }
+            doc.actors[actorId] = seenActors
+          })
+          log(`Updated actors list`)
+        }
+      }
+
+      r()
+
+      function updateSeenActors (doc) {
+        if (!actorId) return null
+        const actors = doc.actors || {}
+        let prevSeenActors = actors[actorId] || {}
+        if (prevSeenActors) {
+          prevSeenActors = Object.keys(prevSeenActors).reduce(
+            (acc, key) => {
+              if (key === '_objectId') return acc
+              return Object.assign({}, acc, {[key]: prevSeenActors[key]})
+            },
+            {}
+          )
+        }
+        const keys = Object.keys(actors)
+          .filter(key => (key !== actorId) && (key !== '_objectId'))
+        // log(keys.join(','))
+        const seenActors = keys.reduce(
+          (acc, key) => Object.assign({}, acc, {[key]: true}),
           {}
         )
+        return !equal(seenActors, prevSeenActors) ? seenActors : null
       }
-      const keys = Object.keys(actors)
-        .filter(key => (key !== actorId) && (key !== '_objectId'))
-      // debugLog.push(keys.join(','))
-      const seenActors = keys.reduce(
-        (acc, key) => Object.assign({}, acc, {[key]: true}),
-        {}
-      )
-      return !equal(seenActors, prevSeenActors) ? seenActors : null
     }
   })
 
+  hm.doc.registerHandler(doc => {
+    log('Doc updated')
+    r()
+  })
   if (!opts.key && hm.source.length === 0) {
     hm.change('blank canvas', doc => {
       doc.x0y0 = 'w'
@@ -183,7 +235,8 @@ function _ready () {
     if (!argv.quiet) {
       output += `Source: ${hm.source.key.toString('hex')}\n`
       if (argv.debug) {
-        output += `Archiver: ${hm.getArchiverKey().toString('hex')}\n`
+        const dk = prettyHash(hm.multicore.archiver.changes.discoveryKey)
+        output += `Archiver: ${hm.getArchiverKey().toString('hex')} ${dk}\n`
         output += `Archive Changes Length: ` +
           `${hm.multicore.archiver.changes.length}\n`
       }
@@ -194,16 +247,19 @@ function _ready () {
         {
           const feed = hm.source
           const key = hm.key.toString('hex')
-          output += `${key} ${feed.length} (${feed.peers.length})\n`
+          const dk = prettyHash(hm.discoveryKey)
+          output += `${key} ${dk} ${feed.length} (${feed.peers.length} peers)\n`
         }
         if (hm.local) {
           const feed = hm.local
           const key = hm.local.key.toString('hex')
-          output += `${key} ${feed.length} (${feed.peers.length})\n`
+          const dk = prettyHash(hm.local.discoveryKey)
+          output += `${key} ${dk} ${feed.length} (${feed.peers.length} peers)\n`
         }
         Object.keys(hm.peers).forEach(key => {
           const feed = hm.peers[key]
-          output += `${key} ${feed.length} (${feed.peers.length})\n`
+          const dk = prettyHash(feed.discoveryKey)
+          output += `${key} ${dk} ${feed.length} (${feed.peers.length} peers)\n`
         })
         output += '\n'
       }
@@ -243,44 +299,103 @@ function _ready () {
       const start = Math.max(debugLog.length - maxLines, 0)
       debugLog.forEach((line, index) => {
         if (index >= start) {
-          output += line + '\n'
+          output += line.replace(/\n/g, ' ').slice(0, diffy.width - 2) + '\n'
         }
       })
     }
     return output
   }
-  function r () { diffy.render(render) }
 
-  input.on('down', () => {
-    if (cursor.y === 0) cursor.y = 1
-    r()
-  })
-  input.on('up', () => {
-    if (cursor.y === 1) cursor.y = 0
-    r()
-  })
-  input.on('left', () => {
-    if (cursor.x === 1) cursor.x = 0
-    r()
-  })
-  input.on('right', () => {
-    if (cursor.x === 0) cursor.x = 1
-    r()
-  })
+  function r () {
+    if (argv.headless) return
+    diffy.render(render)
+  }
 
   input.on('keypress', (ch, key) => {
-    if (key.name === 'q') {
-      sw.close(() => {
-        process.exit(0)
-      })
-    }
-    if ('rgbw'.indexOf(key.name) >= 0) {
-      hm.change(doc => {
-        doc[`x${cursor.x}y${cursor.y}`] = key.name
-      })
+    if (key.sequence === 'c') {
+      log(`Swarm connections ${sw.connections.length}`)
+      log(`TCP connections ${sw._tcpConnections.sockets.length}`)
+      for (let connection of sw.connections) {
+        log(`  remoteId: ${prettyHash(connection.remoteId)} ` +
+            `(${connection.feeds.length} feeds)`)
+        for (let feed of connection.feeds) {
+          log(`    ${prettyHash(feed.key)} ` +
+              `(dk: ${prettyHash(feed.discoveryKey)})`)
+        }
+      }
+      r()
+    } else if (key.sequence === 'j') {
+      joinSwarm()
+    } else if (key.name === 'return') {
+      log('')
       r()
     }
   })
 
-  r()
+  if (argv.headless) {
+    input.on('keypress', (ch, key) => {
+      if (key.sequence === 'C') {
+        console.log('Swarm connections', sw.connections)
+      /*
+      } else if (key.sequence === 'p') {
+        console.log('Peers', feed.peers.length)
+        for (let peer of feed.peers) {
+          console.log(`  remoteId: ${prettyHash(peer.remoteId)}`)
+        }
+      } else if (key.sequence === 'P') {
+        console.log('Peers', feed.peers)
+      */
+      } else if (key.sequence === 'x') {
+        console.log('sw._peersIds', sw._peersIds)
+      } else if (key.sequence === 'q') {
+        process.exit()
+      } else {
+        // console.log('key', key)
+      }
+    })
+  } else {
+    input.on('down', () => {
+      if (cursor.y === 0) cursor.y = 1
+      r()
+    })
+    input.on('up', () => {
+      if (cursor.y === 1) cursor.y = 0
+      r()
+    })
+    input.on('left', () => {
+      if (cursor.x === 1) cursor.x = 0
+      r()
+    })
+    input.on('right', () => {
+      if (cursor.x === 0) cursor.x = 1
+      r()
+    })
+
+    input.on('keypress', (ch, key) => {
+      if (key.name === 'q') {
+        sw.close(() => {
+          process.exit(0)
+        })
+      }
+      if ('rgbw'.indexOf(key.name) >= 0) {
+        hm.change(doc => {
+          doc[`x${cursor.x}y${cursor.y}`] = key.name
+        })
+        r()
+      }
+    })
+    r()
+  }
+}
+
+function joinSwarm () {
+  if (hm && sw) {
+    const feeds = hm.multicore.archiver.feeds
+    Object.keys(feeds).forEach(key => {
+      const feed = feeds[key]
+      sw.join(feed.discoveryKey)
+    })
+  } else {
+    log('Not ready to join swarm yet')
+  }
 }

@@ -1,16 +1,18 @@
 const {EventEmitter} = require('events')
 const Archiver = require('hypercore-archiver')
-var protocol = require('hypercore-protocol')
+const protocol = require('hypercore-protocol')
 const hypercore = require('hypercore')
 const crypto = require('hypercore/lib/crypto')
 const thunky = require('thunky')
 const toBuffer = require('to-buffer')
 const swarm = require('./multicore-swarm')
+const prettyHash = require('pretty-hash')
 
 // Monkey-patch hypercore-archiver so we can create a Hypercore
 // directly in the archive
 
 Archiver.prototype.createFeed = function (key, opts) {
+  this._debugLog(`archiver createFeed ${key && key.toString('hex')}`)
   const self = this
   opts = opts || {}
   if (!key) {
@@ -19,7 +21,7 @@ Archiver.prototype.createFeed = function (key, opts) {
     key = keyPair.publicKey
     opts.secretKey = keyPair.secretKey
   }
-  const dk = hypercore.discoveryKey(key).toString('hex')
+  const dk = hypercore.discoveryKey(toBuffer(key, 'hex')).toString('hex')
 
   if (this.feeds[dk]) {
     return this.feeds[dk]
@@ -55,20 +57,38 @@ Archiver.prototype.replicate = function (opts) {
   if (opts.key) opts.discoveryKey = hypercore.discoveryKey(toBuffer(opts.key, 'hex'))
 
   const protocolOpts = {
-    live: true, id: this.changes.id, encrypt: opts.encrypt
+    live: true,
+    id: this.changes.id,
+    encrypt: opts.encrypt
   }
   if (opts.userData) {
     protocolOpts.userData = opts.userData
   }
+  if (opts.timeout) {
+    protocolOpts.timeout = opts.timeout
+  }
   var stream = protocol(protocolOpts)
   var self = this
+  self._debugLog(`multicore new stream ${JSON.stringify(protocolOpts)}`)
 
   stream.on('feed', add)
   if (opts.channel || opts.discoveryKey) add(opts.channel || opts.discoveryKey)
 
-  this.on('replicateFeed', feed => {
+  this.on('replicateFeed', addDiscoveryKey)
+  function addDiscoveryKey (feed) {
+    self._debugLog(`addDiscoveryKey ${feed.discoveryKey.toString('hex')}`)
     add(feed.discoveryKey)
+  }
+  stream.on('close', () => {
+    this.removeListener('replicateFeed', addDiscoveryKey)
   })
+  stream.on('timeout', () => {
+    this._debugLog(`Timeout ${opts.userData}`)
+  })
+  stream.on('error', err => {
+    this._debugLog(`Error ${err}`)
+  })
+  stream.on('debugLog', this._debugLog.bind(this))
 
   function add (dk) {
     self.ready(function (err) {
@@ -77,6 +97,7 @@ Archiver.prototype.replicate = function (opts) {
 
       var hex = dk.toString('hex')
       var changesHex = self.changes.discoveryKey.toString('hex')
+      self._debugLog(`add feed dk ${prettyHash(hex)} ${JSON.stringify(opts)}`)
 
       var archive = self.archives[hex]
       if (archive) return onarchive()
@@ -127,11 +148,20 @@ Archiver.prototype.replicate = function (opts) {
   return stream
 }
 
+Archiver.prototype._debugLog = function (message) {
+  if (this.debugLog) {
+    this.emit('debugLog', message)
+  }
+}
+
 class Multicore extends EventEmitter {
   constructor (storage, opts) {
     super()
     opts = opts || {}
+    this.opts = opts
     this.archiver = new Archiver(storage)
+    this.archiver.debugLog = opts.debugLog
+    this.archiver.on('debugLog', this._debugLog.bind(this))
     this.ready = thunky(open)
     const self = this
 
@@ -156,6 +186,7 @@ class Multicore extends EventEmitter {
     // this.emit('debugLog', `Swarm opts: ${JSON.stringify(opts)}`)
     const sw = swarm(this.archiver, opts)
     this.swarm = sw
+    /*
     this.archiver.ready(() => {
       const feeds = this.archiver.feeds
       Object.keys(feeds).forEach(key => {
@@ -163,11 +194,18 @@ class Multicore extends EventEmitter {
         sw.join(feed.discoveryKey)
       })
     })
+    */
     return sw
   }
 
   replicateFeed (feed) {
     this.archiver.emit('replicateFeed', feed)
+  }
+
+  _debugLog (message) {
+    if (this.opts.debugLog) {
+      this.emit('debugLog', message)
+    }
   }
 }
 

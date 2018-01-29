@@ -31,10 +31,10 @@ function Hypermerge (storage, opts) {
   if (!storage) storage = ram
   this._storage = typeof storage === 'string' ? fileStorage : storage
 
-  this.multicore = new Multicore(storage)
-  this.multicore.on('debugLog', message => this._debugLog(message))
-
   this.opts = opts
+
+  this.multicore = new Multicore(storage, {debugLog: opts.debugLog})
+  this.multicore.on('debugLog', this._debugLog.bind(this))
 
   this.ready = thunky(open)
   this.ready(onready)
@@ -76,10 +76,7 @@ Hypermerge.prototype._open = function (cb) {
       self.doc = new WatchableDoc(Automerge.init(self.key.toString('hex')))
       self.doc.registerHandler(self._newChanges.bind(self))
       self.previousDoc = self.doc.get()
-
-      return self._syncToAutomerge(self.source, () => {
-        self._findMissingPeers(cb)
-      })
+      return cb()
     }
 
     self.source.on('sync', self._syncToAutomerge.bind(self, self.source))
@@ -98,13 +95,30 @@ Hypermerge.prototype._open = function (cb) {
       self.doc.registerHandler(self._newChanges.bind(self))
       self.previousDoc = self.doc.get()
 
-      self._syncToAutomerge(self.source, () => {
-        self._syncToAutomerge(self.local, () => {
-          self._findMissingPeers(cb)
-        })
-      })
+      cb()
     })
   })
+}
+
+Hypermerge.prototype.getMissing = function (cb) {
+  cb = cb || noop
+  const self = this
+
+  if (self.source.writable) {
+    self._syncToAutomerge(self.source, () => {
+      findMissingPeers(cb)
+    })
+  } else {
+    self._syncToAutomerge(self.source, () => {
+      self._syncToAutomerge(self.local, () => {
+        findMissingPeers(cb)
+      })
+    })
+  }
+
+  function findMissingPeers (cb) {
+    self._findMissingPeers(cb)
+  }
 }
 
 Hypermerge.prototype._findMissingPeers = function (cb) {
@@ -126,7 +140,9 @@ Hypermerge.prototype._findMissingPeers = function (cb) {
       return cb()
     }
     self.findingMissingPeers = true
+    self._debugLog(`Connecting missing peer ${key.toString('hex')}`)
     self.connectPeer(key, () => {
+      self._debugLog(`Connected missing peer ${key.toString('hex')}`)
       connectMissingPeers(cb)
     })
   }
@@ -175,7 +191,15 @@ Hypermerge.prototype._createFeed = function (key) {
   // var feed = this.multicore.createFeed(key, {valueEncoding: 'json'})
   var feed = this.multicore.createFeed(key)
   // feed.on('ready', () => this._debugLog(`Ready ${key && key.toString('hex')}`))
-  feed.on('error', err => { this.emit(err) })
+  feed.on('error', err => { this.emit('error', err) })
+  /*
+  feed.on('peer-add', peer => {
+    this._debugLog(`peer-add ${peer.feed.key.toString('hex')}`)
+  })
+  feed.on('peer-remove', peer => {
+    this._debugLog(`peer-remove ${peer.feed.key.toString('hex')}`)
+  })
+  */
   /*
   feed.on('sync', () => this._debugLog(
     `sync ${feed.key.toString('hex')} ${feed.length}`
@@ -196,14 +220,21 @@ Hypermerge.prototype._syncToAutomerge = function (feed, cb) {
   self.lastSeen[key] = feed.length
   const changes = []
 
-  // self._debugLog(`_syncToAutomerge ${feed.key.toString('hex')} ${feed.length}`)
+  self._debugLog(`_syncToAutomerge ${feed.key.toString('hex')} ${feed.length}`)
   if (prevLastSeen === self.lastSeen[key]) {
     return cb()
   }
 
-  fetchRecords(prevLastSeen + 1, self.lastSeen[key], () => {
+  const to = self.lastSeen[key]
+  fetchRecords(prevLastSeen + 1, to, () => {
+    self._debugLog(`applyChanges ${changes.length}`)
     self.doc.applyChanges(changes)
-    cb()
+    if (feed.length > to) {
+      self._debugLog(`Feed grew ${feed.length} (was ${to}), loading more`)
+      self._syncToAutomerge(feed, cb)
+    } else {
+      cb()
+    }
   })
 
   function fetchRecords (from, to, cb) {
@@ -241,8 +272,6 @@ Hypermerge.prototype._newChanges = function (doc) {
     .filter(change => change.seq > feed.length)
     .forEach(change => {
       const {seq} = change
-      // console.log('Jim append', change, feed.length)
-      // process.exit(1)
       feed.append(JSON.stringify(change), err => {
         if (err) {
           console.error('Error ' + seq, err)
@@ -254,6 +283,7 @@ Hypermerge.prototype._newChanges = function (doc) {
 
 Hypermerge.prototype._debugLog = function (message) {
   if (this.opts.debugLog) {
+    // console.log(message)
     this.emit('debugLog', message)
   }
 }
