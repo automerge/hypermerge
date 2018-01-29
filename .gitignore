@@ -1,3 +1,4 @@
 node_modules
 *.swp
 package-lock.json
+.nyc_output
