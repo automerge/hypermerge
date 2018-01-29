@@ -28,194 +28,31 @@ test('create a new actor and document', t => {
   })
 })
 
-/**
- * .openAll()
- *
- * Loads all the hypercore feeds from the storage directory (one per actor)
- * and/or the network swarm, and builds automerge documents for each
- * hypercore/actor.
- */
-
-/*
-sync.openAll()
-*/
-
-/**
- * .any()
- *
- * Have any automerge documents been built?
- */
-
-/*
-if (!sync.any()) {
-  dispatch({type: 'NEW_PROJECT_CLICKED'})
-}
-*/
-
-/**
- * .isWritable(hex)
- *
- * Is the hypercore writable?
- */
-
-/**
- * .update(doc)
- *
- * Finds any new changes for the submitted doc for the actor,
- * and appends the changes to the actor's hypercore feed
- */
-
-/*
-whenChanged(store, getProject, project => {
-  if (sync.isWritable(project._actorId)) sync.update(project)
+test('does .any() method work?', t => {
+  t.plan(2)
+  const tmpdir = tmp.dirSync({unsafeCleanup: true})
+  const hm = new HyperMerge({path: tmpdir.name})
+  hm.core.ready(() => {
+    t.notOk(hm.any(), 'empty hypermerge return false for .any()')
+    hm.create()
+    t.ok(hm.any(), 'hypermerge with doc returns true for .any()')
+    hm.swarm.close()
+    tmpdir.removeCallback()
+  })
 })
-*/
 
-/**
- * .peerInfo = ...
- *
- * Just stores peerInfo in the object. Not really part of the API.
- */
+// FIXME: Test for .any()
 
-/*
-whenChanged(store, state => state.peerInfo, info => {
-  sync.peerInfo = info.toJS()
-})
-*/
+// FIXME: Test for .isWritable(hex)
 
-/**
- * .delete(hex)
- *
- * Removes hypercore feed for an actor and automerge doc.
- *
- * Should leave the network swarm. Doesn't remove files from disk.
-/*
+// FIXME: Test for .update(doc)
 
-whenChanged(store, state => state.deletingProjectId, id => {
-  if (!id) return
+// FIXME: Test for .delete(hex)
 
-  sync.delete(id)
-  dispatch({type: 'PROJECT_DELETED', id})
-})
-*/
+// FIXME: Test for .fork(hex)
 
-/**
- * .fork(hex)
- *
- * Creates a new actor hypercore feed and automerge document, with
- * an empty change that depends on the document for another actor
-/*
+// FIXME: Test for .merge(hex, hex2)
 
-whenChanged(store, state => state.clonedProjectId, id => {
-  if (!id) return
+// FIXME: Test for .open(hex)
 
-  const project = sync.fork(id)
-  dispatch({type: 'PROJECT_CLONED', project})
-})
-*/
-
-/**
- * .merge(hex, hex2)
- *
- * Takes all the changes from another actor (hex2) and adds them to
- * the automerge doc.
- */
-
-/*
-whenChanged(store, state => state.mergingProjectId, id => {
-  if (!id) return
-
-  const currentId = store.getState().present.currentProjectId
-
-  const project = sync.merge(currentId, id)
-  dispatch({type: 'PROJECT_MERGED', project})
-})
-*/
-
-/**
- * .open(hex)
- *
- * Loads a single hypercore feed from the storage directory for a single actor
- * and/or the network swarm, and builds an automerge document.
- */
-
-/*
-whenChanged(store, state => state.openingProjectId, id => {
-  if (!id) return
-  sync.open(id)
-})
-*/
-
-/**
- * Event: 'document:ready'
- *   Args: doc
- *
- * Emitted when all the data from a hypercore feed has been downloaded.
-/*
-
-sync.on('document:ready', project => {
-  if (!project.get('relativeId')) return
-  dispatch({type: "REMOTE_PROJECT_OPENED", project})
-})
-*/
-
-/**
- * Event: 'document:updated'
- *   Args: doc
- *
- * Emitted when changes have been applied to an automerge document for an actor
- */
-
-/*
-sync.on('document:updated', project => {
-  if (!project.get('relativeId')) return
-  dispatch({type: "REMOTE_PROJECT_UPDATED", project})
-})
-*/
-
-/**
- * Event: 'merge:listening'
- *   Args: merge
- *
- * Not implemented?
- */
-
-/*
-sync.on('merge:listening', merge => {
-  const key = merge.key.toString('hex')
-  const id = (merge.local || merge.source).id.toString('hex')
-
-  dispatch({type: 'SELF_CONNECTED', key, id})
-})
-*/
-
-/**
- * Event: 'merge:joined'
- *   Args: merge
- *
- * Not implemented?
- */
-
-/*
-sync.on('merge:joined', (merge, {id, info}) => {
-  const key = merge.key.toString('hex')
-  dispatch({type: 'PEER_CONNECTED', key, id, info})
-
-  const {avatarKey} = info.peerInfo || {}
-  if (avatarKey) sync.openDocument(avatarKey)
-})
-*/
-
-/**
- * Event: 'merge:left'
- *   Args: merge
- *
- * Not implemented?
- */
-
-/*
-sync.on('merge:left', (merge, {id}) => {
-  const key = merge.key.toString('hex')
-  dispatch({type: 'PEER_DISCONNECTED', key, id})
-})
-*/
+// FIXME: Test for .openAll()
