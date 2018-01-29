@@ -8,6 +8,7 @@
     "doc-build": "documentation build HyperMerge.js -f html -o docs",
     "tape": "tape tests/**/*.js",
     "test": "nyc tape tests/**/*.js | tap-nyc",
+    "coverage": "nyc report -r html && opn coverage/index.html",
     "precommit": "npm test && npm run doc-build",
     "prepush": "npm test"
   },
@@ -30,14 +31,12 @@
     "to-buffer": "^1.1.0"
   },
   "devDependencies": {
-    "debug": "^3.1.0",
     "documentation": "^5.3.5",
     "husky": "^0.14.3",
     "nyc": "^11.4.1",
-    "pump": "^2.0.1",
+    "opn-cli": "^3.1.0",
     "tap-nyc": "^1.0.3",
     "tape": "^4.8.0",
-    "through2": "^2.0.3",
     "tmp": "^0.0.33"
   }
 }
