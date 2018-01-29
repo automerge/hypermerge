@@ -75,12 +75,20 @@ module.exports = class HyperMerge extends EventEmitter {
     })
   }
 
-  // Local mutations:
-
+  /**
+   * Creates a new hypercore feed for a new actor and returns a new
+   * automerge document.
+   */
   create () {
     return this.document()
   }
 
+  /**
+   * Finds any new changes for the submitted doc for the actor,
+   * and appends the changes to the actor's hypercore feed.
+   *
+   * @param {Object} doc - document to find changes for
+   */
   update (doc) {
     const hex = this.getHex(doc)
 
@@ -113,6 +121,12 @@ module.exports = class HyperMerge extends EventEmitter {
     return this.update(doc)
   }
 
+  /**
+   * Removes hypercore feed for an actor and automerge doc.
+   *
+   * Leaves the network swarm. Doesn't remove files from disk.
+   * @param {string} hex
+   */
   delete (hex) {
     const doc = this.find(hex)
     this.core.archiver.remove(hex)
