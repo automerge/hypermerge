@@ -10,9 +10,9 @@ const tmp = require('tmp')
 
 /*
 const sync = global.sync = new HyperMerge({
-	peerInfo: store.getState().present.peerInfo.toJS(),
-	port: 3282 + clientId,
-	path: `./.data/pixelpusher-v7/client-${clientId}`,
+  peerInfo: store.getState().present.peerInfo.toJS(),
+  port: 3282 + clientId,
+  path: `./.data/pixelpusher-v7/client-${clientId}`,
 }).once('ready', _syncReady)
 */
 
@@ -50,7 +50,7 @@ sync.openAll()
 
 /*
 if (!sync.any()) {
-	dispatch({type: 'NEW_PROJECT_CLICKED'})
+  dispatch({type: 'NEW_PROJECT_CLICKED'})
 }
 */
 
@@ -69,7 +69,7 @@ if (!sync.any()) {
 
 /*
 whenChanged(store, getProject, project => {
-	if (sync.isWritable(project._actorId)) sync.update(project)
+  if (sync.isWritable(project._actorId)) sync.update(project)
 })
 */
 
@@ -81,7 +81,7 @@ whenChanged(store, getProject, project => {
 
 /*
 whenChanged(store, state => state.peerInfo, info => {
-	sync.peerInfo = info.toJS()
+  sync.peerInfo = info.toJS()
 })
 */
 
@@ -94,11 +94,11 @@ whenChanged(store, state => state.peerInfo, info => {
 
 /*
 whenChanged(store, state => state.createdProjectCount, shouldCreate => {
-	if (!shouldCreate) return
+  if (!shouldCreate) return
 
-	const project = Init.project(sync.create())
+  const project = Init.project(sync.create())
 
-	dispatch({type: "PROJECT_CREATED", project})
+  dispatch({type: "PROJECT_CREATED", project})
 })
 */
 
@@ -111,10 +111,10 @@ whenChanged(store, state => state.createdProjectCount, shouldCreate => {
 /*
 
 whenChanged(store, state => state.deletingProjectId, id => {
-	if (!id) return
+  if (!id) return
 
-	sync.delete(id)
-	dispatch({type: 'PROJECT_DELETED', id})
+  sync.delete(id)
+  dispatch({type: 'PROJECT_DELETED', id})
 })
 */
 
@@ -126,10 +126,10 @@ whenChanged(store, state => state.deletingProjectId, id => {
 /*
 
 whenChanged(store, state => state.clonedProjectId, id => {
-	if (!id) return
+  if (!id) return
 
-	const project = sync.fork(id)
-	dispatch({type: 'PROJECT_CLONED', project})
+  const project = sync.fork(id)
+  dispatch({type: 'PROJECT_CLONED', project})
 })
 */
 
@@ -142,12 +142,12 @@ whenChanged(store, state => state.clonedProjectId, id => {
 
 /*
 whenChanged(store, state => state.mergingProjectId, id => {
-	if (!id) return
+  if (!id) return
 
-	const currentId = store.getState().present.currentProjectId
+  const currentId = store.getState().present.currentProjectId
 
-	const project = sync.merge(currentId, id)
-	dispatch({type: 'PROJECT_MERGED', project})
+  const project = sync.merge(currentId, id)
+  dispatch({type: 'PROJECT_MERGED', project})
 })
 */
 
@@ -156,12 +156,12 @@ whenChanged(store, state => state.mergingProjectId, id => {
  *
  * Loads a single hypercore feed from the storage directory for a single actor
  * and/or the network swarm, and builds an automerge document.
- */ 
+ */
 
 /*
 whenChanged(store, state => state.openingProjectId, id => {
-	if (!id) return
-	sync.open(id)
+  if (!id) return
+  sync.open(id)
 })
 */
 
@@ -173,8 +173,8 @@ whenChanged(store, state => state.openingProjectId, id => {
 /*
 
 sync.on('document:ready', project => {
-	if (!project.get('relativeId')) return
-	dispatch({type: "REMOTE_PROJECT_OPENED", project})
+  if (!project.get('relativeId')) return
+  dispatch({type: "REMOTE_PROJECT_OPENED", project})
 })
 */
 
@@ -187,8 +187,8 @@ sync.on('document:ready', project => {
 
 /*
 sync.on('document:updated', project => {
-	if (!project.get('relativeId')) return
-	dispatch({type: "REMOTE_PROJECT_UPDATED", project})
+  if (!project.get('relativeId')) return
+  dispatch({type: "REMOTE_PROJECT_UPDATED", project})
 })
 */
 
@@ -196,15 +196,15 @@ sync.on('document:updated', project => {
  * Event: 'merge:listening'
  *   Args: merge
  *
- * Not implemented? 
+ * Not implemented?
  */
 
 /*
 sync.on('merge:listening', merge => {
-	const key = merge.key.toString('hex')
-	const id = (merge.local || merge.source).id.toString('hex')
+  const key = merge.key.toString('hex')
+  const id = (merge.local || merge.source).id.toString('hex')
 
-	dispatch({type: 'SELF_CONNECTED', key, id})
+  dispatch({type: 'SELF_CONNECTED', key, id})
 })
 */
 
@@ -212,16 +212,16 @@ sync.on('merge:listening', merge => {
  * Event: 'merge:joined'
  *   Args: merge
  *
- * Not implemented? 
+ * Not implemented?
  */
 
 /*
 sync.on('merge:joined', (merge, {id, info}) => {
-	const key = merge.key.toString('hex')
-	dispatch({type: 'PEER_CONNECTED', key, id, info})
+  const key = merge.key.toString('hex')
+  dispatch({type: 'PEER_CONNECTED', key, id, info})
 
-	const {avatarKey} = info.peerInfo || {}
-	if (avatarKey) sync.openDocument(avatarKey)
+  const {avatarKey} = info.peerInfo || {}
+  if (avatarKey) sync.openDocument(avatarKey)
 })
 */
 
@@ -229,15 +229,12 @@ sync.on('merge:joined', (merge, {id, info}) => {
  * Event: 'merge:left'
  *   Args: merge
  *
- * Not implemented? 
+ * Not implemented?
  */
 
 /*
 sync.on('merge:left', (merge, {id}) => {
-	const key = merge.key.toString('hex')
-	dispatch({type: 'PEER_DISCONNECTED', key, id})
+  const key = merge.key.toString('hex')
+  dispatch({type: 'PEER_DISCONNECTED', key, id})
 })
 */
-
-
-

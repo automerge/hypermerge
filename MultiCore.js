@@ -1,6 +1,5 @@
 const {EventEmitter} = require('events')
 const Archiver = require('hypercore-archiver')
-var protocol = require('hypercore-protocol')
 const hypercore = require('hypercore')
 const crypto = require('hypercore/lib/crypto')
 const thunky = require('thunky')
@@ -18,7 +17,7 @@ Archiver.prototype.createFeed = function (key, opts) {
     key = keyPair.publicKey
     opts.secretKey = keyPair.secretKey
   }
-  const dk = hypercore.discoveryKey(key).toString('hex')
+  const dk = hypercore.discoveryKey(toBuffer(key, 'hex')).toString('hex')
 
   if (this.feeds[dk]) {
     return this.feeds[dk]

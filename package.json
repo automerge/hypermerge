@@ -6,8 +6,8 @@
   "scripts": {
     "doc-serve": "documentation serve --watch HyperMerge.js",
     "doc-build": "documentation build HyperMerge.js -f html -o docs",
-    "tape": "tape tests/**/*.js",
-    "test": "nyc tape tests/**/*.js | tap-nyc",
+    "tape": "standard && tape tests/**/*.js",
+    "test": "standard && nyc tape tests/**/*.js | tap-nyc",
     "coverage": "nyc report -r html && opn coverage/index.html",
     "precommit": "npm test && npm run doc-build",
     "prepush": "npm test"
@@ -35,8 +35,14 @@
     "husky": "^0.14.3",
     "nyc": "^11.4.1",
     "opn-cli": "^3.1.0",
+    "standard": "^10.0.3",
     "tap-nyc": "^1.0.3",
     "tape": "^4.8.0",
     "tmp": "^0.0.33"
+  },
+  "standard": {
+    "ignore": [
+      "docs"
+    ]
   }
 }
