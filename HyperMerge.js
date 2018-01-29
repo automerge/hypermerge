@@ -286,7 +286,7 @@ const swarm = require('hypercore-archiver/swarm')
 
   _onListening() {
     return (...args) => {
-      this._debug('_onListening', ...args)
+      // this._debug('_onListening', ...args)
     }
   }
 
