@@ -6,7 +6,7 @@
   "scripts": {
     "doc-serve": "documentation serve --watch HyperMerge.js",
     "doc-build": "documentation build HyperMerge.js -f html -o docs",
-    "tape": "standard && tape tests/**/*.js",
+    "tape": "tape tests/**/*.js",
     "test": "standard && nyc tape tests/**/*.js | tap-nyc",
     "coverage": "nyc report -r html && opn coverage/index.html",
     "precommit": "npm test && npm run doc-build",

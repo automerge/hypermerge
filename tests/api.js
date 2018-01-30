@@ -41,7 +41,36 @@ test('does .any() method work?', t => {
   })
 })
 
-// FIXME: Test for .any()
+test('does .isWritable() work?', t => {
+  t.plan(2)
+  const tmpdir1 = tmp.dirSync({unsafeCleanup: true})
+  const hm1 = new HyperMerge({path: tmpdir1.name})
+  const tmpdir2 = tmp.dirSync({unsafeCleanup: true})
+  const hm2 = new HyperMerge({path: tmpdir2.name})
+  hm1.core.ready(() => {
+    hm2.core.ready(() => {
+      const writableDoc = hm1.create()
+      const hex = writableDoc._actorId
+      hm1.on('document:ready', () => {
+        const feed = hm1.feed(hex)
+        feed.ready(() => {
+          t.ok(hm1.isWritable(hex), 'Original doc is writable')
+        })
+      })
+      hm2.document(hex)
+      hm2.on('document:ready', () => {
+        const feed = hm2.feed(hex)
+        feed.ready(() => {
+          t.notOk(hm2.isWritable(hex), 'Cloned doc is read-only')
+        })
+      })
+      hm1.swarm.close()
+      hm2.swarm.close()
+      tmpdir1.removeCallback()
+      tmpdir2.removeCallback()
+    })
+  })
+})
 
 // FIXME: Test for .isWritable(hex)
 
