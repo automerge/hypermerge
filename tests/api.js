@@ -169,6 +169,89 @@ test('.fork() a document, make changes, and then .merge() it', t => {
   })
 })
 
+test('.open() on document with dependencies fetches all of them', t => {
+  t.plan(5)
+  const tmpdir1 = tmp.dirSync({unsafeCleanup: true})
+  const hm1 = new HyperMerge({path: tmpdir1.name})
+  const tmpdir2 = tmp.dirSync({unsafeCleanup: true})
+  const hm2 = new HyperMerge({path: tmpdir2.name})
+  hm1.core.ready(() => {
+    hm2.core.ready(() => {
+      const firstDoc = hm1.create()
+      const firstActorHex = hm1.getHex(firstDoc)
+      hm1.feed(firstActorHex).once('ready', () => {
+        // First change
+        hm1.update(Automerge.change(
+          firstDoc,
+          'First actor makes a change',
+          doc => {
+            doc.test = 1
+          }
+        ))
+        t.deepEqual(hm1.document(firstActorHex).toJS(), {
+          _conflicts: {},
+          _objectId: '00000000-0000-0000-0000-000000000000',
+          test: 1
+        })
+
+        // Fork to second document
+        const secondDoc = hm1.fork(firstActorHex)
+        const secondActorHex = hm1.getHex(secondDoc)
+        hm1.feed(secondActorHex).once('ready', () => {
+          t.deepEqual(hm1.document(secondActorHex).toJS(), {
+            _conflicts: {},
+            _objectId: '00000000-0000-0000-0000-000000000000',
+            test: 1
+          })
+          hm1.update(Automerge.change(
+            secondDoc,
+            'Second actor makes a change',
+            doc => {
+              doc.test = 2
+            }
+          ))
+          t.deepEqual(hm1.document(secondActorHex).toJS(), {
+            _conflicts: {},
+            _objectId: '00000000-0000-0000-0000-000000000000',
+            test: 2
+          })
+
+          // Merge back to first document
+          hm1.merge(firstActorHex, secondActorHex)
+          t.deepEqual(hm1.document(firstActorHex).toJS(), {
+            _conflicts: {},
+            _objectId: '00000000-0000-0000-0000-000000000000',
+            test: 2
+          })
+
+          // Add a slight delay to give the network a chance to update
+          setTimeout(() => {
+            // On second hypermerge, .open() the second document
+            hm2.open(secondActorHex)
+            hm2.once('document:updated', () => {
+              hm2.once('document:updated', () => {
+                hm2.once('document:updated', () => {
+                  t.deepEqual(hm2.document(secondActorHex).toJS(), {
+                    _conflicts: {},
+                    _objectId: '00000000-0000-0000-0000-000000000000',
+                    test: 2
+                  })
+
+                  // Cleanup
+                  hm1.swarm.close()
+                  hm2.swarm.close()
+                  tmpdir1.removeCallback()
+                  tmpdir2.removeCallback()
+                })
+              })
+            })
+          })
+        })
+      })
+    })
+  })
+})
+
 // FIXME: Test for .delete(hex)
 
 // FIXME: Test for .openAll()
