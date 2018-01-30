@@ -267,13 +267,6 @@ module.exports = class HyperMerge extends EventEmitter {
     })
   }
 
-  _getDependentBlocks (hex) {
-    const deps = Automerge.getMissingDeps(this.document(hex))
-
-    return Promise.all(Object.keys(deps).map(hx =>
-      this._getBlocks(hx, deps[hx])))
-  }
-
   _applyBlocks (hex, blocks) {
     return this._applyChanges(hex, blocks.map(data => JSON.parse(data)))
   }
@@ -314,8 +307,6 @@ module.exports = class HyperMerge extends EventEmitter {
       port: this.port,
       encrypt: true
     })
-    .on('listening', this._onListening())
-    .on('connection', this._onConnection())
   }
 
   _onDownload (hex) {
@@ -325,27 +316,11 @@ module.exports = class HyperMerge extends EventEmitter {
     }
   }
 
-  _onConnection () {
-    return (conn, info) => {
-      // this._debug('_onConnection', conn)
-    }
-  }
-
-  _onListening () {
-    return (...args) => {
-      // this._debug('_onListening', ...args)
-    }
-  }
-
   _promise (f) {
     return new Promise((resolve, reject) => {
       f((err, x) => {
         err ? reject(err) : resolve(x)
       })
     })
-  }
-
-  _debug (...args) {
-    console.log('[HyperMerge]', ...args)
   }
 }
