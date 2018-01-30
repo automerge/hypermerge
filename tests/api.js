@@ -51,7 +51,7 @@ test('does .isWritable() work?', t => {
   hm1.core.ready(() => {
     hm2.core.ready(() => {
       const writableDoc = hm1.create()
-      const hex = writableDoc._actorId
+      const hex = hm1.getHex(writableDoc)
       hm1.on('document:ready', () => {
         const feed = hm1.feed(hex)
         feed.ready(() => {
@@ -82,11 +82,11 @@ test('.update() a document and .open() it on a second node', t => {
   hm1.core.ready(() => {
     hm2.core.ready(() => {
       const writableDoc = hm1.create()
+      const hex = hm1.getHex(writableDoc)
       const newDoc = Automerge.change(writableDoc, doc => {
         doc.test = 1
       })
       hm1.update(newDoc)
-      const hex = writableDoc._actorId
       // Add a slight delay to give the network a chance to update
       setTimeout(() => {
         hm2.open(hex)
@@ -109,10 +109,66 @@ test('.update() a document and .open() it on a second node', t => {
   })
 })
 
-// FIXME: Test for .openAll()
+test('.fork() a document, make changes, and then .merge() it', t => {
+  t.plan(4)
+  const tmpdir = tmp.dirSync({unsafeCleanup: true})
+  const hm = new HyperMerge({path: tmpdir.name})
+  hm.core.ready(() => {
+    const firstDoc = hm.create()
+    const firstActorHex = hm.getHex(firstDoc)
+    hm.feed(firstActorHex).once('ready', () => {
+      // First change
+      hm.update(Automerge.change(
+        firstDoc,
+        'First actor makes a change',
+        doc => {
+          doc.test = 1
+        }
+      ))
+      t.deepEqual(hm.document(firstActorHex).toJS(), {
+        _conflicts: {},
+        _objectId: '00000000-0000-0000-0000-000000000000',
+        test: 1
+      })
+
+      // Fork to second document
+      const secondDoc = hm.fork(firstActorHex)
+      const secondActorHex = hm.getHex(secondDoc)
+      hm.feed(secondActorHex).once('ready', () => {
+        t.deepEqual(hm.document(secondActorHex).toJS(), {
+          _conflicts: {},
+          _objectId: '00000000-0000-0000-0000-000000000000',
+          test: 1
+        })
+        hm.update(Automerge.change(
+          secondDoc,
+          'Second actor makes a change',
+          doc => {
+            doc.test = 2
+          }
+        ))
+        t.deepEqual(hm.document(secondActorHex).toJS(), {
+          _conflicts: {},
+          _objectId: '00000000-0000-0000-0000-000000000000',
+          test: 2
+        })
+
+        // Merge back to first document
+        hm.merge(firstActorHex, secondActorHex)
+        t.deepEqual(hm.document(firstActorHex).toJS(), {
+          _conflicts: {},
+          _objectId: '00000000-0000-0000-0000-000000000000',
+          test: 2
+        })
+
+        // Cleanup
+        hm.swarm.close()
+        tmpdir.removeCallback()
+      })
+    })
+  })
+})
 
 // FIXME: Test for .delete(hex)
 
-// FIXME: Test for .fork(hex)
-
-// FIXME: Test for .merge(hex, hex2)
+// FIXME: Test for .openAll()
