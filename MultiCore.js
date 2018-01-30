@@ -22,9 +22,6 @@ Archiver.prototype.createFeed = function (key, opts) {
   if (this.feeds[dk]) {
     return this.feeds[dk]
   }
-  if (this.archives[dk]) {
-    return this.archives[dk]
-  }
 
   opts.sparse = this.sparse
   const feed = hypercore(storage(key), key, opts)
