@@ -1,6 +1,8 @@
 # Hypermerge
 
-There are several projects here:
+## Documentation
 
-* [HyperMerge](README-HyperMerge.md)
-* [MultiCore](README-MultiCore.md)
+API documentation is available as HTML in [/docs](/docs/index.html).
+
+Run `npm run doc-serve` for a live reloading documentation server.
+
