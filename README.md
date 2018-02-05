@@ -1,8 +1,8 @@
 # Hypermerge
 
-There are several projects here:
+## Documentation
 
-* [hypermerge](README-hypermerge.md)
-* [multicore](README-multicore.md)
-* [hypermerge-micro](README-hypermerge-micro.md)
-* hypermerge-micro-immutable (similar to hypermerge-micro, but supporting changes via Immutable.js)
+API documentation is available as HTML in [/docs](/docs/index.html).
+
+Run `npm run doc-serve` for a live reloading documentation server.
+
