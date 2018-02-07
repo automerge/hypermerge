@@ -255,6 +255,10 @@ module.exports = class HyperMerge extends EventEmitter {
   _loadMissingBlocks (hex) {
     const deps = Automerge.getMissingDeps(this.document(hex))
 
+    if (Object.keys(deps).length === 0) {
+      return Promise.resolve()
+    }
+
     return Promise.all(Object.keys(deps).map(actor => {
       const last = deps[actor] - 1 // seqs start at 1
       const first = this._maxRequested(hex, actor, last)
@@ -262,6 +266,7 @@ module.exports = class HyperMerge extends EventEmitter {
       return this._getBlockRange(actor, first, last)
       .then(blocks => this._applyBlocks(hex, blocks))
     }))
+    .then(() => this._loadMissingBlocks(hex))
   }
 
   _getOwnBlocks (hex) {
