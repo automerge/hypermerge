@@ -211,9 +211,9 @@ atomic-batcher@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/atomic-batcher/-/atomic-batcher-1.0.2.tgz#d16901d10ccec59516c197b9ccd8930689b813b4"
 
-"automerge@github:inkandswitch/automerge#pixelpusher-support":
+"automerge@github:automerge/automerge#immutable-api":
   version "0.6.0"
-  resolved "https://codeload.github.com/inkandswitch/automerge/tar.gz/173436a663f83e2467966550f13f741fc6c0537d"
+  resolved "https://codeload.github.com/automerge/automerge/tar.gz/4aeb602f80b5a57ea598cab87d83b06093bf2156"
   dependencies:
     immutable "^3.8.1"
     transit-immutable-js "^0.7.0"

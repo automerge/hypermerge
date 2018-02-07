@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/inkandswitch/hypermerge#readme",
   "dependencies": {
-    "automerge": "github:inkandswitch/automerge#pixelpusher-support",
+    "automerge": "github:automerge/automerge#immutable-api",
     "hypercore": "^6.12.0",
     "hypercore-archiver": "^4.4.1",
     "hypercore-protocol": "^6.5.1",
