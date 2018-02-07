@@ -138,7 +138,10 @@ module.exports = class HyperMerge extends EventEmitter {
    * @param {string} hex2 - actor to copy changes from
    */
   merge (hex, hex2) {
-    const doc = Automerge.merge(this.find(hex), this.find(hex2))
+    const doc = Automerge.change(
+      Automerge.merge(this.find(hex), this.find(hex2)),
+      `Merged with ${hex2}`,
+      () => {})
     return this.update(doc)
   }
 
