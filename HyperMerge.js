@@ -111,6 +111,7 @@ module.exports = class HyperMerge extends EventEmitter {
 
     const pDoc = this.find(hex)
     const changes = Automerge.getChanges(pDoc, doc)
+      .filter(change => change.actor === hex)
 
     this._appendAll(hex, changes)
 
