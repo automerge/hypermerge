@@ -268,7 +268,9 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   _applyChanges (hex, changes) {
-    return this._setRemote(Automerge.applyChanges(this.document(hex), changes))
+    return changes.length > 0
+      ? this._setRemote(Automerge.applyChanges(this.document(hex), changes))
+      : this.document(hex)
   }
 
   _maxRequested (hex, actor, max) {

@@ -91,18 +91,16 @@ test('.update() a document and .open() it on a second node', t => {
       setTimeout(() => {
         hm2.open(hex)
         hm2.once('document:updated', () => {
-          hm2.once('document:updated', () => {
-            const clonedDoc = hm2.open(hex)
-            t.deepEqual(clonedDoc.toJS(), {
-              _conflicts: {},
-              _objectId: '00000000-0000-0000-0000-000000000000',
-              test: 1
-            })
-            hm1.swarm.close()
-            hm2.swarm.close()
-            tmpdir1.removeCallback()
-            tmpdir2.removeCallback()
+          const clonedDoc = hm2.open(hex)
+          t.deepEqual(clonedDoc.toJS(), {
+            _conflicts: {},
+            _objectId: '00000000-0000-0000-0000-000000000000',
+            test: 1
           })
+          hm1.swarm.close()
+          hm2.swarm.close()
+          tmpdir1.removeCallback()
+          tmpdir2.removeCallback()
         })
       }, 1000)
     })
