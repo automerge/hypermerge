@@ -216,16 +216,11 @@ module.exports = class HyperMerge extends EventEmitter {
 
     feed.on('download', this._onDownload(hex))
 
-    this._loadAllBlocks(hex)
-    .then(() => {
-      /**
-       * Emitted when all the data from a hypercore feed has been downloaded.
-       *
-       * @event document:ready
-       * @type {object} - automerge document
-       */
-      this.emit('document:ready', this.find(hex))
-    })
+    if (feed.opened) {
+      this._onFeedReady(hex)()
+    } else {
+      feed.on('ready', this._onFeedReady(hex))
+    }
 
     return feed
   }
@@ -308,6 +303,29 @@ module.exports = class HyperMerge extends EventEmitter {
       port: this.port,
       encrypt: true
     })
+  }
+
+  _onFeedReady (hex) {
+    return () => {
+      /**
+       * Emitted when a hypercore is ready.
+       *
+       * @event feed:ready
+       * @type {object} - hypercore feed
+       */
+      this.emit('feed:ready', this.feed(hex))
+
+      this._loadAllBlocks(hex)
+      .then(() => {
+        /**
+         * Emitted when all the data from a hypercore feed has been downloaded.
+         *
+         * @event document:ready
+         * @type {object} - automerge document
+         */
+        this.emit('document:ready', this.find(hex))
+      })
+    }
   }
 
   _onDownload (hex) {

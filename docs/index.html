@@ -111,9 +111,9 @@
               
                 
                 <li><a
-                  href='#eventdocumentready'
+                  href='#eventdocumentupdated'
                   class="">
-                  document:ready
+                  document:updated
                   
                 </a>
                 
@@ -121,9 +121,19 @@
               
                 
                 <li><a
-                  href='#eventdocumentupdated'
+                  href='#eventfeedready'
                   class="">
-                  document:updated
+                  feed:ready
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#eventdocumentready'
+                  class="">
+                  document:ready
                   
                 </a>
                 
@@ -860,8 +870,8 @@ the automerge doc.</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventdocumentready'>
-      document:ready
+    <h3 class='fl m0' id='eventdocumentupdated'>
+      document:updated
     </h3>
     
     
@@ -871,7 +881,7 @@ the automerge doc.</p>
   <p>Emitted when all the data from a hypercore feed has been downloaded.</p>
 
 
-  <div class='pre p1 fill-light mt0'>document:ready</div>
+  <div class='pre p1 fill-light mt0'>document:updated</div>
   
   
 
@@ -907,8 +917,55 @@ the automerge doc.</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventdocumentupdated'>
-      document:updated
+    <h3 class='fl m0' id='eventfeedready'>
+      feed:ready
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Emitted when a hypercore is ready.</p>
+
+
+  <div class='pre p1 fill-light mt0'>feed:ready</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='eventdocumentready'>
+      document:ready
     </h3>
     
     
@@ -918,7 +975,7 @@ the automerge doc.</p>
   <p>Emitted when all the data from a hypercore feed has been downloaded.</p>
 
 
-  <div class='pre p1 fill-light mt0'>document:updated</div>
+  <div class='pre p1 fill-light mt0'>document:ready</div>
   
   
 
