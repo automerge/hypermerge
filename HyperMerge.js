@@ -210,7 +210,9 @@ module.exports = class HyperMerge extends EventEmitter {
   feed (hex = null) {
     if (hex && this.feeds[hex]) return this.feeds[hex]
 
-    return this._trackFeed(this.core.createFeed(hex))
+    const key = hex ? Buffer.from(hex, 'hex') : null
+
+    return this._trackFeed(this.core.createFeed(key))
   }
 
   _appendAll (hex, changes) {
