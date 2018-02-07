@@ -156,6 +156,18 @@ module.exports = class HyperMerge extends EventEmitter {
     return doc
   }
 
+  share (hex, destHex) {
+    this.message(destHex, {type: 'KEY_SHARED', key: hex})
+  }
+
+  message (hex, msg) {
+    const data = Buffer.from(JSON.stringify(msg))
+
+    this.feed(hex).peers.forEach(peer => {
+      peer.stream.extension('hypermerge', data)
+    })
+  }
+
   /**
    * Is the hypercore writable?
    *
@@ -215,6 +227,7 @@ module.exports = class HyperMerge extends EventEmitter {
     this.feeds[hex] = feed
 
     feed.on('download', this._onDownload(hex))
+    feed.on('peer-add', this._onPeerAdded(hex))
 
     if (feed.opened) {
       this._onFeedReady(hex)()
@@ -303,7 +316,9 @@ module.exports = class HyperMerge extends EventEmitter {
   _joinSwarm () {
     this.swarm = swarm(this.core.archiver, {
       port: this.port,
-      encrypt: true
+      encrypt: true,
+      stream: opts =>
+        this.core.replicate(opts)
     })
   }
 
@@ -334,6 +349,55 @@ module.exports = class HyperMerge extends EventEmitter {
     return (_, data) => {
       this._applyBlocks(hex, [data])
       this._loadMissingBlocks(hex)
+    }
+  }
+
+  _onPeerAdded (hex) {
+    return peer => {
+      this.emit('peer:joined', hex, peer)
+      peer.stream.on('extension', this._onExtension(hex, peer))
+    }
+  }
+
+  _onPeerRemoved (hex) {
+    return peer => {
+      this.emit('peer:left', hex, peer)
+    }
+  }
+
+  _onExtension (hex, peer) {
+    return (name, data) => {
+      switch (name) {
+        case 'hypermerge':
+          return this._onMessage(hex, peer, data)
+        default:
+          this.emit('peer:extension', hex, name, data, peer)
+      }
+    }
+  }
+
+  _onMessage (hex, peer, data) {
+    const msg = JSON.parse(data)
+
+    switch (msg.type) {
+      case 'KEY_SHARED':
+        return this.document(msg.key)
+      case 'KEYS_SHARED':
+        return msg.keys.map(key => this.document(key))
+      default:
+        throw new Error(`Unknown HyperMerge message type: ${msg.type}`)
+    }
+  }
+
+  _onConnection () {
+    return (conn, info) => {
+      // console.log('_onConnection', conn)
+    }
+  }
+
+  _onListening () {
+    return (...args) => {
+      // console.log('_onListening', ...args)
     }
   }
 

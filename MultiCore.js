@@ -1,4 +1,5 @@
 const {EventEmitter} = require('events')
+const protocol = require('hypercore-protocol')
 const Archiver = require('hypercore-archiver')
 const hypercore = require('hypercore')
 const crypto = require('hypercore/lib/crypto')
@@ -65,6 +66,81 @@ class Multicore extends EventEmitter {
       throw new Error('multicore not ready, use .ready()')
     }
     return this.archiver.createFeed(key, opts)
+  }
+
+  replicate (opts) {
+    if (!opts) opts = {}
+
+    if (opts.discoveryKey) opts.discoveryKey = toBuffer(opts.discoveryKey, 'hex')
+    if (opts.key) opts.discoveryKey = hypercore.discoveryKey(toBuffer(opts.key, 'hex'))
+
+    const archiver = this.archiver
+
+    const stream = protocol({
+      live: true,
+      id: archiver.changes.id,
+      encrypt: opts.encrypt,
+      extensions: ['hypermerge']
+    })
+
+    stream.on('feed', add)
+    if (opts.channel || opts.discoveryKey) add(opts.channel || opts.discoveryKey)
+
+    function add (dk) {
+      archiver.ready(err => {
+        if (err) return stream.destroy(err)
+        if (stream.destroyed) return
+
+        const hex = dk.toString('hex')
+        const changesHex = archiver.changes.discoveryKey.toString('hex')
+
+        const archive = archiver.archives[hex]
+        if (archive) return onarchive()
+
+        const feed = changesHex === hex ? archiver.changes : archiver.feeds[hex]
+        if (feed) return onfeed()
+
+        function onarchive () {
+          archive.metadata.replicate({
+            stream: stream,
+            live: true
+          })
+          archive.content.replicate({
+            stream: stream,
+            live: true
+          })
+        }
+
+        function onfeed () {
+          if (stream.destroyed) return
+
+          stream.on('close', onclose)
+          stream.on('end', onclose)
+
+          feed.on('_archive', onarchive)
+          feed.replicate({
+            stream: stream,
+            live: true
+          })
+
+          function onclose () {
+            feed.removeListener('_archive', onarchive)
+          }
+
+          function onarchive () {
+            if (stream.destroyed) return
+
+            const content = archiver.archives[hex].content
+            content.replicate({
+              stream: stream,
+              live: true
+            })
+          }
+        }
+      })
+    }
+
+    return stream
   }
 }
 
