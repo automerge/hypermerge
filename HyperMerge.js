@@ -3,6 +3,9 @@ const Automerge = require('automerge')
 const MultiCore = require('./MultiCore')
 const swarm = require('hypercore-archiver/swarm')
 
+// The first block is used for metadata:
+const START_BLOCK = 1
+
 /**
  * Create and share Automerge documents using peer-to-peer networking.
  *
@@ -26,7 +29,7 @@ module.exports = class HyperMerge extends EventEmitter {
     this.feeds = {}
     this.docs = {}
     this.metadatas = {}
-    this.requestedDeps = {}
+    this.requestedBlocks = {}
     // TODO allow ram:
     this.core = new MultiCore(path)
     this._joinSwarm()
@@ -285,7 +288,7 @@ module.exports = class HyperMerge extends EventEmitter {
   _loadAllBlocks (hex) {
     return this._getOwnBlocks(hex)
     .then(blocks => {
-      this._maxRequested(hex, hex, blocks.length - 1)
+      this._maxRequested(hex, hex, blocks.length)
       return this._applyBlocks(hex, blocks)
     })
     .then(() => this._loadMissingBlocks(hex))
@@ -294,27 +297,25 @@ module.exports = class HyperMerge extends EventEmitter {
   _loadMissingBlocks (hex) {
     const deps = Automerge.getMissingDeps(this.document(hex))
 
-    if (Object.keys(deps).length === 0) {
-      return Promise.resolve()
-    }
-
     return Promise.all(Object.keys(deps).map(actor => {
-      const last = deps[actor] // NOTE: first block is metadata, don't subtract 1
+      const last = deps[actor] + 1 // last is exclusive
       const first = this._maxRequested(hex, actor, last)
+
+      // Stop requesting if done:
+      if (first === last) return null
 
       return this._getBlockRange(actor, first, last)
       .then(blocks => this._applyBlocks(hex, blocks))
+      .then(() => this._loadMissingBlocks(hex))
     }))
-    .then(() => this._loadMissingBlocks(hex))
   }
 
   _getOwnBlocks (hex) {
-    // NOTE: change blocks start at 1; metadata is at 0:
-    return this._getBlockRange(hex, 1, this.length(hex) - 1)
+    return this._getBlockRange(hex, START_BLOCK, this.length(hex))
   }
 
   _getBlockRange (hex, first, last) {
-    const length = Math.max(0, last - first + 1)
+    const length = Math.max(0, last - first)
 
     return Promise.all(Array(length).fill().map((_, i) =>
       this._getBlock(hex, first + i)))
@@ -336,10 +337,11 @@ module.exports = class HyperMerge extends EventEmitter {
       : this.document(hex)
   }
 
-  _maxRequested (hex, actor, max) {
-    if (!this.requestedDeps[hex]) this.requestedDeps[hex] = {}
-    const current = this.requestedDeps[hex][actor] || 1 // NOTE seqs start at 1
-    this.requestedDeps[hex][actor] = Math.max(max, current)
+  _maxRequested (hex, depHex, max) {
+    if (!this.requestedBlocks[hex]) this.requestedBlocks[hex] = {}
+
+    const current = this.requestedBlocks[hex][depHex] || START_BLOCK
+    this.requestedBlocks[hex][depHex] = Math.max(max, current)
     return current
   }
 
