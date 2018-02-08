@@ -52,18 +52,12 @@ test('does .isWritable() work?', t => {
     hm2.core.ready(() => {
       const writableDoc = hm1.create()
       const hex = hm1.getHex(writableDoc)
-      hm1.on('document:ready', () => {
-        const feed = hm1.feed(hex)
-        feed.ready(() => {
-          t.ok(hm1.isWritable(hex), 'Original doc is writable')
-        })
+      hm1.on('feed:ready', () => {
+        t.ok(hm1.isWritable(hex), 'Original doc is writable')
       })
       hm2.open(hex)
-      hm2.on('document:ready', () => {
-        const feed = hm2.feed(hex)
-        feed.ready(() => {
-          t.notOk(hm2.isWritable(hex), 'Cloned doc is read-only')
-        })
+      hm2.on('feed:ready', () => {
+        t.notOk(hm2.isWritable(hex), 'Cloned doc is read-only')
       })
       hm1.swarm.close()
       hm2.swarm.close()

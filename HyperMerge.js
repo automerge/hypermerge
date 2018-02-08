@@ -25,6 +25,7 @@ module.exports = class HyperMerge extends EventEmitter {
 
     this.feeds = {}
     this.docs = {}
+    this.metadatas = {}
     this.requestedDeps = {}
     // TODO allow ram:
     this.core = new MultiCore(path)
@@ -86,9 +87,11 @@ module.exports = class HyperMerge extends EventEmitter {
   /**
    * Creates a new hypercore feed for a new actor and returns a new
    * automerge document.
+   *
+   * @param {object} metadata - metadata to be associated with this document
    */
-  create () {
-    return this.document()
+  create (metadata = null) {
+    return this.document(null, metadata)
   }
 
   /**
@@ -123,9 +126,10 @@ module.exports = class HyperMerge extends EventEmitter {
    * an empty change that depends on the document for another actor.
    *
    * @param {string} hex - actor to fork
+   * @param {object} metadata - metadata to be associated with this document
    */
-  fork (hex) {
-    let doc = this.create()
+  fork (hex, metadata = null) {
+    let doc = this.create(metadata)
     doc = Automerge.merge(doc, this.find(hex))
     doc = Automerge.change(doc, `Forked from ${hex}`, () => {})
     return this.update(doc)
@@ -190,17 +194,26 @@ module.exports = class HyperMerge extends EventEmitter {
     return !!Object.keys(deps).length
   }
 
-  document (hex = null) {
+  document (hex = null, metadata = null) {
     if (hex && this.docs[hex]) return this.docs[hex]
 
     const feed = this.feed(hex)
-    hex = feed.key.toString('hex')
+
+    if (!hex) {
+      hex = feed.key.toString('hex')
+      this._appendMetadata(hex, metadata)
+    }
 
     return this.set(this.empty(hex))
   }
 
   empty (hex) {
     return Automerge.initImmutable(hex)
+  }
+
+  metadata (hex) {
+    this.find(hex) // ensure that the document is opened
+    return this.metadatas[hex]
   }
 
   getHex (doc) {
@@ -213,6 +226,18 @@ module.exports = class HyperMerge extends EventEmitter {
     const key = hex ? Buffer.from(hex, 'hex') : null
 
     return this._trackFeed(this.core.createFeed(key))
+  }
+
+  _appendMetadata (hex, metadata) {
+    const feed = this.feed(hex)
+
+    if (feed.length > 0) throw new Error(`Metadata can only be set if feed is empty.`)
+
+    this.metadatas[hex] = metadata
+
+    return this._promise(cb => {
+      feed.append(JSON.stringify({metadata}), cb)
+    })
   }
 
   _appendAll (hex, changes) {
@@ -237,10 +262,24 @@ module.exports = class HyperMerge extends EventEmitter {
     if (feed.opened) {
       this._onFeedReady(hex)()
     } else {
-      feed.on('ready', this._onFeedReady(hex))
+      feed.once('ready', this._onFeedReady(hex))
     }
 
     return feed
+  }
+
+  _loadMetadata (hex) {
+    return this._promise(cb => {
+      this.feed(hex).get(0, cb)
+    })
+    .then(this._setMetadata(hex))
+  }
+
+  _setMetadata (hex) {
+    return data => {
+      const {metadata} = data ? JSON.parse(data) : {}
+      this.metadatas[hex] = metadata
+    }
   }
 
   _loadAllBlocks (hex) {
@@ -260,7 +299,7 @@ module.exports = class HyperMerge extends EventEmitter {
     }
 
     return Promise.all(Object.keys(deps).map(actor => {
-      const last = deps[actor] - 1 // seqs start at 1
+      const last = deps[actor] // NOTE: first block is metadata, don't subtract 1
       const first = this._maxRequested(hex, actor, last)
 
       return this._getBlockRange(actor, first, last)
@@ -270,11 +309,12 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   _getOwnBlocks (hex) {
-    return this._getBlockRange(hex, 0, this.length(hex) - 1)
+    // NOTE: change blocks start at 1; metadata is at 0:
+    return this._getBlockRange(hex, 1, this.length(hex) - 1)
   }
 
   _getBlockRange (hex, first, last) {
-    const length = last - first + 1
+    const length = Math.max(0, last - first + 1)
 
     return Promise.all(Array(length).fill().map((_, i) =>
       this._getBlock(hex, first + i)))
@@ -298,7 +338,7 @@ module.exports = class HyperMerge extends EventEmitter {
 
   _maxRequested (hex, actor, max) {
     if (!this.requestedDeps[hex]) this.requestedDeps[hex] = {}
-    const current = this.requestedDeps[hex][actor] || 0
+    const current = this.requestedDeps[hex][actor] || 1 // NOTE seqs start at 1
     this.requestedDeps[hex][actor] = Math.max(max, current)
     return current
   }
@@ -342,7 +382,10 @@ module.exports = class HyperMerge extends EventEmitter {
        */
       this.emit('feed:ready', this.feed(hex))
 
-      this._loadAllBlocks(hex)
+      return Promise.all([
+        this._loadMetadata(hex),
+        this._loadAllBlocks(hex)
+      ])
       .then(() => {
         /**
          * Emitted when all the data from a hypercore feed has been downloaded.
@@ -356,7 +399,10 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   _onDownload (hex) {
-    return (_, data) => {
+    return (index, data) => {
+      // NOTE the first block is metadata:
+      if (index === 0) return this._setMetadata(hex)(data)
+
       this._applyBlocks(hex, [data])
       this._loadMissingBlocks(hex)
     }
