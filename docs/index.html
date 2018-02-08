@@ -440,7 +440,7 @@ hypercore/actor.</p>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>create()</span>
+            <span class='code strong strong truncate'>create(metadata)</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -452,7 +452,7 @@ hypercore/actor.</p>
 automerge document.</p>
 
 
-  <div class='pre p1 fill-light mt0'>create()</div>
+  <div class='pre p1 fill-light mt0'>create(metadata: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</div>
   
   
 
@@ -463,6 +463,21 @@ automerge document.</p>
   
   
 
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>metadata</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>
+            = <code>null</code>)</code>
+	    metadata to be associated with this document
+
+          </div>
+          
+        </div>
+      
+    </div>
   
 
   
@@ -548,7 +563,7 @@ and appends the changes to the actor's hypercore feed.</p>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>fork(hex)</span>
+            <span class='code strong strong truncate'>fork(hex, metadata)</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -560,7 +575,7 @@ and appends the changes to the actor's hypercore feed.</p>
 an empty change that depends on the document for another actor.</p>
 
 
-  <div class='pre p1 fill-light mt0'>fork(hex: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</div>
+  <div class='pre p1 fill-light mt0'>fork(hex: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, metadata: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</div>
   
   
 
@@ -579,6 +594,16 @@ an empty change that depends on the document for another actor.</p>
           <div>
             <span class='code bold'>hex</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
 	    actor to fork
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>metadata</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>
+            = <code>null</code>)</code>
+	    metadata to be associated with this document
 
           </div>
           
