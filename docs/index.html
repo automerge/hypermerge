@@ -25,6 +25,26 @@
               
                 
                 <li><a
+                  href='#document'
+                  class="">
+                  Document
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#onforkcallback'
+                  class="">
+                  onForkCallback
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
                   href='#hypermerge'
                   class=" toggle-sibling">
                   HyperMerge
@@ -101,9 +121,9 @@
               
                 
                 <li><a
-                  href='#onforkcallback'
+                  href='#eventdocumentmetadata'
                   class="">
-                  onForkCallback
+                  document:metadata
                   
                 </a>
                 
@@ -147,6 +167,110 @@
         </div>
       </div>
       <div id='split-right' class='relative overflow-auto height-viewport-100'>
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='document'>
+      Document
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>An Automerge document.</p>
+
+
+  <div class='pre p1 fill-light mt0'>Document</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='onforkcallback'>
+      onForkCallback
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>onFork callback - unimplemented?</p>
+
+
+  <div class='pre p1 fill-light mt0'>onForkCallback()</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function">Function</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
         
           
             <section class='p2 mb2 clearfix bg-white minishadow'>
@@ -843,23 +967,18 @@ the automerge doc.</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='onforkcallback'>
-      onForkCallback
+    <h3 class='fl m0' id='eventdocumentmetadata'>
+      document:metadata
     </h3>
     
     
   </div>
   
 
-  <p>onFork callback - unimplemented?</p>
+  <p>Emitted when a document's metadata is ready.</p>
 
 
-  <div class='pre p1 fill-light mt0'>onForkCallback()</div>
-  
-    <p>
-      Type:
-      <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function">Function</a>
-    </p>
+  <div class='pre p1 fill-light mt0'>document:metadata</div>
   
   
 
@@ -870,6 +989,29 @@ the automerge doc.</p>
   
   
 
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    The document's id.
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>metadata</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</code>
+	    The metadata for the document.
+
+          </div>
+          
+        </div>
+      
+    </div>
   
 
   
@@ -903,7 +1045,7 @@ the automerge doc.</p>
   </div>
   
 
-  <p>Emitted when all the data from a hypercore feed has been downloaded.</p>
+  <p>Emitted when an updated document has been downloaded.</p>
 
 
   <div class='pre p1 fill-light mt0'>document:updated</div>
@@ -917,6 +1059,20 @@ the automerge doc.</p>
   
   
 
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>document</span> <code class='quiet'>(<a href="#document">Document</a>)</code>
+	    automerge document
+
+          </div>
+          
+        </div>
+      
+    </div>
   
 
   
@@ -950,7 +1106,7 @@ the automerge doc.</p>
   </div>
   
 
-  <p>Emitted when a hypercore is ready.</p>
+  <p>Emitted when a hypercore feed is ready.</p>
 
 
   <div class='pre p1 fill-light mt0'>feed:ready</div>
@@ -964,6 +1120,20 @@ the automerge doc.</p>
   
   
 
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>feed</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</code>
+	    hypercore feed
+
+          </div>
+          
+        </div>
+      
+    </div>
   
 
   
@@ -997,7 +1167,7 @@ the automerge doc.</p>
   </div>
   
 
-  <p>Emitted when all the data from a hypercore feed has been downloaded.</p>
+  <p>Emitted when a document has been fully downloaded.</p>
 
 
   <div class='pre p1 fill-light mt0'>document:ready</div>
@@ -1011,6 +1181,20 @@ the automerge doc.</p>
   
   
 
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>document</span> <code class='quiet'>(<a href="#document">Document</a>)</code>
+	    automerge document
+
+          </div>
+          
+        </div>
+      
+    </div>
   
 
   

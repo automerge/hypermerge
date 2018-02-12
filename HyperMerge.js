@@ -7,6 +7,11 @@ const swarm = require('hypercore-archiver/swarm')
 const START_BLOCK = 1
 
 /**
+ * An Automerge document.
+ * @typedef {object} Document
+ */
+
+/**
  * Create and share Automerge documents using peer-to-peer networking.
  *
  * @param {Object} options
@@ -46,7 +51,7 @@ module.exports = class HyperMerge extends EventEmitter {
    * @returns {boolean}
    */
   any (f = () => true) {
-    return Object.values(this.docs).some(f)
+    return Object.keys(this.docs).some(k => f(this.docs[k], k))
   }
 
   length (hex) {
@@ -262,11 +267,7 @@ module.exports = class HyperMerge extends EventEmitter {
     feed.on('download', this._onDownload(hex))
     feed.on('peer-add', this._onPeerAdded(hex))
 
-    if (feed.opened) {
-      this._onFeedReady(hex)()
-    } else {
-      feed.once('ready', this._onFeedReady(hex))
-    }
+    feed.ready(this._onFeedReady(hex))
 
     return feed
   }
@@ -282,6 +283,15 @@ module.exports = class HyperMerge extends EventEmitter {
     return data => {
       const {metadata} = data ? JSON.parse(data) : {}
       this.metadatas[hex] = metadata
+
+      /**
+       * Emitted when a document's metadata is ready.
+       *
+       * @event document:metadata
+       * @param {string} id - The document's id.
+       * @param {object} metadata - The metadata for the document.
+       */
+      this.emit('document:metadata', hex, metadata)
     }
   }
 
@@ -350,10 +360,10 @@ module.exports = class HyperMerge extends EventEmitter {
     this.set(doc)
     if (!this.isMissingDeps(hex)) {
       /**
-       * Emitted when all the data from a hypercore feed has been downloaded.
+       * Emitted when an updated document has been downloaded.
        *
        * @event document:updated
-       * @type {object} - automerge document
+       * @param {Document} document - automerge document
        */
       this.emit('document:updated', doc)
     }
@@ -377,23 +387,21 @@ module.exports = class HyperMerge extends EventEmitter {
   _onFeedReady (hex) {
     return () => {
       /**
-       * Emitted when a hypercore is ready.
+       * Emitted when a hypercore feed is ready.
        *
        * @event feed:ready
-       * @type {object} - hypercore feed
+       * @param {object} feed - hypercore feed
        */
       this.emit('feed:ready', this.feed(hex))
 
-      return Promise.all([
-        this._loadMetadata(hex),
-        this._loadAllBlocks(hex)
-      ])
+      this._loadMetadata(hex)
+      .then(() => this._loadAllBlocks(hex))
       .then(() => {
         /**
-         * Emitted when all the data from a hypercore feed has been downloaded.
+         * Emitted when a document has been fully downloaded.
          *
          * @event document:ready
-         * @type {object} - automerge document
+         * @param {Document} document - automerge document
          */
         this.emit('document:ready', this.find(hex))
       })
