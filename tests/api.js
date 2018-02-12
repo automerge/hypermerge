@@ -1,53 +1,41 @@
 const test = require('tape')
 const {HyperMerge} = require('..')
-const tmp = require('tmp')
 const Automerge = require('automerge')
+const ram = require('random-access-memory')
 
 test('constructor', t => {
   t.plan(1)
-  const tmpdir = tmp.dirSync({unsafeCleanup: true})
-  const hm = new HyperMerge({path: tmpdir.name})
+  const hm = new HyperMerge({path: ram})
   t.ok(hm, 'is truthy')
-  hm.core.ready(() => {
-    hm.swarm.close()
-    tmpdir.removeCallback()
-  })
 })
 
 test('create a new actor and document', t => {
   t.plan(1)
-  const tmpdir = tmp.dirSync({unsafeCleanup: true})
-  const hm = new HyperMerge({path: tmpdir.name})
+  const hm = new HyperMerge({path: ram})
   hm.core.ready(() => {
     const doc = hm.create()
     t.deepEqual(doc.toJS(), {
       _conflicts: {},
       _objectId: '00000000-0000-0000-0000-000000000000'
     }, 'expected empty automerge doc')
-    hm.swarm.close()
-    tmpdir.removeCallback()
   })
 })
 
 test('does .any() method work?', t => {
   t.plan(2)
-  const tmpdir = tmp.dirSync({unsafeCleanup: true})
-  const hm = new HyperMerge({path: tmpdir.name})
+  const hm = new HyperMerge({path: ram})
   hm.core.ready(() => {
     t.notOk(hm.any(), 'empty hypermerge return false for .any()')
     hm.create()
     t.ok(hm.any(), 'hypermerge with doc returns true for .any()')
-    hm.swarm.close()
-    tmpdir.removeCallback()
   })
 })
 
 test('does .isWritable() work?', t => {
   t.plan(2)
-  const tmpdir1 = tmp.dirSync({unsafeCleanup: true})
-  const hm1 = new HyperMerge({path: tmpdir1.name})
-  const tmpdir2 = tmp.dirSync({unsafeCleanup: true})
-  const hm2 = new HyperMerge({path: tmpdir2.name})
+  const hm1 = new HyperMerge({path: ram}).joinSwarm()
+  const hm2 = new HyperMerge({path: ram}).joinSwarm()
+
   hm1.core.ready(() => {
     hm2.core.ready(() => {
       const writableDoc = hm1.create()
@@ -61,30 +49,32 @@ test('does .isWritable() work?', t => {
       })
       hm1.swarm.close()
       hm2.swarm.close()
-      tmpdir1.removeCallback()
-      tmpdir2.removeCallback()
     })
   })
 })
 
 test('.update() a document and .open() it on a second node', t => {
   t.plan(1)
-  const tmpdir1 = tmp.dirSync({unsafeCleanup: true})
-  const hm1 = new HyperMerge({path: tmpdir1.name})
-  const tmpdir2 = tmp.dirSync({unsafeCleanup: true})
-  const hm2 = new HyperMerge({path: tmpdir2.name})
+  const hm1 = new HyperMerge({path: ram}).joinSwarm()
+  const hm2 = new HyperMerge({path: ram}).joinSwarm()
+
+  const writableDoc = hm1.create()
+  const hex = hm1.getHex(writableDoc)
+  const newDoc = Automerge.change(writableDoc, doc => {
+    doc.test = 1
+  })
+
+  hm1.once('document:ready', () => {
+    hm1.update(newDoc)
+  })
+
   hm1.core.ready(() => {
     hm2.core.ready(() => {
-      const writableDoc = hm1.create()
-      const hex = hm1.getHex(writableDoc)
-      const newDoc = Automerge.change(writableDoc, doc => {
-        doc.test = 1
-      })
-      hm1.update(newDoc)
       // Add a slight delay to give the network a chance to update
       setTimeout(() => {
         hm2.open(hex)
-        hm2.once('document:updated', () => {
+
+        hm2.once('document:ready', () => {
           const clonedDoc = hm2.open(hex)
           t.deepEqual(clonedDoc.toJS(), {
             _conflicts: {},
@@ -93,8 +83,6 @@ test('.update() a document and .open() it on a second node', t => {
           })
           hm1.swarm.close()
           hm2.swarm.close()
-          tmpdir1.removeCallback()
-          tmpdir2.removeCallback()
         })
       }, 1000)
     })
@@ -103,8 +91,7 @@ test('.update() a document and .open() it on a second node', t => {
 
 test('.fork() a document, make changes, and then .merge() it', t => {
   t.plan(4)
-  const tmpdir = tmp.dirSync({unsafeCleanup: true})
-  const hm = new HyperMerge({path: tmpdir.name})
+  const hm = new HyperMerge({path: ram})
   hm.core.ready(() => {
     const firstDoc = hm.create()
     const firstActorHex = hm.getHex(firstDoc)
@@ -152,10 +139,6 @@ test('.fork() a document, make changes, and then .merge() it', t => {
           _objectId: '00000000-0000-0000-0000-000000000000',
           test: 2
         })
-
-        // Cleanup
-        hm.swarm.close()
-        tmpdir.removeCallback()
       })
     })
   })
@@ -164,10 +147,8 @@ test('.fork() a document, make changes, and then .merge() it', t => {
 /*
 test('.open() on document with dependencies fetches all of them', t => {
   t.plan(6)
-  const tmpdir1 = tmp.dirSync({unsafeCleanup: true})
-  const hm1 = new HyperMerge({path: tmpdir1.name})
-  const tmpdir2 = tmp.dirSync({unsafeCleanup: true})
-  const hm2 = new HyperMerge({path: tmpdir2.name})
+  const hm1 = new HyperMerge({path: ram})
+  const hm2 = new HyperMerge({path: ram})
   hm1.core.ready(() => {
     hm2.core.ready(() => {
       const firstDoc = hm1.create()
@@ -228,8 +209,6 @@ test('.open() on document with dependencies fetches all of them', t => {
                 // Cleanup
                 hm1.swarm.close()
                 hm2.swarm.close()
-                tmpdir1.removeCallback()
-                tmpdir2.removeCallback()
               }, 1000)
             })
           })

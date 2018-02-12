@@ -37,7 +37,6 @@ module.exports = class HyperMerge extends EventEmitter {
     this.requestedBlocks = {}
     // TODO allow ram:
     this.core = new MultiCore(path)
-    this._joinSwarm()
 
     this.port = port || 3282
 
@@ -236,6 +235,21 @@ module.exports = class HyperMerge extends EventEmitter {
     return this._trackFeed(this.core.createFeed(key))
   }
 
+  replicate (opts) {
+    return this.core.replicate(opts)
+  }
+
+  joinSwarm (opts = {}) {
+    this.swarm = swarm(this.core.archiver, Object.assign({
+      port: this.port,
+      encrypt: true,
+      stream: opts =>
+        this.replicate(opts)
+    }, opts))
+
+    return this
+  }
+
   _appendMetadata (hex, metadata) {
     const feed = this.feed(hex)
 
@@ -373,15 +387,6 @@ module.exports = class HyperMerge extends EventEmitter {
     return () => {
       this.emit('ready', this)
     }
-  }
-
-  _joinSwarm () {
-    this.swarm = swarm(this.core.archiver, {
-      port: this.port,
-      encrypt: true,
-      stream: opts =>
-        this.core.replicate(opts)
-    })
   }
 
   _onFeedReady (hex) {

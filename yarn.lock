@@ -4085,6 +4085,12 @@ random-access-file@^1.5.0, random-access-file@^1.8.1:
     mkdirp "^0.5.1"
     thunky "^1.0.1"
 
+random-access-memory@^2.4.0:
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/random-access-memory/-/random-access-memory-2.4.0.tgz#72f3d865b4b55a259879473e2fb2de3569c69ee2"
+  dependencies:
+    process-nextick-args "^1.0.7"
+
 randomatic@^1.1.3:
   version "1.1.7"
   resolved "https://registry.yarnpkg.com/randomatic/-/randomatic-1.1.7.tgz#c7abe9cc8b87c0baa876b19fde83fd464797e38c"

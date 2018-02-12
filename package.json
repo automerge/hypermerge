@@ -35,6 +35,7 @@
     "husky": "^0.14.3",
     "nyc": "^11.4.1",
     "opn-cli": "^3.1.0",
+    "random-access-memory": "^2.4.0",
     "standard": "^10.0.3",
     "tap-nyc": "^1.0.3",
     "tape": "^4.8.0",
