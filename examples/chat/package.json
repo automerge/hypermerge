@@ -1,6 +1,6 @@
 {
   "name": "hm-chat",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Simple chat client using hypermerge",
   "main": "./chat.js",
   "bin": {
