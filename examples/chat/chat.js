@@ -10,9 +10,8 @@ const stripAnsi = require('strip-ansi')
 
 require('events').EventEmitter.prototype._maxListeners = 100
 
-const argv = minimist(process.argv.slice(1))
+const argv = minimist(process.argv.slice(2))
 
-argv._ = argv._.filter(arg => arg.indexOf('chat.js') === -1)
 if (argv.help || argv._.length > 1) {
   console.log('Usage: hm-chat [--nick=<nick>] [<channel-key>]\n')
   process.exit(0)
