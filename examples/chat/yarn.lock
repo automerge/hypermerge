@@ -84,6 +84,16 @@ neat-input@^1.5.0:
   dependencies:
     keypress "^0.2.1"
 
+process-nextick-args@^1.0.7:
+  version "1.0.7"
+  resolved "https://registry.yarnpkg.com/process-nextick-args/-/process-nextick-args-1.0.7.tgz#150e20b756590ad3f91093f25a4f2ad8bff30ba3"
+
+random-access-memory@^2.4.0:
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/random-access-memory/-/random-access-memory-2.4.0.tgz#72f3d865b4b55a259879473e2fb2de3569c69ee2"
+  dependencies:
+    process-nextick-args "^1.0.7"
+
 ripemd160@^2.0.0:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/ripemd160/-/ripemd160-2.0.1.tgz#0f4584295c53a3628af7e6d79aca21ce57d1c6e7"
