@@ -6,7 +6,6 @@ const input = require('diffy/input')({showCursor: true})
 const ram = require('random-access-memory')
 const {HyperMerge} = require('hypermerge')
 const Automerge = require('automerge')
-const bs58check = require('bs58check')
 const stripAnsi = require('strip-ansi')
 
 require('events').EventEmitter.prototype._maxListeners = 100
@@ -14,23 +13,28 @@ require('events').EventEmitter.prototype._maxListeners = 100
 const argv = minimist(process.argv.slice(1))
 
 argv._ = argv._.filter(arg => arg.indexOf('chat.js') === -1)
-if (argv.help || !argv.nick || argv._.length > 1) {
-  console.log('Usage: hm-chat --nick=<nick> [<channel-key>]\n')
+if (argv.help || argv._.length > 1) {
+  console.log('Usage: hm-chat [--nick=<nick>] [<channel-key>]\n')
   process.exit(0)
 }
 
+if (!argv.nick) {
+  const prompt = require('prompt-sync')()
+  argv.nick = prompt('Enter your nickname: ')
+}
+
 function main () {
-  let channelKey
+  let channelHex
   if (argv._.length > 0) {
     try {
-      channelKey = bs58check.decode(argv._[0])
+      channelHex = argv._[0]
     } catch (e) {
       console.error('Error decoding channel key', e.message)
       process.exit(1)
     }
   }
   const hm = new HyperMerge({path: ram})
-  if (!channelKey) {
+  if (!channelHex) {
     hm.joinSwarm()
     hm.create({
       type: 'hm-chat',
@@ -46,7 +50,6 @@ function main () {
       _ready(hm, myHex, myDoc)
     })
   } else {
-    const channelHex = channelKey.toString('hex')
     console.log('Searching for chat channel on network...')
     hm.joinSwarm()
     let channelDoc = hm.open(channelHex)
@@ -95,8 +98,7 @@ function _ready (hm, channelHex, myDoc) {
 
   function render () {
     let output = ''
-    const key = Buffer.from(channelHex, 'hex')
-    output += `Channel Key: ${bs58check.encode(key)}\n`
+    output += `Join: npx hm-chat ${channelHex}\n`
     output += `${hm.swarm.connections.length} connections. `
     output += `Use Ctrl-C to exit.\n\n`
     let displayMessages = []

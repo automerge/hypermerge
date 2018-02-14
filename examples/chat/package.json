@@ -8,10 +8,10 @@
   },
   "license": "MIT",
   "dependencies": {
-    "bs58check": "^2.1.1",
     "diffy": "^1.3.1",
     "hypermerge": "^0.1.1",
     "minimist": "^1.2.0",
+    "prompt-sync": "^4.1.5",
     "random-access-memory": "^2.4.0",
     "strip-ansi": "^4.0.0"
   }
