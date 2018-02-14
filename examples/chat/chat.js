@@ -77,20 +77,15 @@ function main () {
 }
 
 function _ready (hm, channelHex, myDoc) {
-  let newPerson = false
   setInterval(r, 3000) // For network connection display
   hm.on('document:updated', mergeDoc)
   hm.on('document:ready', mergeDoc)
   function mergeDoc (doc) {
     myDoc = Automerge.merge(myDoc, doc)
-    if (newPerson) {
-      myDoc = hm.update(Automerge.change(myDoc, doc => {}))
-      newPerson = false
-    }
     r()
   }
   hm.on('peer:joined', () => {
-    newPerson = true
+    setTimeout(() => { myDoc = hm.update(myDoc) }, 1000)
   })
   input.on('update', r)
   input.on('enter', postMessage)
