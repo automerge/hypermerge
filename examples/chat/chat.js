@@ -23,26 +23,19 @@ if (!argv.nick) {
 }
 
 function main () {
-  let channelHex
-  if (argv._.length > 0) {
-    try {
-      channelHex = argv._[0]
-    } catch (e) {
-      console.error('Error decoding channel key', e.message)
-      process.exit(1)
-    }
-  }
   const hm = new HyperMerge({path: ram})
+  hm.joinSwarm()
+  const channelHex = argv._[0]
   if (!channelHex) {
-    hm.joinSwarm()
-    hm.create({
-      type: 'hm-chat',
-      nick: argv.nick
-    })
+    hm.create()
     hm.once('document:ready', newDoc => {
       const myDoc = hm.update(
         Automerge.change(newDoc, doc => {
           doc.messages = {}
+          doc.messages[Date.now()] = {
+            nick: argv.nick,
+            joined: true
+          }
         })
       )
       const myHex = hm.getHex(myDoc)
@@ -50,27 +43,22 @@ function main () {
     })
   } else {
     console.log('Searching for chat channel on network...')
-    hm.joinSwarm()
-    let channelDoc = hm.open(channelHex)
-    hm.once('document:updated', doc => {
-      channelDoc = doc
-      let myDoc = hm.fork(channelHex, {
-        type: 'hm-chat',
-        nick: argv.nick
-      })
+    hm.open(channelHex)
+    hm.once('document:ready', () => {
+      let myDoc = hm.fork(channelHex)
       const myHex = hm.getHex(myDoc)
       hm.share(myHex, channelHex)
-      hm.on('document:ready', watchForDoc)
-      function watchForDoc (doc) {
-        if (doc._actorId !== myHex) {
-          channelDoc = doc
-          return
-        }
-        hm.removeListener('document:ready', watchForDoc)
-        myDoc = doc
-        myDoc = Automerge.merge(myDoc, channelDoc)
+      hm.once('document:ready', () => {
+        myDoc = hm.update(
+          Automerge.change(myDoc, doc => {
+            doc.messages[Date.now()] = {
+              nick: argv.nick,
+              joined: true
+            }
+          })
+        )
         _ready(hm, channelHex, myDoc)
-      }
+      })
     })
   }
 }
@@ -101,8 +89,12 @@ function _ready (hm, channelHex, myDoc) {
     Object.keys(messages).sort().forEach(key => {
       if (key === '_objectId') return
       if (key === '_conflicts') return
-      const {nick, message} = messages[key]
-      displayMessages.push(`${nick}: ${message}`)
+      const {nick, message, joined} = messages[key]
+      if (joined) {
+        displayMessages.push(`${nick} has joined.`)
+      } else {
+        displayMessages.push(`${nick}: ${message}`)
+      }
     })
     // Delete old messages
     const maxMessages = diffy.height - output.split('\n').length - 2
