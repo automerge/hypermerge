@@ -55,7 +55,9 @@ function _ready (hm, chatDoc) {
   function render () {
     let output = ''
     const key = Buffer.from(hm.getHex(chatDoc), 'hex')
-    output += `Channel Key: ${bs58check.encode(key)}\n\n`
+    output += `Channel Key: ${bs58check.encode(key)}\n`
+    output += `${hm.swarm.connections.length} connections. `
+    output += `Use Ctrl-C to exit.\n\n`
     let displayMessages = []
     let messages = chatDoc.getIn(['messages']).toJS()
     Object.keys(messages).sort().forEach(key => {
@@ -73,7 +75,7 @@ function _ready (hm, chatDoc) {
     for (let i = displayMessages.length; i < maxMessages; i++) {
       output += '\n'
     }
-    output += `>> \n${argv.nick}: ${input.line()}`
+    output += `\n[${argv.nick}] ${input.line()}`
     return output
   }
 
@@ -82,14 +84,17 @@ function _ready (hm, chatDoc) {
   }
 
   function postMessage (line) {
-    chatDoc = hm.update(
-      Automerge.change(chatDoc, doc => {
-        doc.messages[Date.now()] = {
-          nick: argv.nick,
-          message: line
-        }
-      })
-    )
+    const message = line.trim()
+    if (message.length > 0) {
+      chatDoc = hm.update(
+        Automerge.change(chatDoc, doc => {
+          doc.messages[Date.now()] = {
+            nick: argv.nick,
+            message: line
+          }
+        })
+      )
+    }
     r()
   }
 }
