@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 const minimist = require('minimist')
-// const input = require('diffy/input')()
+const input = require('diffy/input')({showCursor: true})
 const diffy = require('diffy')({fullscreen: true})
-// const prettyHash = require('pretty-hash')
 const ram = require('random-access-memory')
 const {HyperMerge} = require('../..')
 const Automerge = require('automerge')
@@ -47,18 +46,51 @@ function main () {
 }
 
 function _ready (hm, chatDoc) {
+  hm.joinSwarm()
+
+  input.on('update', r)
+  input.on('enter', postMessage)
   r()
 
   function render () {
     let output = ''
     const key = Buffer.from(hm.getHex(chatDoc), 'hex')
-    output += `Key: ${key.toString('hex')}\n\n`
     output += `Channel Key: ${bs58check.encode(key)}\n\n`
+    let displayMessages = []
+    let messages = chatDoc.getIn(['messages']).toJS()
+    Object.keys(messages).sort().forEach(key => {
+      if (key === '_objectId') return
+      if (key === '_conflicts') return
+      const {nick, message} = messages[key]
+      displayMessages.push(`${nick}: ${message}`)
+    })
+    // Delete old messages
+    const maxMessages = diffy.height - 5
+    displayMessages.splice(0, displayMessages.length - maxMessages)
+    displayMessages.forEach(line => {
+      output += line.substr(0, diffy.width - 2) + '\n'
+    })
+    for (let i = displayMessages.length; i < maxMessages; i++) {
+      output += '\n'
+    }
+    output += `>> \n${argv.nick}: ${input.line()}`
     return output
   }
 
   function r () {
     diffy.render(render)
+  }
+
+  function postMessage (line) {
+    chatDoc = hm.update(
+      Automerge.change(chatDoc, doc => {
+        doc.messages[Date.now()] = {
+          nick: argv.nick,
+          message: line
+        }
+      })
+    )
+    r()
   }
 }
 
