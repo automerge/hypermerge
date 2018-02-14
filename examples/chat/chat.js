@@ -44,7 +44,7 @@ function main () {
     if (!channelKey) {
       hm.joinSwarm()
       hm.create({
-        type: 'chat',
+        type: 'hm-chat',
         nick: argv.nick
       })
       hm.once('document:ready', chatDoc => {
@@ -58,13 +58,17 @@ function main () {
       })
     } else {
       const channelHex = channelKey.toString('hex')
-      console.log('Searching for chat channel on network...', channelHex)
+      console.log('Searching for chat channel on network...')
       hm.joinSwarm()
       let channelDoc = hm.open(channelHex)
       hm.once('document:updated', doc => {
         channelDoc = doc
-        let myDoc = hm.fork(channelHex)
+        let myDoc = hm.fork(channelHex, {
+          type: 'hm-chat',
+          nick: argv.nick
+        })
         const myHex = hm.getHex(myDoc)
+        hm.share(myHex, channelHex)
         hm.on('document:ready', watchForDoc)
         function watchForDoc (doc) {
           if (doc._actorId !== myHex) {
@@ -106,9 +110,6 @@ function _ready (hm, channelDoc, myDoc) {
     let output = ''
     const key = Buffer.from(hm.getHex(channelDoc), 'hex')
     output += `Channel Key: ${bs58check.encode(key)}\n`
-    output += `Channel Hex Key: ${key.toString('hex')}\n`
-    const myKey = Buffer.from(hm.getHex(myDoc), 'hex')
-    output += `My Hex Key: ${myKey.toString('hex')}\n`
     output += `${hm.swarm.connections.length} connections. `
     output += `Use Ctrl-C to exit.\n\n`
     let displayMessages = []
