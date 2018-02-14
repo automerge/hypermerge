@@ -101,3 +101,9 @@ sha.js@^2.4.0:
   dependencies:
     inherits "^2.0.1"
     safe-buffer "^5.0.1"
+
+strip-ansi@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/strip-ansi/-/strip-ansi-4.0.0.tgz#a8479022eb1ac368a871389b635262c505ee368f"
+  dependencies:
+    ansi-regex "^3.0.0"
