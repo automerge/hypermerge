@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 const minimist = require('minimist')
+const diffy = require('diffy')({fullscreen: true})
 const input = require('diffy/input')({showCursor: true})
 const ram = require('random-access-memory')
-// const {HyperMerge} = require('../..')
 const {HyperMerge} = require('hypermerge')
 const Automerge = require('automerge')
 const bs58check = require('bs58check')
@@ -11,21 +11,13 @@ const stripAnsi = require('strip-ansi')
 
 require('events').EventEmitter.prototype._maxListeners = 100
 
-const argv = minimist(process.argv.slice(1), {
-  boolean: ['debug', 'new-actor', 'new-channel']
-})
+const argv = minimist(process.argv.slice(1))
 
-argv._ = argv._.filter(arg => arg.indexOf('chat') === -1)
+argv._ = argv._.filter(arg => arg.indexOf('chat.js') === -1)
 if (argv.help || !argv.nick || argv._.length > 1) {
-  // FIXME: Prompt for nick if not supplied
-  console.log(
-    'Usage: hm-chat --nick=<nick> [--save=<dir>] [--debug] ' +
-    '[--headless] [--new-channel] [<channel-key>]\n'
-  )
+  console.log('Usage: hm-chat --nick=<nick> [<channel-key>]\n')
   process.exit(0)
 }
-
-const diffy = argv.headless ? null : require('diffy')({fullscreen: true})
 
 function main () {
   let channelKey
@@ -37,71 +29,65 @@ function main () {
       process.exit(1)
     }
   }
-  if (argv.save) {
-    console.log('Not implemented yet')
-    process.exit(1)
+  const hm = new HyperMerge({path: ram})
+  if (!channelKey) {
+    hm.joinSwarm()
+    hm.create({
+      type: 'hm-chat',
+      nick: argv.nick
+    })
+    hm.once('document:ready', newDoc => {
+      const myDoc = hm.update(
+        Automerge.change(newDoc, doc => {
+          doc.messages = {}
+        })
+      )
+      const myHex = hm.getHex(myDoc)
+      _ready(hm, myHex, myDoc)
+    })
   } else {
-    const hm = new HyperMerge({path: ram})
-    if (!channelKey) {
-      hm.joinSwarm()
-      hm.create({
+    const channelHex = channelKey.toString('hex')
+    console.log('Searching for chat channel on network...')
+    hm.joinSwarm()
+    let channelDoc = hm.open(channelHex)
+    hm.once('document:updated', doc => {
+      channelDoc = doc
+      let myDoc = hm.fork(channelHex, {
         type: 'hm-chat',
         nick: argv.nick
       })
-      hm.once('document:ready', chatDoc => {
-        const myDoc = hm.update(
-          Automerge.change(chatDoc, doc => {
-            doc.messages = {}
-            doc.people = {}
-          })
-        )
-        _ready(hm, myDoc, myDoc)
-      })
-    } else {
-      const channelHex = channelKey.toString('hex')
-      console.log('Searching for chat channel on network...')
-      hm.joinSwarm()
-      let channelDoc = hm.open(channelHex)
-      hm.once('document:updated', doc => {
-        channelDoc = doc
-        let myDoc = hm.fork(channelHex, {
-          type: 'hm-chat',
-          nick: argv.nick
-        })
-        const myHex = hm.getHex(myDoc)
-        hm.share(myHex, channelHex)
-        hm.on('document:ready', watchForDoc)
-        function watchForDoc (doc) {
-          if (doc._actorId !== myHex) {
-            channelDoc = doc
-            return
-          }
-          hm.removeListener('document:ready', watchForDoc)
-          myDoc = doc
-          _ready(hm, channelDoc, myDoc)
+      const myHex = hm.getHex(myDoc)
+      hm.share(myHex, channelHex)
+      hm.on('document:ready', watchForDoc)
+      function watchForDoc (doc) {
+        if (doc._actorId !== myHex) {
+          channelDoc = doc
+          return
         }
-      })
-    }
+        hm.removeListener('document:ready', watchForDoc)
+        myDoc = doc
+        myDoc = Automerge.merge(myDoc, channelDoc)
+        _ready(hm, channelHex, myDoc)
+      }
+    })
   }
 }
 
-function _ready (hm, channelDoc, myDoc) {
-  let chatDoc = Automerge.initImmutable()
-  chatDoc = Automerge.merge(chatDoc, channelDoc)
-  chatDoc = Automerge.merge(chatDoc, myDoc)
-  if (argv.headless) {
-    const key = Buffer.from(hm.getHex(channelDoc), 'hex')
-    console.log(`Channel Key: ${bs58check.encode(key)}`)
-    console.log(`Key: ${key.toString('hex')}`)
+function _ready (hm, channelHex, myDoc) {
+  let newPerson = false
+  setInterval(r, 3000) // For network connection display
+  hm.on('document:updated', mergeDoc)
+  hm.on('document:ready', mergeDoc)
+  function mergeDoc (doc) {
+    myDoc = Automerge.merge(myDoc, doc)
+    if (newPerson) {
+      myDoc = hm.update(Automerge.change(myDoc, doc => {}))
+      newPerson = false
+    }
+    r()
   }
-  setInterval(r, 3000)
-  hm.on('document:updated', doc => {
-    chatDoc = Automerge.merge(chatDoc, doc)
-    r()
-  })
-  hm.on('document:ready', doc => {
-    chatDoc = Automerge.merge(chatDoc, doc)
-    r()
+  hm.on('peer:joined', () => {
+    newPerson = true
   })
   input.on('update', r)
   input.on('enter', postMessage)
@@ -109,12 +95,12 @@ function _ready (hm, channelDoc, myDoc) {
 
   function render () {
     let output = ''
-    const key = Buffer.from(hm.getHex(channelDoc), 'hex')
+    const key = Buffer.from(channelHex, 'hex')
     output += `Channel Key: ${bs58check.encode(key)}\n`
     output += `${hm.swarm.connections.length} connections. `
     output += `Use Ctrl-C to exit.\n\n`
     let displayMessages = []
-    let messages = chatDoc.getIn(['messages'])
+    let messages = myDoc.getIn(['messages'])
     messages = messages ? messages.toJS() : {}
     Object.keys(messages).sort().forEach(key => {
       if (key === '_objectId') return
@@ -136,7 +122,6 @@ function _ready (hm, channelDoc, myDoc) {
   }
 
   function r () {
-    if (argv.headless) return
     diffy.render(render)
   }
 
@@ -151,7 +136,6 @@ function _ready (hm, channelDoc, myDoc) {
           }
         })
       )
-      chatDoc = Automerge.merge(chatDoc, myDoc)
     }
     r()
   }
