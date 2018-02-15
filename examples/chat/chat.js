@@ -7,13 +7,13 @@ if (argv.help || argv._.length > 1) {
   process.exit(0)
 }
 
+let nick = argv.nick
 if (!argv.nick) {
   const prompt = require('prompt-sync')()
-  argv.nick = prompt('Enter your nickname: ')
+  nick = prompt('Enter your nickname: ')
 }
 
 const channelHex = argv._[0]
-const nick = argv.nick
 
 const setupModel = require('./model')
 setupModel(channelHex, nick, onReady)
