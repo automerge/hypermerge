@@ -61,8 +61,15 @@ function setup (channelHex, nick, onReady) {
       render(doc)
     }
 
-    // FIXME: Commit something to the document?
+    // Hack alert!!!!!
     hm.on('peer:joined', () => {
+      setTimeout(() => {
+        doc = hm.update(
+          Automerge.change(doc, changeDoc => {
+            changeDoc.messages[Date.now()] = {}
+          })
+        )
+      }, 1000)
     })
 
     // This callback is supplied to the onReady callback - it is used

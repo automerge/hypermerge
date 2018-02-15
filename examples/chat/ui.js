@@ -37,7 +37,9 @@ function render (renderDoc) {
       if (joined) {
         displayMessages.push(`${nick} has joined.`)
       } else {
-        displayMessages.push(`${nick}: ${message}`)
+        if (message) {
+          displayMessages.push(`${nick}: ${message}`)
+        }
       }
     })
     // Delete old messages
