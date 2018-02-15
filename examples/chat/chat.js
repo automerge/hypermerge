@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 
 const minimist = require('minimist')
-const diffy = require('diffy')({fullscreen: true})
-const input = require('diffy/input')({showCursor: true})
 const ram = require('random-access-memory')
 const {HyperMerge} = require('hypermerge')
 const Automerge = require('automerge')
-const stripAnsi = require('strip-ansi')
+const {initUI, render} = require('./ui')
 
 require('events').EventEmitter.prototype._maxListeners = 100
 
@@ -64,58 +62,14 @@ function main () {
 }
 
 function _ready (hm, channelHex, myDoc) {
-  setInterval(r, 3000) // For network connection display
-  hm.on('document:updated', mergeDoc)
-  hm.on('document:ready', mergeDoc)
-  function mergeDoc (doc) {
-    myDoc = Automerge.merge(myDoc, doc)
-    r()
-  }
-  hm.on('peer:joined', () => {
-    setTimeout(() => { myDoc = hm.update(myDoc) }, 1000)
-  })
-  input.on('update', r)
-  input.on('enter', postMessage)
-  r()
-
-  function render () {
-    let output = ''
-    output += `Join: npx hm-chat ${channelHex}\n`
-    output += `${hm.swarm.connections.length} connections. `
-    output += `Use Ctrl-C to exit.\n\n`
-    let displayMessages = []
-    let messages = myDoc.getIn(['messages'])
-    messages = messages ? messages.toJS() : {}
-    Object.keys(messages).sort().forEach(key => {
-      if (key === '_objectId') return
-      if (key === '_conflicts') return
-      const {nick, message, joined} = messages[key]
-      if (joined) {
-        displayMessages.push(`${nick} has joined.`)
-      } else {
-        displayMessages.push(`${nick}: ${message}`)
-      }
-    })
-    // Delete old messages
-    const maxMessages = diffy.height - output.split('\n').length - 2
-    displayMessages.splice(0, displayMessages.length - maxMessages)
-    displayMessages.forEach(line => {
-      output += stripAnsi(line).substr(0, diffy.width - 2) + '\n'
-    })
-    for (let i = displayMessages.length; i < maxMessages; i++) {
-      output += '\n'
-    }
-    output += `\n[${argv.nick}] ${input.line()}`
-    return output
-  }
-
-  function r () {
-    diffy.render(render)
-  }
-
-  function postMessage (line) {
-    const message = line.trim()
-    if (message.length > 0) {
+  initUI({
+    nick: argv.nick,
+    channelHex,
+    connections: hm.swarm.connections,
+    doc: myDoc,
+    postMessage: (myDoc, line) => {
+      const message = line.trim()
+      if (message.length === 0) return myDoc
       myDoc = hm.update(
         Automerge.change(myDoc, doc => {
           doc.messages[Date.now()] = {
@@ -124,8 +78,17 @@ function _ready (hm, channelHex, myDoc) {
           }
         })
       )
+      return myDoc
     }
-    r()
+  })
+  hm.on('peer:joined', () => {
+    // FIXME: Commit something to the document?
+  })
+  hm.on('document:updated', mergeDoc)
+  hm.on('document:ready', mergeDoc)
+  function mergeDoc (doc) {
+    myDoc = Automerge.merge(myDoc, doc)
+    render(myDoc)
   }
 }
 
