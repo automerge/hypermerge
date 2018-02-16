@@ -9,7 +9,7 @@
   "license": "MIT",
   "dependencies": {
     "diffy": "^1.3.1",
-    "hypermerge": "^0.2.0",
+    "hypermerge": "^0.2.1",
     "minimist": "^1.2.0",
     "prompt-sync": "^4.1.5",
     "random-access-memory": "^2.4.0",

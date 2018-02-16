@@ -15,34 +15,34 @@ function setup (channelHex, nick, port, onReady) {
       hm.open(channelHex)
 
       hm.once('document:updated', (docId, doc) => {
-        doc = hm.update(
-          Automerge.change(doc, changeDoc => {
-            changeDoc.messages[Date.now()] = {
-              nick,
-              joined: true
-            }
-          })
-        )
-
+        doc = joinChannel(hm, doc)
         _ready(hm, channelHex, doc)
       })
     } else {
+      // Initialize the new channel document
       let doc = hm.create()
-
       doc = hm.update(
         Automerge.change(doc, changeDoc => {
           changeDoc.messages = {}
-          changeDoc.messages[Date.now()] = {
-            nick,
-            joined: true
-          }
         })
       )
+      doc = joinChannel(hm, doc)
 
       const channelHex = hm.getId(doc)
       _ready(hm, channelHex, doc)
     }
   })
+
+  function joinChannel (hm, doc) {
+    return hm.update(
+      Automerge.change(doc, changeDoc => {
+        changeDoc.messages[Date.now()] = {
+          nick,
+          joined: true
+        }
+      })
+    )
+  }
 
   function _ready (hm, channelHex, doc) {
     const render = onReady({
