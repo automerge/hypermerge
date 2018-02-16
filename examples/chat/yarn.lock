@@ -255,9 +255,9 @@ hypercore@^6.12.0, hypercore@^6.6.3:
     unordered-array-remove "^1.0.2"
     unordered-set "^2.0.0"
 
-hypermerge@^0.1.1:
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/hypermerge/-/hypermerge-0.1.1.tgz#d1fa4fb91457b9bbd283bcb2a93538422650d571"
+hypermerge@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/hypermerge/-/hypermerge-0.2.0.tgz#4c99ffe28593dda8a06892aa2b6413cbb681e370"
   dependencies:
     automerge "github:automerge/automerge#immutable-api"
     hypercore "^6.12.0"

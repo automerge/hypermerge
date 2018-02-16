@@ -1,5 +1,5 @@
 const ram = require('random-access-memory')
-const {HyperMerge} = require('../..')
+const {HyperMerge} = require('hypermerge')
 const Automerge = require('automerge')
 
 require('events').EventEmitter.prototype._maxListeners = 100
