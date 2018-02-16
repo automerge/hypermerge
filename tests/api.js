@@ -54,8 +54,10 @@ test('.update() a document and .open() it on a second node', t => {
     doc.test = 1
   }))
 
-  const docId = hm1.getId(doc1)
-  hm2.open(docId)
+  // document:updated only receives below if we open after hm1 is ready:
+  hm1.once('document:ready', (id) => {
+    hm2.open(hm1.getId(doc1))
+  })
 
   hm2.once('document:updated', (id, doc2) => {
     t.deepEqual(doc2.toJS(), {
@@ -203,6 +205,7 @@ test('.open() on document with dependencies fetches all of them', t => {
 test('teardown', t => {
   hm1.swarm.close()
   hm2.swarm.close()
+  t.ok(true, 'teardown finished')
   t.end()
 })
 

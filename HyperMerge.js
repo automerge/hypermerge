@@ -566,7 +566,7 @@ module.exports = class HyperMerge extends EventEmitter {
   _onDownload (docId, hex) {
     return (index, data) => {
       this._applyBlock(docId, data)
-      this._loadMissingBlocks(hex)
+      this._loadMissingBlocks(docId)
     }
   }
 
