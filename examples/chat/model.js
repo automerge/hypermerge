@@ -6,7 +6,10 @@ require('events').EventEmitter.prototype._maxListeners = 100
 
 module.exports = class Model {
   constructor (channelHex, nick, port, onReady) {
-    new HyperMerge({port, path: ram})
+    this.channelHex = channelHex
+    this.nick = nick
+
+    this.hm = new HyperMerge({port, path: ram})
   .once('ready', hm => {
     hm.joinSwarm()
 
@@ -19,24 +22,24 @@ module.exports = class Model {
       // Once we manage to open the document we'll get this message,
       // so we'll post a joinChannel message and call _ready.
       hm.once('document:updated', (docId, doc) => {
-        doc = joinChannel(hm, doc)
-        _ready(hm, channelHex, doc)
+        this.doc = joinChannel(hm, doc)
+        _ready(hm, this.channelHex, this.doc)
       })
     } else {
       // We're starting a new channel here, so first
       // initialize the new channel document data structure.
-      let doc = hm.create()
-      doc = hm.update(
-        Automerge.change(doc, changeDoc => {
+      this.doc = hm.create()
+      this.doc = hm.update(
+        Automerge.change(this.doc, changeDoc => {
           changeDoc.messages = {}
         })
       )
 
       // Now we post the join channel message and call _ready.
-      doc = joinChannel(hm, doc)
+      this.doc = joinChannel(hm, this.doc)
 
-      const channelHex = hm.getId(doc)
-      _ready(hm, channelHex, doc)
+      this.channelHex = hm.getId(this.doc)
+      _ready(hm, this.channelHex, this.doc)
     }
   })
 
@@ -55,8 +58,7 @@ module.exports = class Model {
       const render = onReady({
         doc,
         channelHex,
-        numConnections: hm.swarm.connections.length,
-        addMessageToDoc
+        numConnections: hm.swarm.connections.length
       })
 
     // We merge any new documents that arrive due to events,
@@ -68,22 +70,20 @@ module.exports = class Model {
         doc = newDoc
         render(doc)
       }
-
-    // This callback is supplied to the onReady callback - it is used
-    // to append new chat messages to the document arriving from the UI
-      function addMessageToDoc (line) {
-        const message = line.trim()
-        if (message.length === 0) return doc
-        doc = hm.update(
-        Automerge.change(doc, changeDoc => {
-          changeDoc.messages[Date.now()] = {
-            nick,
-            message: line
-          }
-        })
-      )
-        return doc
-      }
     }
+  }
+
+  addMessageToDoc (line) {
+    const message = line.trim()
+    if (message.length === 0) return this.doc
+    this.doc = this.hm.update(
+      Automerge.change(this.doc, changeDoc => {
+        changeDoc.messages[Date.now()] = {
+          nick: this.nick,
+          message: line
+        }
+      })
+    )
+    return this.doc
   }
 }

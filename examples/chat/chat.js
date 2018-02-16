@@ -27,7 +27,7 @@ function onReady ({doc, channelHex, numConnections, addMessageToDoc}) {
     channelHex,
     numConnections,
     doc,
-    postMessage: line => addMessageToDoc(line)
+    postMessage: (line) => model.addMessageToDoc(line)
   })
   return render
 }
