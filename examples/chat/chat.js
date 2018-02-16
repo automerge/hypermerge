@@ -17,8 +17,8 @@ const port = argv.port
 
 const channelHex = argv._[0]
 
-const setupModel = require('./model')
-setupModel(channelHex, nick, port, onReady)
+const Model = require('./model')
+let model = new Model(channelHex, nick, port, onReady)
 
 function onReady ({doc, channelHex, numConnections, addMessageToDoc}) {
   const initUI = require('./ui')

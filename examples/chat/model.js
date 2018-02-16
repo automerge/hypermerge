@@ -4,8 +4,9 @@ const Automerge = require('automerge')
 
 require('events').EventEmitter.prototype._maxListeners = 100
 
-function setup (channelHex, nick, port, onReady) {
-  new HyperMerge({port, path: ram})
+module.exports = class Model {
+  constructor (channelHex, nick, port, onReady) {
+    new HyperMerge({port, path: ram})
   .once('ready', hm => {
     hm.joinSwarm()
 
@@ -39,8 +40,8 @@ function setup (channelHex, nick, port, onReady) {
     }
   })
 
-  function joinChannel (hm, doc) {
-    return hm.update(
+    function joinChannel (hm, doc) {
+      return hm.update(
       Automerge.change(doc, changeDoc => {
         changeDoc.messages[Date.now()] = {
           nick,
@@ -48,32 +49,32 @@ function setup (channelHex, nick, port, onReady) {
         }
       })
     )
-  }
+    }
 
-  function _ready (hm, channelHex, doc) {
-    const render = onReady({
-      doc,
-      channelHex,
-      numConnections: hm.swarm.connections.length,
-      addMessageToDoc
-    })
+    function _ready (hm, channelHex, doc) {
+      const render = onReady({
+        doc,
+        channelHex,
+        numConnections: hm.swarm.connections.length,
+        addMessageToDoc
+      })
 
     // We merge any new documents that arrive due to events,
     // but we don't update our hypercores
-    hm.on('document:updated', remoteUpdate)
-    hm.on('document:ready', remoteUpdate)
+      hm.on('document:updated', remoteUpdate)
+      hm.on('document:ready', remoteUpdate)
 
-    function remoteUpdate (id, newDoc) {
-      doc = newDoc
-      render(doc)
-    }
+      function remoteUpdate (id, newDoc) {
+        doc = newDoc
+        render(doc)
+      }
 
     // This callback is supplied to the onReady callback - it is used
     // to append new chat messages to the document arriving from the UI
-    function addMessageToDoc (line) {
-      const message = line.trim()
-      if (message.length === 0) return doc
-      doc = hm.update(
+      function addMessageToDoc (line) {
+        const message = line.trim()
+        if (message.length === 0) return doc
+        doc = hm.update(
         Automerge.change(doc, changeDoc => {
           changeDoc.messages[Date.now()] = {
             nick,
@@ -81,9 +82,8 @@ function setup (channelHex, nick, port, onReady) {
           }
         })
       )
-      return doc
+        return doc
+      }
     }
   }
 }
-
-module.exports = setup
