@@ -12,20 +12,26 @@ function setup (channelHex, nick, port, onReady) {
     if (channelHex) {
       console.log('Searching for chat channel on network...')
 
+      // Look up the document by its hex identifier
       hm.open(channelHex)
 
+      // Once we manage to open the document we'll get this message,
+      // so we'll post a joinChannel message and call _ready.
       hm.once('document:updated', (docId, doc) => {
         doc = joinChannel(hm, doc)
         _ready(hm, channelHex, doc)
       })
     } else {
-      // Initialize the new channel document
+      // We're starting a new channel here, so first
+      // initialize the new channel document data structure.
       let doc = hm.create()
       doc = hm.update(
         Automerge.change(doc, changeDoc => {
           changeDoc.messages = {}
         })
       )
+
+      // Now we post the join channel message and call _ready.
       doc = joinChannel(hm, doc)
 
       const channelHex = hm.getId(doc)
@@ -48,7 +54,7 @@ function setup (channelHex, nick, port, onReady) {
     const render = onReady({
       doc,
       channelHex,
-      connections: hm.swarm.connections,
+      numConnections: hm.swarm.connections.length,
       addMessageToDoc
     })
 

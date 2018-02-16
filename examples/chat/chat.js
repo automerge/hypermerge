@@ -20,12 +20,12 @@ const channelHex = argv._[0]
 const setupModel = require('./model')
 setupModel(channelHex, nick, port, onReady)
 
-function onReady ({doc, channelHex, connections, addMessageToDoc}) {
+function onReady ({doc, channelHex, numConnections, addMessageToDoc}) {
   const initUI = require('./ui')
   const render = initUI({
     nick,
     channelHex,
-    connections,
+    numConnections,
     doc,
     postMessage: line => addMessageToDoc(line)
   })
