@@ -33,10 +33,10 @@ module.exports = class HyperMerge extends EventEmitter {
     this.isReady = false
     this.feeds = {}
     this.docs = {}
-    this.groups = {} // groupId -> [hex]
-    this.metadatas = {} // hex -> metadata
+    this.groupIndex = {} // groupId -> [hex]
+    this.docIndex = {} // docId -> [hex]
+    this.metaIndex = {} // hex -> metadata
     this.requestedBlocks = {} // docId -> hex -> blockIndex (exclusive)
-    this.requiredBlocks = {} // docId -> hex -> blockIndex (exclusive)
 
     this.core = new MultiCore(path)
 
@@ -228,8 +228,13 @@ module.exports = class HyperMerge extends EventEmitter {
     return Automerge.initImmutable(actorId)
   }
 
+  metadatas (docId) {
+    const hexes = this.docIndex[docId] || []
+    return hexes.map(hex => this.metadata(hex))
+  }
+
   metadata (hex) {
-    return this.metadatas[hex]
+    return this.metaIndex[hex]
   }
 
   isDocId (hex) {
@@ -376,16 +381,16 @@ module.exports = class HyperMerge extends EventEmitter {
   _createDocIfMissing (docId, hex) {
     if (this.docs[docId]) return
 
+    // TODO extra, empty hypercores are still being created
+
     if (this.isWritable(hex)) {
       this.docs[docId] = this.empty(hex)
     }
 
     const parentMetadata = this.metadata(hex)
 
-    let doc = this._create({docId}, parentMetadata)
-    doc = Automerge.change(doc, 'Opened doc', () => {})
-
-    this.update(doc)
+    // TODO might need an empty commit to be included in other vector clocks:
+    return this._create({docId}, parentMetadata)
   }
 
   _initFeeds (hexes) {
@@ -408,7 +413,7 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   _loadMetadata (hex) {
-    if (this.metadatas[hex]) return Promise.resolve(this.metadatas[hex])
+    if (this.metaIndex[hex]) return Promise.resolve(this.metaIndex[hex])
 
     return _promise(cb => {
       this._feed(hex).get(0, cb)
@@ -417,13 +422,16 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   _setMetadata (hex, metadata) {
-    if (this.metadatas[hex]) return this.metadatas[hex]
+    if (this.metaIndex[hex]) return this.metaIndex[hex]
 
-    this.metadatas[hex] = metadata
-    const {groupId} = metadata
+    this.metaIndex[hex] = metadata
+    const {docId, groupId} = metadata
 
-    if (!this.groups[groupId]) this.groups[groupId] = []
-    this.groups[groupId].push(hex)
+    if (!this.groupIndex[groupId]) this.groupIndex[groupId] = []
+    this.groupIndex[groupId].push(hex)
+
+    if (!this.docIndex[docId]) this.docIndex[docId] = []
+    this.docIndex[docId].push(hex)
 
     return metadata
   }
@@ -439,7 +447,6 @@ module.exports = class HyperMerge extends EventEmitter {
     return this._loadBlocks(docId, hex, this.length(hex))
   }
 
-  // a missing block is a block between requiredBlocks and requestedBlocks
   _loadMissingBlocks (hex) {
     const docId = this.hexToId(hex)
 
@@ -523,13 +530,13 @@ module.exports = class HyperMerge extends EventEmitter {
 
   _shareDoc (doc) {
     const {groupId} = this.metadata(this.getHex(doc))
-    const keys = this.groups[groupId]
+    const keys = this.groupIndex[groupId]
     this.message(groupId, {type: 'FEEDS_SHARED', keys})
   }
 
   _relatedKeys (hex) {
     const {groupId} = this.metadata(hex)
-    return this.groups[groupId]
+    return this.groupIndex[groupId]
   }
 
   _messagePeer (peer, msg) {
