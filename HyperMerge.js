@@ -1,10 +1,14 @@
 const EventEmitter = require('events')
 const Automerge = require('automerge')
 const MultiCore = require('./MultiCore')
-const swarm = require('hypercore-archiver/swarm')
+const discoverySwarm = require('discovery-swarm')
+const swarmDefaults = require('datland-swarm-defaults')
 
 // The first block is used for metadata:
 const START_BLOCK = 1
+const METADATA = {
+  hypermerge: 1
+}
 
 /**
  * An Automerge document.
@@ -18,29 +22,23 @@ const START_BLOCK = 1
  * @param {string} options.path - path to directory used to store multiple
  *   hypercores
  * @param {number} [options.port=3282] - port number to listen on
- * @param {onForkCallback} [options.onFork] - unimplemented callback?
  */
 
- /**
-  * onFork callback - unimplemented?
-  *
-  * @callback onForkCallback
-  */
-
 module.exports = class HyperMerge extends EventEmitter {
-  constructor ({path, port, onFork}) {
+  constructor ({path, port, defaultMetadata}) {
     super()
 
-    this.feeds = {}
+    this.defaultMetadata = defaultMetadata || {}
+    this.port = port || 3282
     this.isReady = false
+    this.feeds = {}
     this.docs = {}
-    this.infos = {} // hex -> info
+    this.groups = {} // groupId -> [hex]
+    this.metadatas = {} // hex -> metadata
     this.requestedBlocks = {} // docId -> hex -> blockIndex (exclusive)
     this.requiredBlocks = {} // docId -> hex -> blockIndex (exclusive)
-    // TODO allow ram:
-    this.core = new MultiCore(path)
 
-    this.port = port || 3282
+    this.core = new MultiCore(path)
 
     this.core.ready(this._onMultiCoreReady())
   }
@@ -86,13 +84,6 @@ module.exports = class HyperMerge extends EventEmitter {
 
     // we haven't seen this doc before:
     this.feed(docId)
-
-    let doc = this._create({docId, groupId: undefined, metadata})
-    doc = Automerge.change(doc, 'Opened doc', () => {})
-
-    this._shareDoc(doc)
-
-    return this.update(doc)
   }
 
   /**
@@ -101,24 +92,32 @@ module.exports = class HyperMerge extends EventEmitter {
    *
    * @param {object} metadata - metadata to be associated with this document
    */
-  create (metadata = null) {
+  create (metadata = {}) {
     this._ensureReady()
-
-    return this._create({metadata})
+    return this._create(metadata)
   }
 
-  _create (info) {
+  _create (metadata, parentMetadata = {}) {
     const feed = this.feed()
     const hex = feed.key.toString('hex')
 
-    info.hypermerge = 1
+    // TODO this is a little wacky:
+    metadata = Object.assign(
+      {},
+      METADATA,
+      { groupId: hex },
+      parentMetadata,
+      this.defaultMetadata,
+      { docId: hex },
+      metadata
+    )
 
-    if (!('docId' in info)) info.docId = hex
-    if (!('groupId' in info)) info.groupId = hex
+    this._appendMetadata(hex, metadata)
 
-    this._appendInfo(hex, info)
+    const doc = this.set(this.empty(hex))
+    this._shareDoc(doc)
 
-    return this.set(this.empty(hex))
+    return doc
   }
 
   /**
@@ -137,10 +136,9 @@ module.exports = class HyperMerge extends EventEmitter {
     const changes = Automerge.getChanges(pDoc, doc)
       .filter(({actor}) => actor === hex)
 
-    this._appendAll(hex, changes)
+    this._addToMaxRequested(docId, hex, changes.length)
 
-    // TODO maybe set maxRequested so we don't download ourself:
-    // this._maxRequested(docId, hex, this.length(hex) + changes.length)
+    this._appendAll(hex, changes)
 
     return this.set(doc)
   }
@@ -150,17 +148,16 @@ module.exports = class HyperMerge extends EventEmitter {
    * an empty change that depends on the document for another actor.
    *
    * @param {string} parentId - id of document to fork
-   * @param {object} metadata - metadata to be associated with the new document
    */
-  fork (parentId, metadata = null) {
+  fork (parentId) {
     this._ensureReady()
 
     const parent = this.find(parentId)
-    const {groupId} = this.info(parentId)
-    let doc = this._create({groupId, parentId, metadata})
+
+    let doc = this._create({parentId}, this.metadata(parentId))
     doc = Automerge.merge(doc, parent)
     doc = Automerge.change(doc, `Forked from ${parentId}`, () => {})
-    this.message(parentId, {type: 'DOC_SHARED', id: this.getHex(doc)})
+
     return this.update(doc)
   }
 
@@ -199,10 +196,8 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   message (hex, msg) {
-    const data = Buffer.from(JSON.stringify(msg))
-
     this.feed(hex).peers.forEach(peer => {
-      peer.stream.extension('hypermerge', data)
+      this._messagePeer(peer, msg)
     })
   }
 
@@ -233,13 +228,8 @@ module.exports = class HyperMerge extends EventEmitter {
     return Automerge.initImmutable(actorId)
   }
 
-  info (hex) {
-    return this.infos[hex]
-  }
-
   metadata (hex) {
-    const info = this.info(hex) || {}
-    return info.metadata
+    return this.metadatas[hex]
   }
 
   isDocId (hex) {
@@ -251,7 +241,7 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   hexToId (hex) {
-    const {docId} = this.info(hex)
+    const {docId} = this.metadata(hex)
     return docId
   }
 
@@ -265,7 +255,6 @@ module.exports = class HyperMerge extends EventEmitter {
 
   _feed (hex = null) {
     const key = hex ? Buffer.from(hex, 'hex') : null
-
     return this.core.createFeed(key)
   }
 
@@ -282,22 +271,48 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   joinSwarm (opts = {}) {
-    this.swarm = swarm(this.core.archiver, Object.assign({
+    this._ensureReady()
+
+    const {archiver} = this.core
+
+    const sw = this.swarm = discoverySwarm(swarmDefaults(Object.assign({
       port: this.port,
+      hash: false,
       encrypt: true,
-      stream: opts =>
-        this.replicate(opts)
-    }, opts))
+      stream: opts => this.replicate(opts)
+    }, opts)))
+
+    sw.join(archiver.changes.discoveryKey)
+
+    Object.values(this.feeds).forEach(feed => {
+      sw.join(feed.discoveryKey)
+    })
+
+    archiver.on('add', feed => {
+      sw.join(feed.discoveryKey)
+    })
+
+    archiver.on('remove', feed => {
+      sw.leave(feed.discoveryKey)
+    })
+
+    sw.listen(this.port)
+
+    sw.once('error', err => {
+      console.error('Swarm error:', err)
+      console.log('Swarm re-listening')
+      sw.listen()
+    })
 
     return this
   }
 
-  _appendInfo (hex, info) {
-    if (this.length(hex) > 0) throw new Error(`Info can only be set if feed is empty.`)
+  _appendMetadata (hex, metadata) {
+    if (this.length(hex) > 0) throw new Error(`Metadata can only be set if feed is empty.`)
 
-    this.infos[hex] = info
+    this._setMetadata(hex, metadata)
 
-    return this._append(hex, info)
+    return this._append(hex, metadata)
   }
 
   _appendAll (hex, changes) {
@@ -318,25 +333,20 @@ module.exports = class HyperMerge extends EventEmitter {
 
     feed.ready(this._onFeedReady(hex, feed))
 
+    feed.on('peer-add', this._onPeerAdded(hex))
+
     return feed
   }
 
   _onFeedReady (hex, feed) {
     return () => {
-      /**
-       * Emitted when a hypercore feed is ready.
-       *
-       * @event feed:ready
-       * @param {object} feed - hypercore feed
-       */
-      this.emit('feed:ready', feed)
-
-      this._loadInfo(hex)
+      this._loadMetadata(hex)
       .then(() => {
         const docId = this.hexToId(hex)
 
+        this._createDocIfMissing(docId, hex)
+
         feed.on('download', this._onDownload(docId, hex))
-        feed.on('peer-add', this._onPeerAdded(hex))
 
         return this._loadAllBlocks(hex)
       })
@@ -353,61 +363,70 @@ module.exports = class HyperMerge extends EventEmitter {
          */
         this.emit('document:ready', docId, this.find(docId))
       })
+      /**
+       * Emitted when a hypercore feed is ready.
+       *
+       * @event feed:ready
+       * @param {object} feed - hypercore feed
+       */
+      this.emit('feed:ready', feed)
     }
   }
 
-  _loadInfos (hexes) {
+  _createDocIfMissing (docId, hex) {
+    if (this.docs[docId]) return
+
+    if (this.isWritable(hex)) {
+      this.docs[docId] = this.empty(hex)
+    }
+
+    const parentMetadata = this.metadata(hex)
+
+    let doc = this._create({docId}, parentMetadata)
+    doc = Automerge.change(doc, 'Opened doc', () => {})
+
+    this.update(doc)
+  }
+
+  _initFeeds (hexes) {
     return Promise.all(
       hexes.map(hex => {
         // don't load metadata if the feed is empty:
-        if (this.length(hex) === 0) return Promise.resolve(null)
+        if (this.length(hex) === 0) {
+          console.log('skipping feed init', hex)
+          return Promise.resolve(null)
+        }
 
-        return this._loadInfo(hex)
+        return this._loadMetadata(hex)
+        .then(({docId}) => {
+          if (this.isWritable(hex)) {
+            this.docs[docId] = this.empty(hex)
+          }
+        })
         .then(() => hex)
       }))
   }
 
-  _loadInfo (hex) {
-    if (this.infos[hex]) return Promise.resolve(this.infos[hex])
+  _loadMetadata (hex) {
+    if (this.metadatas[hex]) return Promise.resolve(this.metadatas[hex])
 
     return _promise(cb => {
       this._feed(hex).get(0, cb)
     })
-    .then(this._setInfo(hex))
+    .then(data => this._setMetadata(hex, JSON.parse(data)))
   }
 
-  _setInfo (hex) {
-    return data => {
-      const info = data ? JSON.parse(data) : {}
-      const {docId} = info
+  _setMetadata (hex, metadata) {
+    if (this.metadatas[hex]) return this.metadatas[hex]
 
-      this.infos[hex] = info
+    this.metadatas[hex] = metadata
+    const {groupId} = metadata
 
-      if (this.isWritable(hex)) {
-        this.docs[docId] = this.empty(hex)
-      }
+    if (!this.groups[groupId]) this.groups[groupId] = []
+    this.groups[groupId].push(hex)
 
-      return info
-    }
+    return metadata
   }
-
-  // _recordBlock (docId, block) {
-  //   this._recordChange(docId, JSON.parse(block))
-  // }
-
-  // _recordChange (docId, change) {
-  //   const {actor, seq, deps} = change
-
-  //   if (!this.docs[docId] || !this.pending[docId]) {
-  //     this.pending[docId] = this.empty(actor)
-  //   }
-
-  //   this._applyChange(docId, change)
-  //   // TODO update requiredBlocks and request missing Blocks:
-  //   // _each(deps, (depSeq, depActor) => {
-  //   //   this.requiredBlocks[docId]
-  //   // })
-  // }
 
   _loadAllBlocks (hex) {
     return this._loadOwnBlocks(hex)
@@ -417,11 +436,7 @@ module.exports = class HyperMerge extends EventEmitter {
   _loadOwnBlocks (hex) {
     const docId = this.hexToId(hex)
 
-    return this._getOwnBlocks(hex)
-    .then(blocks => {
-      this._maxRequested(docId, hex, blocks.length)
-      return this._applyBlocks(docId, blocks)
-    })
+    return this._loadBlocks(docId, hex, this.length(hex))
   }
 
   // a missing block is a block between requiredBlocks and requestedBlocks
@@ -434,19 +449,20 @@ module.exports = class HyperMerge extends EventEmitter {
 
     return Promise.all(Object.keys(deps).map(actor => {
       const last = deps[actor] + 1 // last is exclusive
-      const first = this._maxRequested(docId, actor, last)
 
-      // Stop requesting if done:
-      if (first === last) return null
-
-      return this._getBlockRange(actor, first, last)
-      .then(blocks => this._applyBlocks(docId, blocks))
-      .then(() => this._loadMissingBlocks(docId))
+      return this._loadBlocks(docId, actor, last)
     }))
   }
 
-  _getOwnBlocks (hex) {
-    return this._getBlockRange(hex, START_BLOCK, this.length(hex))
+  _loadBlocks (docId, hex, last) {
+    const first = this._maxRequested(docId, hex, last)
+
+    // Stop requesting if done:
+    if (first >= last) return Promise.resolve()
+
+    return this._getBlockRange(hex, first, last)
+    .then(blocks => this._applyBlocks(docId, blocks))
+    .then(() => this._loadMissingBlocks(docId))
   }
 
   _getBlockRange (hex, first, last) {
@@ -484,6 +500,11 @@ module.exports = class HyperMerge extends EventEmitter {
     return current
   }
 
+  _addToMaxRequested (docId, hex, x) {
+    if (!this.requestedBlocks[docId]) this.requestedBlocks[docId] = {}
+    this.requestedBlocks[docId][hex] = (this.requestedBlocks[docId][hex] || START_BLOCK) + x
+  }
+
   _setRemote (doc) {
     const docId = this.getId(doc)
 
@@ -501,15 +522,14 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   _shareDoc (doc) {
-    const docId = this.getId(doc)
-    const keys = this.clock(doc).keySeq()
-    this.message(docId, {type: 'FEEDS_SHARED', keys})
+    const {groupId} = this.metadata(this.getHex(doc))
+    const keys = this.groups[groupId]
+    this.message(groupId, {type: 'FEEDS_SHARED', keys})
   }
 
   _relatedKeys (hex) {
-    const docId = this.hexToId(hex)
-    const doc = this.find(docId)
-    return this.clock(doc).keySeq()
+    const {groupId} = this.metadata(hex)
+    return this.groups[groupId]
   }
 
   _messagePeer (peer, msg) {
@@ -523,17 +543,16 @@ module.exports = class HyperMerge extends EventEmitter {
         Object.values(this.core.archiver.feeds)
         .map(feed => feed.key.toString('hex'))
 
-      this._loadInfos(hexes)
+      this._initFeeds(hexes)
       .then(() => {
         this.isReady = true
         hexes.forEach(hex => this.feed(hex))
         this.emit('ready', this)
       })
 
-      // // TODO maybe watch for added feeds:
-      // this.core.archiver.on('add', feed => {
-      //   this.feed(feed.key.toString('hex'))
-      // })
+      this.core.archiver.on('add', feed => {
+        this.feed(feed.key.toString('hex'))
+      })
     }
   }
 
@@ -546,15 +565,17 @@ module.exports = class HyperMerge extends EventEmitter {
 
   _onPeerAdded (hex) {
     return peer => {
-      if (this.isDocId(hex)) {
+      peer.stream.on('extension', this._onExtension(hex, peer))
+
+      this._loadMetadata(hex)
+      .then(() => {
+        if (!this.isDocId(hex)) return
+
         const keys = this._relatedKeys(hex)
-        if (keys.size) {
-          this._messagePeer(peer, {type: 'FEEDS_SHARED', keys})
-        }
-      }
+        this._messagePeer(peer, {type: 'FEEDS_SHARED', keys})
+      })
 
       this.emit('peer:joined', hex, peer)
-      peer.stream.on('extension', this._onExtension(hex, peer))
     }
   }
 
@@ -581,16 +602,14 @@ module.exports = class HyperMerge extends EventEmitter {
     switch (msg.type) {
       case 'FEEDS_SHARED':
         return msg.keys.map(hex => this.feed(hex))
-      case 'DOC_SHARED':
-        return this.emit('document:shared', msg.id)
       default:
         throw new Error(`Unknown HyperMerge message type: ${msg.type}`)
     }
   }
 
-  _onConnection () {
+  _onConnection (docId, hex) {
     return (conn, info) => {
-      // console.log('_onConnection', conn)
+      console.log('_onConnection', conn, info)
     }
   }
 
@@ -612,9 +631,3 @@ function _promise (f) {
     })
   })
 }
-
-// function _each (obj, f) {
-//   Object.keys(obj).forEach(k => {
-//     f(obj[k], k)
-//   })
-// }

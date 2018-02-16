@@ -3,145 +3,126 @@ const {HyperMerge} = require('..')
 const Automerge = require('automerge')
 const ram = require('random-access-memory')
 
-test('constructor', t => {
+let hm1, hm2
+
+test('setup', t => {
+  t.plan(3)
+  hm1 = new HyperMerge({path: ram, port: 3298})
+  hm2 = new HyperMerge({path: ram, port: 3299})
+  t.ok(hm1, 'is truthy')
+
+  hm1.once('ready', merge => {
+    hm1.joinSwarm()
+    t.equal(merge, hm1, 'calls ready with itself')
+  })
+
+  hm2.once('ready', merge => {
+    hm2.joinSwarm()
+    t.equal(merge, hm2, 'calls ready with itself')
+  })
+})
+
+test('.any() returns false with no documents', t => {
   t.plan(1)
-  const hm = new HyperMerge({path: ram})
-  t.ok(hm, 'is truthy')
+  t.notOk(hm1.any(), 'empty hypermerge return false for .any()')
 })
 
 test('create a new actor and document', t => {
+  t.plan(2)
+  const doc1 = hm1.create()
+  t.deepEqual(doc1.toJS(), {
+    _conflicts: {},
+    _objectId: '00000000-0000-0000-0000-000000000000'
+  }, 'expected empty automerge doc')
+
+  hm1.once('document:ready', (hex, doc) => {
+    t.equal(doc1, doc)
+  })
+})
+
+test('.any() returns true with some documents', t => {
   t.plan(1)
-  const hm = new HyperMerge({path: ram})
-  hm.core.ready(() => {
-    const doc = hm.create()
-    t.deepEqual(doc.toJS(), {
-      _conflicts: {},
-      _objectId: '00000000-0000-0000-0000-000000000000'
-    }, 'expected empty automerge doc')
-  })
-})
-
-test('does .any() method work?', t => {
-  t.plan(2)
-  const hm = new HyperMerge({path: ram})
-  hm.core.ready(() => {
-    t.notOk(hm.any(), 'empty hypermerge return false for .any()')
-    hm.create()
-    t.ok(hm.any(), 'hypermerge with doc returns true for .any()')
-  })
-})
-
-test('does .isWritable() work?', t => {
-  t.plan(2)
-  const hm1 = new HyperMerge({path: ram}).joinSwarm()
-  const hm2 = new HyperMerge({path: ram}).joinSwarm()
-
-  hm1.core.ready(() => {
-    hm2.core.ready(() => {
-      const writableDoc = hm1.create()
-      const hex = hm1.getHex(writableDoc)
-      hm1.on('feed:ready', () => {
-        t.ok(hm1.isWritable(hex), 'Original doc is writable')
-      })
-      hm2.open(hex)
-      hm2.on('feed:ready', () => {
-        t.notOk(hm2.isWritable(hex), 'Cloned doc is read-only')
-      })
-      hm1.swarm.close()
-      hm2.swarm.close()
-    })
-  })
+  t.ok(hm1.any(), 'hypermerge with doc return true for .any()')
 })
 
 test('.update() a document and .open() it on a second node', t => {
-  t.plan(1)
-  const hm1 = new HyperMerge({path: ram}).joinSwarm()
-  const hm2 = new HyperMerge({path: ram}).joinSwarm()
+  t.plan(2)
 
-  const writableDoc = hm1.create()
-  const hex = hm1.getHex(writableDoc)
-  const newDoc = Automerge.change(writableDoc, doc => {
+  let doc1 = hm1.create()
+
+  doc1 = hm1.update(Automerge.change(doc1, doc => {
     doc.test = 1
+  }))
+
+  const docId = hm1.getId(doc1)
+  hm2.open(docId)
+
+  hm2.once('document:updated', (id, doc2) => {
+    t.deepEqual(doc2.toJS(), {
+      _conflicts: {},
+      _objectId: '00000000-0000-0000-0000-000000000000',
+      test: 1
+    }, 'changes propogate to hm2')
+
+    hm2.update(Automerge.change(doc2, doc => {
+      doc.test = 2
+    }))
   })
 
-  hm1.once('document:ready', () => {
-    hm1.update(newDoc)
-  })
-
-  hm1.core.ready(() => {
-    hm2.core.ready(() => {
-      // Add a slight delay to give the network a chance to update
-      setTimeout(() => {
-        hm2.open(hex)
-
-        hm2.once('document:ready', () => {
-          const clonedDoc = hm2.open(hex)
-          t.deepEqual(clonedDoc.toJS(), {
-            _conflicts: {},
-            _objectId: '00000000-0000-0000-0000-000000000000',
-            test: 1
-          })
-          hm1.swarm.close()
-          hm2.swarm.close()
-        })
-      }, 1000)
-    })
+  hm1.once('document:updated', (id, doc) => {
+    t.deepEqual(doc.toJS(), {
+      _conflicts: {},
+      _objectId: '00000000-0000-0000-0000-000000000000',
+      test: 2
+    }, 'changes propogate back to hm1')
   })
 })
 
 test('.fork() a document, make changes, and then .merge() it', t => {
   t.plan(4)
-  const hm = new HyperMerge({path: ram})
-  hm.core.ready(() => {
-    const firstDoc = hm.create()
-    const firstActorHex = hm.getHex(firstDoc)
-    hm.feed(firstActorHex).once('ready', () => {
-      // First change
-      hm.update(Automerge.change(
-        firstDoc,
-        'First actor makes a change',
-        doc => {
-          doc.test = 1
-        }
-      ))
-      t.deepEqual(hm.document(firstActorHex).toJS(), {
-        _conflicts: {},
-        _objectId: '00000000-0000-0000-0000-000000000000',
-        test: 1
-      })
 
-      // Fork to second document
-      const secondDoc = hm.fork(firstActorHex)
-      const secondActorHex = hm.getHex(secondDoc)
-      hm.feed(secondActorHex).once('ready', () => {
-        t.deepEqual(hm.document(secondActorHex).toJS(), {
-          _conflicts: {},
-          _objectId: '00000000-0000-0000-0000-000000000000',
-          test: 1
-        })
-        hm.update(Automerge.change(
-          secondDoc,
-          'Second actor makes a change',
-          doc => {
-            doc.test = 2
-          }
-        ))
-        t.deepEqual(hm.document(secondActorHex).toJS(), {
-          _conflicts: {},
-          _objectId: '00000000-0000-0000-0000-000000000000',
-          test: 2
-        })
+  const doc1 = hm1.create()
+  const id1 = hm1.getId(doc1)
 
-        // Merge back to first document
-        hm.merge(firstActorHex, secondActorHex)
-        t.deepEqual(hm.document(firstActorHex).toJS(), {
-          _conflicts: {},
-          _objectId: '00000000-0000-0000-0000-000000000000',
-          test: 2
-        })
-      })
-    })
-  })
+  // first change
+  hm1.update(Automerge.change(doc1, 'First actor makes a change', doc => {
+    doc.test = 1
+  }))
+
+  t.deepEqual(hm1.find(id1).toJS(), {
+    _conflicts: {},
+    _objectId: '00000000-0000-0000-0000-000000000000',
+    test: 1
+  }, 'doc1 contains first change after update')
+
+  // Fork to second document
+  const doc2 = hm1.fork(id1)
+  const id2 = hm1.getHex(doc2)
+
+  t.deepEqual(hm1.find(id2).toJS(), {
+    _conflicts: {},
+    _objectId: '00000000-0000-0000-0000-000000000000',
+    test: 1
+  }, 'doc2 contains first change after fork')
+
+  hm1.update(Automerge.change(doc2, 'Second actor makes a change', doc => {
+    doc.test = 2
+  }))
+
+  t.deepEqual(hm1.find(id2).toJS(), {
+    _conflicts: {},
+    _objectId: '00000000-0000-0000-0000-000000000000',
+    test: 2
+  }, 'doc2 contains second change')
+
+  // Merge back to first document
+  hm1.merge(id1, id2)
+
+  t.deepEqual(hm1.find(id1).toJS(), {
+    _conflicts: {},
+    _objectId: '00000000-0000-0000-0000-000000000000',
+    test: 2
+  }, 'doc1 contains second change after merge')
 })
 
 /*
@@ -218,6 +199,12 @@ test('.open() on document with dependencies fetches all of them', t => {
   })
 })
 */
+
+test('teardown', t => {
+  hm1.swarm.close()
+  hm2.swarm.close()
+  t.end()
+})
 
 // FIXME: Test for .delete(hex)
 

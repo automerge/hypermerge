@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset='utf-8' />
-  <title>hypermerge 0.1.1 | Documentation</title>
+  <title>hypermerge 0.1.2 | Documentation</title>
   <meta name='viewport' content='width=device-width,initial-scale=1'>
   <link href='assets/bass.css' type='text/css' rel='stylesheet' />
   <link href='assets/style.css' type='text/css' rel='stylesheet' />
@@ -14,7 +14,7 @@
       <div id='split-left' class='overflow-auto fs0 height-viewport-100'>
         <div class='py1 px2'>
           <h3 class='mb0 no-anchor'>hypermerge</h3>
-          <div class='mb1'><code>0.1.1</code></div>
+          <div class='mb1'><code>0.1.2</code></div>
           <input
             placeholder='Filter'
             id='filter-input'
@@ -22,6 +22,16 @@
             type='text' />
           <div id='toc'>
             <ul class='list-reset h5 py1-ul'>
+              
+                
+                <li><a
+                  href='#'
+                  class="">
+                  
+                  
+                </a>
+                
+                </li>
               
                 
                 <li><a
@@ -35,9 +45,9 @@
               
                 
                 <li><a
-                  href='#onforkcallback'
+                  href='#any'
                   class="">
-                  onForkCallback
+                  any
                   
                 </a>
                 
@@ -45,85 +55,9 @@
               
                 
                 <li><a
-                  href='#hypermerge'
-                  class=" toggle-sibling">
-                  HyperMerge
-                  <span class='icon'>▸</span>
-                </a>
-                
-                <div class='toggle-target display-none'>
-                  
-                  
-                    <ul class='list-reset py1-ul pl1'>
-                      <li class='h5'><span>Instance members</span></li>
-                      
-                      <li><a
-                        href='#hypermergeany'
-                        class='regular pre-open'>
-                        #any
-                      </a></li>
-                      
-                      <li><a
-                        href='#hypermergeopen'
-                        class='regular pre-open'>
-                        #open
-                      </a></li>
-                      
-                      <li><a
-                        href='#hypermergeopenall'
-                        class='regular pre-open'>
-                        #openAll
-                      </a></li>
-                      
-                      <li><a
-                        href='#hypermergecreate'
-                        class='regular pre-open'>
-                        #create
-                      </a></li>
-                      
-                      <li><a
-                        href='#hypermergeupdate'
-                        class='regular pre-open'>
-                        #update
-                      </a></li>
-                      
-                      <li><a
-                        href='#hypermergefork'
-                        class='regular pre-open'>
-                        #fork
-                      </a></li>
-                      
-                      <li><a
-                        href='#hypermergemerge'
-                        class='regular pre-open'>
-                        #merge
-                      </a></li>
-                      
-                      <li><a
-                        href='#hypermergedelete'
-                        class='regular pre-open'>
-                        #delete
-                      </a></li>
-                      
-                      <li><a
-                        href='#hypermergeiswritable'
-                        class='regular pre-open'>
-                        #isWritable
-                      </a></li>
-                      
-                    </ul>
-                  
-                  
-                  
-                </div>
-                
-                </li>
-              
-                
-                <li><a
-                  href='#eventdocumentmetadata'
+                  href='#open'
                   class="">
-                  document:metadata
+                  open
                   
                 </a>
                 
@@ -131,9 +65,69 @@
               
                 
                 <li><a
-                  href='#eventdocumentupdated'
+                  href='#create'
                   class="">
-                  document:updated
+                  create
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#update'
+                  class="">
+                  update
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#fork'
+                  class="">
+                  fork
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#merge'
+                  class="">
+                  merge
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#delete'
+                  class="">
+                  delete
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#iswritable'
+                  class="">
+                  isWritable
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#eventdocumentready'
+                  class="">
+                  document:ready
                   
                 </a>
                 
@@ -151,9 +145,9 @@
               
                 
                 <li><a
-                  href='#eventdocumentready'
+                  href='#eventdocumentupdated'
                   class="">
-                  document:ready
+                  document:updated
                   
                 </a>
                 
@@ -167,6 +161,103 @@
         </div>
       </div>
       <div id='split-right' class='relative overflow-auto height-viewport-100'>
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id=''>
+      
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Create and share Automerge documents using peer-to-peer networking.</p>
+
+
+  <div class='pre p1 fill-light mt0'></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+	    
+          </div>
+          
+          <table class='mt1 mb2 fixed-table h5 col-12'>
+            <colgroup>
+              <col width='30%' />
+              <col width='70%' />
+            </colgroup>
+            <thead>
+              <tr class='bold fill-light'>
+                <th>Name</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody class='mt1'>
+              
+                <tr>
+  <td class='break-word'><span class='code bold'>options.path</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
+  </td>
+  <td class='break-word'><span>path to directory used to store multiple
+hypercores
+</span></td>
+</tr>
+
+
+              
+                <tr>
+  <td class='break-word'><span class='code bold'>options.port</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code>
+  
+    (default <code>3282</code>)
+  </td>
+  <td class='break-word'><span>port number to listen on
+</span></td>
+</tr>
+
+
+              
+            </tbody>
+          </table>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
         
           
             <section class='p2 mb2 clearfix bg-white minishadow'>
@@ -226,172 +317,12 @@
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='onforkcallback'>
-      onForkCallback
+    <h3 class='fl m0' id='any'>
+      any
     </h3>
     
     
   </div>
-  
-
-  <p>onFork callback - unimplemented?</p>
-
-
-  <div class='pre p1 fill-light mt0'>onForkCallback()</div>
-  
-    <p>
-      Type:
-      <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function">Function</a>
-    </p>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='hypermerge'>
-      HyperMerge
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Create and share Automerge documents using peer-to-peer networking.</p>
-
-
-  <div class='pre p1 fill-light mt0'>HyperMerge</div>
-  
-  
-    <p>
-      Extends
-      
-        EventEmitter
-      
-    </p>
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-	    
-          </div>
-          
-          <table class='mt1 mb2 fixed-table h5 col-12'>
-            <colgroup>
-              <col width='30%' />
-              <col width='70%' />
-            </colgroup>
-            <thead>
-              <tr class='bold fill-light'>
-                <th>Name</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody class='mt1'>
-              
-                <tr>
-  <td class='break-word'><span class='code bold'>options.path</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
-  </td>
-  <td class='break-word'><span>path to directory used to store multiple
-hypercores
-</span></td>
-</tr>
-
-
-              
-                <tr>
-  <td class='break-word'><span class='code bold'>options.port</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number">number</a></code>
-  
-    (default <code>3282</code>)
-  </td>
-  <td class='break-word'><span>port number to listen on
-</span></td>
-</tr>
-
-
-              
-                <tr>
-  <td class='break-word'><span class='code bold'>options.onFork</span> <code class='quiet'><a href="#onforkcallback">onForkCallback</a>?</code>
-  </td>
-  <td class='break-word'><span>unimplemented callback?
-</span></td>
-</tr>
-
-
-              
-            </tbody>
-          </table>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Instance Members</div>
-    <div class="clearfix">
-  
-    <div class='border-bottom' id='hypermergeany'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>any(f = ()=>true)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
   
 
   <p>Have any automerge documents been built?</p>
@@ -448,26 +379,27 @@ hypercores
   
 </section>
 
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='hypermergeopen'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>open(hex)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
 
   
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='open'>
+      open
+    </h3>
+    
+    
+  </div>
+  
 
-  <p>Loads a single hypercore feed from the storage directory for a single actor
+  <p>Adds
 and/or the network swarm, and builds an automerge document.</p>
 
 
-  <div class='pre p1 fill-light mt0'>open(hex: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</div>
+  <div class='pre p1 fill-light mt0'>open(docId: any, metadata: any, hex: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</div>
   
   
 
@@ -484,8 +416,25 @@ and/or the network swarm, and builds an automerge document.</p>
       
         <div class='space-bottom0'>
           <div>
+            <span class='code bold'>docId</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>metadata</span> <code class='quiet'>(any
+            = <code>null</code>)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
             <span class='code bold'>hex</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-	    key of hypercore / actor id to open
+	    docId of document to open
 
           </div>
           
@@ -509,67 +458,20 @@ and/or the network swarm, and builds an automerge document.</p>
   
 </section>
 
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='hypermergeopenall'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>openAll()</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
 
   
-
-  <p>Loads all the hypercore feeds from the storage directory (one per actor)
-and/or the network swarm, and builds automerge documents for each
-hypercore/actor.</p>
-
-
-  <div class='pre p1 fill-light mt0'>openAll()</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='hypermergecreate'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>create(metadata)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='create'>
+      create
+    </h3>
+    
+    
+  </div>
   
 
   <p>Creates a new hypercore feed for a new actor and returns a new
@@ -594,7 +496,7 @@ automerge document.</p>
         <div class='space-bottom0'>
           <div>
             <span class='code bold'>metadata</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>
-            = <code>null</code>)</code>
+            = <code>{}</code>)</code>
 	    metadata to be associated with this document
 
           </div>
@@ -619,19 +521,20 @@ automerge document.</p>
   
 </section>
 
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='hypermergeupdate'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>update(doc)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
 
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='update'>
+      update
+    </h3>
+    
+    
+  </div>
   
 
   <p>Finds any new changes for the submitted doc for the actor,
@@ -680,26 +583,27 @@ and appends the changes to the actor's hypercore feed.</p>
   
 </section>
 
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='hypermergefork'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>fork(hex, metadata)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
 
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='fork'>
+      fork
+    </h3>
+    
+    
+  </div>
   
 
   <p>Creates a new actor hypercore feed and automerge document, with
 an empty change that depends on the document for another actor.</p>
 
 
-  <div class='pre p1 fill-light mt0'>fork(hex: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, metadata: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</div>
+  <div class='pre p1 fill-light mt0'>fork(parentId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</div>
   
   
 
@@ -716,18 +620,8 @@ an empty change that depends on the document for another actor.</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>hex</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-	    actor to fork
-
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>metadata</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>
-            = <code>null</code>)</code>
-	    metadata to be associated with this document
+            <span class='code bold'>parentId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    id of document to fork
 
           </div>
           
@@ -751,26 +645,27 @@ an empty change that depends on the document for another actor.</p>
   
 </section>
 
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='hypermergemerge'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>merge(hex, hex2)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
 
   
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='merge'>
+      merge
+    </h3>
+    
+    
+  </div>
+  
 
-  <p>Takes all the changes from another actor (hex2) and adds them to
-the automerge doc.</p>
+  <p>Takes all the changes from a document (sourceId) and adds them to
+another document (destId).</p>
 
 
-  <div class='pre p1 fill-light mt0'>merge(hex: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, hex2: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</div>
+  <div class='pre p1 fill-light mt0'>merge(destId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, sourceId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</div>
   
   
 
@@ -787,8 +682,8 @@ the automerge doc.</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>hex</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-	    actor to merge changes into
+            <span class='code bold'>destId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    docId to merge changes into
 
           </div>
           
@@ -796,8 +691,8 @@ the automerge doc.</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>hex2</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-	    actor to copy changes from
+            <span class='code bold'>sourceId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    docId to copy changes from
 
           </div>
           
@@ -821,26 +716,27 @@ the automerge doc.</p>
   
 </section>
 
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='hypermergedelete'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>delete(hex)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
 
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='delete'>
+      delete
+    </h3>
+    
+    
+  </div>
   
 
   <p>Removes hypercore feed for an actor and automerge doc.</p>
 <p>Leaves the network swarm. Doesn't remove files from disk.</p>
 
 
-  <div class='pre p1 fill-light mt0'>delete(hex: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</div>
+  <div class='pre p1 fill-light mt0'>delete(docId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</div>
   
   
 
@@ -857,7 +753,7 @@ the automerge doc.</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>hex</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+            <span class='code bold'>docId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
 	    
           </div>
           
@@ -881,19 +777,20 @@ the automerge doc.</p>
   
 </section>
 
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='hypermergeiswritable'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>isWritable(hex)</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
 
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='iswritable'>
+      isWritable
+    </h3>
+    
+    
+  </div>
   
 
   <p>Is the hypercore writable?</p>
@@ -949,16 +846,6 @@ the automerge doc.</p>
   
 </section>
 
-      </div>
-    </div>
-  
-</div>
-
-  
-
-  
-</section>
-
           
         
           
@@ -967,88 +854,18 @@ the automerge doc.</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventdocumentmetadata'>
-      document:metadata
+    <h3 class='fl m0' id='eventdocumentready'>
+      document:ready
     </h3>
     
     
   </div>
   
 
-  <p>Emitted when a document's metadata is ready.</p>
+  <p>Emitted when a document has been fully downloaded.</p>
 
 
-  <div class='pre p1 fill-light mt0'>document:metadata</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>id</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-	    The document's id.
-
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>metadata</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</code>
-	    The metadata for the document.
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    <h3 class='fl m0' id='eventdocumentupdated'>
-      document:updated
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Emitted when an updated document has been downloaded.</p>
-
-
-  <div class='pre p1 fill-light mt0'>document:updated</div>
+  <div class='pre p1 fill-light mt0'>document:ready</div>
   
   
 
@@ -1159,18 +976,18 @@ the automerge doc.</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventdocumentready'>
-      document:ready
+    <h3 class='fl m0' id='eventdocumentupdated'>
+      document:updated
     </h3>
     
     
   </div>
   
 
-  <p>Emitted when a document has been fully downloaded.</p>
+  <p>Emitted when an updated document has been downloaded.</p>
 
 
-  <div class='pre p1 fill-light mt0'>document:ready</div>
+  <div class='pre p1 fill-light mt0'>document:updated</div>
   
   
 
