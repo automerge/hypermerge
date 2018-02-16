@@ -1,5 +1,5 @@
 const test = require('tape')
-const {HyperMerge} = require('..')
+const HyperMerge = require('..')
 const ram = require('random-access-memory')
 
 let hm1, hm2
