@@ -120,6 +120,10 @@ module.exports = class HyperMerge extends EventEmitter {
     return doc
   }
 
+  change (doc, message = null, changeFn) {
+    return this.update(Automerge.change(doc, message, changeFn))
+  }
+
   /**
    * Finds any new changes for the submitted doc for the actor,
    * and appends the changes to the actor's hypercore feed.
