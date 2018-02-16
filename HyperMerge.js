@@ -21,15 +21,15 @@ const METADATA = {
  * @param {Object} options
  * @param {string} options.path - path to directory used to store multiple
  *   hypercores
- * @param {number} [options.port=3282] - port number to listen on
+ * @param {number} [options.port=0] - port number to listen on
  */
 
 module.exports = class HyperMerge extends EventEmitter {
-  constructor ({path, port, defaultMetadata}) {
+  constructor ({path, port = 0, defaultMetadata}) {
     super()
 
     this.defaultMetadata = defaultMetadata || {}
-    this.port = port || 3282
+    this.port = port
     this.isReady = false
     this.feeds = {}
     this.docs = {}
