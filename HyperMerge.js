@@ -339,6 +339,7 @@ module.exports = class HyperMerge extends EventEmitter {
     feed.ready(this._onFeedReady(hex, feed))
 
     feed.on('peer-add', this._onPeerAdded(hex))
+    feed.on('peer-remove', this._onPeerRemoved(hex))
 
     return feed
   }
@@ -580,15 +581,20 @@ module.exports = class HyperMerge extends EventEmitter {
 
         const keys = this._relatedKeys(hex)
         this._messagePeer(peer, {type: 'FEEDS_SHARED', keys})
-      })
 
-      this.emit('peer:joined', hex, peer)
+        this.emit('peer:joined', hex, peer)
+      })
     }
   }
 
   _onPeerRemoved (hex) {
     return peer => {
-      this.emit('peer:left', hex, peer)
+      this._loadMetadata(hex)
+      .then(() => {
+        if (!this.isDocId(hex)) return
+
+        this.emit('peer:left', hex, peer)
+      })
     }
   }
 
