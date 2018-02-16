@@ -1,11 +1,11 @@
 {
   "name": "hypermerge",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "why merge when you can HYPERMERGE",
   "main": "index.js",
   "scripts": {
-    "doc-serve": "documentation serve --watch HyperMerge.js",
-    "doc-build": "documentation build HyperMerge.js -f html -o docs",
+    "doc-serve": "documentation serve --watch index.js",
+    "doc-build": "documentation build index.js -f html -o docs",
     "tape": "tape tests/**/*.js",
     "test": "standard && nyc tape tests/**/*.js | tap-nyc",
     "coverage": "nyc report -r html && opn coverage/index.html",
