@@ -9,63 +9,63 @@ module.exports = class Model {
     this.nick = nick
 
     this.hm = new HyperMerge({port, path: ram})
-  .once('ready', hm => {
-    hm.joinSwarm()
+    .once('ready', hm => {
+      hm.joinSwarm()
 
-    if (channelHex) {
-      console.log('Searching for chat channel on network...')
+      if (channelHex) {
+        console.log('Searching for chat channel on network...')
 
-      // Look up the document by its hex identifier
-      hm.open(channelHex)
+        // Look up the document by its hex identifier
+        hm.open(channelHex)
 
-      // Once we manage to open the document we'll get this message,
-      // so we'll post a joinChannel message and call _ready.
-      hm.once('document:updated', (docId, doc) => {
-        this.doc = joinChannel(hm, doc)
-        _ready(hm, this.channelHex, this.doc)
-      })
-    } else {
-      // We're starting a new channel here, so first
-      // initialize the new channel document data structure.
-      this.doc = hm.create()
-      this.doc = hm.change(this.doc, changeDoc => {
-        changeDoc.messages = {}
-      })
+        // Once we manage to open the document we'll get this message,
+        // so we'll post a joinChannel message and call _ready.
+        hm.once('document:updated', (docId, doc) => {
+          this.doc = doc
+          this.joinChannel()
+          this._ready(onReady)
+        })
+      } else {
+        // We're starting a new channel here, so first
+        // initialize the new channel document data structure.
+        this.doc = hm.create()
+        this.doc = hm.change(this.doc, changeDoc => {
+          changeDoc.messages = {}
+        })
 
-      // Now we post the join channel message and call _ready.
-      this.doc = joinChannel(hm, this.doc)
-
-      this.channelHex = hm.getId(this.doc)
-      _ready(hm, this.channelHex, this.doc)
-    }
-  })
-
-    function joinChannel (hm, doc) {
-      return hm.change(doc, changeDoc => {
-        changeDoc.messages[Date.now()] = {
-          nick,
-          joined: true
-        }
-      })
-    }
-
-    function _ready (hm, channelHex, doc) {
-      const render = onReady({
-        doc,
-        channelHex,
-        numConnections: hm.swarm.connections.length
-      })
-
-    // We merge any new documents that arrive due to events,
-    // but we don't update our hypercores
-      hm.on('document:updated', remoteUpdate)
-      hm.on('document:ready', remoteUpdate)
-
-      function remoteUpdate (id, newDoc) {
-        doc = newDoc
-        render(doc)
+        // Now we post the join channel message and call _ready.
+        this.joinChannel()
+        this.channelHex = hm.getId(this.doc)
+        this._ready()
       }
+    })
+  }
+
+  joinChannel () {
+    this.doc = this.hm.change(this.doc, changeDoc => {
+      changeDoc.messages[Date.now()] = {
+        nick: this.nick,
+        joined: true
+      }
+    })
+  }
+
+  _ready (onReady) {
+    const render = onReady({
+      doc: this.doc,
+      channelHex: this.channelHex,
+      numConnections: this.hm.swarm.connections.length
+    })
+
+    const remoteUpdate = (id, newDoc) => {
+      this.doc = newDoc
+      render(this.doc)
     }
+
+  // We merge any new documents that arrive due to events,
+  // but we don't update our hypercores
+    this.hm.on('document:updated', remoteUpdate)
+    this.hm.on('document:ready', remoteUpdate)
   }
 
   addMessageToDoc (line) {

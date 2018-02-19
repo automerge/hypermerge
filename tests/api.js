@@ -51,7 +51,6 @@ test('.update() a document and .open() it on a second node', t => {
   t.plan(4)
 
   let doc1 = hm1.create()
-  const docId = hm1.getId(doc1)
 
   // document:updated only receives below if we open after hm1 is ready:
   hm1.once('document:ready', id => {
@@ -62,7 +61,7 @@ test('.update() a document and .open() it on a second node', t => {
 
   hm2.once('document:ready', (id, doc2) => {
     t.deepEqual(doc2, {
-      _objectId: '00000000-0000-0000-0000-000000000000',
+      _objectId: '00000000-0000-0000-0000-000000000000'
     }, 'empty doc propogates to hm2')
 
     doc1 = hm1.change(doc1, doc => {
