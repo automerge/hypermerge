@@ -6,8 +6,10 @@ let hm1, hm2
 
 test('setup', t => {
   t.plan(3)
+
   hm1 = new HyperMerge({path: ram, port: 3298})
   hm2 = new HyperMerge({path: ram, port: 3299})
+
   t.ok(hm1, 'is truthy')
 
   hm1.once('ready', merge => {
@@ -28,9 +30,10 @@ test('.any() returns false with no documents', t => {
 
 test('create a new actor and document', t => {
   t.plan(2)
+
   const doc1 = hm1.create()
-  t.deepEqual(doc1.toJS(), {
-    _conflicts: {},
+
+  t.deepEqual(doc1, {
     _objectId: '00000000-0000-0000-0000-000000000000'
   }, 'expected empty automerge doc')
 
@@ -45,22 +48,30 @@ test('.any() returns true with some documents', t => {
 })
 
 test('.update() a document and .open() it on a second node', t => {
-  t.plan(2)
+  t.plan(4)
 
   let doc1 = hm1.create()
-
-  doc1 = hm1.change(doc1, doc => {
-    doc.test = 1
-  })
+  const docId = hm1.getId(doc1)
 
   // document:updated only receives below if we open after hm1 is ready:
-  hm1.once('document:ready', (id) => {
-    hm2.open(hm1.getId(doc1))
+  hm1.once('document:ready', id => {
+    t.equal(id, hm1.getId(doc1), 'readied id should be the doc we created')
+
+    hm2.open(id)
+  })
+
+  hm2.once('document:ready', (id, doc2) => {
+    t.deepEqual(doc2, {
+      _objectId: '00000000-0000-0000-0000-000000000000',
+    }, 'empty doc propogates to hm2')
+
+    doc1 = hm1.change(doc1, doc => {
+      doc.test = 1
+    })
   })
 
   hm2.once('document:updated', (id, doc2) => {
-    t.deepEqual(doc2.toJS(), {
-      _conflicts: {},
+    t.deepEqual(doc2, {
       _objectId: '00000000-0000-0000-0000-000000000000',
       test: 1
     }, 'changes propogate to hm2')
@@ -71,8 +82,7 @@ test('.update() a document and .open() it on a second node', t => {
   })
 
   hm1.once('document:updated', (id, doc) => {
-    t.deepEqual(doc.toJS(), {
-      _conflicts: {},
+    t.deepEqual(doc, {
       _objectId: '00000000-0000-0000-0000-000000000000',
       test: 2
     }, 'changes propogate back to hm1')
@@ -90,8 +100,7 @@ test('.fork() a document, make changes, and then .merge() it', t => {
     doc.test = 1
   })
 
-  t.deepEqual(hm1.find(id1).toJS(), {
-    _conflicts: {},
+  t.deepEqual(hm1.find(id1), {
     _objectId: '00000000-0000-0000-0000-000000000000',
     test: 1
   }, 'doc1 contains first change after update')
@@ -100,8 +109,7 @@ test('.fork() a document, make changes, and then .merge() it', t => {
   const doc2 = hm1.fork(id1)
   const id2 = hm1.getHex(doc2)
 
-  t.deepEqual(hm1.find(id2).toJS(), {
-    _conflicts: {},
+  t.deepEqual(hm1.find(id2), {
     _objectId: '00000000-0000-0000-0000-000000000000',
     test: 1
   }, 'doc2 contains first change after fork')
@@ -110,8 +118,7 @@ test('.fork() a document, make changes, and then .merge() it', t => {
     doc.test = 2
   })
 
-  t.deepEqual(hm1.find(id2).toJS(), {
-    _conflicts: {},
+  t.deepEqual(hm1.find(id2), {
     _objectId: '00000000-0000-0000-0000-000000000000',
     test: 2
   }, 'doc2 contains second change')
@@ -119,8 +126,7 @@ test('.fork() a document, make changes, and then .merge() it', t => {
   // Merge back to first document
   hm1.merge(id1, id2)
 
-  t.deepEqual(hm1.find(id1).toJS(), {
-    _conflicts: {},
+  t.deepEqual(hm1.find(id1), {
     _objectId: '00000000-0000-0000-0000-000000000000',
     test: 2
   }, 'doc1 contains second change after merge')

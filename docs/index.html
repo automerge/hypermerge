@@ -125,16 +125,6 @@
               
                 
                 <li><a
-                  href='#eventdocumentready'
-                  class="">
-                  document:ready
-                  
-                </a>
-                
-                </li>
-              
-                
-                <li><a
                   href='#eventfeedready'
                   class="">
                   feed:ready
@@ -148,6 +138,16 @@
                   href='#eventdocumentupdated'
                   class="">
                   document:updated
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#eventdocumentready'
+                  class="">
+                  document:ready
                   
                 </a>
                 
@@ -395,11 +395,10 @@ hypercores
   </div>
   
 
-  <p>Adds
-and/or the network swarm, and builds an automerge document.</p>
+  <p>Opens an existing document.</p>
 
 
-  <div class='pre p1 fill-light mt0'>open(docId: any, metadata: any, hex: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</div>
+  <div class='pre p1 fill-light mt0'>open(docId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, metadata: any)</div>
   
   
 
@@ -416,8 +415,9 @@ and/or the network swarm, and builds an automerge document.</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>docId</span> <code class='quiet'>(any)</code>
-	    
+            <span class='code bold'>docId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    docId of document to open
+
           </div>
           
         </div>
@@ -427,15 +427,6 @@ and/or the network swarm, and builds an automerge document.</p>
             <span class='code bold'>metadata</span> <code class='quiet'>(any
             = <code>null</code>)</code>
 	    
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>hex</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-	    docId of document to open
-
           </div>
           
         </div>
@@ -474,8 +465,7 @@ and/or the network swarm, and builds an automerge document.</p>
   </div>
   
 
-  <p>Creates a new hypercore feed for a new actor and returns a new
-automerge document.</p>
+  <p>Creates an automerge document backed by a new hypercore.</p>
 
 
   <div class='pre p1 fill-light mt0'>create(metadata: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</div>
@@ -854,67 +844,6 @@ another document (destId).</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventdocumentready'>
-      document:ready
-    </h3>
-    
-    
-  </div>
-  
-
-  <p>Emitted when a document has been fully downloaded.</p>
-
-
-  <div class='pre p1 fill-light mt0'>document:ready</div>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Parameters</div>
-    <div class='prose'>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>document</span> <code class='quiet'>(<a href="#document">Document</a>)</code>
-	    automerge document
-
-          </div>
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-          
-        
-          
-            <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
     <h3 class='fl m0' id='eventfeedready'>
       feed:ready
     </h3>
@@ -1001,6 +930,85 @@ another document (destId).</p>
   
     <div class='py1 quiet mt1 prose-big'>Parameters</div>
     <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>docId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    the hex id representing this document
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>document</span> <code class='quiet'>(<a href="#document">Document</a>)</code>
+	    automerge document
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='eventdocumentready'>
+      document:ready
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Emitted when a document has been fully loaded.</p>
+
+
+  <div class='pre p1 fill-light mt0'>document:ready</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>docId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    the hex id representing this document
+
+          </div>
+          
+        </div>
       
         <div class='space-bottom0'>
           <div>

@@ -34,6 +34,8 @@ module.exports = class HyperMerge extends EventEmitter {
     this.isReady = false
     this.feeds = {}
     this.docs = {}
+
+    this.readyIndex = {} // docId -> Boolean
     this.groupIndex = {} // groupId -> [hex]
     this.docIndex = {} // docId -> [hex]
     this.metaIndex = {} // hex -> metadata
@@ -274,6 +276,10 @@ module.exports = class HyperMerge extends EventEmitter {
     return this._trackFeed(this._feed(hex))
   }
 
+  isDocReady (docId) {
+    return this.readyIndex[docId]
+  }
+
   replicate (opts) {
     return this.core.replicate(opts)
   }
@@ -323,20 +329,20 @@ module.exports = class HyperMerge extends EventEmitter {
     return this._append(hex, metadata)
   }
 
-  _appendAll (hex, changes) {
-    return Promise.all(changes.map(change =>
-      this._append(hex, change)))
+  _append (hex, change) {
+    return this._appendAll(hex, [change])
   }
 
-  _append (hex, obj) {
+  _appendAll (hex, changes) {
+    const blocks = changes.map(change => JSON.stringify(change))
     return _promise(cb => {
-      const data = JSON.stringify(obj)
-      this.feed(hex).append(data, cb)
+      this.feed(hex).append(blocks, cb)
     })
   }
 
   _trackFeed (feed) {
     const hex = feed.key.toString('hex')
+
     this.feeds[hex] = feed
 
     feed.ready(this._onFeedReady(hex, feed))
@@ -358,20 +364,14 @@ module.exports = class HyperMerge extends EventEmitter {
         feed.on('download', this._onDownload(docId, hex))
 
         return this._loadAllBlocks(hex)
-      })
-      .then(() => {
-        const docId = this.hexToId(hex)
+          .then(() => {
+            if (hex !== docId) return
 
-        if (docId !== hex) return
-
-        /**
-         * Emitted when a document has been fully downloaded.
-         *
-         * @event document:ready
-         * @param {Document} document - automerge document
-         */
-        this.emit('document:ready', docId, this.find(docId))
+            this.readyIndex[docId] = true
+            this._emitReady(docId)
+          })
       })
+
       /**
        * Emitted when a hypercore feed is ready.
        *
@@ -498,7 +498,9 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   _applyChanges (docId, changes) {
-    return this._setRemote(Automerge.applyChanges(this.find(docId), changes))
+    return changes.length > 0
+      ? this._setRemote(Automerge.applyChanges(this.find(docId), changes))
+      : this.find(docId)
   }
 
   // tracks which blocks have been requested for a given doc,
@@ -521,11 +523,12 @@ module.exports = class HyperMerge extends EventEmitter {
 
     this.set(doc)
 
-    if (!this.isMissingDeps(docId)) {
+    if (this.readyIndex[docId] && !this.isMissingDeps(docId)) {
       /**
        * Emitted when an updated document has been downloaded.
        *
        * @event document:updated
+       * @param {string} docId - the hex id representing this document
        * @param {Document} document - automerge document
        */
       this.emit('document:updated', docId, doc)
@@ -559,10 +562,6 @@ module.exports = class HyperMerge extends EventEmitter {
         this.isReady = true
         hexes.forEach(hex => this.feed(hex))
         this.emit('ready', this)
-      })
-
-      this.core.archiver.on('add', feed => {
-        this.feed(feed.key.toString('hex'))
       })
     }
   }
@@ -619,7 +618,7 @@ module.exports = class HyperMerge extends EventEmitter {
       case 'FEEDS_SHARED':
         return msg.keys.map(hex => this.feed(hex))
       default:
-        throw new Error(`Unknown HyperMerge message type: ${msg.type}`)
+        this.emit('peer:message', hex, peer, msg)
     }
   }
 
@@ -633,6 +632,19 @@ module.exports = class HyperMerge extends EventEmitter {
     return (...args) => {
       // console.log('_onListening', ...args)
     }
+  }
+
+  _emitReady (docId) {
+    const doc = this.find(docId)
+
+    /**
+     * Emitted when a document has been fully loaded.
+     *
+     * @event document:ready
+     * @param {string} docId - the hex id representing this document
+     * @param {Document} document - automerge document
+     */
+    this.emit('document:ready', docId, doc)
   }
 
   _ensureReady () {
