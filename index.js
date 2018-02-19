@@ -25,9 +25,10 @@ const METADATA = {
  */
 
 module.exports = class HyperMerge extends EventEmitter {
-  constructor ({path, port = 0, defaultMetadata}) {
+  constructor ({path, port = 0, immutableApi = false, defaultMetadata}) {
     super()
 
+    this.immutableApi = immutableApi
     this.defaultMetadata = defaultMetadata || {}
     this.port = port
     this.isReady = false
@@ -225,7 +226,9 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   empty (actorId) {
-    return Automerge.initImmutable(actorId)
+    return this.immutableApi
+      ? Automerge.initImmutable(actorId)
+      : Automerge.init(actorId)
   }
 
   metadatas (docId) {
