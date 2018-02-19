@@ -60,7 +60,7 @@ module.exports = class HyperMerge extends EventEmitter {
   find (docId) {
     const doc = this.docs[docId]
 
-    if (!doc) throw new Error(`Cannot find document. open(docId) first. Key: ${docId}`)
+    if (!doc) throw new Error(`Cannot find document. open(docId) first. docId: ${docId}`)
 
     return doc
   }
@@ -72,10 +72,9 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   /**
-   * Adds
-   * and/or the network swarm, and builds an automerge document.
+   * Opens an existing document.
    *
-   * @param {string} hex - docId of document to open
+   * @param {string} docId - docId of document to open
    */
   open (docId, metadata = null) {
     this._ensureReady()
@@ -87,8 +86,7 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   /**
-   * Creates a new hypercore feed for a new actor and returns a new
-   * automerge document.
+   * Creates an automerge document backed by a new hypercore.
    *
    * @param {object} metadata - metadata to be associated with this document
    */
@@ -105,11 +103,11 @@ module.exports = class HyperMerge extends EventEmitter {
     metadata = Object.assign(
       {},
       METADATA,
-      { groupId: hex },
-      parentMetadata,
-      this.defaultMetadata,
-      { docId: hex },
-      metadata
+      { groupId: hex }, // default to self if parent doesn't have groupId
+      parentMetadata, // metadata of the parent feed to this feed (e.g. when opening, forking)
+      this.defaultMetadata, // user-specified default metadata
+      { docId: hex }, // set the docId to this core's hex by default
+      metadata // directly provided metadata should override everything else
     )
 
     this._appendMetadata(hex, metadata)
@@ -157,12 +155,12 @@ module.exports = class HyperMerge extends EventEmitter {
     this._ensureReady()
 
     const parent = this.find(parentId)
+    const doc = this._create({parentId}, this.metadata(parentId))
 
-    let doc = this._create({parentId}, this.metadata(parentId))
-    doc = Automerge.merge(doc, parent)
-    doc = Automerge.change(doc, `Forked from ${parentId}`, () => {})
-
-    return this.update(doc)
+    return this.change(
+      Automerge.merge(doc, parent),
+      `Forked from ${parentId}`,
+      () => {})
   }
 
   /**
@@ -177,12 +175,10 @@ module.exports = class HyperMerge extends EventEmitter {
     const dest = this.find(destId)
     const source = this.find(sourceId)
 
-    const doc = Automerge.change(
+    return this.change(
       Automerge.merge(dest, source),
       `Merged with ${sourceId}`,
       () => {})
-
-    return this.update(doc)
   }
 
   /**
