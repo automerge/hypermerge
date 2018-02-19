@@ -1,6 +1,5 @@
 const ram = require('random-access-memory')
 const HyperMerge = require('hypermerge')
-const Automerge = require('automerge')
 
 require('events').EventEmitter.prototype._maxListeners = 100
 
@@ -29,11 +28,9 @@ module.exports = class Model {
       // We're starting a new channel here, so first
       // initialize the new channel document data structure.
       this.doc = hm.create()
-      this.doc = hm.update(
-        Automerge.change(this.doc, changeDoc => {
-          changeDoc.messages = {}
-        })
-      )
+      this.doc = hm.change(this.doc, changeDoc => {
+        changeDoc.messages = {}
+      })
 
       // Now we post the join channel message and call _ready.
       this.doc = joinChannel(hm, this.doc)
@@ -44,14 +41,12 @@ module.exports = class Model {
   })
 
     function joinChannel (hm, doc) {
-      return hm.update(
-      Automerge.change(doc, changeDoc => {
+      return hm.change(doc, changeDoc => {
         changeDoc.messages[Date.now()] = {
           nick,
           joined: true
         }
       })
-    )
     }
 
     function _ready (hm, channelHex, doc) {
@@ -76,14 +71,12 @@ module.exports = class Model {
   addMessageToDoc (line) {
     const message = line.trim()
     if (message.length === 0) return this.doc
-    this.doc = this.hm.update(
-      Automerge.change(this.doc, changeDoc => {
-        changeDoc.messages[Date.now()] = {
-          nick: this.nick,
-          message: line
-        }
-      })
-    )
+    this.doc = this.hm.change(this.doc, changeDoc => {
+      changeDoc.messages[Date.now()] = {
+        nick: this.nick,
+        message: line
+      }
+    })
     return this.doc
   }
 }
