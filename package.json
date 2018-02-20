@@ -10,7 +10,7 @@
     "test": "standard && nyc tape tests/**/*.js | tap-nyc",
     "coverage": "nyc report -r html && opn coverage/index.html",
     "precommit": "npm run doc-build",
-    "prepush": ""
+    "prepush": "true"
   },
   "repository": {
     "type": "git",
