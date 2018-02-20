@@ -2,12 +2,12 @@ const diffy = require('diffy')({fullscreen: true})
 const input = require('diffy/input')({showCursor: true})
 const stripAnsi = require('strip-ansi')
 
-let nick, channelHex, numConnections, doc
+let nick, channelHex, getNumConnections, doc
 
 function initUI (opts) {
   nick = opts.nick
   channelHex = opts.channelHex
-  numConnections = opts.numConnections
+  getNumConnections = opts.getNumConnections
   doc = opts.doc
   render(doc)
   input.on('update', () => { render(doc) })
@@ -24,7 +24,7 @@ function render (renderDoc) {
   diffy.render(() => {
     let output = ''
     output += `Join: npx hm-chat ${channelHex}\n`
-    output += `${numConnections} connections. `
+    output += `${getNumConnections()} connections. `
     output += `Use Ctrl-C to exit.\n\n`
     let displayMessages = []
     let {messages} = doc

@@ -9,8 +9,8 @@
     "tape": "tape tests/**/*.js",
     "test": "standard && nyc tape tests/**/*.js | tap-nyc",
     "coverage": "nyc report -r html && opn coverage/index.html",
-    "precommit": "npm test && npm run doc-build",
-    "prepush": "npm test"
+    "precommit": "npm run doc-build",
+    "prepush": ""
   },
   "repository": {
     "type": "git",

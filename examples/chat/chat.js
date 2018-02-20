@@ -23,7 +23,7 @@ model.once('ready', ({doc, channelHex}) => {
   initUI({
     nick,
     channelHex,
-    numConnections: model.numConnections,
+    getNumConnections: model.getNumConnections.bind(model),
     doc,
     postMessage: (line) => model.addMessageToDoc(line)
   })

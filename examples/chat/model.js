@@ -34,6 +34,7 @@ module.exports = class Model extends EventEmitter {
     } else {
       console.log('Searching for chat channel on network...')
       hm.open(this.channelHex)
+      // hm.once('document:updated', (docId, doc) => { this.ready(doc) })
       hm.once('document:ready', (docId, doc) => { this.ready(doc) })
     }
   }
@@ -76,7 +77,7 @@ module.exports = class Model extends EventEmitter {
   /**
    * Getter to return the number of connections for the UI
    */
-  get numConnections () {
+  getNumConnections () {
     return this.hm.swarm.connections.length
   }
 
