@@ -17,7 +17,6 @@ function initUI (opts) {
   })
   // For network connection display
   setInterval(() => { render(doc) }, 3000)
-  return render
 }
 
 function render (renderDoc) {
@@ -28,8 +27,7 @@ function render (renderDoc) {
     output += `${numConnections} connections. `
     output += `Use Ctrl-C to exit.\n\n`
     let displayMessages = []
-    let messages = doc.getIn(['messages'])
-    messages = messages ? messages.toJS() : {}
+    let {messages} = doc
     Object.keys(messages).sort().forEach(key => {
       if (key === '_objectId') return
       if (key === '_conflicts') return
@@ -56,4 +54,4 @@ function render (renderDoc) {
   })
 }
 
-module.exports = initUI
+module.exports = {initUI, render}

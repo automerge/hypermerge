@@ -26,9 +26,9 @@ atomic-batcher@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/atomic-batcher/-/atomic-batcher-1.0.2.tgz#d16901d10ccec59516c197b9ccd8930689b813b4"
 
-"automerge@github:automerge/automerge#immutable-api":
-  version "0.6.0"
-  resolved "https://codeload.github.com/automerge/automerge/tar.gz/4aeb602f80b5a57ea598cab87d83b06093bf2156"
+automerge@^0.7.0:
+  version "0.7.0"
+  resolved "https://registry.yarnpkg.com/automerge/-/automerge-0.7.0.tgz#2d348102543a25bc95829f56dd70845d165134f7"
   dependencies:
     immutable "^3.8.1"
     transit-immutable-js "^0.7.0"
@@ -255,11 +255,11 @@ hypercore@^6.12.0, hypercore@^6.6.3:
     unordered-array-remove "^1.0.2"
     unordered-set "^2.0.0"
 
-hypermerge@^0.2.1:
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/hypermerge/-/hypermerge-0.2.1.tgz#844ec2a8cc88c653964f10f4386ab4c13835bdf4"
+hypermerge@^0.3.1:
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/hypermerge/-/hypermerge-0.3.1.tgz#3d8ed1c2e87bad32bbe452a3a75c174139c3f843"
   dependencies:
-    automerge "github:automerge/automerge#immutable-api"
+    automerge "^0.7.0"
     hypercore "^6.12.0"
     hypercore-archiver "^4.4.1"
     hypercore-protocol "^6.5.1"
