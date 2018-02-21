@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const minimist = require('minimist')
-const Model = require('./model')
+const Channel = require('./channel')
 const {initUI, render} = require('./ui')
 
 const argv = minimist(process.argv.slice(2))
@@ -13,8 +13,8 @@ if (argv.help || argv._.length > 1) {
 const nick = argv.nick
 const channelHex = argv._[0]
 
-const model = new Model({channelHex, nick})
-model.once('ready', (model) => {
-  initUI(model, (line) => model.addMessageToDoc(line))
+const channel = new Channel({channelHex, nick})
+channel.once('ready', (channel) => {
+  initUI(channel)
 })
-model.on('updated', model => render(model))
+channel.on('updated', channel => render(channel))

@@ -2,26 +2,26 @@ const diffy = require('diffy')({fullscreen: true})
 const input = require('diffy/input')({showCursor: true})
 const stripAnsi = require('strip-ansi')
 
-function initUI (model) {
-  render(model)
-  input.on('update', () => { render(model) })
+function initUI (channel) {
+  render(channel)
+  input.on('update', () => { render(channel) })
   input.on('enter', line => {
-    model.addMessageToDoc(line)
-    render(model)
+    channel.addMessageToDoc(line)
+    render(channel)
   })
   // For network connection display
-  setInterval(() => { render(model) }, 3000)
+  setInterval(() => { render(channel) }, 3000)
 }
 
-function render (model) {
-  let nick = model.nick
-  let channelHex = model.channelHex
-  let doc = model.doc
+function render (channel) {
+  let nick = channel.nick
+  let channelHex = channel.channelHex
+  let doc = channel.doc
 
   diffy.render(() => {
     let output = ''
     output += `Join: npx hm-chat ${channelHex}\n`
-    output += `${model.getNumConnections()} connections. `
+    output += `${channel.getNumConnections()} connections. `
     output += `Use Ctrl-C to exit.\n\n`
     let displayMessages = []
     let {messages} = doc

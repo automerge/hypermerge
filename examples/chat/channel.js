@@ -7,7 +7,7 @@ const {EventEmitter} = require('events')
 // avoid warnings about emitter leaks
 EventEmitter.prototype._maxListeners = 100
 
-module.exports = class Model extends EventEmitter {
+module.exports = class Channel extends EventEmitter {
   constructor ({channelHex, nick}) {
     super()
     this.channelHex = channelHex
