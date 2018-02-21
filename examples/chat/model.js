@@ -58,7 +58,7 @@ module.exports = class Model extends EventEmitter {
   ready (doc) {
     this.doc = doc
     this.joinChannel()
-    this.emit('ready', {doc, channelHex: this.channelHex})
+    this.emit('ready', this)
 
     // We merge any new documents that arrive due to events,
     // but we don't update our hypercores
@@ -71,7 +71,7 @@ module.exports = class Model extends EventEmitter {
    */
   remoteUpdate (id, doc) {
     this.doc = doc
-    this.emit('updated', this.doc)
+    this.emit('updated', this)
   }
 
   /**
