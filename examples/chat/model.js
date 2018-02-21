@@ -34,21 +34,8 @@ module.exports = class Model extends EventEmitter {
     } else {
       console.log('Searching for chat channel on network...')
       hm.open(this.channelHex)
-      // hm.once('document:updated', (docId, doc) => { this.ready(doc) })
       hm.once('document:ready', (docId, doc) => { this.ready(doc) })
     }
-  }
-
-  /**
-   * Post a chat message announcing someone has joined
-   */
-  joinChannel () {
-    this.doc = this.hm.change(this.doc, changeDoc => {
-      changeDoc.messages[Date.now()] = {
-        nick: this.nick,
-        joined: true
-      }
-    })
   }
 
   /**
@@ -75,10 +62,15 @@ module.exports = class Model extends EventEmitter {
   }
 
   /**
-   * Getter to return the number of connections for the UI
+   * Post a chat message announcing someone has joined
    */
-  getNumConnections () {
-    return this.hm.swarm.connections.length
+  joinChannel () {
+    this.doc = this.hm.change(this.doc, changeDoc => {
+      changeDoc.messages[Date.now()] = {
+        nick: this.nick,
+        joined: true
+      }
+    })
   }
 
   /**
@@ -94,5 +86,12 @@ module.exports = class Model extends EventEmitter {
       }
     })
     return this.doc
+  }
+
+  /**
+   * Getter to return the number of connections for the UI
+   */
+  getNumConnections () {
+    return this.hm.swarm.connections.length
   }
 }
