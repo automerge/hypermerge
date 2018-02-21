@@ -25,12 +25,14 @@ module.exports = class Model extends EventEmitter {
     if (!this.channelHex) {
       // We're starting a new channel here, so first
       // initialize the new channel document data structure.
-      let doc = hm.create()
-      this.channelHex = hm.getId(doc)
-      doc = hm.change(doc, changeDoc => {
-        changeDoc.messages = {}
+      hm.create()
+      hm.once('document:ready', (docId, doc) => {
+        this.channelHex = docId
+        this.doc = hm.change(doc, changeDoc => {
+          changeDoc.messages = {}
+        })
+        this.ready(this.doc)
       })
-      this.ready(doc)
     } else {
       console.log('Searching for chat channel on network...')
       hm.open(this.channelHex)
@@ -49,16 +51,10 @@ module.exports = class Model extends EventEmitter {
 
     // We merge any new documents that arrive due to events,
     // but we don't update our hypercores
-    this.hm.on('document:updated', this.remoteUpdate.bind(this))
-    this.hm.on('document:ready', this.remoteUpdate.bind(this))
-  }
-
-  /**
-   * Called whenever the automerge document is updated remotely.
-   */
-  remoteUpdate (id, doc) {
-    this.doc = doc
-    this.emit('updated', this)
+    this.hm.on('document:updated', (docId, doc) => {
+      this.doc = doc
+      this.emit('updated', this)
+    })
   }
 
   /**
