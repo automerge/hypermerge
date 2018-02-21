@@ -28,4 +28,7 @@ model.once('ready', ({doc, channelHex}) => {
     postMessage: (line) => model.addMessageToDoc(line)
   })
 })
-model.on('updated', doc => render(doc))
+model.on('updated', doc => render(
+  model.nick,
+  model.channelHex,
+  doc))

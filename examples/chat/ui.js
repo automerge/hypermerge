@@ -2,24 +2,24 @@ const diffy = require('diffy')({fullscreen: true})
 const input = require('diffy/input')({showCursor: true})
 const stripAnsi = require('strip-ansi')
 
-let nick, channelHex, getNumConnections, doc
+let getNumConnections, doc
 
 function initUI (opts) {
-  nick = opts.nick
-  channelHex = opts.channelHex
+  let nick = opts.nick
+  let channelHex = opts.channelHex
   getNumConnections = opts.getNumConnections
   doc = opts.doc
-  render(doc)
-  input.on('update', () => { render(doc) })
+  render(nick, channelHex, doc)
+  input.on('update', () => { render(nick, channelHex, doc) })
   input.on('enter', line => {
     doc = opts.postMessage(line)
-    render(doc)
+    render(nick, channelHex, doc)
   })
   // For network connection display
-  setInterval(() => { render(doc) }, 3000)
+  setInterval(() => { render(nick, channelHex, doc) }, 3000)
 }
 
-function render (renderDoc) {
+function render (nick, channelHex, renderDoc) {
   doc = renderDoc
   diffy.render(() => {
     let output = ''
