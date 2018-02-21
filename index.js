@@ -36,10 +36,10 @@ module.exports = class HyperMerge extends EventEmitter {
     this.docs = {}
 
     this.readyIndex = {} // docId -> Boolean
-    this.groupIndex = {} // groupId -> [hex]
-    this.docIndex = {} // docId -> [hex]
-    this.metaIndex = {} // hex -> metadata
-    this.requestedBlocks = {} // docId -> hex -> blockIndex (exclusive)
+    this.groupIndex = {} // groupId -> [actorId]
+    this.docIndex = {} // docId -> [actorId]
+    this.metaIndex = {} // actorId -> metadata
+    this.requestedBlocks = {} // docId -> actorId -> blockIndex (exclusive)
 
     this.core = new MultiCore(path)
 
@@ -100,22 +100,22 @@ module.exports = class HyperMerge extends EventEmitter {
 
   _create (metadata, parentMetadata = {}) {
     const feed = this.feed()
-    const hex = feed.key.toString('hex')
+    const actorId = feed.key.toString('hex')
 
     // TODO this is a little wacky:
     metadata = Object.assign(
       {},
       METADATA,
-      { groupId: hex }, // default to self if parent doesn't have groupId
+      { groupId: actorId }, // default to self if parent doesn't have groupId
       parentMetadata, // metadata of the parent feed to this feed (e.g. when opening, forking)
       this.defaultMetadata, // user-specified default metadata
-      { docId: hex }, // set the docId to this core's hex by default
+      { docId: actorId }, // set the docId to this core's actorId by default
       metadata // directly provided metadata should override everything else
     )
 
-    this._appendMetadata(hex, metadata)
+    this._appendMetadata(actorId, metadata)
 
-    const doc = this.set(this.empty(hex))
+    const doc = this.set(this.empty(actorId))
     this._shareDoc(doc)
 
     return doc
@@ -134,16 +134,16 @@ module.exports = class HyperMerge extends EventEmitter {
   update (doc) {
     this._ensureReady()
 
-    const hex = this.getHex(doc)
-    const docId = this.hexToId(hex)
+    const actorId = this.getActorId(doc)
+    const docId = this.actorToId(actorId)
     const pDoc = this.find(docId)
 
     const changes = Automerge.getChanges(pDoc, doc)
-      .filter(({actor}) => actor === hex)
+      .filter(({actor}) => actor === actorId)
 
-    this._addToMaxRequested(docId, hex, changes.length)
+    this._addToMaxRequested(docId, actorId, changes.length)
 
-    this._appendAll(hex, changes)
+    this._appendAll(actorId, changes)
 
     return this.set(doc)
   }
@@ -198,28 +198,28 @@ module.exports = class HyperMerge extends EventEmitter {
     return doc
   }
 
-  message (hex, msg) {
-    this.feed(hex).peers.forEach(peer => {
+  message (actorId, msg) {
+    this.feed(actorId).peers.forEach(peer => {
       this._messagePeer(peer, msg)
     })
   }
 
-  length (hex) {
-    return this._feed(hex).length
+  length (actorId) {
+    return this._feed(actorId).length
   }
 
   /**
    * Is the hypercore writable?
    *
-   * @param {string} hex - actor id
+   * @param {string} actorId - actor id
    * @returns {boolean}
    */
-  isWritable (hex) {
-    return this._feed(hex).writable
+  isWritable (actorId) {
+    return this._feed(actorId).writable
   }
 
-  isOpened (hex) {
-    return this._feed(hex).opened
+  isOpened (actorId) {
+    return this._feed(actorId).opened
   }
 
   isMissingDeps (docId) {
@@ -234,28 +234,28 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   metadatas (docId) {
-    const hexes = this.docIndex[docId] || []
-    return hexes.map(hex => this.metadata(hex))
+    const actorIds = this.docIndex[docId] || []
+    return actorIds.map(actorId => this.metadata(actorId))
   }
 
-  metadata (hex) {
-    return this.metaIndex[hex]
+  metadata (actorId) {
+    return this.metaIndex[actorId]
   }
 
-  isDocId (hex) {
-    return this.hexToId(hex) === hex
+  isDocId (actorId) {
+    return this.actorToId(actorId) === actorId
   }
 
   getId (doc) {
-    return this.hexToId(this.getHex(doc))
+    return this.actorToId(this.getActorId(doc))
   }
 
-  hexToId (hex) {
-    const {docId} = this.metadata(hex)
+  actorToId (actorId) {
+    const {docId} = this.metadata(actorId)
     return docId
   }
 
-  getHex (doc) {
+  getActorId (doc) {
     return doc._actorId
   }
 
@@ -263,17 +263,17 @@ module.exports = class HyperMerge extends EventEmitter {
     return doc._state.getIn(['opSet', 'clock'])
   }
 
-  _feed (hex = null) {
-    const key = hex ? Buffer.from(hex, 'hex') : null
+  _feed (actorId = null) {
+    const key = actorId ? Buffer.from(actorId, 'hex') : null
     return this.core.createFeed(key)
   }
 
-  feed (hex = null) {
+  feed (actorId = null) {
     this._ensureReady()
 
-    if (hex && this.feeds[hex]) return this.feeds[hex]
+    if (actorId && this.feeds[actorId]) return this.feeds[actorId]
 
-    return this._trackFeed(this._feed(hex))
+    return this._trackFeed(this._feed(actorId))
   }
 
   isDocReady (docId) {
@@ -321,51 +321,51 @@ module.exports = class HyperMerge extends EventEmitter {
     return this
   }
 
-  _appendMetadata (hex, metadata) {
-    if (this.length(hex) > 0) throw new Error(`Metadata can only be set if feed is empty.`)
+  _appendMetadata (actorId, metadata) {
+    if (this.length(actorId) > 0) throw new Error(`Metadata can only be set if feed is empty.`)
 
-    this._setMetadata(hex, metadata)
+    this._setMetadata(actorId, metadata)
 
-    return this._append(hex, metadata)
+    return this._append(actorId, metadata)
   }
 
-  _append (hex, change) {
-    return this._appendAll(hex, [change])
+  _append (actorId, change) {
+    return this._appendAll(actorId, [change])
   }
 
-  _appendAll (hex, changes) {
+  _appendAll (actorId, changes) {
     const blocks = changes.map(change => JSON.stringify(change))
     return _promise(cb => {
-      this.feed(hex).append(blocks, cb)
+      this.feed(actorId).append(blocks, cb)
     })
   }
 
   _trackFeed (feed) {
-    const hex = feed.key.toString('hex')
+    const actorId = feed.key.toString('hex')
 
-    this.feeds[hex] = feed
+    this.feeds[actorId] = feed
 
-    feed.ready(this._onFeedReady(hex, feed))
+    feed.ready(this._onFeedReady(actorId, feed))
 
-    feed.on('peer-add', this._onPeerAdded(hex))
-    feed.on('peer-remove', this._onPeerRemoved(hex))
+    feed.on('peer-add', this._onPeerAdded(actorId))
+    feed.on('peer-remove', this._onPeerRemoved(actorId))
 
     return feed
   }
 
-  _onFeedReady (hex, feed) {
+  _onFeedReady (actorId, feed) {
     return () => {
-      this._loadMetadata(hex)
+      this._loadMetadata(actorId)
       .then(() => {
-        const docId = this.hexToId(hex)
+        const docId = this.actorToId(actorId)
 
-        this._createDocIfMissing(docId, hex)
+        this._createDocIfMissing(docId, actorId)
 
-        feed.on('download', this._onDownload(docId, hex))
+        feed.on('download', this._onDownload(docId, actorId))
 
-        return this._loadAllBlocks(hex)
+        return this._loadAllBlocks(actorId)
           .then(() => {
-            if (hex !== docId) return
+            if (actorId !== docId) return
 
             this.readyIndex[docId] = true
             this._emitReady(docId)
@@ -382,79 +382,79 @@ module.exports = class HyperMerge extends EventEmitter {
     }
   }
 
-  _createDocIfMissing (docId, hex) {
+  _createDocIfMissing (docId, actorId) {
     if (this.docs[docId]) return
 
     // TODO extra, empty hypercores are still being created
 
-    if (this.isWritable(hex)) {
-      this.docs[docId] = this.empty(hex)
+    if (this.isWritable(actorId)) {
+      this.docs[docId] = this.empty(actorId)
     }
 
-    const parentMetadata = this.metadata(hex)
+    const parentMetadata = this.metadata(actorId)
 
     // TODO might need an empty commit to be included in other vector clocks:
     return this._create({docId}, parentMetadata)
   }
 
-  _initFeeds (hexes) {
+  _initFeeds (actorIds) {
     return Promise.all(
-      hexes.map(hex => {
+      actorIds.map(actorId => {
         // don't load metadata if the feed is empty:
-        if (this.length(hex) === 0) {
-          console.log('skipping feed init', hex)
+        if (this.length(actorId) === 0) {
+          console.log('skipping feed init', actorId)
           return Promise.resolve(null)
         }
 
-        return this._loadMetadata(hex)
+        return this._loadMetadata(actorId)
         .then(({docId}) => {
-          if (this.isWritable(hex)) {
-            this.docs[docId] = this.empty(hex)
+          if (this.isWritable(actorId)) {
+            this.docs[docId] = this.empty(actorId)
           }
         })
-        .then(() => hex)
+        .then(() => actorId)
       }))
   }
 
-  _loadMetadata (hex) {
-    if (this.metaIndex[hex]) return Promise.resolve(this.metaIndex[hex])
+  _loadMetadata (actorId) {
+    if (this.metaIndex[actorId]) return Promise.resolve(this.metaIndex[actorId])
 
     return _promise(cb => {
-      this._feed(hex).get(0, cb)
+      this._feed(actorId).get(0, cb)
     })
-    .then(data => this._setMetadata(hex, JSON.parse(data)))
+    .then(data => this._setMetadata(actorId, JSON.parse(data)))
   }
 
-  _setMetadata (hex, metadata) {
-    if (this.metaIndex[hex]) return this.metaIndex[hex]
+  _setMetadata (actorId, metadata) {
+    if (this.metaIndex[actorId]) return this.metaIndex[actorId]
 
-    this.metaIndex[hex] = metadata
+    this.metaIndex[actorId] = metadata
     const {docId, groupId} = metadata
 
     if (!this.groupIndex[groupId]) this.groupIndex[groupId] = []
-    this.groupIndex[groupId].push(hex)
+    this.groupIndex[groupId].push(actorId)
 
     if (!this.docIndex[docId]) this.docIndex[docId] = []
-    this.docIndex[docId].push(hex)
+    this.docIndex[docId].push(actorId)
 
     return metadata
   }
 
-  _loadAllBlocks (hex) {
-    return this._loadOwnBlocks(hex)
-    .then(() => this._loadMissingBlocks(hex))
+  _loadAllBlocks (actorId) {
+    return this._loadOwnBlocks(actorId)
+    .then(() => this._loadMissingBlocks(actorId))
   }
 
-  _loadOwnBlocks (hex) {
-    const docId = this.hexToId(hex)
+  _loadOwnBlocks (actorId) {
+    const docId = this.actorToId(actorId)
 
-    return this._loadBlocks(docId, hex, this.length(hex))
+    return this._loadBlocks(docId, actorId, this.length(actorId))
   }
 
-  _loadMissingBlocks (hex) {
-    const docId = this.hexToId(hex)
+  _loadMissingBlocks (actorId) {
+    const docId = this.actorToId(actorId)
 
-    if (docId !== hex) return
+    if (docId !== actorId) return
 
     const deps = Automerge.getMissingDeps(this.find(docId))
 
@@ -465,27 +465,27 @@ module.exports = class HyperMerge extends EventEmitter {
     }))
   }
 
-  _loadBlocks (docId, hex, last) {
-    const first = this._maxRequested(docId, hex, last)
+  _loadBlocks (docId, actorId, last) {
+    const first = this._maxRequested(docId, actorId, last)
 
     // Stop requesting if done:
     if (first >= last) return Promise.resolve()
 
-    return this._getBlockRange(hex, first, last)
+    return this._getBlockRange(actorId, first, last)
     .then(blocks => this._applyBlocks(docId, blocks))
     .then(() => this._loadMissingBlocks(docId))
   }
 
-  _getBlockRange (hex, first, last) {
+  _getBlockRange (actorId, first, last) {
     const length = Math.max(0, last - first)
 
     return Promise.all(Array(length).fill().map((_, i) =>
-      this._getBlock(hex, first + i)))
+      this._getBlock(actorId, first + i)))
   }
 
-  _getBlock (hex, index) {
+  _getBlock (actorId, index) {
     return _promise(cb => {
-      this.feed(hex).get(index, cb)
+      this.feed(actorId).get(index, cb)
     })
   }
 
@@ -505,17 +505,17 @@ module.exports = class HyperMerge extends EventEmitter {
 
   // tracks which blocks have been requested for a given doc,
   // so we know not to request them again
-  _maxRequested (docId, hex, max) {
+  _maxRequested (docId, actorId, max) {
     if (!this.requestedBlocks[docId]) this.requestedBlocks[docId] = {}
 
-    const current = this.requestedBlocks[docId][hex] || START_BLOCK
-    this.requestedBlocks[docId][hex] = Math.max(max, current)
+    const current = this.requestedBlocks[docId][actorId] || START_BLOCK
+    this.requestedBlocks[docId][actorId] = Math.max(max, current)
     return current
   }
 
-  _addToMaxRequested (docId, hex, x) {
+  _addToMaxRequested (docId, actorId, x) {
     if (!this.requestedBlocks[docId]) this.requestedBlocks[docId] = {}
-    this.requestedBlocks[docId][hex] = (this.requestedBlocks[docId][hex] || START_BLOCK) + x
+    this.requestedBlocks[docId][actorId] = (this.requestedBlocks[docId][actorId] || START_BLOCK) + x
   }
 
   _setRemote (doc) {
@@ -536,13 +536,13 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   _shareDoc (doc) {
-    const {groupId} = this.metadata(this.getHex(doc))
+    const {groupId} = this.metadata(this.getActorId(doc))
     const keys = this.groupIndex[groupId]
     this.message(groupId, {type: 'FEEDS_SHARED', keys})
   }
 
-  _relatedKeys (hex) {
-    const {groupId} = this.metadata(hex)
+  _relatedKeys (actorId) {
+    const {groupId} = this.metadata(actorId)
     return this.groupIndex[groupId]
   }
 
@@ -553,76 +553,76 @@ module.exports = class HyperMerge extends EventEmitter {
 
   _onMultiCoreReady () {
     return () => {
-      const hexes =
+      const actorIds =
         Object.values(this.core.archiver.feeds)
         .map(feed => feed.key.toString('hex'))
 
-      this._initFeeds(hexes)
+      this._initFeeds(actorIds)
       .then(() => {
         this.isReady = true
-        hexes.forEach(hex => this.feed(hex))
+        actorIds.forEach(actorId => this.feed(actorId))
         this.emit('ready', this)
       })
     }
   }
 
-  _onDownload (docId, hex) {
+  _onDownload (docId, actorId) {
     return (index, data) => {
       this._applyBlock(docId, data)
       this._loadMissingBlocks(docId)
     }
   }
 
-  _onPeerAdded (hex) {
+  _onPeerAdded (actorId) {
     return peer => {
-      peer.stream.on('extension', this._onExtension(hex, peer))
+      peer.stream.on('extension', this._onExtension(actorId, peer))
 
-      this._loadMetadata(hex)
+      this._loadMetadata(actorId)
       .then(() => {
-        if (!this.isDocId(hex)) return
+        if (!this.isDocId(actorId)) return
 
-        const keys = this._relatedKeys(hex)
+        const keys = this._relatedKeys(actorId)
         this._messagePeer(peer, {type: 'FEEDS_SHARED', keys})
 
-        this.emit('peer:joined', hex, peer)
+        this.emit('peer:joined', actorId, peer)
       })
     }
   }
 
-  _onPeerRemoved (hex) {
+  _onPeerRemoved (actorId) {
     return peer => {
-      this._loadMetadata(hex)
+      this._loadMetadata(actorId)
       .then(() => {
-        if (!this.isDocId(hex)) return
+        if (!this.isDocId(actorId)) return
 
-        this.emit('peer:left', hex, peer)
+        this.emit('peer:left', actorId, peer)
       })
     }
   }
 
-  _onExtension (hex, peer) {
+  _onExtension (actorId, peer) {
     return (name, data) => {
       switch (name) {
         case 'hypermerge':
-          return this._onMessage(hex, peer, data)
+          return this._onMessage(actorId, peer, data)
         default:
-          this.emit('peer:extension', hex, name, data, peer)
+          this.emit('peer:extension', actorId, name, data, peer)
       }
     }
   }
 
-  _onMessage (hex, peer, data) {
+  _onMessage (actorId, peer, data) {
     const msg = JSON.parse(data)
 
     switch (msg.type) {
       case 'FEEDS_SHARED':
-        return msg.keys.map(hex => this.feed(hex))
+        return msg.keys.map(actorId => this.feed(actorId))
       default:
-        this.emit('peer:message', hex, peer, msg)
+        this.emit('peer:message', actorId, peer, msg)
     }
   }
 
-  _onConnection (docId, hex) {
+  _onConnection (docId, actorId) {
     return (conn, info) => {
       console.log('_onConnection', conn, info)
     }
