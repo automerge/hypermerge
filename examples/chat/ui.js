@@ -9,6 +9,8 @@ function initUI (channel) {
     channel.addMessageToDoc(line)
     render(channel)
   })
+  channel.on('updated', channel => render(channel))
+
   // For network connection display
   setInterval(() => { render(channel) }, 3000)
 }
@@ -51,4 +53,4 @@ function render (channel) {
   })
 }
 
-module.exports = {initUI, render}
+module.exports = initUI

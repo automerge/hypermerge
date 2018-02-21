@@ -8,9 +8,9 @@ const {EventEmitter} = require('events')
 EventEmitter.prototype._maxListeners = 100
 
 module.exports = class Channel extends EventEmitter {
-  constructor ({channelHex, nick}) {
+  constructor ({channelKey, nick}) {
     super()
-    this.channelHex = channelHex
+    this.channelKey = channelKey
     this.nick = nick
     this.hm = new HyperMerge({path: ram})
     this.hm.once('ready', this.setup.bind(this))
@@ -22,12 +22,12 @@ module.exports = class Channel extends EventEmitter {
   setup (hm) {
     hm.joinSwarm() // Fire up the network
 
-    if (!this.channelHex) {
+    if (!this.channelKey) {
       // We're starting a new channel here, so first
       // initialize the new channel document data structure.
       hm.create()
       hm.once('document:ready', (docId, doc) => {
-        this.channelHex = docId
+        this.channelKey = docId
         this.doc = hm.change(doc, changeDoc => {
           changeDoc.messages = {}
         })
@@ -35,7 +35,7 @@ module.exports = class Channel extends EventEmitter {
       })
     } else {
       console.log('Searching for chat channel on network...')
-      hm.open(this.channelHex)
+      hm.open(this.channelKey)
       hm.once('document:ready', (docId, doc) => { this.ready(doc) })
     }
   }

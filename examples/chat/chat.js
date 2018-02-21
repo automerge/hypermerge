@@ -2,7 +2,7 @@
 
 const minimist = require('minimist')
 const Channel = require('./channel')
-const {initUI, render} = require('./ui')
+const initUI = require('./ui')
 
 const argv = minimist(process.argv.slice(2))
 if (argv.help || argv._.length > 1) {
@@ -11,10 +11,9 @@ if (argv.help || argv._.length > 1) {
 }
 
 const nick = argv.nick
-const channelHex = argv._[0]
+const channelKey = argv._[0]
 
-const channel = new Channel({channelHex, nick})
+const channel = new Channel({channelKey, nick})
 channel.once('ready', (channel) => {
   initUI(channel)
 })
-channel.on('updated', channel => render(channel))
