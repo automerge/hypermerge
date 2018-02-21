@@ -115,7 +115,7 @@ test('.fork() a document, make changes, and then .merge() it', t => {
 
     // Fork to second document
     const doc2 = hm1.fork(id1)
-    const id2 = hm1.getHex(doc2)
+    const id2 = hm1.getId(doc2)
 
     t.deepEqual(hm1.find(id2), {
       _objectId: '00000000-0000-0000-0000-000000000000',
