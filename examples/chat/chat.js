@@ -10,14 +10,11 @@ if (argv.help || argv._.length > 1) {
   process.exit(0)
 }
 
-let nick = argv.nick
+const nick = argv.nick
 const channelHex = argv._[0]
 
 const model = new Model({channelHex, nick})
 model.once('ready', (model) => {
-  initUI(
-    model,
-    (line) => model.addMessageToDoc(line)
-  )
+  initUI(model, (line) => model.addMessageToDoc(line))
 })
 model.on('updated', model => render(model))

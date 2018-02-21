@@ -2,11 +2,11 @@ const diffy = require('diffy')({fullscreen: true})
 const input = require('diffy/input')({showCursor: true})
 const stripAnsi = require('strip-ansi')
 
-function initUI (model, postMessage) {
+function initUI (model) {
   render(model)
   input.on('update', () => { render(model) })
   input.on('enter', line => {
-    model.doc = postMessage(line)
+    model.addMessageToDoc(line)
     render(model)
   })
   // For network connection display
