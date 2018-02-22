@@ -24,7 +24,7 @@ const METADATA = {
  * @param {number} [options.port=0] - port number to listen on
  */
 
-module.exports = class HyperMerge extends EventEmitter {
+module.exports = class Hypermerge extends EventEmitter {
   constructor ({path, port = 0, immutableApi = false, defaultMetadata}) {
     super()
 
@@ -648,7 +648,7 @@ module.exports = class HyperMerge extends EventEmitter {
   }
 
   _ensureReady () {
-    if (!this.isReady) throw new Error('HyperMerge is not ready yet. Use .once("ready") first.')
+    if (!this.isReady) throw new Error('Hypermerge is not ready yet. Use .once("ready") first.')
   }
 }
 
