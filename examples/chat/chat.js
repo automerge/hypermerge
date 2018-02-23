@@ -10,7 +10,12 @@ if (argv.help || argv._.length > 1) {
   process.exit(0)
 }
 
-const nick = argv.nick
+let nick = argv.nick
+if (!argv.nick) {
+  const prompt = require('prompt-sync')()
+  nick = prompt('Enter your nickname: ')
+}
+
 const channelKey = argv._[0]
 
 const channel = new Channel({channelKey, nick})
