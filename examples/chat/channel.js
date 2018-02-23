@@ -1,5 +1,5 @@
 const ram = require('random-access-memory')
-const HyperMerge = require('hypermerge')
+const Hypermerge = require('hypermerge')
 const {EventEmitter} = require('events')
 
 // It's normal for a chat channel with a lot of participants
@@ -12,7 +12,7 @@ module.exports = class Channel extends EventEmitter {
     super()
     this.channelKey = channelKey
     this.nick = nick
-    this.hm = new HyperMerge({path: ram})
+    this.hm = new Hypermerge({path: ram})
     this.hm.once('ready', this.setup.bind(this))
   }
 

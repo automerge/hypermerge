@@ -1,11 +1,11 @@
 # Hypermerge
 
 Hypermerge is a Javascript library for building p2p collaborative applications without any server infrastructure.
-It combines Automerge, a CRDT, with hypercore, a distributed append-only log.
+It combines [Automerge][automerge], a CRDT, with [hypercore][hypercore], a distributed append-only log.
 
 ## Example Usage
 
-See [examples/chat/model.js][chat-model] for example usage.
+See [examples/chat/channel.js][chat-model] for example usage.
 
 ## API
 
@@ -110,7 +110,9 @@ Emitted when a network peer has connected.
 
 Emitted when a network peer has disconnected.
 
+[automerge]: https://github.com/automerge/automerge
+[hypercore]: https://github.com/mafintosh/hypercore
 [automerge-change]: https://github.com/automerge/automerge#manipulating-and-inspecting-state
-[chat-model]: https://github.com/automerge/hypermerge/blob/master/examples/chat/model.js
+[chat-model]: https://github.com/automerge/hypermerge/blob/master/examples/chat/channel.js
 [api-docs]: https://automerge.github.io/hypermerge/
 [discovery-swarm]: https://github.com/mafintosh/discovery-swarm

@@ -1,12 +1,12 @@
 const test = require('tape')
-const HyperMerge = require('..')
+const Hypermerge = require('..')
 const ram = require('random-access-memory')
 const OnlineOfflinePump = require('./lib/online-offline-pump')
 
 test('setup', t => {
   t.plan(2)
 
-  const hm1 = new HyperMerge({path: ram})
+  const hm1 = new Hypermerge({path: ram})
   t.ok(hm1, 'is truthy')
   hm1.once('ready', merge => {
     t.equal(merge, hm1, 'calls ready with itself')
@@ -16,13 +16,13 @@ test('setup', t => {
 test('.any() returns false with no documents', t => {
   t.plan(1)
 
-  const hm1 = new HyperMerge({path: ram})
+  const hm1 = new Hypermerge({path: ram})
   t.notOk(hm1.any(), 'empty hypermerge return false for .any()')
 })
 
 test('create a new actor and document', t => {
   t.plan(2)
-  const hm1 = new HyperMerge({path: ram})
+  const hm1 = new Hypermerge({path: ram})
   hm1.once('ready', () => {
     const doc1 = hm1.create()
     t.deepEqual(doc1, {
@@ -36,7 +36,7 @@ test('create a new actor and document', t => {
 
 test('.any() returns true with some documents', t => {
   t.plan(1)
-  const hm1 = new HyperMerge({path: ram})
+  const hm1 = new Hypermerge({path: ram})
   hm1.once('ready', () => {
     hm1.create()
     hm1.once('document:ready', (hex, doc) => {
@@ -48,9 +48,9 @@ test('.any() returns true with some documents', t => {
 test('.update() a document and .open() it on a second node', t => {
   // t.plan(4)
 
-  const hm1 = new HyperMerge({path: ram})
+  const hm1 = new Hypermerge({path: ram})
   hm1.once('ready', () => {
-    const hm2 = new HyperMerge({path: ram})
+    const hm2 = new Hypermerge({path: ram})
     hm2.once('ready', () => {
       const pump = new OnlineOfflinePump(hm1, hm2)
 
@@ -98,7 +98,7 @@ test('.update() a document and .open() it on a second node', t => {
 test('.fork() a document, make changes, and then .merge() it', t => {
   t.plan(4)
 
-  const hm1 = new HyperMerge({path: ram})
+  const hm1 = new Hypermerge({path: ram})
   hm1.once('ready', () => {
     const doc1 = hm1.create()
     const id1 = hm1.getId(doc1)
