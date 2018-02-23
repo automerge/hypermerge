@@ -17,12 +17,12 @@ function initUI (channel) {
 
 function render (channel) {
   let nick = channel.nick
-  let channelHex = channel.channelHex
+  let channelKey = channel.channelKey
   let doc = channel.doc
 
   diffy.render(() => {
     let output = ''
-    output += `Join: npx hm-chat ${channelHex}\n`
+    output += `Join: npx hm-chat ${channelKey}\n`
     output += `${channel.getNumConnections()} connections. `
     output += `Use Ctrl-C to exit.\n\n`
     let displayMessages = []
