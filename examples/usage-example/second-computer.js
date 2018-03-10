@@ -11,7 +11,7 @@ if (!key) {
 
 const opts = {key}
 const hm = hypermergeMicro(opts) // This is different than on the first
- // computer, as we are passing in the key of the source hypermerge
+// computer, as we are passing in the key of the source hypermerge
 
 hm.on('ready', () => {
   // Talk to the internet to find and connect to peers that

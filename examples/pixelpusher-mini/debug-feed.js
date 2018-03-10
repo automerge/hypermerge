@@ -11,8 +11,14 @@ console.log('Key', key)
 const feed = hypercore(ram, key)
 // const sw = hyperdiscovery(feed, {port: 3282})
 const sw = hyperdiscovery(feed, {port: 0})
-sw.on('connection', (_, info) => {
+sw.on('connection', (stream, info) => {
   console.log('Connection', info)
+  stream.on('error', err => {
+    console.error('Error', err)
+  })
+  stream.on('close', () => {
+    console.log('Closed')
+  })
 })
 feed.on('ready', () => {
   console.log('Discovery Key', feed.discoveryKey.toString('hex'))
