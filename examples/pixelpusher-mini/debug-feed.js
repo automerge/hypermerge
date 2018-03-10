@@ -9,8 +9,11 @@ if (!key) {
 }
 console.log('Key', key)
 const feed = hypercore(ram, key)
-const sw = hyperdiscovery(feed)
-sw.on('connection', () => { console.log('Connection') })
+// const sw = hyperdiscovery(feed, {port: 3282})
+const sw = hyperdiscovery(feed, {port: 0})
+sw.on('connection', (_, info) => {
+  console.log('Connection', info)
+})
 feed.on('ready', () => {
   console.log('Discovery Key', feed.discoveryKey.toString('hex'))
   console.log('Ready', feed.length)
