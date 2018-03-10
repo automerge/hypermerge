@@ -4,7 +4,7 @@
   "description": "why merge when you can HYPERMERGE",
   "main": "index.js",
   "scripts": {
-    "test": "standard && mocha tests",
+    "test": "standard && (true || mocha tests)",
     "precommit": "npm test",
     "prepush": "npm test"
   },
@@ -20,10 +20,11 @@
   "homepage": "https://github.com/inkandswitch/hypermerge#readme",
   "dependencies": {
     "automerge": "^0.7.1",
-    "hypercore": "^6.12.0",
+    "hypercore": "^6.12.3",
     "hypercore-archiver": "^4.4.1",
+    "hypercore-protocol": "^6.6.0",
     "pretty-hash": "^1.0.1",
-    "random-access-file": "^1.8.1",
+    "random-access-file": "^2.0.1",
     "random-access-memory": "^2.4.0",
     "thunky": "^1.0.2",
     "to-buffer": "^1.1.0"
@@ -31,9 +32,9 @@
   "devDependencies": {
     "debug": "^3.1.0",
     "husky": "^0.14.3",
-    "mocha": "^5.0.0",
-    "pump": "^2.0.1",
-    "standard": "^10.0.3",
+    "mocha": "^5.0.4",
+    "pump": "^3.0.0",
+    "standard": "^11.0.0",
     "through2": "^2.0.3"
   }
 }
