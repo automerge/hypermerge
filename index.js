@@ -163,7 +163,7 @@ module.exports = class Hypermerge extends EventEmitter {
     return this.change(
       Automerge.merge(doc, parent),
       `Forked from ${parentId}`,
-      () => {})
+      (doc) => { return doc })
   }
 
   /**
@@ -181,7 +181,7 @@ module.exports = class Hypermerge extends EventEmitter {
     return this.change(
       Automerge.merge(dest, source),
       `Merged with ${sourceId}`,
-      () => {})
+      (doc) => { return doc })
   }
 
   /**
