@@ -33,6 +33,7 @@ module.exports = class Hypermerge extends EventEmitter {
     this.port = port
     this.isReady = false
     this.feeds = {}
+    this.pDocs = {} // index of docs previously emitted by `document:updated`
     this.docs = {}
 
     this.readyIndex = {} // docId -> Boolean
@@ -145,6 +146,8 @@ module.exports = class Hypermerge extends EventEmitter {
 
     this._appendAll(actorId, changes)
 
+    this.pDocs[docId] = doc
+
     return this.set(doc)
   }
 
@@ -195,6 +198,7 @@ module.exports = class Hypermerge extends EventEmitter {
     this.core.archiver.remove(docId)
     delete this.feeds[docId]
     delete this.docs[docId]
+    delete this.pDocs[docId]
     return doc
   }
 
@@ -524,14 +528,19 @@ module.exports = class Hypermerge extends EventEmitter {
     this.set(doc)
 
     if (this.readyIndex[docId] && !this.isMissingDeps(docId)) {
+      const pDoc = this.pDocs[docId]
+
+      this.pDocs[docId] = doc
+
       /**
        * Emitted when an updated document has been downloaded.
        *
        * @event document:updated
        * @param {string} docId - the hex id representing this document
        * @param {Document} document - automerge document
+       * @param {Document} prevDocument - previous version of the document
        */
-      this.emit('document:updated', docId, doc)
+      this.emit('document:updated', docId, doc, pDoc)
     }
   }
 
@@ -636,6 +645,7 @@ module.exports = class Hypermerge extends EventEmitter {
 
   _emitReady (docId) {
     const doc = this.find(docId)
+    this.pDocs[docId] = doc
 
     /**
      * Emitted when a document has been fully loaded.

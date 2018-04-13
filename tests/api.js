@@ -73,22 +73,32 @@ test('.update() a document and .open() it on a second node', t => {
         })
       })
 
-      hm2.once('document:updated', (id, doc2) => {
+      hm2.once('document:updated', (id, doc2, pDoc2) => {
         t.deepEqual(doc2, {
           _objectId: '00000000-0000-0000-0000-000000000000',
           test: 1
         }, 'changes propagate to hm2')
+
+        t.deepEqual(pDoc2, {
+          _objectId: '00000000-0000-0000-0000-000000000000'
+        }, 'the previously empty doc is provided')
 
         hm2.change(doc2, doc => {
           doc.test = 2
         })
       })
 
-      hm1.once('document:updated', (id, doc) => {
+      hm1.once('document:updated', (id, doc, pDoc) => {
         t.deepEqual(doc, {
           _objectId: '00000000-0000-0000-0000-000000000000',
           test: 2
         }, 'changes propagate back to hm1')
+
+        t.deepEqual(pDoc, {
+          _objectId: '00000000-0000-0000-0000-000000000000',
+          test: 1
+        }, 'the previous doc version is provided')
+
         t.end()
       })
     })
