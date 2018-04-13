@@ -98,7 +98,7 @@ Emitted when all document metadata has been loaded from storage, and the hyperme
 
 Emitted when a document has been fully loaded.
 
-`hm.on('document:updated', docId, doc)`
+`hm.on('document:updated', docId, doc, prevDoc)`
 
 Emitted when a document has been updated via changes received over the network. Not emitted after local calls to `.update()` or `.change()`.
 
