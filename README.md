@@ -1,6 +1,6 @@
 # Hypermerge
 
-Hypermerge is a Javascript library for building p2p collaborative applications without any server infrastructure.
+Hypermerge is a Node.js library for building p2p collaborative applications without any server infrastructure.
 It combines [Automerge][automerge], a CRDT, with [hypercore][hypercore], a distributed append-only log.
 
 ## Example Usage
