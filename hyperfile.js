@@ -1,10 +1,10 @@
-import Hyperdiscovery from 'hyperdiscovery'
-import Fs from 'fs'
+const Hyperdiscovery = require('hyperdiscovery')
+const Fs = require('fs')
 
-import Multicore from './multicore'
+const Multicore = require('./multicore')
 
 // callback = (err, hyperfileId)
-export function write(multicore, filePath, callback) {
+function write(multicore, filePath, callback) {
   multicore.ready(() => {
     const feed = multicore.createFeed()
 
@@ -29,7 +29,7 @@ export function write(multicore, filePath, callback) {
   })
 }
 
-export function writeBuffer(multicore, buffer, callback) {
+function writeBuffer(multicore, buffer, callback) {
   multicore.ready(() => {
     const feed = multicore.createFeed()
 
@@ -48,7 +48,7 @@ export function writeBuffer(multicore, buffer, callback) {
 }
 
 // callback = (err, blob)
-export function fetch(multicore, hyperfileId, callback) {
+function fetch(multicore, hyperfileId, callback) {
   multicore.ready(() => {
     const feedKey = Buffer.from(hyperfileId, 'hex')
     const feed = multicore.createFeed(feedKey)
@@ -67,3 +67,5 @@ export function fetch(multicore, hyperfileId, callback) {
     })
   })
 }
+
+module.exports = { fetch, writeBuffer, write } 
