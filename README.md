@@ -7,7 +7,7 @@ It combines [Automerge][automerge], a CRDT, with [hypercore][hypercore], a distr
 
 See [examples/chat/channel.js][chat-model] for example usage.
 
-## API
+## Documents API
 
 You can also view the [generated API docs][api-docs].
 
@@ -87,6 +87,18 @@ Returns `true` if any docs satisfy the given function. If a function is not pass
 ### `hm.isMissingDeps(docId)`
 
 Returns `true` if the document specified by `docId` is missing changes from other actors. They may still be downloading from the network.
+
+## Files API
+
+Files are treated as binary assets and are written into their own Hypercore, identified by a "hyperfileId".
+
+### `hm.writeFile(pathOrBuffer, callback)`
+
+Writes the file or buffer. Function signature for callback is `(error, hyperfileId)`.
+
+### `hm.fetchFile(hyperfileId, callback)`
+
+Fetches the file. Function signature for callback is `(error, buffer)`.
 
 ## Events
 
