@@ -14,7 +14,7 @@ const log = Debug('hypermerge:multicore')
 // * appends change (just adds?) to a feed (where exactly?) for each tracked core
 // * replication??
 class Multicore extends EventEmitter {
-  constructor(storage) {
+  constructor (storage) {
     super()
     log('constructor', storage)
 
@@ -27,7 +27,7 @@ class Multicore extends EventEmitter {
     })
   }
 
-  ready(cb) {
+  ready (cb) {
     if (this.isReady) {
       cb()
     } else {
@@ -35,7 +35,7 @@ class Multicore extends EventEmitter {
     }
   }
 
-  createFeed(key, opts = {}) {
+  createFeed (key, opts = {}) {
     this._ensureReady()
     log('createFeed', key && key.toString('hex'))
 
@@ -65,13 +65,13 @@ class Multicore extends EventEmitter {
   // Returns a RandomAccessStorage function for the given public feed key.
   // Uses git-style ab/cd/* namespacing and passes that to the underlying
   // storage function given in the constructor.
-  _feedStorage(key) {
+  _feedStorage (key) {
     const dk = Hypercore.discoveryKey(key).toString('hex')
     const prefix = `${dk.slice(0, 2)}/${dk.slice(2, 4)}/${dk.slice(4)}/`
     return (name) => this.archiver.storage.feeds(prefix + name)
   }
 
-  replicate(opts) {
+  replicate (opts) {
     this._ensureReady()
     log('replicate')
 
@@ -101,7 +101,7 @@ class Multicore extends EventEmitter {
       add(opts.channel || opts.discoveryKey)
     }
 
-    function add(dk) {
+    function add (dk) {
       const hex = dk.toString('hex')
       log('replicate.add', hex)
 
@@ -122,7 +122,7 @@ class Multicore extends EventEmitter {
         onfeed()
       }
 
-      function onarchive() {
+      function onarchive () {
         log('replicate.onarchive')
 
         archive.metadata.replicate({
@@ -135,7 +135,7 @@ class Multicore extends EventEmitter {
         })
       }
 
-      function onfeed() {
+      function onfeed () {
         log('replicate.onfeed')
 
         if (stream.destroyed) {
@@ -151,12 +151,12 @@ class Multicore extends EventEmitter {
           live: true
         })
 
-        function onclose() {
+        function onclose () {
           log('replicate.onclose')
           feed.removeListener('_archive', onarchive)
         }
 
-        function onarchive() {
+        function onarchive () {
           log('replicate.onarchive')
           if (stream.destroyed) {
             return
@@ -174,7 +174,7 @@ class Multicore extends EventEmitter {
     return stream
   }
 
-  _ensureReady() {
+  _ensureReady () {
     if (!this.isReady) {
       throw new Error('The HypercoreArchiver instance is not ready yet. Use .on("ready") first.')
     }

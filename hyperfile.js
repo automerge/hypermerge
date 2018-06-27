@@ -1,10 +1,8 @@
 const Hyperdiscovery = require('hyperdiscovery')
 const Fs = require('fs')
 
-const Multicore = require('./multicore')
-
 // callback = (err, hyperfileId)
-function write(multicore, filePath, callback) {
+function write (multicore, filePath, callback) {
   multicore.ready(() => {
     const feed = multicore.createFeed()
 
@@ -29,7 +27,7 @@ function write(multicore, filePath, callback) {
   })
 }
 
-function writeBuffer(multicore, buffer, callback) {
+function writeBuffer (multicore, buffer, callback) {
   multicore.ready(() => {
     const feed = multicore.createFeed()
 
@@ -48,7 +46,7 @@ function writeBuffer(multicore, buffer, callback) {
 }
 
 // callback = (err, blob)
-function fetch(multicore, hyperfileId, callback) {
+function fetch (multicore, hyperfileId, callback) {
   multicore.ready(() => {
     const feedKey = Buffer.from(hyperfileId, 'hex')
     const feed = multicore.createFeed(feedKey)
@@ -68,4 +66,4 @@ function fetch(multicore, hyperfileId, callback) {
   })
 }
 
-module.exports = { fetch, writeBuffer, write } 
+module.exports = { fetch, writeBuffer, write }
