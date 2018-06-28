@@ -6,100 +6,73 @@ const OnlineOfflinePump = require('./lib/online-offline-pump')
 test('setup', t => {
   t.plan(2)
 
-  const hm1 = new Hypermerge({path: ram})
+  const hm1 = new Hypermerge({storage: ram})
   t.ok(hm1, 'is truthy')
   hm1.once('ready', merge => {
-    t.equal(merge, hm1, 'calls ready with itself')
+    t.equal(undefined, merge, 'calls ready')
+    t.end()
   })
-})
-
-test('.any() returns false with no documents', t => {
-  t.plan(1)
-
-  const hm1 = new Hypermerge({path: ram})
-  t.notOk(hm1.any(), 'empty hypermerge return false for .any()')
 })
 
 test('create a new actor and document', t => {
   t.plan(2)
-  const hm1 = new Hypermerge({path: ram})
-  hm1.once('ready', () => {
-    const doc1 = hm1.create()
-    t.deepEqual(doc1, {
-      _objectId: '00000000-0000-0000-0000-000000000000'
-    }, 'expected empty automerge doc')
-    hm1.once('document:ready', (hex, doc) => {
-      t.equal(doc1, doc)
+  const hm = new Hypermerge({storage: ram})
+  hm.once('ready', () => {
+    const doc = hm.create()
+    const docHandle = hm.openHandle(hm.getId(doc))
+
+    t.deepEqual(doc, {}, 'expected empty automerge doc')
+
+    docHandle.onChange((d) => {
+      t.equal(doc, d)
     })
   })
 })
 
-test('.any() returns true with some documents', t => {
-  t.plan(1)
-  const hm1 = new Hypermerge({path: ram})
-  hm1.once('ready', () => {
-    hm1.create()
-    hm1.once('document:ready', (hex, doc) => {
-      t.ok(hm1.any(), 'hypermerge with doc return true for .any()')
-    })
-  })
-})
+test('.change() a document and listen for changes on a second node', t => {
+  t.plan(3)
+  t.timeoutAfter(2000)
 
-test('.update() a document and .open() it on a second node', t => {
-  // t.plan(4)
-
-  const hm1 = new Hypermerge({path: ram})
+  const hm1 = new Hypermerge({storage: ram})
   hm1.once('ready', () => {
-    const hm2 = new Hypermerge({path: ram})
+    hm1.joinSwarm()
+    const hm2 = new Hypermerge({storage: ram})
     hm2.once('ready', () => {
+      hm2.joinSwarm()
       const pump = new OnlineOfflinePump(hm1, hm2)
+      const doc = hm1.create()
+      const docId = hm1.getId(doc)
+      const docHandle1 = hm1.openHandle(docId)
+      const docHandle2 = hm2.openHandle(docId)
 
-      let doc1 = hm1.create()
+      pump.goOnline()
 
-      // document:updated only receives below if we open after hm1 is ready:
-      hm1.once('document:ready', id => {
-        pump.goOnline()
-        t.equal(id, hm1.getId(doc1), 'readied id should be the doc we created')
-        hm2.open(id)
-      })
+      docHandle1.onChange((d) => {
+        t.equal(doc, d, 'onChange passes the current document')
+        docHandle1.onChange(() => {})
 
-      hm2.once('document:ready', (id, doc2) => {
-        t.deepEqual(doc2, {
-          _objectId: '00000000-0000-0000-0000-000000000000'
-        }, 'empty doc propagates to hm2')
-
-        doc1 = hm1.change(doc1, doc => {
-          doc.test = 1
+        docHandle1.change(d => {
+          d.test = 1
         })
       })
 
-      hm2.once('document:updated', (id, doc2, pDoc2) => {
-        t.deepEqual(doc2, {
-          _objectId: '00000000-0000-0000-0000-000000000000',
-          test: 1
-        }, 'changes propagate to hm2')
-
-        t.deepEqual(pDoc2, {
-          _objectId: '00000000-0000-0000-0000-000000000000'
-        }, 'the previously empty doc is provided')
-
-        hm2.change(doc2, doc => {
-          doc.test = 2
+      docHandle2.onChange((d) => {
+        t.equal(d.test, 1, 'changes propogate to docHandle2')
+        docHandle2.onChange(() => {})
+        docHandle2.change(d => {
+          d.test = 2
         })
-      })
 
-      hm1.once('document:updated', (id, doc, pDoc) => {
-        t.deepEqual(doc, {
-          _objectId: '00000000-0000-0000-0000-000000000000',
-          test: 2
-        }, 'changes propagate back to hm1')
+        docHandle1.onChange((d) => {
+          if (d.test === 2) {
+            // Intermittently fails because the second change never comes through
+            t.pass('changes propogate back to docHandle1')
 
-        t.deepEqual(pDoc, {
-          _objectId: '00000000-0000-0000-0000-000000000000',
-          test: 1
-        }, 'the previous doc version is provided')
-
-        t.end()
+            hm1.releaseHandle(docHandle1)
+            hm2.releaseHandle(docHandle2)
+            t.end()
+          }
+        })
       })
     })
   })
@@ -108,7 +81,8 @@ test('.update() a document and .open() it on a second node', t => {
 test('.fork() a document, make changes, and then .merge() it', t => {
   t.plan(4)
 
-  const hm1 = new Hypermerge({path: ram})
+  const hm1 = new Hypermerge({storage: ram})
+
   hm1.once('ready', () => {
     const doc1 = hm1.create()
     const id1 = hm1.getId(doc1)
@@ -118,35 +92,27 @@ test('.fork() a document, make changes, and then .merge() it', t => {
       doc.test = 1
     })
 
-    t.deepEqual(hm1.find(id1), {
-      _objectId: '00000000-0000-0000-0000-000000000000',
-      test: 1
-    }, 'doc1 contains first change after update')
+    t.deepEqual(hm1.find(id1), {test: 1}, 'doc1 contains first change after update')
 
     // Fork to second document
     const doc2 = hm1.fork(id1)
     const id2 = hm1.getId(doc2)
 
-    t.deepEqual(hm1.find(id2), {
-      _objectId: '00000000-0000-0000-0000-000000000000',
-      test: 1
-    }, 'doc2 contains first change after fork')
+    t.deepEqual(hm1.find(id2), {test: 1}, 'doc2 contains first change after fork')
 
     hm1.change(doc2, 'Second actor makes a change', doc => {
       doc.test = 2
     })
 
-    t.deepEqual(hm1.find(id2), {
-      _objectId: '00000000-0000-0000-0000-000000000000',
-      test: 2
-    }, 'doc2 contains second change')
+    t.deepEqual(hm1.find(id2), {test: 2}, 'doc2 contains second change')
 
     // Merge back to first document
     hm1.merge(id1, id2)
 
-    t.deepEqual(hm1.find(id1), {
-      _objectId: '00000000-0000-0000-0000-000000000000',
-      test: 2
-    }, 'doc1 contains second change after merge')
+    t.deepEqual(hm1.find(id1), {test: 2}, 'doc1 contains second change after merge')
+
+    t.end()
   })
 })
+
+test.onFinish(() => process.exit(0))

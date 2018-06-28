@@ -12,8 +12,8 @@ class OnlineOfflinePump {
   goOnline () {
     const self = this
     const opts = {live: true, encrypt: false}
-    const stream1 = this.target1.replicate(opts)
-    const stream2 = this.target2.replicate(opts)
+    const stream1 = this.target1._replicate(opts)
+    const stream2 = this.target2._replicate(opts)
     pump(
       stream1,
       through2(function (chunk, enc, cb) {
