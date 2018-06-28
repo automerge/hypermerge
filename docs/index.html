@@ -45,9 +45,9 @@
               
                 
                 <li><a
-                  href='#any'
+                  href='#joinswarm'
                   class="">
-                  any
+                  joinSwarm
                   
                 </a>
                 
@@ -55,9 +55,19 @@
               
                 
                 <li><a
-                  href='#open'
+                  href='#find'
                   class="">
-                  open
+                  find
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#getid'
+                  class="">
+                  getId
                   
                 </a>
                 
@@ -68,6 +78,16 @@
                   href='#create'
                   class="">
                   create
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#change'
+                  class="">
+                  change
                   
                 </a>
                 
@@ -115,9 +135,9 @@
               
                 
                 <li><a
-                  href='#iswritable'
+                  href='#metadatas'
                   class="">
-                  isWritable
+                  metadatas
                   
                 </a>
                 
@@ -125,9 +145,19 @@
               
                 
                 <li><a
-                  href='#eventfeedready'
+                  href='#metadata'
                   class="">
-                  feed:ready
+                  metadata
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#message'
+                  class="">
+                  message
                   
                 </a>
                 
@@ -145,9 +175,29 @@
               
                 
                 <li><a
-                  href='#eventdocumentready'
+                  href='#eventready'
                   class="">
-                  document:ready
+                  ready
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#eventpeerleft'
+                  class="">
+                  peer:left
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#eventpeerleft'
+                  class="">
+                  peer:left
                   
                 </a>
                 
@@ -176,7 +226,8 @@
   </div>
   
 
-  <p>Create and share Automerge documents using peer-to-peer networking.</p>
+  <p>Creates a new Hypermerge instance that manages a set of documents.
+All previously opened documents are automatically re-opened.</p>
 
 
   <div class='pre p1 fill-light mt0'></div>
@@ -196,7 +247,7 @@
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
+            <span class='code bold'>options</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</code>
 	    
           </div>
           
@@ -214,10 +265,20 @@
             <tbody class='mt1'>
               
                 <tr>
-  <td class='break-word'><span class='code bold'>options.path</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></code>
+  <td class='break-word'><span class='code bold'>options.storage</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></code>
   </td>
-  <td class='break-word'><span>path to directory used to store multiple
-hypercores
+  <td class='break-word'><span>config compatible with Hypercore constructor storage param
+</span></td>
+</tr>
+
+
+              
+                <tr>
+  <td class='break-word'><span class='code bold'>options.immutableApi</span> <code class='quiet'><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></code>
+  
+    (default <code>false</code>)
+  </td>
+  <td class='break-word'><span>whether to use Immutable.js Automerge API
 </span></td>
 </tr>
 
@@ -236,6 +297,16 @@ hypercores
               
             </tbody>
           </table>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>defaultMetadata</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>
+            = <code>{}</code>)</code>
+	    default metadata that should be written for new docs
+
+          </div>
           
         </div>
       
@@ -317,18 +388,19 @@ hypercores
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='any'>
-      any
+    <h3 class='fl m0' id='joinswarm'>
+      joinSwarm
     </h3>
     
     
   </div>
   
 
-  <p>Have any automerge documents been built?</p>
+  <p>Joins the network swarm for all documents managed by this Hypermerge instance.
+Must be called after <code>'ready'</code> has been emitted. <code>opts</code> are passed to discovery-swarm.</p>
 
 
-  <div class='pre p1 fill-light mt0'>any(f: filterCallback?): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></div>
+  <div class='pre p1 fill-light mt0'>joinSwarm(opts: any)</div>
   
   
 
@@ -345,10 +417,9 @@ hypercores
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>f</span> <code class='quiet'>(filterCallback?
-            = <code>()=&gt;true</code>)</code>
-	    a filter function
-
+            <span class='code bold'>opts</span> <code class='quiet'>(any
+            = <code>{}</code>)</code>
+	    
           </div>
           
         </div>
@@ -358,14 +429,6 @@ hypercores
 
   
 
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></code>:
-        
-
-      
-    
   
 
   
@@ -387,18 +450,19 @@ hypercores
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='open'>
-      open
+    <h3 class='fl m0' id='find'>
+      find
     </h3>
     
     
   </div>
   
 
-  <p>Opens an existing document.</p>
+  <p>Returns the document for the given docId.
+Throws if the document has not been opened yet.</p>
 
 
-  <div class='pre p1 fill-light mt0'>open(docId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, metadata: any)</div>
+  <div class='pre p1 fill-light mt0'>find(docId: any)</div>
   
   
 
@@ -415,17 +479,68 @@ hypercores
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>docId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-	    docId of document to open
-
+            <span class='code bold'>docId</span> <code class='quiet'>(any)</code>
+	    
           </div>
           
         </div>
       
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='getid'>
+      getId
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Returns the <code>docId</code> for the given <code>doc</code>. Note that this is id of the logical
+doc managed by Hypermerge, and not neccisarily the Automerge doc id.</p>
+
+
+  <div class='pre p1 fill-light mt0'>getId(doc: any)</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>metadata</span> <code class='quiet'>(any
-            = <code>null</code>)</code>
+            <span class='code bold'>doc</span> <code class='quiet'>(any)</code>
 	    
           </div>
           
@@ -465,7 +580,13 @@ hypercores
   </div>
   
 
-  <p>Creates an automerge document backed by a new hypercore.</p>
+  <p>Creates an Automerge document backed by a new Hypercore.</p>
+<p>If metadata is passed, it will be associated with the newly created document.
+Some metadata properties are assigned automatically by Hypermerge:</p>
+<ul>
+<li>docId: An id for this document. Forking a document creates a new docId.</li>
+<li>groupId: An id for this group of documents. Forking a document keeps the groupId.</li>
+</ul>
 
 
   <div class='pre p1 fill-light mt0'>create(metadata: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</div>
@@ -519,6 +640,83 @@ hypercores
   
   <div class='clearfix'>
     
+    <h3 class='fl m0' id='change'>
+      change
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Shorthand for <code>hm.update(Automerge.change(doc, changeFn))</code>.</p>
+
+
+  <div class='pre p1 fill-light mt0'>change(doc: any, message: any, changeFn: any)</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>doc</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>message</span> <code class='quiet'>(any
+            = <code>null</code>)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>changeFn</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
     <h3 class='fl m0' id='update'>
       update
     </h3>
@@ -528,7 +726,7 @@ hypercores
   
 
   <p>Finds any new changes for the submitted doc for the actor,
-and appends the changes to the actor's hypercore feed.</p>
+and appends the changes to the actor's Hypercore feed.</p>
 
 
   <div class='pre p1 fill-light mt0'>update(doc: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</div>
@@ -589,8 +787,9 @@ and appends the changes to the actor's hypercore feed.</p>
   </div>
   
 
-  <p>Creates a new actor hypercore feed and automerge document, with
-an empty change that depends on the document for another actor.</p>
+  <p>Creates a new actor Hypercore feed and Automerge document, with
+an empty change that depends on the document for another actor.
+The metadata of the new document will contain a <code>parentId</code> property.</p>
 
 
   <div class='pre p1 fill-light mt0'>fork(parentId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</div>
@@ -652,7 +851,9 @@ an empty change that depends on the document for another actor.</p>
   
 
   <p>Takes all the changes from a document (sourceId) and adds them to
-another document (destId).</p>
+another document (destId). Returns the merged document.</p>
+<p>The source and destination docs must have come from the same root document.
+e.g. The source doc was a <code>.fork()</code> of the destination doc, or visa-versa.</p>
 
 
   <div class='pre p1 fill-light mt0'>merge(destId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>, sourceId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</div>
@@ -722,7 +923,7 @@ another document (destId).</p>
   </div>
   
 
-  <p>Removes hypercore feed for an actor and automerge doc.</p>
+  <p>Removes Hypercore feed for an actor and Automerge doc.</p>
 <p>Leaves the network swarm. Doesn't remove files from disk.</p>
 
 
@@ -775,18 +976,19 @@ another document (destId).</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='iswritable'>
-      isWritable
+    <h3 class='fl m0' id='metadatas'>
+      metadatas
     </h3>
     
     
   </div>
   
 
-  <p>Is the hypercore writable?</p>
+  <p>Returns the list of metadata objects corresponding to the list of actors
+that have edited this document.</p>
 
 
-  <div class='pre p1 fill-light mt0'>isWritable(actorId: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></div>
+  <div class='pre p1 fill-light mt0'>metadatas(docId: any)</div>
   
   
 
@@ -803,9 +1005,8 @@ another document (destId).</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>actorId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-	    actor id
-
+            <span class='code bold'>docId</span> <code class='quiet'>(any)</code>
+	    
           </div>
           
         </div>
@@ -815,14 +1016,6 @@ another document (destId).</p>
 
   
 
-  
-    
-      <div class='py1 quiet mt1 prose-big'>Returns</div>
-      <code><a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></code>:
-        
-
-      
-    
   
 
   
@@ -844,18 +1037,18 @@ another document (destId).</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventfeedready'>
-      feed:ready
+    <h3 class='fl m0' id='metadata'>
+      metadata
     </h3>
     
     
   </div>
   
 
-  <p>Emitted when a hypercore feed is ready.</p>
+  <p>Returns the metadata object for the given <code>actorId</code>.</p>
 
 
-  <div class='pre p1 fill-light mt0'>feed:ready</div>
+  <div class='pre p1 fill-light mt0'>metadata(actorId: any)</div>
   
   
 
@@ -872,9 +1065,77 @@ another document (destId).</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>feed</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</code>
-	    hypercore feed
+            <span class='code bold'>actorId</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+    </div>
+  
 
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='message'>
+      message
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Send the given <code>msg</code>, which can be any JSON.stringify-able data, to all
+peers currently listening on the feed for <code>actorId</code>.</p>
+
+
+  <div class='pre p1 fill-light mt0'>message(actorId: any, msg: any)</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>actorId</span> <code class='quiet'>(any)</code>
+	    
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>msg</span> <code class='quiet'>(any)</code>
+	    
           </div>
           
         </div>
@@ -913,7 +1174,8 @@ another document (destId).</p>
   </div>
   
 
-  <p>Emitted when an updated document has been downloaded.</p>
+  <p>Emitted when an updated document has been downloaded. Not emitted
+after local calls to <code>.update()</code> or <code>.change()</code>.</p>
 
 
   <div class='pre p1 fill-light mt0'>document:updated</div>
@@ -942,17 +1204,8 @@ another document (destId).</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>document</span> <code class='quiet'>(<a href="#document">Document</a>)</code>
-	    automerge document
-
-          </div>
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <div>
-            <span class='code bold'>prevDocument</span> <code class='quiet'>(<a href="#document">Document</a>)</code>
-	    previous version of the document
+            <span class='code bold'>doc</span> <code class='quiet'>(<a href="#document">Document</a>)</code>
+	    Automerge document
 
           </div>
           
@@ -984,18 +1237,67 @@ another document (destId).</p>
   
   <div class='clearfix'>
     
-    <h3 class='fl m0' id='eventdocumentready'>
-      document:ready
+    <h3 class='fl m0' id='eventready'>
+      ready
     </h3>
     
     
   </div>
   
 
-  <p>Emitted when a document has been fully loaded.</p>
+  <p>Emitted when all document metadata has been loaded from storage, and the
+Hypermerge instance is ready for use. Documents will continue loading from
+storage and the network. Required before <code>.openHandle()</code>, etc. can be used.</p>
 
 
-  <div class='pre p1 fill-light mt0'>document:ready</div>
+  <div class='pre p1 fill-light mt0'>ready</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='eventpeerleft'>
+      peer:left
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Emitted when a network peer has connected.</p>
+
+
+  <div class='pre p1 fill-light mt0'>peer:left</div>
   
   
 
@@ -1012,8 +1314,8 @@ another document (destId).</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>docId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
-	    the hex id representing this document
+            <span class='code bold'>actorId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    the actorId of the connected peer
 
           </div>
           
@@ -1021,8 +1323,78 @@ another document (destId).</p>
       
         <div class='space-bottom0'>
           <div>
-            <span class='code bold'>document</span> <code class='quiet'>(<a href="#document">Document</a>)</code>
-	    automerge document
+            <span class='code bold'>peer</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</code>
+	    information about the connected peer
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='eventpeerleft'>
+      peer:left
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Emitted when a network peer has disconnected.</p>
+
+
+  <div class='pre p1 fill-light mt0'>peer:left</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>actorId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a>)</code>
+	    the actorId of the disconnected peer
+
+          </div>
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>peer</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</code>
+	    information about the disconnected peer
 
           </div>
           

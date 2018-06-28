@@ -1,6 +1,7 @@
 const test = require('tape')
-const Hypermerge = require('..')
 const ram = require('random-access-memory')
+
+const Hypermerge = require('..')
 const OnlineOfflinePump = require('./lib/online-offline-pump')
 
 test('setup', t => {
@@ -11,6 +12,24 @@ test('setup', t => {
   hm1.once('ready', merge => {
     t.equal(undefined, merge, 'calls ready')
     t.end()
+  })
+})
+
+test('write and read a file', t => {
+  t.plan(2)
+
+  const hm = new Hypermerge({storage: ram})
+  const buffer = new Buffer('test file')
+
+  hm.once('ready', () => {
+    hm.writeFile(buffer, (error, hyperfileId) => {
+      t.ok(hyperfileId, 'writeFile passes back a hyperfileId')
+
+      hm.fetchFile(hyperfileId, (error, buffer) => {
+        t.equal(buffer.toString(), 'test file', 'readFile passes back the file buffer')
+        t.end()
+      })
+    })
   })
 })
 
