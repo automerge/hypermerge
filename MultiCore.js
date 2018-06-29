@@ -2,7 +2,7 @@ const {EventEmitter} = require('events')
 const protocol = require('hypercore-protocol')
 const Archiver = require('hypercore-archiver')
 const hypercore = require('hypercore')
-const crypto = require('hypercore/lib/crypto')
+const crypto = require('hypercore-crypto')
 const thunky = require('thunky')
 const toBuffer = require('to-buffer')
 
