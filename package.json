@@ -23,7 +23,8 @@
   },
   "homepage": "https://github.com/inkandswitch/hypermerge#readme",
   "dependencies": {
-    "automerge": "^0.7.0",
+    "automerge": "^0.8.0",
+    "datland-swarm-defaults": "^1.0.2",
     "hypercore": "^6.12.0",
     "hypercore-archiver": "^4.4.1",
     "hypercore-protocol": "^6.5.1",
