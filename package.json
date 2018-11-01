@@ -2,16 +2,14 @@
   "name": "hypermerge",
   "version": "0.4.0",
   "description": "why merge when you can HYPERMERGE",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "doc-serve": "documentation serve --watch index.js",
     "doc-build": "documentation build index.js -f html -o docs",
     "build": "tsc",
     "tape": "tape tests/*.js",
     "test": "standard && nyc tape tests/*.js | tap-nyc",
-    "coverage": "nyc report -r html && opn coverage/index.html",
-    "precommit": "npm test && npm run doc-build",
-    "prepush": "npm test"
+    "coverage": "nyc report -r html && opn coverage/index.html"
   },
   "repository": {
     "type": "git",
