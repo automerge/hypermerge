@@ -6,6 +6,7 @@
   "scripts": {
     "doc-serve": "documentation serve --watch index.js",
     "doc-build": "documentation build index.js -f html -o docs",
+    "build": "tsc",
     "tape": "tape tests/*.js",
     "test": "standard && nyc tape tests/*.js | tap-nyc",
     "coverage": "nyc report -r html && opn coverage/index.html",
@@ -23,7 +24,9 @@
   },
   "homepage": "https://github.com/inkandswitch/hypermerge#readme",
   "dependencies": {
-    "automerge": "^0.7.0",
+    "automerge": "^0.9.1",
+    "bs58": "^4.0.1",
+    "debug": "^4.1.0",
     "hypercore": "^6.12.0",
     "hypercore-archiver": "^4.4.1",
     "hypercore-protocol": "^6.5.1",
@@ -31,6 +34,8 @@
     "to-buffer": "^1.1.0"
   },
   "devDependencies": {
+    "@types/debug": "^0.0.31",
+    "@types/node": "^10.12.2",
     "documentation": "^5.3.5",
     "husky": "^0.14.3",
     "nyc": "^11.4.1",
@@ -40,7 +45,8 @@
     "standard": "^10.0.3",
     "tap-nyc": "^1.0.3",
     "tape": "^4.8.0",
-    "tmp": "^0.0.33"
+    "tmp": "^0.0.33",
+    "typescript": "^3.1.6"
   },
   "standard": {
     "ignore": [
