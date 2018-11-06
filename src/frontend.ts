@@ -18,7 +18,7 @@ export class FrontendManager<T> extends EventEmitter {
   docId: string
   actorId?: string
   back?: any // place to put the backend if need be - not needed here int he code so didnt want to import
-  private changeQ: Queue<ChangeFn<T>> = new Queue("frontend:change")
+  private changeQ = new Queue<ChangeFn<T>>("frontend:change")
   private front: Doc<T>
   private mode: Mode = "pending"
 

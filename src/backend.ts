@@ -12,8 +12,8 @@ export class BackendManager extends EventEmitter {
   actorId?: string
   private hypermerge: Hypermerge
   private back?: BackDoc
-  private backLocalQ: Queue<() => void> = new Queue("backLocalQ")
-  private backRemoteQ: Queue<() => void> = new Queue("backRemoteQ")
+  private localChangeQ = new Queue<Change>("localChangeQ")
+  private remoteChangesQ = new Queue<Change[]>("remoteChangesQ")
   private wantsActor: boolean = false
 
   constructor(core: Hypermerge, docId: string, back?: BackDoc) {
@@ -25,8 +25,8 @@ export class BackendManager extends EventEmitter {
     if (back) {
       this.back = back
       this.actorId = docId
-      this.backLocalQ.subscribe(f => f())
-      this.backRemoteQ.subscribe(f => f())
+      this.subscribeToRemoteChanges()
+      this.subscribeToLocalChanges()
       this.emit("ready", docId, undefined)
     }
 
@@ -39,24 +39,11 @@ export class BackendManager extends EventEmitter {
   }
 
   applyRemoteChanges = (changes: Change[]): void => {
-    this.backRemoteQ.push(() => {
-      this.bench("applyRemoteChanges", () => {
-        const [back, patch] = Backend.applyChanges(this.back!, changes)
-        this.back = back
-        this.emit("patch", patch)
-      })
-    })
+    this.remoteChangesQ.push(changes)
   }
 
   applyLocalChange = (change: Change): void => {
-    this.backLocalQ.push(() => {
-      this.bench(`applyLocalChange seq=${change.seq}`, () => {
-        const [back, patch] = Backend.applyLocalChange(this.back!, change)
-        this.back = back
-        this.emit("patch", patch)
-        this.hypermerge.writeChange(this, this.actorId!, change)
-      })
-    })
+    this.localChangeQ.push(change)
   }
 
   actorIds = (): string[] => {
@@ -65,7 +52,7 @@ export class BackendManager extends EventEmitter {
 
   release = () => {
     this.removeAllListeners()
-    this.hypermerge.releaseHandle(this)
+    this.hypermerge.releaseManager(this)
   }
 
   initActor = () => {
@@ -90,9 +77,29 @@ export class BackendManager extends EventEmitter {
         this.actorId = this.hypermerge.initActorFeed(this)
       }
       this.back = back
-      this.backLocalQ.subscribe(f => f())
-      this.backRemoteQ.subscribe(f => f())
+      this.subscribeToRemoteChanges()
       this.emit("ready", this.actorId, patch)
+    })
+  }
+
+  subscribeToRemoteChanges() {
+    this.remoteChangesQ.subscribe(changes => {
+      this.bench("applyRemoteChanges", () => {
+        const [back, patch] = Backend.applyChanges(this.back!, changes)
+        this.back = back
+        this.emit("patch", patch)
+      })
+    })
+  }
+
+  subscribeToLocalChanges() {
+    this.localChangeQ.subscribe(change => {
+      this.bench(`applyLocalChange seq=${change.seq}`, () => {
+        const [back, patch] = Backend.applyLocalChange(this.back!, change)
+        this.back = back
+        this.emit("patch", patch)
+        this.hypermerge.writeChange(this, this.actorId!, change)
+      })
     })
   }
 

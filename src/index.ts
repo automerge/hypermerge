@@ -377,7 +377,7 @@ export class Hypermerge {
     return stream
   }
 
-  releaseHandle(doc: BackendManager) {
+  releaseManager(doc: BackendManager) {
     const actorIds = doc.actorIds()
     this.docs.delete(doc.docId)
     actorIds.map(this.leave)
