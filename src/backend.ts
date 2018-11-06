@@ -3,23 +3,23 @@ import Debug from "debug"
 import * as Backend from "automerge/backend"
 import { Change, BackDoc } from "automerge/backend"
 import Queue from "./Queue"
-import { Peer, Feed, EXT, Hypermerge } from "."
+import { Peer, Feed, EXT, Repo } from "."
 
 const log = Debug("hypermerge:back")
 
 export class BackendManager extends EventEmitter {
   docId: string
   actorId?: string
-  private hypermerge: Hypermerge
+  private repo: Repo
   private back?: BackDoc
   private localChangeQ = new Queue<Change>("localChangeQ")
   private remoteChangesQ = new Queue<Change[]>("remoteChangesQ")
   private wantsActor: boolean = false
 
-  constructor(core: Hypermerge, docId: string, back?: BackDoc) {
+  constructor(core: Repo, docId: string, back?: BackDoc) {
     super()
 
-    this.hypermerge = core
+    this.repo = core
     this.docId = docId
 
     if (back) {
@@ -47,12 +47,12 @@ export class BackendManager extends EventEmitter {
   }
 
   actorIds = (): string[] => {
-    return this.hypermerge.actorIds(this)
+    return this.repo.actorIds(this)
   }
 
   release = () => {
     this.removeAllListeners()
-    this.hypermerge.releaseManager(this)
+    this.repo.releaseManager(this)
   }
 
   initActor = () => {
@@ -60,7 +60,7 @@ export class BackendManager extends EventEmitter {
     if (this.back) {
       // if we're all setup and dont have an actor - request one
       if (!this.actorId) {
-        this.actorId = this.hypermerge.initActorFeed(this)
+        this.actorId = this.repo.initActorFeed(this)
       }
       this.emit("actorId", this.actorId)
     } else {
@@ -74,7 +74,7 @@ export class BackendManager extends EventEmitter {
       const [back, patch] = Backend.applyChanges(Backend.init(), changes)
       this.actorId = actorId
       if (this.wantsActor && !actorId) {
-        this.actorId = this.hypermerge.initActorFeed(this)
+        this.actorId = this.repo.initActorFeed(this)
       }
       this.back = back
       this.subscribeToRemoteChanges()
@@ -98,17 +98,17 @@ export class BackendManager extends EventEmitter {
         const [back, patch] = Backend.applyLocalChange(this.back!, change)
         this.back = back
         this.emit("patch", patch)
-        this.hypermerge.writeChange(this, this.actorId!, change)
+        this.repo.writeChange(this, this.actorId!, change)
       })
     })
   }
 
   peers(): Peer[] {
-    return this.hypermerge.peers(this)
+    return this.repo.peers(this)
   }
 
   feeds(): Feed<Uint8Array>[] {
-    return this.actorIds().map(actorId => this.hypermerge.feed(actorId))
+    return this.actorIds().map(actorId => this.repo.feed(actorId))
   }
 
   broadcast(message: any) {

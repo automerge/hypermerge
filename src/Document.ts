@@ -14,7 +14,7 @@ export type Patch = Patch
 
 type Mode = "pending" | "read" | "write"
 
-export class FrontendManager<T> extends EventEmitter {
+export class Document<T> extends EventEmitter {
   docId: string
   actorId?: string
   back?: any // place to put the backend if need be - not needed here int he code so didnt want to import

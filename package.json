@@ -7,9 +7,7 @@
     "doc-serve": "documentation serve --watch index.js",
     "doc-build": "documentation build index.js -f html -o docs",
     "build": "tsc",
-    "tape": "tape tests/*.js",
-    "test": "standard && nyc tape tests/*.js | tap-nyc",
-    "coverage": "nyc report -r html && opn coverage/index.html"
+    "tape": "ts-node --files node_modules/tape/bin/tape tests/*.ts"
   },
   "repository": {
     "type": "git",
@@ -31,6 +29,7 @@
   "devDependencies": {
     "@types/debug": "^0.0.31",
     "@types/node": "^10.12.2",
+    "@types/tape": "^4.2.32",
     "documentation": "^5.3.5",
     "husky": "^0.14.3",
     "nyc": "^11.4.1",
@@ -39,8 +38,9 @@
     "random-access-memory": "^2.4.0",
     "standard": "^10.0.3",
     "tap-nyc": "^1.0.3",
-    "tape": "^4.8.0",
     "tmp": "^0.0.33",
+    "tape": "^4.9.1",
+    "ts-node": "^7.0.1",
     "typescript": "^3.1.6"
   },
   "standard": {
