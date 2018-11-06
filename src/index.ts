@@ -1,15 +1,3 @@
-// WHY
-// 1. typescript
-// 2. constructor/open/create is syncronous - almost all api calls are syncronous
-// 3. much much smaller codebase (1700 loc vs 500 loc)
-// 4. first document emitted is all of whats on disk
-// 5. no efficiency issues with massive numbmers of documents (just need to read the metadata feed is all)
-// 6. on download - emits only once when download of a feed is complete on(sync)
-// 7. does not emit two docs on change
-// 8. does not allocate a hypercore for a document unless you intend to write to it (read only mode)
-// 9. exports almost the same interface as hypermerge
-
-// Notes - Hypermerge.front will not emit a doc if it is empty - even if its supposed to be
 
 export const EXT = "hypermerge"
 
@@ -22,6 +10,7 @@ interface Swarm {
 }
 
 import Queue from "./Queue"
+import MapSet from "./MapSet"
 import * as JsonBuffer from "./JsonBuffer"
 import * as Base58 from "bs58"
 import * as crypto from "hypercore/lib/crypto"
@@ -76,7 +65,8 @@ export class Hypermerge {
   docs: Map<string, BackendManager> = new Map()
   feedSeq: Map<string, number> = new Map()
   ledger: Feed<LedgerData>
-  docMetadata: Map<string, string[]> = new Map() // Map of Sets - FIXME
+  private ledgerMetadata: MapSet<string, string> = new MapSet()
+  private docMetadata: MapSet<string, string> = new MapSet()
   swarm?: Swarm
   id: Buffer
 
@@ -91,8 +81,8 @@ export class Hypermerge {
         if (this.ledger.length > 0) {
           this.ledger.getBatch(0, this.ledger.length, (err, data) => {
             data.forEach(d => {
-              let old = this.docMetadata.get(d.docId) || []
-              this.docMetadata.set(d.docId, old.concat(d.actorIds))
+              this.docMetadata.merge(d.docId, d.actorIds)
+              this.ledgerMetadata.merge(d.docId,d.actorIds)
             })
             resolve()
           })
@@ -125,12 +115,11 @@ export class Hypermerge {
   }
 
   private addMetadata(docId: string, actorId: string) {
+    this.docMetadata.add(docId, actorId)
     this.ready.then(() => {
-      let ld: LedgerData = { docId: docId, actorIds: [actorId] }
-      let old = this.docMetadata.get(docId) || []
-      if (!old.includes(actorId)) {
-        this.docMetadata.set(docId, old.concat(ld.actorIds))
-        this.ledger.append(ld)
+      if (!this.ledgerMetadata.has(docId, actorId)) {
+        this.ledgerMetadata.add(docId, actorId)
+        this.ledger.append({ docId: docId, actorIds: [actorId] })
       }
     })
   }
@@ -265,7 +254,7 @@ export class Hypermerge {
   }
 
   actorIds(doc: BackendManager): string[] {
-    return this.docMetadata.get(doc.docId) || []
+    return [... this.docMetadata.get(doc.docId)]
   }
 
   feed(actorId: string): Feed<Uint8Array> {

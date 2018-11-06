@@ -19,34 +19,21 @@ const log = debug_1.default("hypermerge:back");
 class BackendManager extends events_1.EventEmitter {
     constructor(core, docId, back) {
         super();
-        this.backLocalQ = new Queue_1.default("backLocalQ");
-        this.backRemoteQ = new Queue_1.default("backRemoteQ");
+        this.localChangeQ = new Queue_1.default("localChangeQ");
+        this.remoteChangesQ = new Queue_1.default("remoteChangesQ");
         this.wantsActor = false;
         this.applyRemoteChanges = (changes) => {
-            this.backRemoteQ.push(() => {
-                this.bench("applyRemoteChanges", () => {
-                    const [back, patch] = Backend.applyChanges(this.back, changes);
-                    this.back = back;
-                    this.emit("patch", patch);
-                });
-            });
+            this.remoteChangesQ.push(changes);
         };
         this.applyLocalChange = (change) => {
-            this.backLocalQ.push(() => {
-                this.bench(`applyLocalChange seq=${change.seq}`, () => {
-                    const [back, patch] = Backend.applyLocalChange(this.back, change);
-                    this.back = back;
-                    this.emit("patch", patch);
-                    this.hypermerge.writeChange(this, this.actorId, change);
-                });
-            });
+            this.localChangeQ.push(change);
         };
         this.actorIds = () => {
-            return this.hypermerge.docMetadata.get(this.docId) || [];
+            return this.hypermerge.actorIds(this);
         };
         this.release = () => {
             this.removeAllListeners();
-            this.hypermerge.releaseHandle(this);
+            this.hypermerge.releaseManager(this);
         };
         this.initActor = () => {
             log("initActor");
@@ -70,8 +57,7 @@ class BackendManager extends events_1.EventEmitter {
                     this.actorId = this.hypermerge.initActorFeed(this);
                 }
                 this.back = back;
-                this.backLocalQ.subscribe(f => f());
-                this.backRemoteQ.subscribe(f => f());
+                this.subscribeToRemoteChanges();
                 this.emit("ready", this.actorId, patch);
             });
         };
@@ -80,8 +66,8 @@ class BackendManager extends events_1.EventEmitter {
         if (back) {
             this.back = back;
             this.actorId = docId;
-            this.backLocalQ.subscribe(f => f());
-            this.backRemoteQ.subscribe(f => f());
+            this.subscribeToRemoteChanges();
+            this.subscribeToLocalChanges();
             this.emit("ready", docId, undefined);
         }
         this.on("newListener", (event, listener) => {
@@ -89,6 +75,25 @@ class BackendManager extends events_1.EventEmitter {
                 const patch = Backend.getPatch(this.back);
                 listener(patch);
             }
+        });
+    }
+    subscribeToRemoteChanges() {
+        this.remoteChangesQ.subscribe(changes => {
+            this.bench("applyRemoteChanges", () => {
+                const [back, patch] = Backend.applyChanges(this.back, changes);
+                this.back = back;
+                this.emit("patch", patch);
+            });
+        });
+    }
+    subscribeToLocalChanges() {
+        this.localChangeQ.subscribe(change => {
+            this.bench(`applyLocalChange seq=${change.seq}`, () => {
+                const [back, patch] = Backend.applyLocalChange(this.back, change);
+                this.back = back;
+                this.emit("patch", patch);
+                this.hypermerge.writeChange(this, this.actorId, change);
+            });
         });
     }
     peers() {

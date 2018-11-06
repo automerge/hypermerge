@@ -42,7 +42,8 @@ export declare class Hypermerge {
     docs: Map<string, BackendManager>;
     feedSeq: Map<string, number>;
     ledger: Feed<LedgerData>;
-    docMetadata: Map<string, string[]>;
+    private ledgerMetadata;
+    private docMetadata;
     swarm?: Swarm;
     id: Buffer;
     constructor(opts: Options);
@@ -68,5 +69,5 @@ export declare class Hypermerge {
     private closeFeed;
     private initFeed;
     stream: (opts: any) => any;
-    releaseHandle(doc: BackendManager): void;
+    releaseManager(doc: BackendManager): void;
 }

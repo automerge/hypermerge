@@ -1,14 +1,4 @@
 "use strict";
-// WHY
-// 1. typescript
-// 2. constructor/open/create is syncronous - almost all api calls are syncronous
-// 3. much much smaller codebase (1700 loc vs 500 loc)
-// 4. first document emitted is all of whats on disk
-// 5. no efficiency issues with massive numbmers of documents (just need to read the metadata feed is all)
-// 6. on download - emits only once when download of a feed is complete on(sync)
-// 7. does not emit two docs on change
-// 8. does not allocate a hypercore for a document unless you intend to write to it (read only mode)
-// 9. exports almost the same interface as hypermerge
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -20,9 +10,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// Notes - Hypermerge.front will not emit a doc if it is empty - even if its supposed to be
 exports.EXT = "hypermerge";
 const Queue_1 = __importDefault(require("./Queue"));
+const MapSet_1 = __importDefault(require("./MapSet"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
@@ -46,7 +36,8 @@ class Hypermerge {
         this.feedPeers = new Map();
         this.docs = new Map();
         this.feedSeq = new Map();
-        this.docMetadata = new Map(); // Map of Sets - FIXME
+        this.ledgerMetadata = new MapSet_1.default();
+        this.docMetadata = new MapSet_1.default();
         this.join = (actorId) => {
             const dk = hypercore_1.discoveryKey(Base58.decode(actorId));
             if (this.swarm && !this.joined.has(dk)) {
@@ -105,8 +96,8 @@ class Hypermerge {
                 if (this.ledger.length > 0) {
                     this.ledger.getBatch(0, this.ledger.length, (err, data) => {
                         data.forEach(d => {
-                            let old = this.docMetadata.get(d.docId) || [];
-                            this.docMetadata.set(d.docId, old.concat(d.actorIds));
+                            this.docMetadata.merge(d.docId, d.actorIds);
+                            this.ledgerMetadata.merge(d.docId, d.actorIds);
                         });
                         resolve();
                     });
@@ -134,12 +125,11 @@ class Hypermerge {
         return doc;
     }
     addMetadata(docId, actorId) {
+        this.docMetadata.add(docId, actorId);
         this.ready.then(() => {
-            let ld = { docId: docId, actorIds: [actorId] };
-            let old = this.docMetadata.get(docId) || [];
-            if (!old.includes(actorId)) {
-                this.docMetadata.set(docId, old.concat(ld.actorIds));
-                this.ledger.append(ld);
+            if (!this.ledgerMetadata.has(docId, actorId)) {
+                this.ledgerMetadata.add(docId, actorId);
+                this.ledger.append({ docId: docId, actorIds: [actorId] });
             }
         });
     }
@@ -235,7 +225,7 @@ class Hypermerge {
         peer.stream.extension(exports.EXT, Buffer.from(JSON.stringify(data)));
     }
     actorIds(doc) {
-        return this.docMetadata.get(doc.docId) || [];
+        return [...this.docMetadata.get(doc.docId)];
     }
     feed(actorId) {
         const publicKey = Base58.decode(actorId);
@@ -305,7 +295,7 @@ class Hypermerge {
         });
         return q;
     }
-    releaseHandle(doc) {
+    releaseManager(doc) {
         const actorIds = doc.actorIds();
         this.docs.delete(doc.docId);
         actorIds.map(this.leave);

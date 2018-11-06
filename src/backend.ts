@@ -47,7 +47,7 @@ export class BackendManager extends EventEmitter {
   }
 
   actorIds = (): string[] => {
-    return this.hypermerge.docMetadata.get(this.docId) || []
+    return this.hypermerge.actorIds(this)
   }
 
   release = () => {

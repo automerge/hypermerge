@@ -8,8 +8,8 @@ export declare class BackendManager extends EventEmitter {
     actorId?: string;
     private hypermerge;
     private back?;
-    private backLocalQ;
-    private backRemoteQ;
+    private localChangeQ;
+    private remoteChangesQ;
     private wantsActor;
     constructor(core: Hypermerge, docId: string, back?: BackDoc);
     applyRemoteChanges: (changes: Backend.Change[]) => void;
@@ -18,6 +18,8 @@ export declare class BackendManager extends EventEmitter {
     release: () => void;
     initActor: () => void;
     init: (changes: Backend.Change[], actorId?: string | undefined) => void;
+    subscribeToRemoteChanges(): void;
+    subscribeToLocalChanges(): void;
     peers(): Peer[];
     feeds(): Feed<Uint8Array>[];
     broadcast(message: any): void;
