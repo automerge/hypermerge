@@ -368,9 +368,11 @@ export class Hypermerge {
       }
     }
 
+
     stream.on("feed", (dk: Buffer) => add(dk))
 
-    add(opts.channel || opts.discoveryKey)
+    const dk = opts.channel || opts.discoveryKey
+    if (dk) add(dk)
 
     return stream
   }

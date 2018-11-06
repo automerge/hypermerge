@@ -90,7 +90,9 @@ class Hypermerge {
                 }
             };
             stream.on("feed", (dk) => add(dk));
-            add(opts.channel || opts.discoveryKey);
+            const dk = opts.channel || opts.discoveryKey;
+            if (dk)
+                add(dk);
             return stream;
         };
         this.path = opts.path || "default";
