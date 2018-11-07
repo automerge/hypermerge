@@ -3,10 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 class Handle {
     constructor() {
         this.value = null;
+        this.counter = 0;
         this.push = (item) => {
             this.value = item;
             if (this.subscription) {
-                this.subscription(item);
+                this.subscription(item, this.counter++);
             }
         };
         this.once = (subscriber) => {
@@ -21,7 +22,7 @@ class Handle {
             }
             this.subscription = subscriber;
             if (this.value != null) {
-                subscriber(this.value);
+                subscriber(this.value, this.counter++);
             }
         };
         this.close = () => {
@@ -34,4 +35,4 @@ class Handle {
     }
 }
 exports.default = Handle;
-//# sourceMappingURL=handle.js.map
+//# sourceMappingURL=Handle.js.map

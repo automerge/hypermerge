@@ -2,14 +2,15 @@ import { Doc, ChangeFn } from "automerge/frontend"
 
 export default class Handle<T> {
   value: Doc<T> | null = null
-  subscription?: (item: Doc<T>) => void
+  subscription?: (item: Doc<T>, index?: number) => void
+  private counter: number = 0
 
   constructor() {}
 
   push = (item: Doc<T>) => {
     this.value = item
     if (this.subscription) {
-      this.subscription(item)
+      this.subscription(item, this.counter++)
     }
   }
 
@@ -20,7 +21,7 @@ export default class Handle<T> {
     })
   }
 
-  subscribe = (subscriber: (doc: Doc<T>) => void) => {
+  subscribe = (subscriber: (doc: Doc<T>, index?: number) => void) => {
     if (this.subscription) {
       throw new Error("only one subscriber for a doc handle")
     }
@@ -28,7 +29,7 @@ export default class Handle<T> {
     this.subscription = subscriber
 
     if (this.value != null) {
-      subscriber(this.value)
+      subscriber(this.value, this.counter++)
     }
   }
 

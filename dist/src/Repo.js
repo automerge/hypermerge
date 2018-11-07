@@ -18,7 +18,7 @@ const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
 const hypercore_1 = require("./hypercore");
 const Backend = __importStar(require("automerge/backend"));
-const backend_1 = require("./backend");
+const DocumentBackend_1 = require("./DocumentBackend");
 const Document_1 = require("./Document");
 const debug_1 = __importDefault(require("debug"));
 debug_1.default.formatters.b = Base58.encode;
@@ -26,6 +26,22 @@ const HypercoreProtocol = require("hypercore-protocol");
 const ram = require("random-access-memory");
 const raf = require("random-access-file");
 const log = debug_1.default("hypermerge");
+function keyPair(docId) {
+    if (docId) {
+        return {
+            docId: docId,
+            publicKey: Base58.decode(docId)
+        };
+    }
+    const keys = crypto.keyPair();
+    return {
+        publicKey: keys.publicKey,
+        secretKey: keys.secretKey,
+        docId: Base58.encode(keys.publicKey),
+        actorId: Base58.encode(keys.publicKey)
+    };
+}
+exports.keyPair = keyPair;
 class Repo {
     constructor(opts = {}) {
         this.joined = new Set();
@@ -84,6 +100,7 @@ class Repo {
                 add(dk);
             return stream;
         };
+        this.opts = opts;
         this.path = opts.path || "default";
         this.storage = opts.storage || (opts.path ? raf : ram);
         this.ledger = hypercore_1.hypercore(this.storageFn("ledger"), { valueEncoding: "json" });
@@ -108,16 +125,18 @@ class Repo {
     }
     createDocument(keys = crypto.keyPair()) {
         const back = this.createDocumentBackend(keys);
-        const front = new Document_1.Document(back.docId, back.docId);
+        const front = new Document_1.Document({ docId: back.docId, actorId: back.docId });
         front.back = back;
-        front.on("request", back.applyLocalChange);
-        back.on("patch", front.patch);
+        //front.on("request", back.applyLocalChange)
+        //back.on("patch", front.patch)
+        front.subscribe(back.receive);
+        back.subscribe(front.receive);
         return front;
     }
-    createDocumentBackend(keys) {
+    createDocumentBackend(keys = crypto.keyPair()) {
         const docId = Base58.encode(keys.publicKey);
         log("Create", docId);
-        const doc = new backend_1.BackendManager(this, docId, Backend.init());
+        const doc = new DocumentBackend_1.DocumentBackend(this, docId, Backend.init());
         this.docs.set(docId, doc);
         this.initFeed(doc, keys);
         return doc;
@@ -131,8 +150,8 @@ class Repo {
             }
         });
     }
-    openDocument(docId) {
-        let doc = this.docs.get(docId) || new backend_1.BackendManager(this, docId);
+    openDocumentBackend(docId) {
+        let doc = this.docs.get(docId) || new DocumentBackend_1.DocumentBackend(this, docId);
         if (!this.docs.has(docId)) {
             this.docs.set(docId, doc);
             this.addMetadata(docId, docId);
@@ -141,15 +160,17 @@ class Repo {
         }
         return doc;
     }
-    openDocumentFrontend(docId) {
-        const back = this.openDocument(docId);
-        const front = new Document_1.Document(back.docId);
+    openDocument(docId) {
+        const back = this.openDocumentBackend(docId);
+        const front = new Document_1.Document({ docId: back.docId });
         front.back = back;
-        front.once("needsActorId", back.initActor);
-        front.on("request", back.applyLocalChange);
-        back.on("actorId", front.setActorId);
-        back.on("ready", front.init);
-        back.on("patch", front.patch);
+        front.subscribe(back.receive);
+        back.subscribe(front.receive);
+        //    front.once("needsActorId", back.initActor)
+        //    front.on("request", back.applyLocalChange)
+        //    back.on("actorId", front.setActorId)
+        //    back.on("ready", front.init)
+        //    back.on("patch", front.patch)
         return front;
     }
     joinSwarm(swarm) {

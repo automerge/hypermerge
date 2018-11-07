@@ -2,18 +2,20 @@ import { EventEmitter } from "events"
 import Debug from "debug"
 import * as Backend from "automerge/backend"
 import { Change, BackDoc } from "automerge/backend"
+import { ToBackendMsg, ToFrontendMsg } from "./DocumentMsg"
 import Queue from "./Queue"
 import { Peer, Feed, EXT, Repo } from "."
 
 const log = Debug("hypermerge:back")
 
-export class BackendManager extends EventEmitter {
+export class DocumentBackend extends EventEmitter {
   docId: string
   actorId?: string
   private repo: Repo
   private back?: BackDoc
-  private localChangeQ = new Queue<Change>("localChangeQ")
-  private remoteChangesQ = new Queue<Change[]>("remoteChangesQ")
+  private toFrontend = new Queue<ToFrontendMsg>("backend:tofrontend")
+  private localChangeQ = new Queue<Change>("backend:localChangeQ")
+  private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ")
   private wantsActor: boolean = false
 
   constructor(core: Repo, docId: string, back?: BackDoc) {
@@ -27,7 +29,8 @@ export class BackendManager extends EventEmitter {
       this.actorId = docId
       this.subscribeToRemoteChanges()
       this.subscribeToLocalChanges()
-      this.emit("ready", docId, undefined)
+//      this.emit("ready", docId, undefined)
+      this.toFrontend.push({ type: "ReadyMsg", actorId: docId })
     }
 
     this.on("newListener", (event, listener) => {
@@ -55,6 +58,24 @@ export class BackendManager extends EventEmitter {
     this.repo.releaseManager(this)
   }
 
+  subscribe = (subscriber: (msg: ToFrontendMsg) => void) => {
+    this.toFrontend.subscribe(subscriber)
+  }
+
+  receive = (msg: ToBackendMsg) => {
+    log("receive", msg)
+    switch (msg.type) {
+      case "NeedsActorIdMsg": {
+        this.initActor()
+        break
+      }
+      case "RequestMsg": {
+        this.applyLocalChange(msg.request)
+        break
+      }
+    }
+  }
+
   initActor = () => {
     log("initActor")
     if (this.back) {
@@ -62,7 +83,8 @@ export class BackendManager extends EventEmitter {
       if (!this.actorId) {
         this.actorId = this.repo.initActorFeed(this)
       }
-      this.emit("actorId", this.actorId)
+//      this.emit("actorId", this.actorId)
+      this.toFrontend.push({ type: "ActorIdMsg", actorId: this.actorId})
     } else {
       // remember we want one for when init happens
       this.wantsActor = true
@@ -78,7 +100,9 @@ export class BackendManager extends EventEmitter {
       }
       this.back = back
       this.subscribeToRemoteChanges()
-      this.emit("ready", this.actorId, patch)
+//      this.emit("ready", this.actorId, patch)
+      this.toFrontend.push({ type: "ReadyMsg", actorId: this.actorId, patch})
+//{ type: "ReadyMsg"; actorId: string | undefined; patch: Patch; }
     })
   }
 
@@ -87,7 +111,8 @@ export class BackendManager extends EventEmitter {
       this.bench("applyRemoteChanges", () => {
         const [back, patch] = Backend.applyChanges(this.back!, changes)
         this.back = back
-        this.emit("patch", patch)
+//        this.emit("patch", patch)
+        this.toFrontend.push({ type: "PatchMsg", patch })
       })
     })
   }
@@ -97,7 +122,8 @@ export class BackendManager extends EventEmitter {
       this.bench(`applyLocalChange seq=${change.seq}`, () => {
         const [back, patch] = Backend.applyLocalChange(this.back!, change)
         this.back = back
-        this.emit("patch", patch)
+//        this.emit("patch", patch)
+        this.toFrontend.push({ type: "PatchMsg", patch })
         this.repo.writeChange(this, this.actorId!, change)
       })
     })

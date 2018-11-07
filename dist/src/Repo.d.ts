@@ -9,11 +9,18 @@ interface Swarm {
 import Queue from "./Queue";
 import { Feed, Peer } from "./hypercore";
 import { Change } from "automerge/backend";
-import { BackendManager } from "./backend";
+import { DocumentBackend } from "./DocumentBackend";
 import { Document } from "./Document";
+export declare function keyPair(docId?: string): Keys;
+export interface KeyBuffer {
+    publicKey: Buffer;
+    secretKey?: Buffer;
+}
 export interface Keys {
     publicKey: Buffer;
     secretKey?: Buffer;
+    docId: string;
+    actorId?: string;
 }
 export interface FeedData {
     actorId: string;
@@ -36,36 +43,37 @@ export declare class Repo {
     feeds: Map<string, Feed<Uint8Array>>;
     feedQs: Map<string, Queue<FeedFn>>;
     feedPeers: Map<string, Set<Peer>>;
-    docs: Map<string, BackendManager>;
+    docs: Map<string, DocumentBackend>;
     feedSeq: Map<string, number>;
     ledger: Feed<LedgerData>;
     private ledgerMetadata;
     private docMetadata;
+    private opts;
     swarm?: Swarm;
     id: Buffer;
     constructor(opts?: Options);
-    createDocument<T>(keys?: Keys): Document<T>;
-    createDocumentBackend(keys: Keys): BackendManager;
+    createDocument<T>(keys?: KeyBuffer): Document<T>;
+    createDocumentBackend(keys?: KeyBuffer): DocumentBackend;
     private addMetadata;
-    openDocument(docId: string): BackendManager;
-    openDocumentFrontend<T>(docId: string): Document<T>;
+    openDocumentBackend(docId: string): DocumentBackend;
+    openDocument<T>(docId: string): Document<T>;
     joinSwarm(swarm: Swarm): void;
     private feedData;
     private allFeedData;
-    writeChange(doc: BackendManager, actorId: string, change: Change): void;
+    writeChange(doc: DocumentBackend, actorId: string, change: Change): void;
     private loadDocument;
     private join;
     private leave;
     private getFeed;
     private storageFn;
-    initActorFeed(doc: BackendManager): string;
+    initActorFeed(doc: DocumentBackend): string;
     sendToPeer(peer: Peer, data: any): void;
-    actorIds(doc: BackendManager): string[];
+    actorIds(doc: DocumentBackend): string[];
     feed(actorId: string): Feed<Uint8Array>;
-    peers(doc: BackendManager): Peer[];
+    peers(doc: DocumentBackend): Peer[];
     private closeFeed;
     private initFeed;
     stream: (opts: any) => any;
-    releaseManager(doc: BackendManager): void;
+    releaseManager(doc: DocumentBackend): void;
 }
 export {};
