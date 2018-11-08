@@ -99,7 +99,7 @@ scenario you might have a socket or pipe in between the two halves.
   })
 ```
 
-Networking
+## Networking
 
   To replicate a hypermerge documents with peers plug in a discovery swarm
 interface to the replicate() function on the Repo (or the RepoBackend)
