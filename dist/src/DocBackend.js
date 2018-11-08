@@ -10,17 +10,16 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const events_1 = require("events");
 const debug_1 = __importDefault(require("debug"));
 const Backend = __importStar(require("automerge/backend"));
 const Queue_1 = __importDefault(require("./Queue"));
 const _1 = require(".");
 const log = debug_1.default("hypermerge:back");
-class BackendManager extends events_1.EventEmitter {
+class DocBackend {
     constructor(core, docId, back) {
-        super();
-        this.localChangeQ = new Queue_1.default("localChangeQ");
-        this.remoteChangesQ = new Queue_1.default("remoteChangesQ");
+        //  private toFrontend = new Queue<ToFrontendRepoMsg>("backend:tofrontend")
+        this.localChangeQ = new Queue_1.default("backend:localChangeQ");
+        this.remoteChangesQ = new Queue_1.default("backend:remoteChangesQ");
         this.wantsActor = false;
         this.applyRemoteChanges = (changes) => {
             this.remoteChangesQ.push(changes);
@@ -32,9 +31,27 @@ class BackendManager extends events_1.EventEmitter {
             return this.repo.actorIds(this);
         };
         this.release = () => {
-            this.removeAllListeners();
             this.repo.releaseManager(this);
         };
+        /*
+          subscribe = (subscriber: (msg: ToFrontendMsg) => void) => {
+            this.repo.toFrontend.subscribe(subscriber)
+          }
+        
+          receive = (msg: ToBackendMsg) => {
+            log("receive", msg)
+            switch (msg.type) {
+              case "NeedsActorIdMsg": {
+                this.initActor()
+                break
+              }
+              case "RequestMsg": {
+                this.applyLocalChange(msg.request)
+                break
+              }
+            }
+          }
+        */
         this.initActor = () => {
             log("initActor");
             if (this.back) {
@@ -42,7 +59,7 @@ class BackendManager extends events_1.EventEmitter {
                 if (!this.actorId) {
                     this.actorId = this.repo.initActorFeed(this);
                 }
-                this.emit("actorId", this.actorId);
+                this.repo.toFrontend.push({ type: "ActorIdMsg", id: this.docId, actorId: this.actorId });
             }
             else {
                 // remember we want one for when init happens
@@ -59,7 +76,8 @@ class BackendManager extends events_1.EventEmitter {
                 this.back = back;
                 this.subscribeToLocalChanges();
                 this.subscribeToRemoteChanges();
-                this.emit("ready", this.actorId, patch);
+                this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: this.actorId, patch });
+                //{ type: "ReadyMsg"; actorId: string | undefined; patch: Patch; }
             });
         };
         this.repo = core;
@@ -69,21 +87,23 @@ class BackendManager extends events_1.EventEmitter {
             this.actorId = docId;
             this.subscribeToRemoteChanges();
             this.subscribeToLocalChanges();
-            this.emit("ready", docId, undefined);
+            this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: docId });
         }
-        this.on("newListener", (event, listener) => {
-            if (event === "patch" && this.back) {
-                const patch = Backend.getPatch(this.back);
-                listener(patch);
-            }
-        });
+        /*
+            this.on("newListener", (event, listener) => {
+              if (event === "patch" && this.back) {
+                const patch = Backend.getPatch(this.back)
+                listener(patch)
+              }
+            })
+        */
     }
     subscribeToRemoteChanges() {
         this.remoteChangesQ.subscribe(changes => {
             this.bench("applyRemoteChanges", () => {
                 const [back, patch] = Backend.applyChanges(this.back, changes);
                 this.back = back;
-                this.emit("patch", patch);
+                this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch });
             });
         });
     }
@@ -92,7 +112,7 @@ class BackendManager extends events_1.EventEmitter {
             this.bench(`applyLocalChange seq=${change.seq}`, () => {
                 const [back, patch] = Backend.applyLocalChange(this.back, change);
                 this.back = back;
-                this.emit("patch", patch);
+                this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch });
                 this.repo.writeChange(this, this.actorId, change);
             });
         });
@@ -125,5 +145,5 @@ class BackendManager extends events_1.EventEmitter {
         log(`docId=${this.docId} task=${msg} time=${duration}ms`);
     }
 }
-exports.BackendManager = BackendManager;
-//# sourceMappingURL=backend.js.map
+exports.DocBackend = DocBackend;
+//# sourceMappingURL=DocBackend.js.map

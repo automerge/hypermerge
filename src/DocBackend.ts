@@ -97,6 +97,7 @@ export class DocBackend {
         this.actorId = this.repo.initActorFeed(this)
       }
       this.back = back
+      this.subscribeToLocalChanges()
       this.subscribeToRemoteChanges()
       this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: this.actorId, patch})
 //{ type: "ReadyMsg"; actorId: string | undefined; patch: Patch; }
