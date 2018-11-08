@@ -1,11 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Repo_1 = require("./Repo");
-exports.keyPair = Repo_1.keyPair;
-exports.EXT = Repo_1.EXT;
 exports.Repo = Repo_1.Repo;
-var DocumentBackend_1 = require("./DocumentBackend");
-exports.DocumentBackend = DocumentBackend_1.DocumentBackend;
-var Document_1 = require("./Document");
-exports.Document = Document_1.Document;
+var RepoBackend_1 = require("./RepoBackend");
+exports.EXT = RepoBackend_1.EXT;
+exports.RepoBackend = RepoBackend_1.RepoBackend;
+var RepoFrontend_1 = require("./RepoFrontend");
+exports.RepoFrontend = RepoFrontend_1.RepoFrontend;
+var DocBackend_1 = require("./DocBackend");
+exports.DocBackend = DocBackend_1.DocBackend;
+var DocFrontend_1 = require("./DocFrontend");
+exports.DocFrontend = DocFrontend_1.DocFrontend;
 //# sourceMappingURL=index.js.map

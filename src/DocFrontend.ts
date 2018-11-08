@@ -20,7 +20,7 @@ interface Config {
   actorId?: string
 }
 
-export class Document<T> {
+export class DocFrontend<T> {
   docId: string
   actorId?: string
   back?: any // place to put the backend if need be - not needed here int he code so didnt want to import

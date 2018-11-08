@@ -18,8 +18,7 @@ import { hypercore, Feed, Peer, discoveryKey } from "./hypercore"
 import * as Backend from "automerge/backend"
 import { Change } from "automerge/backend"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
-import { DocumentBackend } from "./DocumentBackend"
-import { Document } from "./Document"
+import { DocBackend } from "./DocBackend"
 import Debug from "debug"
 
 Debug.formatters.b = Base58.encode
@@ -28,7 +27,7 @@ const HypercoreProtocol: Function = require("hypercore-protocol")
 const ram: Function = require("random-access-memory")
 const raf: Function = require("random-access-file")
 
-const log = Debug("hypermerge")
+const log = Debug("repo:backend")
 
 export function keyPair(docId?: string) : Keys {
   if (docId) {
@@ -66,7 +65,7 @@ export interface FeedData {
 
 export interface Options {
   path?: string
-  storage?: Function
+  storage: Function
 }
 
 export interface LedgerData {
@@ -74,7 +73,7 @@ export interface LedgerData {
   actorIds: string[]
 }
 
-export class Repo {
+export class RepoBackend {
   path?: string
   storage: Function
   ready: Promise<undefined>
@@ -82,7 +81,7 @@ export class Repo {
   feeds: Map<string, Feed<Uint8Array>> = new Map()
   feedQs: Map<string, Queue<FeedFn>> = new Map()
   feedPeers: Map<string, Set<Peer>> = new Map()
-  docs: Map<string, DocumentBackend> = new Map()
+  docs: Map<string, DocBackend> = new Map()
   feedSeq: Map<string, number> = new Map()
   ledger: Feed<LedgerData>
   private ledgerMetadata: MapSet<string, string> = new MapSet()
@@ -92,10 +91,10 @@ export class Repo {
   swarm?: Swarm
   id: Buffer
 
-  constructor(opts: Options = {}) {
+  constructor(opts: Options) {
     this.opts = opts
     this.path = opts.path || "default"
-    this.storage = opts.storage || (opts.path ? raf : ram)
+    this.storage = opts.storage
     this.ledger = hypercore(this.storageFn("ledger"), { valueEncoding: "json" })
     this.id = this.ledger.id
     this.ready = new Promise((resolve, reject) => {
@@ -116,23 +115,10 @@ export class Repo {
     })
   }
 
-/*
-  createDocument<T>(keys: KeyBuffer = crypto.keyPair()): Document<T> {
-    const back = this.createDocumentBackend(keys)
-    const front = new Document<T>({ docId: back.docId, actorId: back.docId})
-    front.back = back
-    //front.on("request", back.applyLocalChange)
-    //back.on("patch", front.patch)
-//    front.subscribe(back.receive)
-//    back.subscribe(front.receive)
-    return front
-  }
-*/
-
-  createDocumentBackend(keys: KeyBuffer): DocumentBackend {
+  createDocBackend(keys: KeyBuffer): DocBackend {
     const docId = Base58.encode(keys.publicKey)
     log("Create", docId)
-    const doc = new DocumentBackend(this, docId, Backend.init())
+    const doc = new DocBackend(this, docId, Backend.init())
 
     this.docs.set(docId, doc)
 
@@ -151,8 +137,8 @@ export class Repo {
     })
   }
 
-  openDocumentBackend(docId: string): DocumentBackend {
-    let doc = this.docs.get(docId) || new DocumentBackend(this, docId)
+  openDocBackend(docId: string): DocBackend {
+    let doc = this.docs.get(docId) || new DocBackend(this, docId)
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc)
       this.addMetadata(docId, docId)
@@ -162,25 +148,9 @@ export class Repo {
     return doc
   }
 
-/*
-  openDocument<T>(docId: string): Document<T> {
-    const back = this.openDocumentBackend(docId)
-    const front = new Document<T>({ docId: back.docId })
-    front.back = back
-//    front.subscribe(back.receive)
-//    back.subscribe(front.receive)
-//    front.once("needsActorId", back.initActor)
-//    front.on("request", back.applyLocalChange)
-//    back.on("actorId", front.setActorId)
-//    back.on("ready", front.init)
-//    back.on("patch", front.patch)
-    return front
-  }
-*/
-
-  joinSwarm(swarm: Swarm) {
+  replicate(swarm: Swarm) {
     if (this.swarm) {
-      throw new Error("joinSwarm called while already swarming")
+      throw new Error("replicate called while already swarming")
     }
     this.swarm = swarm
     for (let dk of this.joined) {
@@ -188,7 +158,7 @@ export class Repo {
     }
   }
 
-  private feedData(doc: DocumentBackend, actorId: string): Promise<FeedData> {
+  private feedData(doc: DocBackend, actorId: string): Promise<FeedData> {
     return new Promise((resolve, reject) => {
       this.getFeed(doc, actorId, feed => {
         const writable = feed.writable
@@ -211,11 +181,11 @@ export class Repo {
     })
   }
 
-  private allFeedData(doc: DocumentBackend): Promise<FeedData[]> {
+  private allFeedData(doc: DocBackend): Promise<FeedData[]> {
     return Promise.all(doc.actorIds().map(key => this.feedData(doc, key)))
   }
 
-  writeChange(doc: DocumentBackend, actorId: string, change: Change) {
+  writeChange(doc: DocBackend, actorId: string, change: Change) {
     const feedLength = this.feedSeq.get(actorId) || 0
     const ok = feedLength + 1 === change.seq
     log(`write actor=${actorId} seq=${change.seq} feed=${feedLength} ok=${ok}`)
@@ -229,7 +199,7 @@ export class Repo {
     })
   }
 
-  private loadDocument(doc: DocumentBackend) {
+  private loadDocument(doc: DocBackend) {
     return this.ready.then(() =>
       this.allFeedData(doc).then(feedData => {
         const writer = feedData
@@ -258,7 +228,7 @@ export class Repo {
     this.joined.delete(dk)
   }
 
-  private getFeed = (doc: DocumentBackend, actorId: string, cb: FeedFn) => {
+  private getFeed = (doc: DocBackend, actorId: string, cb: FeedFn) => {
     const publicKey = Base58.decode(actorId)
     const dk = discoveryKey(publicKey)
     const dkString = Base58.encode(dk)
@@ -272,7 +242,7 @@ export class Repo {
     }
   }
 
-  initActorFeed(doc: DocumentBackend): string {
+  initActorFeed(doc: DocBackend): string {
     log("initActorFeed", doc.docId)
     const keys = crypto.keyPair()
     const actorId = Base58.encode(keys.publicKey)
@@ -284,7 +254,7 @@ export class Repo {
     peer.stream.extension(EXT, Buffer.from(JSON.stringify(data)))
   }
 
-  actorIds(doc: DocumentBackend): string[] {
+  actorIds(doc: DocBackend): string[] {
     return [... this.docMetadata.get(doc.docId)]
   }
 
@@ -295,7 +265,7 @@ export class Repo {
     return this.feeds.get(dkString)!
   }
 
-  peers(doc: DocumentBackend): Peer[] {
+  peers(doc: DocBackend): Peer[] {
     return ([] as Peer[]).concat(
       ...this.actorIds(doc).map(actorId => [
         ...(this.feedPeers.get(actorId) || []),
@@ -307,7 +277,7 @@ export class Repo {
     this.feed(actorId).close()
   }
 
-  private initFeed(doc: DocumentBackend, keys: KeyBuffer): Queue<FeedFn> {
+  private initFeed(doc: DocBackend, keys: KeyBuffer): Queue<FeedFn> {
     const { publicKey, secretKey } = keys
     const actorId = Base58.encode(publicKey)
     const storage = this.storageFn(actorId)
@@ -394,7 +364,7 @@ export class Repo {
     return stream
   }
 
-  releaseManager(doc: DocumentBackend) {
+  releaseManager(doc: DocBackend) {
     const actorIds = doc.actorIds()
     this.docs.delete(doc.docId)
     actorIds.map(this.leave)
@@ -422,11 +392,11 @@ export class Repo {
           publicKey: Base58.decode(msg.publicKey),
           secretKey: Base58.decode(msg.secretKey)
         }
-        this.createDocumentBackend(keys)
+        this.createDocBackend(keys)
         break;
       }
       case "OpenMsg": {
-        this.openDocumentBackend(msg.id)
+        this.openDocBackend(msg.id)
         break
       }
 

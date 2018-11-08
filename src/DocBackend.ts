@@ -3,21 +3,21 @@ import * as Backend from "automerge/backend"
 import { Change, BackDoc } from "automerge/backend"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import Queue from "./Queue"
-import { Peer, Feed, EXT, Repo } from "."
+import { Peer, Feed, EXT, RepoBackend } from "."
 
 const log = Debug("hypermerge:back")
 
-export class DocumentBackend {
+export class DocBackend {
   docId: string
   actorId?: string
-  private repo: Repo
+  private repo: RepoBackend
   private back?: BackDoc
 //  private toFrontend = new Queue<ToFrontendRepoMsg>("backend:tofrontend")
   private localChangeQ = new Queue<Change>("backend:localChangeQ")
   private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ")
   private wantsActor: boolean = false
 
-  constructor(core: Repo, docId: string, back?: BackDoc) {
+  constructor(core: RepoBackend, docId: string, back?: BackDoc) {
     this.repo = core
     this.docId = docId
 

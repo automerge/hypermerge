@@ -1,6 +1,6 @@
 import * as Backend from "automerge/backend";
 import { BackDoc } from "automerge/backend";
-import { Peer, Feed, Repo } from ".";
+import { Peer, Feed, RepoBackend } from ".";
 export declare class DocumentBackend {
     docId: string;
     actorId?: string;
@@ -9,7 +9,7 @@ export declare class DocumentBackend {
     private localChangeQ;
     private remoteChangesQ;
     private wantsActor;
-    constructor(core: Repo, docId: string, back?: BackDoc);
+    constructor(core: RepoBackend, docId: string, back?: BackDoc);
     applyRemoteChanges: (changes: Backend.Change[]) => void;
     applyLocalChange: (change: Backend.Change) => void;
     actorIds: () => string[];

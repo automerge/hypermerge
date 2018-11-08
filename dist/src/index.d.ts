@@ -1,5 +1,7 @@
-export { keyPair, EXT, Keys, FeedData, Options, LedgerData, Repo } from "./Repo";
 export { Feed, Peer } from "./hypercore";
 export { Patch, Doc, EditDoc, ChangeFn } from "automerge/frontend";
-export { DocumentBackend } from "./DocumentBackend";
-export { Document } from "./Document";
+export { Repo } from "./Repo";
+export { EXT, RepoBackend } from "./RepoBackend";
+export { RepoFrontend } from "./RepoFrontend";
+export { DocBackend } from "./DocBackend";
+export { DocFrontend } from "./DocFrontend";
