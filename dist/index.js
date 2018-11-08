@@ -1,10 +1,14 @@
 "use strict";
+//export { Feed, Peer } from "./hypercore"
 Object.defineProperty(exports, "__esModule", { value: true });
 var Repo_1 = require("./Repo");
-exports.EXT = Repo_1.EXT;
 exports.Repo = Repo_1.Repo;
-var backend_1 = require("./backend");
-exports.BackendManager = backend_1.BackendManager;
-var frontend_1 = require("./frontend");
-exports.FrontendManager = frontend_1.FrontendManager;
+var RepoBackend_1 = require("./RepoBackend");
+exports.RepoBackend = RepoBackend_1.RepoBackend;
+var RepoFrontend_1 = require("./RepoFrontend");
+exports.RepoFrontend = RepoFrontend_1.RepoFrontend;
+var DocBackend_1 = require("./DocBackend");
+exports.DocBackend = DocBackend_1.DocBackend;
+var DocFrontend_1 = require("./DocFrontend");
+exports.DocFrontend = DocFrontend_1.DocFrontend;
 //# sourceMappingURL=index.js.map

@@ -18,5 +18,8 @@
     "skipLibCheck": true,
     "strict": true,
     "noFallthroughCasesInSwitch": true
-  }
+  },
+  "include": [
+    "src"
+  ]
 }
