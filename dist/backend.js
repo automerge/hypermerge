@@ -57,6 +57,7 @@ class BackendManager extends events_1.EventEmitter {
                     this.actorId = this.hypermerge.initActorFeed(this);
                 }
                 this.back = back;
+                this.subscribeToLocalChanges();
                 this.subscribeToRemoteChanges();
                 this.emit("ready", this.actorId, patch);
             });
