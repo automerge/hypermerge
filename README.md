@@ -11,7 +11,7 @@ you can use any storage type here)
 A document is created.  A handle to the document is opened and used to
 subscribe to state updates and make changes.
 
-```
+```ts
   import { Repo } from "hypermerge"
 
   const ram: Function = require("random-access-memory")
@@ -37,7 +37,7 @@ is possible to have the database, io and networking all in one thread and the
 change and update api in another.  To wire this up do the following.  In a real
 scenario you might have a socket or pipe in between the two halves.
 
-```
+```ts
   import { RepoFrontend, RepoBackend } from "hypermerge"
 
   const ram: Function = require("random-access-memory")
@@ -69,7 +69,7 @@ See:
 [Discovery Swarm](https://github.com/mafintosh/discovery-swarm)
 [Discovery Cloud](https://github.com/orionz/discovery-cloud-client)
 
-``` 
+```ts
   import { Repo } from "hypermerge"
 
   import { Client } from "discovery-cloud-client"
