@@ -1,15 +1,11 @@
-/// <reference types="node" />
-import { EventEmitter } from "events";
 import * as Backend from "automerge/backend";
 import { BackDoc } from "automerge/backend";
-import { ToBackendMsg, ToFrontendMsg } from "./DocumentMsg";
 import { Peer, Feed, Repo } from ".";
-export declare class DocumentBackend extends EventEmitter {
+export declare class DocumentBackend {
     docId: string;
     actorId?: string;
     private repo;
     private back?;
-    private toFrontend;
     private localChangeQ;
     private remoteChangesQ;
     private wantsActor;
@@ -18,8 +14,6 @@ export declare class DocumentBackend extends EventEmitter {
     applyLocalChange: (change: Backend.Change) => void;
     actorIds: () => string[];
     release: () => void;
-    subscribe: (subscriber: (msg: ToFrontendMsg) => void) => void;
-    receive: (msg: ToBackendMsg) => void;
     initActor: () => void;
     init: (changes: Backend.Change[], actorId?: string | undefined) => void;
     subscribeToRemoteChanges(): void;

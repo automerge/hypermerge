@@ -9,8 +9,8 @@ interface Swarm {
 import Queue from "./Queue";
 import { Feed, Peer } from "./hypercore";
 import { Change } from "automerge/backend";
+import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { DocumentBackend } from "./DocumentBackend";
-import { Document } from "./Document";
 export declare function keyPair(docId?: string): Keys;
 export interface KeyBuffer {
     publicKey: Buffer;
@@ -49,14 +49,13 @@ export declare class Repo {
     private ledgerMetadata;
     private docMetadata;
     private opts;
+    toFrontend: Queue<ToFrontendRepoMsg>;
     swarm?: Swarm;
     id: Buffer;
     constructor(opts?: Options);
-    createDocument<T>(keys?: KeyBuffer): Document<T>;
-    createDocumentBackend(keys?: KeyBuffer): DocumentBackend;
+    createDocumentBackend(keys: KeyBuffer): DocumentBackend;
     private addMetadata;
     openDocumentBackend(docId: string): DocumentBackend;
-    openDocument<T>(docId: string): Document<T>;
     joinSwarm(swarm: Swarm): void;
     private feedData;
     private allFeedData;
@@ -75,5 +74,7 @@ export declare class Repo {
     private initFeed;
     stream: (opts: any) => any;
     releaseManager(doc: DocumentBackend): void;
+    subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;
+    receive: (msg: ToBackendRepoMsg) => void;
 }
 export {};

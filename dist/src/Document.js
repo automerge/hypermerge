@@ -20,35 +20,15 @@ const log = debug_1.default("hypermerge:front");
 class Document {
     constructor(config) {
         //super()
-        this.toBackend = new Queue_1.default("frontend:tobackend");
+        this.toBackend = new Queue_1.default();
         this.changeQ = new Queue_1.default("frontend:change");
         this.mode = "pending";
         this.handles = new Set();
-        this.subscribe = (subscriber) => {
-            this.toBackend.subscribe(subscriber);
-        };
-        this.receive = (msg) => {
-            log("receive", msg);
-            switch (msg.type) {
-                case "PatchMsg": {
-                    this.patch(msg.patch);
-                    break;
-                }
-                case "ActorIdMsg": {
-                    this.setActorId(msg.actorId);
-                    break;
-                }
-                case "ReadyMsg": {
-                    this.init(msg.actorId, msg.patch);
-                    break;
-                }
-            }
-        };
         this.change = (fn) => {
             log("change", this.docId);
             if (!this.actorId) {
                 log("change needsActorId", this.docId);
-                this.toBackend.push({ type: "NeedsActorIdMsg" });
+                this.toBackend.push({ type: "NeedsActorIdMsg", id: this.docId });
             }
             this.changeQ.push(fn);
         };
@@ -96,6 +76,29 @@ class Document {
             this.docId = docId;
         }
     }
+    /*
+      subscribe = (subscriber: (message: ToBackendMsg) => void) => {
+        this.toBackend.subscribe(subscriber)
+      }
+    
+      receive = (msg: ToFrontendMsg) => {
+        log("receive", msg)
+        switch (msg.type) {
+          case "PatchMsg": {
+            this.patch(msg.patch)
+            break
+          }
+          case "ActorIdMsg": {
+            this.setActorId(msg.actorId)
+            break
+          }
+          case "ReadyMsg": {
+            this.init(msg.actorId, msg.patch)
+            break
+          }
+        }
+      }
+    */
     handle() {
         let handle = new Handle_1.default();
         this.handles.add(handle);
@@ -118,7 +121,7 @@ class Document {
             log(`change complete doc=${this.docId} seq=${request ? request.seq : "null"}`);
             if (request) {
                 this.newState();
-                this.toBackend.push({ type: "RequestMsg", request });
+                this.toBackend.push({ type: "RequestMsg", id: this.docId, request });
             }
         });
     }

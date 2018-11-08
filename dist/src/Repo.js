@@ -19,7 +19,6 @@ const crypto = __importStar(require("hypercore/lib/crypto"));
 const hypercore_1 = require("./hypercore");
 const Backend = __importStar(require("automerge/backend"));
 const DocumentBackend_1 = require("./DocumentBackend");
-const Document_1 = require("./Document");
 const debug_1 = __importDefault(require("debug"));
 debug_1.default.formatters.b = Base58.encode;
 const HypercoreProtocol = require("hypercore-protocol");
@@ -52,6 +51,7 @@ class Repo {
         this.feedSeq = new Map();
         this.ledgerMetadata = new MapSet_1.default();
         this.docMetadata = new MapSet_1.default();
+        this.toFrontend = new Queue_1.default();
         this.join = (actorId) => {
             const dk = hypercore_1.discoveryKey(Base58.decode(actorId));
             if (this.swarm && !this.joined.has(dk)) {
@@ -100,6 +100,36 @@ class Repo {
                 add(dk);
             return stream;
         };
+        this.subscribe = (subscriber) => {
+            this.toFrontend.subscribe(subscriber);
+        };
+        this.receive = (msg) => {
+            switch (msg.type) {
+                case "NeedsActorIdMsg": {
+                    const doc = this.docs.get(msg.id);
+                    doc.initActor();
+                    break;
+                }
+                case "RequestMsg": {
+                    const doc = this.docs.get(msg.id);
+                    doc.applyLocalChange(msg.request);
+                    break;
+                }
+                case "CreateMsg": {
+                    const keys = {
+                        publicKey: Base58.decode(msg.publicKey),
+                        secretKey: Base58.decode(msg.secretKey)
+                    };
+                    this.createDocumentBackend(keys);
+                    break;
+                }
+                case "OpenMsg": {
+                    this.openDocumentBackend(msg.id);
+                    break;
+                }
+            }
+            //export type ToBackendMsg = NeedsActorIdMsg | RequestMsg | CreateMsg | OpenMsg
+        };
         this.opts = opts;
         this.path = opts.path || "default";
         this.storage = opts.storage || (opts.path ? raf : ram);
@@ -123,17 +153,19 @@ class Repo {
             });
         });
     }
-    createDocument(keys = crypto.keyPair()) {
-        const back = this.createDocumentBackend(keys);
-        const front = new Document_1.Document({ docId: back.docId, actorId: back.docId });
-        front.back = back;
+    /*
+      createDocument<T>(keys: KeyBuffer = crypto.keyPair()): Document<T> {
+        const back = this.createDocumentBackend(keys)
+        const front = new Document<T>({ docId: back.docId, actorId: back.docId})
+        front.back = back
         //front.on("request", back.applyLocalChange)
         //back.on("patch", front.patch)
-        front.subscribe(back.receive);
-        back.subscribe(front.receive);
-        return front;
-    }
-    createDocumentBackend(keys = crypto.keyPair()) {
+    //    front.subscribe(back.receive)
+    //    back.subscribe(front.receive)
+        return front
+      }
+    */
+    createDocumentBackend(keys) {
         const docId = Base58.encode(keys.publicKey);
         log("Create", docId);
         const doc = new DocumentBackend_1.DocumentBackend(this, docId, Backend.init());
@@ -160,19 +192,21 @@ class Repo {
         }
         return doc;
     }
-    openDocument(docId) {
-        const back = this.openDocumentBackend(docId);
-        const front = new Document_1.Document({ docId: back.docId });
-        front.back = back;
-        front.subscribe(back.receive);
-        back.subscribe(front.receive);
-        //    front.once("needsActorId", back.initActor)
-        //    front.on("request", back.applyLocalChange)
-        //    back.on("actorId", front.setActorId)
-        //    back.on("ready", front.init)
-        //    back.on("patch", front.patch)
-        return front;
-    }
+    /*
+      openDocument<T>(docId: string): Document<T> {
+        const back = this.openDocumentBackend(docId)
+        const front = new Document<T>({ docId: back.docId })
+        front.back = back
+    //    front.subscribe(back.receive)
+    //    back.subscribe(front.receive)
+    //    front.once("needsActorId", back.initActor)
+    //    front.on("request", back.applyLocalChange)
+    //    back.on("actorId", front.setActorId)
+    //    back.on("ready", front.init)
+    //    back.on("patch", front.patch)
+        return front
+      }
+    */
     joinSwarm(swarm) {
         if (this.swarm) {
             throw new Error("joinSwarm called while already swarming");
@@ -279,7 +313,6 @@ class Repo {
             this.join(actorId);
             feed.on("peer-remove", (peer) => {
                 peers.delete(peer);
-                doc.emit("peer-remove", peer);
             });
             feed.on("peer-add", (peer) => {
                 peer.stream.on("extension", (ext, buf) => {
@@ -292,7 +325,6 @@ class Repo {
                 });
                 peers.add(peer);
                 doc.messageMetadata(peer);
-                doc.emit("peer-add", peer);
             });
             let remoteChanges = [];
             feed.on("download", (idx, data) => {
@@ -310,7 +342,6 @@ class Repo {
                 this.feedPeers.delete(actorId);
                 this.feedSeq.delete(actorId);
             });
-            doc.emit("feed", feed);
         });
         return q;
     }

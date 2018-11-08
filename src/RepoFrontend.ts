@@ -1,6 +1,5 @@
 
-export const EXT = "hypermerge"
-
+/*
 type FeedFn = (f: Feed<Uint8Array>) => void
 
 interface Swarm {
@@ -8,28 +7,27 @@ interface Swarm {
   leave(dk: Buffer): void
   on: Function
 }
+*/
 
 import Queue from "./Queue"
-import MapSet from "./MapSet"
-import * as JsonBuffer from "./JsonBuffer"
+//import MapSet from "./MapSet"
+//import * as JsonBuffer from "./JsonBuffer"
 import * as Base58 from "bs58"
 import * as crypto from "hypercore/lib/crypto"
-import { hypercore, Feed, Peer, discoveryKey } from "./hypercore"
-import * as Backend from "automerge/backend"
-import { Change } from "automerge/backend"
+//import { hypercore, Feed, Peer, discoveryKey } from "./hypercore"
+//import * as Backend from "automerge/backend"
+//import { Change } from "automerge/backend"
+//import { DocumentBackend } from "./DocumentBackend"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
-import { DocumentBackend } from "./DocumentBackend"
 import { Document } from "./Document"
+import Handle from "./Handle"
 import Debug from "debug"
 
 Debug.formatters.b = Base58.encode
 
-const HypercoreProtocol: Function = require("hypercore-protocol")
-const ram: Function = require("random-access-memory")
-const raf: Function = require("random-access-file")
+const log = Debug("repo:front")
 
-const log = Debug("hypermerge")
-
+/*
 export function keyPair(docId?: string) : Keys {
   if (docId) {
     return {
@@ -57,7 +55,9 @@ export interface Keys {
   docId: string
   actorId?: string
 }
+*/
 
+/*
 export interface FeedData {
   actorId: string
   writable: Boolean
@@ -73,8 +73,62 @@ export interface LedgerData {
   docId: string
   actorIds: string[]
 }
+*/
 
-export class Repo {
+export class RepoFrontend {
+  toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:tobackend")
+  docs: Map<string,Document<any>> = new Map()
+
+  create() : string {
+    const keys = crypto.keyPair()
+    const publicKey = Base58.encode(keys.publicKey)
+    const secretKey = Base58.encode(keys.secretKey)
+    const docId = publicKey
+    const actorId = publicKey
+    const doc = new Document({actorId, docId})
+    doc.toBackend = this.toBackend
+    this.docs.set(docId, doc)
+    this.toBackend.push({ type: "CreateMsg", publicKey, secretKey })
+    return publicKey
+  }
+
+  open<T>(id: string) : Handle<T> {
+    const doc : Document<T> = this.docs.get(id) || this.openDocument(id)
+    return doc.handle()
+  }
+
+  private openDocument<T>(id:string) : Document<T> {
+    const doc : Document<T> = new Document({ docId : id })
+    this.toBackend.push({ type: "OpenMsg", id })
+    this.docs.set(id, doc)
+    return doc
+  }
+
+  subscribe = (subscriber: (message: ToBackendRepoMsg) => void) => {
+    this.toBackend.subscribe(subscriber)
+  }
+
+  receive = (msg: ToFrontendRepoMsg) => {
+    const doc = this.docs.get(msg.id)!
+    switch (msg.type) {
+      case "PatchMsg": {
+        doc.patch(msg.patch)
+        break
+      }
+      case "ActorIdMsg": {
+        doc.setActorId(msg.actorId)
+        break
+      }
+      case "ReadyMsg": {
+        doc.init(msg.actorId, msg.patch)
+        break
+      }
+    }
+  }
+}
+
+/*
+
   path?: string
   storage: Function
   ready: Promise<undefined>
@@ -88,7 +142,6 @@ export class Repo {
   private ledgerMetadata: MapSet<string, string> = new MapSet()
   private docMetadata: MapSet<string, string> = new MapSet()
   private opts : Options
-  toFrontend: Queue<ToFrontendRepoMsg> = new Queue()
   swarm?: Swarm
   id: Buffer
 
@@ -116,20 +169,18 @@ export class Repo {
     })
   }
 
-/*
   createDocument<T>(keys: KeyBuffer = crypto.keyPair()): Document<T> {
     const back = this.createDocumentBackend(keys)
     const front = new Document<T>({ docId: back.docId, actorId: back.docId})
     front.back = back
     //front.on("request", back.applyLocalChange)
     //back.on("patch", front.patch)
-//    front.subscribe(back.receive)
-//    back.subscribe(front.receive)
+    front.subscribe(back.receive)
+    back.subscribe(front.receive)
     return front
   }
-*/
 
-  createDocumentBackend(keys: KeyBuffer): DocumentBackend {
+  createDocumentBackend(keys: KeyBuffer = crypto.keyPair()): DocumentBackend {
     const docId = Base58.encode(keys.publicKey)
     log("Create", docId)
     const doc = new DocumentBackend(this, docId, Backend.init())
@@ -162,13 +213,12 @@ export class Repo {
     return doc
   }
 
-/*
   openDocument<T>(docId: string): Document<T> {
     const back = this.openDocumentBackend(docId)
     const front = new Document<T>({ docId: back.docId })
     front.back = back
-//    front.subscribe(back.receive)
-//    back.subscribe(front.receive)
+    front.subscribe(back.receive)
+    back.subscribe(front.receive)
 //    front.once("needsActorId", back.initActor)
 //    front.on("request", back.applyLocalChange)
 //    back.on("actorId", front.setActorId)
@@ -176,7 +226,6 @@ export class Repo {
 //    back.on("patch", front.patch)
     return front
   }
-*/
 
   joinSwarm(swarm: Swarm) {
     if (this.swarm) {
@@ -400,37 +449,6 @@ export class Repo {
     actorIds.map(this.leave)
     actorIds.map(this.closeFeed)
   }
-
-  subscribe = (subscriber: (message: ToFrontendRepoMsg) => void) => {
-    this.toFrontend.subscribe(subscriber)
-  }
-
-  receive = (msg: ToBackendRepoMsg) => {
-    switch (msg.type) {
-      case "NeedsActorIdMsg": {
-        const doc = this.docs.get(msg.id)!
-        doc.initActor()
-        break
-      }
-      case "RequestMsg": {
-        const doc = this.docs.get(msg.id)!
-        doc.applyLocalChange(msg.request)
-        break
-      }
-      case "CreateMsg": {
-        const keys = {
-          publicKey: Base58.decode(msg.publicKey),
-          secretKey: Base58.decode(msg.secretKey)
-        }
-        this.createDocumentBackend(keys)
-        break;
-      }
-      case "OpenMsg": {
-        this.openDocumentBackend(msg.id)
-        break
-      }
-
-    }
-    //export type ToBackendMsg = NeedsActorIdMsg | RequestMsg | CreateMsg | OpenMsg
-  }
 }
+*/
+

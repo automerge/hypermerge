@@ -1,6 +1,6 @@
 //import { EventEmitter } from "events"
 import { Patch, Doc, ChangeFn } from "automerge/frontend"
-import { ToBackendMsg, ToFrontendMsg } from "./DocumentMsg"
+import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import * as Frontend from "automerge/frontend"
 import Queue from "./Queue"
 import Handle from "./Handle"
@@ -24,7 +24,7 @@ export class Document<T> {
   docId: string
   actorId?: string
   back?: any // place to put the backend if need be - not needed here int he code so didnt want to import
-  private toBackend = new Queue<ToBackendMsg>("frontend:tobackend")
+  toBackend = new Queue<ToBackendRepoMsg>()
   private changeQ = new Queue<ChangeFn<T>>("frontend:change")
   private front: Doc<T>
   private mode: Mode = "pending"
@@ -47,6 +47,7 @@ export class Document<T> {
     }
   }
 
+/*
   subscribe = (subscriber: (message: ToBackendMsg) => void) => {
     this.toBackend.subscribe(subscriber)
   }
@@ -68,6 +69,7 @@ export class Document<T> {
       }
     }
   }
+*/
 
   handle(): Handle<T> {
     let handle = new Handle<T>()
@@ -87,7 +89,7 @@ export class Document<T> {
     log("change", this.docId)
     if (!this.actorId) {
       log("change needsActorId", this.docId)
-      this.toBackend.push({type: "NeedsActorIdMsg"})
+      this.toBackend.push({type: "NeedsActorIdMsg", id: this.docId })
     }
     this.changeQ.push(fn)
   }
@@ -129,7 +131,7 @@ export class Document<T> {
       log(`change complete doc=${this.docId} seq=${request ? request.seq : "null"}`)
       if (request) {
         this.newState()
-        this.toBackend.push({type: "RequestMsg", request})
+        this.toBackend.push({type: "RequestMsg", id: this.docId, request})
       }
     })
   }

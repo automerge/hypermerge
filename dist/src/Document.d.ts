@@ -1,5 +1,6 @@
 import { Patch, ChangeFn } from "automerge/frontend";
-import { ToBackendMsg, ToFrontendMsg } from "./DocumentMsg";
+import { ToBackendRepoMsg } from "./RepoMsg";
+import Queue from "./Queue";
 import Handle from "./Handle";
 export declare type Patch = Patch;
 interface Config {
@@ -10,14 +11,12 @@ export declare class Document<T> {
     docId: string;
     actorId?: string;
     back?: any;
-    private toBackend;
+    toBackend: Queue<ToBackendRepoMsg>;
     private changeQ;
     private front;
     private mode;
     private handles;
     constructor(config: Config);
-    subscribe: (subscriber: (message: ToBackendMsg) => void) => void;
-    receive: (msg: ToFrontendMsg) => void;
     handle(): Handle<T>;
     newState(): void;
     change: (fn: ChangeFn<T>) => void;
