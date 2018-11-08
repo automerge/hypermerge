@@ -13,11 +13,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const debug_1 = __importDefault(require("debug"));
 const Backend = __importStar(require("automerge/backend"));
 const Queue_1 = __importDefault(require("./Queue"));
-const _1 = require(".");
+const RepoBackend_1 = require("./RepoBackend");
 const log = debug_1.default("hypermerge:back");
 class DocBackend {
     constructor(core, docId, back) {
-        //  private toFrontend = new Queue<ToFrontendRepoMsg>("backend:tofrontend")
         this.localChangeQ = new Queue_1.default("backend:localChangeQ");
         this.remoteChangesQ = new Queue_1.default("backend:remoteChangesQ");
         this.wantsActor = false;
@@ -33,25 +32,6 @@ class DocBackend {
         this.release = () => {
             this.repo.releaseManager(this);
         };
-        /*
-          subscribe = (subscriber: (msg: ToFrontendMsg) => void) => {
-            this.repo.toFrontend.subscribe(subscriber)
-          }
-        
-          receive = (msg: ToBackendMsg) => {
-            log("receive", msg)
-            switch (msg.type) {
-              case "NeedsActorIdMsg": {
-                this.initActor()
-                break
-              }
-              case "RequestMsg": {
-                this.applyLocalChange(msg.request)
-                break
-              }
-            }
-          }
-        */
         this.initActor = () => {
             log("initActor");
             if (this.back) {
@@ -77,7 +57,6 @@ class DocBackend {
                 this.subscribeToLocalChanges();
                 this.subscribeToRemoteChanges();
                 this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: this.actorId, patch });
-                //{ type: "ReadyMsg"; actorId: string | undefined; patch: Patch; }
             });
         };
         this.repo = core;
@@ -89,14 +68,6 @@ class DocBackend {
             this.subscribeToLocalChanges();
             this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: docId });
         }
-        /*
-            this.on("newListener", (event, listener) => {
-              if (event === "patch" && this.back) {
-                const patch = Backend.getPatch(this.back)
-                listener(patch)
-              }
-            })
-        */
     }
     subscribeToRemoteChanges() {
         this.remoteChangesQ.subscribe(changes => {
@@ -127,7 +98,7 @@ class DocBackend {
         this.peers().forEach(peer => this.message(peer, message));
     }
     message(peer, message) {
-        peer.stream.extension(_1.EXT, Buffer.from(JSON.stringify(message)));
+        peer.stream.extension(RepoBackend_1.EXT, Buffer.from(JSON.stringify(message)));
     }
     messageMetadata(peer) {
         this.message(peer, this.metadata());

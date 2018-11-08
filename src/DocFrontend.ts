@@ -1,4 +1,3 @@
-//import { EventEmitter } from "events"
 import { Patch, Doc, ChangeFn } from "automerge/frontend"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import * as Frontend from "automerge/frontend"
@@ -23,7 +22,6 @@ interface Config {
 export class DocFrontend<T> {
   docId: string
   actorId?: string
-  back?: any // place to put the backend if need be - not needed here int he code so didnt want to import
   toBackend = new Queue<ToBackendRepoMsg>()
   private changeQ = new Queue<ChangeFn<T>>("frontend:change")
   private front: Doc<T>
@@ -46,30 +44,6 @@ export class DocFrontend<T> {
       this.docId = docId
     }
   }
-
-/*
-  subscribe = (subscriber: (message: ToBackendMsg) => void) => {
-    this.toBackend.subscribe(subscriber)
-  }
-
-  receive = (msg: ToFrontendMsg) => {
-    log("receive", msg)
-    switch (msg.type) {
-      case "PatchMsg": {
-        this.patch(msg.patch)
-        break
-      }
-      case "ActorIdMsg": {
-        this.setActorId(msg.actorId)
-        break
-      }
-      case "ReadyMsg": {
-        this.init(msg.actorId, msg.patch)
-        break
-      }
-    }
-  }
-*/
 
   handle(): Handle<T> {
     let handle = new Handle<T>()

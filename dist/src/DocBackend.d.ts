@@ -1,6 +1,7 @@
 import * as Backend from "automerge/backend";
 import { BackDoc } from "automerge/backend";
-import { Peer, Feed, RepoBackend } from ".";
+import { RepoBackend } from "./RepoBackend";
+import { Feed, Peer } from "./hypercore";
 export declare class DocBackend {
     docId: string;
     actorId?: string;

@@ -3,7 +3,9 @@ import * as Backend from "automerge/backend"
 import { Change, BackDoc } from "automerge/backend"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import Queue from "./Queue"
-import { Peer, Feed, EXT, RepoBackend } from "."
+import { EXT, RepoBackend } from "./RepoBackend"
+import { Feed, Peer } from "./hypercore"
+
 
 const log = Debug("hypermerge:back")
 
@@ -12,7 +14,6 @@ export class DocBackend {
   actorId?: string
   private repo: RepoBackend
   private back?: BackDoc
-//  private toFrontend = new Queue<ToFrontendRepoMsg>("backend:tofrontend")
   private localChangeQ = new Queue<Change>("backend:localChangeQ")
   private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ")
   private wantsActor: boolean = false
@@ -28,15 +29,6 @@ export class DocBackend {
       this.subscribeToLocalChanges()
       this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: docId })
     }
-
-/*
-    this.on("newListener", (event, listener) => {
-      if (event === "patch" && this.back) {
-        const patch = Backend.getPatch(this.back)
-        listener(patch)
-      }
-    })
-*/
   }
 
   applyRemoteChanges = (changes: Change[]): void => {
@@ -54,26 +46,6 @@ export class DocBackend {
   release = () => {
     this.repo.releaseManager(this)
   }
-
-/*
-  subscribe = (subscriber: (msg: ToFrontendMsg) => void) => {
-    this.repo.toFrontend.subscribe(subscriber)
-  }
-
-  receive = (msg: ToBackendMsg) => {
-    log("receive", msg)
-    switch (msg.type) {
-      case "NeedsActorIdMsg": {
-        this.initActor()
-        break
-      }
-      case "RequestMsg": {
-        this.applyLocalChange(msg.request)
-        break
-      }
-    }
-  }
-*/
 
   initActor = () => {
     log("initActor")
@@ -100,7 +72,6 @@ export class DocBackend {
       this.subscribeToLocalChanges()
       this.subscribeToRemoteChanges()
       this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: this.actorId, patch})
-//{ type: "ReadyMsg"; actorId: string | undefined; patch: Patch; }
     })
   }
 

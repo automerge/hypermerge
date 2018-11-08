@@ -76,29 +76,6 @@ class DocFrontend {
             this.docId = docId;
         }
     }
-    /*
-      subscribe = (subscriber: (message: ToBackendMsg) => void) => {
-        this.toBackend.subscribe(subscriber)
-      }
-    
-      receive = (msg: ToFrontendMsg) => {
-        log("receive", msg)
-        switch (msg.type) {
-          case "PatchMsg": {
-            this.patch(msg.patch)
-            break
-          }
-          case "ActorIdMsg": {
-            this.setActorId(msg.actorId)
-            break
-          }
-          case "ReadyMsg": {
-            this.init(msg.actorId, msg.patch)
-            break
-          }
-        }
-      }
-    */
     handle() {
         let handle = new Handle_1.default();
         this.handles.add(handle);

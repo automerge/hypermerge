@@ -10,7 +10,6 @@ interface Config {
 export declare class DocFrontend<T> {
     docId: string;
     actorId?: string;
-    back?: any;
     toBackend: Queue<ToBackendRepoMsg>;
     private changeQ;
     private front;
