@@ -50,7 +50,8 @@ export class DocFrontend<T> {
     let handle = new Handle<T>()
     this.handles.add(handle)
     handle.cleanup = () => this.handles.delete(handle)
-    handle.change = this.change
+    handle.changeFn = this.change
+    handle.id = this.docId
     if (this.mode != "pending") { handle.push(this.front) }
 
     return handle

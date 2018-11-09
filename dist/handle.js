@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 class Handle {
     constructor() {
+        this.id = "";
         this.value = null;
         this.counter = 0;
         this.push = (item) => {
@@ -15,6 +16,7 @@ class Handle {
                 subscriber(doc);
                 this.close();
             });
+            return this;
         };
         this.subscribe = (subscriber) => {
             if (this.subscription) {
@@ -24,6 +26,7 @@ class Handle {
             if (this.value != null) {
                 subscriber(this.value, this.counter++);
             }
+            return this;
         };
         this.close = () => {
             this.subscription = undefined;
@@ -31,7 +34,11 @@ class Handle {
             this.cleanup();
         };
         this.cleanup = () => { };
-        this.change = (fn) => { };
+        this.changeFn = (fn) => { };
+        this.change = (fn) => {
+            this.changeFn(fn);
+            return this;
+        };
     }
 }
 exports.default = Handle;

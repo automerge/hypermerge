@@ -80,7 +80,8 @@ class DocFrontend {
         let handle = new Handle_1.default();
         this.handles.add(handle);
         handle.cleanup = () => this.handles.delete(handle);
-        handle.change = this.change;
+        handle.changeFn = this.change;
+        handle.id = this.docId;
         if (this.mode != "pending") {
             handle.push(this.front);
         }
