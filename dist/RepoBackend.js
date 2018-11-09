@@ -51,7 +51,7 @@ class RepoBackend {
         this.feedSeq = new Map();
         this.ledgerMetadata = new MapSet_1.default();
         this.docMetadata = new MapSet_1.default();
-        this.toFrontend = new Queue_1.default();
+        this.toFrontend = new Queue_1.default("repo:toFrontend");
         this.join = (actorId) => {
             const dk = hypercore_1.discoveryKey(Base58.decode(actorId));
             if (this.swarm && !this.joined.has(dk)) {

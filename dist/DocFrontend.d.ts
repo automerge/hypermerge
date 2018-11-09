@@ -15,7 +15,7 @@ export declare class DocFrontend<T> {
     private front;
     private mode;
     private handles;
-    constructor(config: Config);
+    constructor(toBackend: Queue<ToBackendRepoMsg>, config: Config);
     handle(): Handle<T>;
     newState(): void;
     change: (fn: ChangeFn<T>) => void;

@@ -48,8 +48,7 @@ class RepoFrontend {
         const secretKey = Base58.encode(keys.secretKey);
         const docId = publicKey;
         const actorId = publicKey;
-        const doc = new DocFrontend_1.DocFrontend({ actorId, docId });
-        doc.toBackend = this.toBackend;
+        const doc = new DocFrontend_1.DocFrontend(this.toBackend, { actorId, docId });
         this.docs.set(docId, doc);
         this.toBackend.push({ type: "CreateMsg", publicKey, secretKey });
         return publicKey;
@@ -59,7 +58,7 @@ class RepoFrontend {
         return doc.handle();
     }
     openDocFrontend(id) {
-        const doc = new DocFrontend_1.DocFrontend({ docId: id });
+        const doc = new DocFrontend_1.DocFrontend(this.toBackend, { docId: id });
         this.toBackend.push({ type: "OpenMsg", id });
         this.docs.set(id, doc);
         return doc;

@@ -18,9 +18,8 @@ const debug_1 = __importDefault(require("debug"));
 // would make first writes a few ms faster
 const log = debug_1.default("hypermerge:front");
 class DocFrontend {
-    constructor(config) {
+    constructor(toBackend, config) {
         //super()
-        this.toBackend = new Queue_1.default();
         this.changeQ = new Queue_1.default("frontend:change");
         this.mode = "pending";
         this.handles = new Set();
@@ -65,6 +64,7 @@ class DocFrontend {
         };
         const docId = config.docId;
         const actorId = config.actorId;
+        this.toBackend = toBackend;
         if (actorId) {
             this.front = Frontend.init(actorId);
             this.docId = docId;
