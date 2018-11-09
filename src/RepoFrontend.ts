@@ -13,28 +13,27 @@ const log = Debug("repo:front")
 
 export class RepoFrontend {
   toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:tobackend")
-  docs: Map<string,DocFrontend<any>> = new Map()
+  docs: Map<string, DocFrontend<any>> = new Map()
 
-  create() : string {
+  create(): string {
     const keys = crypto.keyPair()
     const publicKey = Base58.encode(keys.publicKey)
     const secretKey = Base58.encode(keys.secretKey)
     const docId = publicKey
     const actorId = publicKey
-    const doc = new DocFrontend({actorId, docId})
-    doc.toBackend = this.toBackend
+    const doc = new DocFrontend(this.toBackend, { actorId, docId })
     this.docs.set(docId, doc)
     this.toBackend.push({ type: "CreateMsg", publicKey, secretKey })
     return publicKey
   }
 
-  open<T>(id: string) : Handle<T> {
-    const doc : DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id)
+  open<T>(id: string): Handle<T> {
+    const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id)
     return doc.handle()
   }
 
-  private openDocFrontend<T>(id:string) : DocFrontend<T> {
-    const doc : DocFrontend<T> = new DocFrontend({ docId : id })
+  private openDocFrontend<T>(id: string): DocFrontend<T> {
+    const doc: DocFrontend<T> = new DocFrontend(this.toBackend, { docId: id })
     this.toBackend.push({ type: "OpenMsg", id })
     this.docs.set(id, doc)
     return doc

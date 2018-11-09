@@ -29,7 +29,7 @@ const raf: Function = require("random-access-file")
 
 const log = Debug("repo:backend")
 
-export function keyPair(docId?: string) : Keys {
+export function keyPair(docId?: string): Keys {
   if (docId) {
     return {
       docId: docId,
@@ -38,10 +38,10 @@ export function keyPair(docId?: string) : Keys {
   }
   const keys = crypto.keyPair()
   return {
-      publicKey: keys.publicKey,
-      secretKey: keys.secretKey,
-      docId: Base58.encode(keys.publicKey),
-      actorId: Base58.encode(keys.publicKey)
+    publicKey: keys.publicKey,
+    secretKey: keys.secretKey,
+    docId: Base58.encode(keys.publicKey),
+    actorId: Base58.encode(keys.publicKey)
   }
 }
 
@@ -86,8 +86,8 @@ export class RepoBackend {
   ledger: Feed<LedgerData>
   private ledgerMetadata: MapSet<string, string> = new MapSet()
   private docMetadata: MapSet<string, string> = new MapSet()
-  private opts : Options
-  toFrontend: Queue<ToFrontendRepoMsg> = new Queue()
+  private opts: Options
+  toFrontend: Queue<ToFrontendRepoMsg> = new Queue("repo:toFrontend")
   swarm?: Swarm
   id: Buffer
 
@@ -104,7 +104,7 @@ export class RepoBackend {
           this.ledger.getBatch(0, this.ledger.length, (err, data) => {
             data.forEach(d => {
               this.docMetadata.merge(d.docId, d.actorIds)
-              this.ledgerMetadata.merge(d.docId,d.actorIds)
+              this.ledgerMetadata.merge(d.docId, d.actorIds)
             })
             resolve()
           })

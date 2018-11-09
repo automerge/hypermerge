@@ -22,17 +22,18 @@ interface Config {
 export class DocFrontend<T> {
   docId: string
   actorId?: string
-  toBackend = new Queue<ToBackendRepoMsg>()
+  toBackend: Queue<ToBackendRepoMsg>
   private changeQ = new Queue<ChangeFn<T>>("frontend:change")
   private front: Doc<T>
   private mode: Mode = "pending"
   private handles: Set<Handle<T>> = new Set()
 
-  constructor(config: Config) {
+  constructor(toBackend: Queue<ToBackendRepoMsg>, config: Config) {
     //super()
 
     const docId = config.docId
     const actorId = config.actorId
+    this.toBackend = toBackend
 
     if (actorId) {
       this.front = Frontend.init(actorId) as Doc<T>
@@ -63,7 +64,7 @@ export class DocFrontend<T> {
     log("change", this.docId)
     if (!this.actorId) {
       log("change needsActorId", this.docId)
-      this.toBackend.push({type: "NeedsActorIdMsg", id: this.docId })
+      this.toBackend.push({ type: "NeedsActorIdMsg", id: this.docId })
     }
     this.changeQ.push(fn)
   }
@@ -105,7 +106,7 @@ export class DocFrontend<T> {
       log(`change complete doc=${this.docId} seq=${request ? request.seq : "null"}`)
       if (request) {
         this.newState()
-        this.toBackend.push({type: "RequestMsg", id: this.docId, request})
+        this.toBackend.push({ type: "RequestMsg", id: this.docId, request })
       }
     })
   }

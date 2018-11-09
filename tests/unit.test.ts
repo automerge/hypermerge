@@ -27,7 +27,7 @@ test("Simple create doc and make a change", (t) => {
 });
 
 test("Create a doc backend - then wire it up to a frontend - make a change", (t) => {
-  const back = new RepoBackend({storage: ram})
+  const back = new RepoBackend({ storage: ram })
   const front = new RepoFrontend()
   back.subscribe(front.receive)
   front.subscribe(back.receive)
