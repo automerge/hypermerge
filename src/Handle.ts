@@ -1,12 +1,19 @@
 import { Doc, ChangeFn } from "automerge/frontend"
+import { DocFrontend } from "./DocFrontend";
 
 export default class Handle<T> {
-  id: string = ""
   value: Doc<T> | null = null
+  front: DocFrontend<T>
   subscription?: (item: Doc<T>, index?: number) => void
   private counter: number = 0
 
-  constructor() {}
+  constructor(front: DocFrontend<T>) {
+    this.front = front
+  }
+
+  get id() {
+    return this.front.docId
+  }
 
   push = (item: Doc<T>) => {
     this.value = item
@@ -15,7 +22,7 @@ export default class Handle<T> {
     }
   }
 
-  once = (subscriber: (doc: Doc<T>) => void) : this  => {
+  once = (subscriber: (doc: Doc<T>) => void): this => {
     this.subscribe((doc: Doc<T>) => {
       subscriber(doc)
       this.close()
@@ -23,7 +30,7 @@ export default class Handle<T> {
     return this
   }
 
-  subscribe = (subscriber: (doc: Doc<T>, index?: number) => void) : this => {
+  subscribe = (subscriber: (doc: Doc<T>, index?: number) => void): this => {
     if (this.subscription) {
       throw new Error("only one subscriber for a doc handle")
     }
@@ -36,18 +43,14 @@ export default class Handle<T> {
     return this
   }
 
-  close = () => {
+  close = (): void => {
     this.subscription = undefined
     this.value = null
-    this.cleanup()
+    this.front.releaseHandle(this)
   }
 
-  cleanup = () => {}
-
-  changeFn = (fn: ChangeFn<T>) => {}
-
-  change = (fn: ChangeFn<T>) : this => {
-    this.changeFn(fn)
+  change = (fn: ChangeFn<T>): this => {
+    this.front.change(fn)
     return this
   }
 }

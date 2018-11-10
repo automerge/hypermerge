@@ -47,14 +47,16 @@ export class DocFrontend<T> {
   }
 
   handle(): Handle<T> {
-    let handle = new Handle<T>()
+    let handle = new Handle<T>(this)
     this.handles.add(handle)
-    handle.cleanup = () => this.handles.delete(handle)
-    handle.changeFn = this.change
-    handle.id = this.docId
+
     if (this.mode != "pending") { handle.push(this.front) }
 
     return handle
+  }
+
+  releaseHandle(handle: Handle<any>): void {
+    this.handles.delete(handle)
   }
 
   newState() {
@@ -101,8 +103,7 @@ export class DocFrontend<T> {
   private enableWrites() {
     this.mode = "write"
     this.changeQ.subscribe(fn => {
-      const doc = Frontend.change(this.front, fn)
-      const request = Frontend.getRequests(doc).pop()
+      const [doc, request] = Frontend.change(this.front, fn)
       this.front = doc
       log(`change complete doc=${this.docId} seq=${request ? request.seq : "null"}`)
       if (request) {
