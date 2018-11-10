@@ -77,15 +77,15 @@ class DocFrontend {
         }
     }
     handle() {
-        let handle = new Handle_1.default();
+        let handle = new Handle_1.default(this);
         this.handles.add(handle);
-        handle.cleanup = () => this.handles.delete(handle);
-        handle.changeFn = this.change;
-        handle.id = this.docId;
         if (this.mode != "pending") {
             handle.push(this.front);
         }
         return handle;
+    }
+    releaseHandle(handle) {
+        this.handles.delete(handle);
     }
     newState() {
         this.handles.forEach(handle => handle.push(this.front));
@@ -93,8 +93,7 @@ class DocFrontend {
     enableWrites() {
         this.mode = "write";
         this.changeQ.subscribe(fn => {
-            const doc = Frontend.change(this.front, fn);
-            const request = Frontend.getRequests(doc).pop();
+            const [doc, request] = Frontend.change(this.front, fn);
             this.front = doc;
             log(`change complete doc=${this.docId} seq=${request ? request.seq : "null"}`);
             if (request) {

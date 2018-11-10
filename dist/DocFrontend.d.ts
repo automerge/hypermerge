@@ -17,6 +17,7 @@ export declare class DocFrontend<T> {
     private handles;
     constructor(toBackend: Queue<ToBackendRepoMsg>, config: Config);
     handle(): Handle<T>;
+    releaseHandle(handle: Handle<any>): void;
     newState(): void;
     change: (fn: ChangeFn<T>) => void;
     release: () => void;

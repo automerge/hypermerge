@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class Handle {
-    constructor() {
-        this.id = "";
+    constructor(front) {
         this.value = null;
         this.counter = 0;
         this.push = (item) => {
@@ -31,14 +30,16 @@ class Handle {
         this.close = () => {
             this.subscription = undefined;
             this.value = null;
-            this.cleanup();
+            this.front.releaseHandle(this);
         };
-        this.cleanup = () => { };
-        this.changeFn = (fn) => { };
         this.change = (fn) => {
-            this.changeFn(fn);
+            this.front.change(fn);
             return this;
         };
+        this.front = front;
+    }
+    get id() {
+        return this.front.docId;
     }
 }
 exports.default = Handle;

@@ -62,13 +62,13 @@ declare module "automerge/frontend" {
   function init(actorId?: string): Doc<{}>
   function init(any): Doc<{}>
 
-  function change<T>(doc: Doc<T>, msg: string, cb: ChangeFn<T>): [Doc<T>, Change]
-  function change<T>(doc: Doc<T>, cb: ChangeFn<T>): [Doc<T>, Change]
-  function emptyChange<T>(doc: Doc<T>, msg: string): [Doc<T>, Change]
+  function change<T>(doc: Doc<T>, msg: string, cb: ChangeFn<T>): [Doc<T>, Change | null]
+  function change<T>(doc: Doc<T>, cb: ChangeFn<T>): [Doc<T>, Change | null]
+  function emptyChange<T>(doc: Doc<T>, msg: string): [Doc<T>, Change | null]
   function canUndo(doc: Doc<any>): Boolean
-  function undo<T>(doc: Doc<T>, msg?: string): [Doc<T>, Change]
+  function undo<T>(doc: Doc<T>, msg?: string): [Doc<T>, Change | null]
   function canRedo(doc: Doc<any>): Boolean
-  function redo<T>(doc: Doc<T>, msg?: string): [Doc<T>, Change]
+  function redo<T>(doc: Doc<T>, msg?: string): [Doc<T>, Change | null]
   function setActorId<T>(doc: Doc<T>, actorId: string): Doc<T>
   function applyPatch<T>(doc: Doc<T>, patch: Patch): Doc<T>
 
