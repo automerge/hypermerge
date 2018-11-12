@@ -1,14 +1,4 @@
 
-export const EXT = "hypermerge"
-
-type FeedFn = (f: Feed<Uint8Array>) => void
-
-interface Swarm {
-  join(dk: Buffer): void
-  leave(dk: Buffer): void
-  on: Function
-}
-
 import Queue from "./Queue"
 import MapSet from "./MapSet"
 import * as JsonBuffer from "./JsonBuffer"
@@ -21,40 +11,25 @@ import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import { DocBackend } from "./DocBackend"
 import Debug from "debug"
 
+export const EXT = "hypermerge"
+
+type FeedFn = (f: Feed<Uint8Array>) => void
+
+interface Swarm {
+  join(dk: Buffer): void
+  leave(dk: Buffer): void
+  on: Function
+}
+
 Debug.formatters.b = Base58.encode
 
 const HypercoreProtocol: Function = require("hypercore-protocol")
-const ram: Function = require("random-access-memory")
-const raf: Function = require("random-access-file")
 
 const log = Debug("repo:backend")
-
-export function keyPair(docId?: string): Keys {
-  if (docId) {
-    return {
-      docId: docId,
-      publicKey: Base58.decode(docId)
-    }
-  }
-  const keys = crypto.keyPair()
-  return {
-    publicKey: keys.publicKey,
-    secretKey: keys.secretKey,
-    docId: Base58.encode(keys.publicKey),
-    actorId: Base58.encode(keys.publicKey)
-  }
-}
 
 export interface KeyBuffer {
   publicKey: Buffer
   secretKey?: Buffer
-}
-
-export interface Keys {
-  publicKey: Buffer
-  secretKey?: Buffer
-  docId: string
-  actorId?: string
 }
 
 export interface FeedData {
@@ -115,7 +90,7 @@ export class RepoBackend {
     })
   }
 
-  createDocBackend(keys: KeyBuffer): DocBackend {
+  private createDocBackend(keys: KeyBuffer): DocBackend {
     const docId = Base58.encode(keys.publicKey)
     log("Create", docId)
     const doc = new DocBackend(this, docId, Backend.init())
@@ -137,7 +112,7 @@ export class RepoBackend {
     })
   }
 
-  openDocBackend(docId: string): DocBackend {
+  private openDocBackend(docId: string): DocBackend {
     let doc = this.docs.get(docId) || new DocBackend(this, docId)
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc)

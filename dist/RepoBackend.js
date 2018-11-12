@@ -10,7 +10,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EXT = "hypermerge";
 const Queue_1 = __importDefault(require("./Queue"));
 const MapSet_1 = __importDefault(require("./MapSet"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
@@ -20,27 +19,10 @@ const hypercore_1 = require("./hypercore");
 const Backend = __importStar(require("automerge/backend"));
 const DocBackend_1 = require("./DocBackend");
 const debug_1 = __importDefault(require("debug"));
+exports.EXT = "hypermerge";
 debug_1.default.formatters.b = Base58.encode;
 const HypercoreProtocol = require("hypercore-protocol");
-const ram = require("random-access-memory");
-const raf = require("random-access-file");
 const log = debug_1.default("repo:backend");
-function keyPair(docId) {
-    if (docId) {
-        return {
-            docId: docId,
-            publicKey: Base58.decode(docId)
-        };
-    }
-    const keys = crypto.keyPair();
-    return {
-        publicKey: keys.publicKey,
-        secretKey: keys.secretKey,
-        docId: Base58.encode(keys.publicKey),
-        actorId: Base58.encode(keys.publicKey)
-    };
-}
-exports.keyPair = keyPair;
 class RepoBackend {
     constructor(opts) {
         this.joined = new Set();

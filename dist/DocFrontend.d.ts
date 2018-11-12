@@ -8,9 +8,9 @@ interface Config {
     actorId?: string;
 }
 export declare class DocFrontend<T> {
-    docId: string;
-    actorId?: string;
-    toBackend: Queue<ToBackendRepoMsg>;
+    private docId;
+    private actorId?;
+    private toBackend;
     private changeQ;
     private front;
     private mode;

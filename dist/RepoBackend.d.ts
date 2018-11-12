@@ -1,4 +1,9 @@
 /// <reference types="node" />
+import Queue from "./Queue";
+import { Feed, Peer } from "./hypercore";
+import { Change } from "automerge/backend";
+import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
+import { DocBackend } from "./DocBackend";
 export declare const EXT = "hypermerge";
 declare type FeedFn = (f: Feed<Uint8Array>) => void;
 interface Swarm {
@@ -6,21 +11,9 @@ interface Swarm {
     leave(dk: Buffer): void;
     on: Function;
 }
-import Queue from "./Queue";
-import { Feed, Peer } from "./hypercore";
-import { Change } from "automerge/backend";
-import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
-import { DocBackend } from "./DocBackend";
-export declare function keyPair(docId?: string): Keys;
 export interface KeyBuffer {
     publicKey: Buffer;
     secretKey?: Buffer;
-}
-export interface Keys {
-    publicKey: Buffer;
-    secretKey?: Buffer;
-    docId: string;
-    actorId?: string;
 }
 export interface FeedData {
     actorId: string;
@@ -53,9 +46,9 @@ export declare class RepoBackend {
     swarm?: Swarm;
     id: Buffer;
     constructor(opts: Options);
-    createDocBackend(keys: KeyBuffer): DocBackend;
+    private createDocBackend;
     private addMetadata;
-    openDocBackend(docId: string): DocBackend;
+    private openDocBackend;
     replicate(swarm: Swarm): void;
     private feedData;
     private allFeedData;

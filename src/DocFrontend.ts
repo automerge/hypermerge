@@ -20,9 +20,9 @@ interface Config {
 }
 
 export class DocFrontend<T> {
-  docId: string
-  actorId?: string
-  toBackend: Queue<ToBackendRepoMsg>
+  private docId: string
+  private actorId?: string
+  private toBackend: Queue<ToBackendRepoMsg>
   private changeQ = new Queue<ChangeFn<T>>("frontend:change")
   private front: Doc<T>
   private mode: Mode = "pending"
