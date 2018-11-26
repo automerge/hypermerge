@@ -63,12 +63,12 @@ declare module "automerge/frontend" {
   function init(any): Doc<{}>
 
   function setActorId<T>(doc: Doc<T>, actorId: string): Doc<T>
-  function change<T>(doc: Doc<T>, msg: string, cb: ChangeFn<T>): Doc<T>
-  function change<T>(doc: Doc<T>, cb: ChangeFn<T>): Doc<T>
+  function change<T>(doc: Doc<T>, msg: string, cb: ChangeFn<T>): [ Doc<T>, Change | null ]
+  function change<T>(doc: Doc<T>, cb: ChangeFn<T>): [ Doc<T>, Change | null ]
   function applyPatch<T>(doc: Doc<T>, patch: Patch): Doc<T>
-  function getRequests<T>(doc: Doc<T>): Change[]
 
-  function emptyChange<T>(doc: Doc<T>, msg: string): Doc<T>
+  function emptyChange<T>(doc: Doc<T>, msg: string): [ Doc<T>, Change | null ]
+  function emptyChange<T>(doc: Doc<T>): [ Doc<T>, Change | null ]
   const Text: TextConstructor
 
   /// Readonly document types:

@@ -1,44 +1,69 @@
-import { Doc, ChangeFn } from "automerge/frontend"
+import { Clock, Doc, ChangeFn } from "automerge/frontend"
+import { RepoFrontend } from "./RepoFrontend"
 
 export default class Handle<T> {
   id: string = ""
-  value: Doc<T> | null = null
-  subscription?: (item: Doc<T>, index?: number) => void
+  state: Doc<T> | null = null
+  clock: Clock | null = null
+  subscription?: (item: Doc<T>, clock?: Clock, index?: number) => void
   private counter: number = 0
+  private repo: RepoFrontend
 
-  constructor() {}
+  constructor( repo: RepoFrontend ) {
+    this.repo = repo
+  }
 
-  push = (item: Doc<T>) => {
-    this.value = item
+  fork() : string {
+    if (this.clock === null) throw new Error("cant fork a handle without state")
+    const id = this.repo.create()
+    this.repo.merge(id, this.clock)
+    return id
+  } 
+
+  merge(other: Handle<T>) : this {
+    if (other.clock === null) throw new Error("cant merge a handle without state")
+    this.repo.merge(this.id, other.clock)
+    return this
+  }
+
+  follow(other: Handle<T>) {
+    if (other.clock === null) throw new Error("cant merge a handle without state")
+    this.repo.follow(this.id, other.clock)
+    return this
+  }
+
+  push = (item: Doc<T>, clock: Clock) => {
+    this.state = item
+    this.clock = clock
     if (this.subscription) {
-      this.subscription(item, this.counter++)
+      this.subscription(item, clock, this.counter++)
     }
   }
 
-  once = (subscriber: (doc: Doc<T>) => void) : this  => {
-    this.subscribe((doc: Doc<T>) => {
-      subscriber(doc)
+  once = (subscriber: (doc: Doc<T>, clock?: Clock, index?: number) => void) : this  => {
+    this.subscribe((doc: Doc<T>, clock?: Clock, index?: number) => {
+      subscriber(doc, clock, index)
       this.close()
     })
     return this
   }
 
-  subscribe = (subscriber: (doc: Doc<T>, index?: number) => void) : this => {
+  subscribe = (subscriber: (doc: Doc<T>, clock?: Clock, index?: number) => void) : this => {
     if (this.subscription) {
       throw new Error("only one subscriber for a doc handle")
     }
 
     this.subscription = subscriber
 
-    if (this.value != null) {
-      subscriber(this.value, this.counter++)
+    if (this.state != null && this.clock != null) {
+      subscriber(this.state, this.clock, this.counter++)
     }
     return this
   }
 
   close = () => {
     this.subscription = undefined
-    this.value = null
+    this.state = null
     this.cleanup()
   }
 

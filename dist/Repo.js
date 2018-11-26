@@ -10,15 +10,9 @@ class Repo {
         this.back.subscribe(this.front.receive);
         this.id = this.back.id;
         this.stream = this.back.stream;
-    }
-    create() {
-        return this.front.create();
-    }
-    open(id) {
-        return this.front.open(id);
-    }
-    replicate(swarm) {
-        return this.back.replicate(swarm);
+        this.create = this.front.create;
+        this.open = this.front.open;
+        this.replicate = this.back.replicate;
     }
 }
 exports.Repo = Repo;

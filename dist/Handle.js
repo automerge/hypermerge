@@ -1,19 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class Handle {
-    constructor() {
+    constructor(repo) {
         this.id = "";
-        this.value = null;
+        this.state = null;
+        this.clock = null;
         this.counter = 0;
-        this.push = (item) => {
-            this.value = item;
+        this.push = (item, clock) => {
+            this.state = item;
+            this.clock = clock;
             if (this.subscription) {
-                this.subscription(item, this.counter++);
+                this.subscription(item, clock, this.counter++);
             }
         };
         this.once = (subscriber) => {
-            this.subscribe((doc) => {
-                subscriber(doc);
+            this.subscribe((doc, clock, index) => {
+                subscriber(doc, clock, index);
                 this.close();
             });
             return this;
@@ -23,14 +25,14 @@ class Handle {
                 throw new Error("only one subscriber for a doc handle");
             }
             this.subscription = subscriber;
-            if (this.value != null) {
-                subscriber(this.value, this.counter++);
+            if (this.state != null && this.clock != null) {
+                subscriber(this.state, this.clock, this.counter++);
             }
             return this;
         };
         this.close = () => {
             this.subscription = undefined;
-            this.value = null;
+            this.state = null;
             this.cleanup();
         };
         this.cleanup = () => { };
@@ -39,6 +41,26 @@ class Handle {
             this.changeFn(fn);
             return this;
         };
+        this.repo = repo;
+    }
+    fork() {
+        if (this.clock === null)
+            throw new Error("cant fork a handle without state");
+        const id = this.repo.create();
+        this.repo.merge(id, this.clock);
+        return id;
+    }
+    merge(other) {
+        if (other.clock === null)
+            throw new Error("cant merge a handle without state");
+        this.repo.merge(this.id, other.clock);
+        return this;
+    }
+    follow(other) {
+        if (other.clock === null)
+            throw new Error("cant merge a handle without state");
+        this.repo.follow(this.id, other.clock);
+        return this;
     }
 }
 exports.default = Handle;

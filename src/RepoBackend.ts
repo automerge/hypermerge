@@ -1,12 +1,12 @@
 
 import Queue from "./Queue"
-import MapSet from "./MapSet"
+import { ClockSet, clock, clock2strs } from "./ClockSet"
 import * as JsonBuffer from "./JsonBuffer"
 import * as Base58 from "bs58"
 import * as crypto from "hypercore/lib/crypto"
 import { hypercore, Feed, Peer, discoveryKey } from "./hypercore"
 import * as Backend from "automerge/backend"
-import { Change } from "automerge/backend"
+import { Clock, Change } from "automerge/backend"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import { DocBackend } from "./DocBackend"
 import Debug from "debug"
@@ -59,8 +59,8 @@ export class RepoBackend {
   docs: Map<string, DocBackend> = new Map()
   feedSeq: Map<string, number> = new Map()
   ledger: Feed<LedgerData>
-  private ledgerMetadata: MapSet<string, string> = new MapSet()
-  private docMetadata: MapSet<string, string> = new MapSet()
+  private ledgerMetadata: ClockSet = new ClockSet()
+  private docMetadata: ClockSet = new ClockSet()
   private opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue("repo:toFrontend")
   swarm?: Swarm
@@ -78,8 +78,8 @@ export class RepoBackend {
         if (this.ledger.length > 0) {
           this.ledger.getBatch(0, this.ledger.length, (err, data) => {
             data.forEach(d => {
-              this.docMetadata.merge(d.docId, d.actorIds)
-              this.ledgerMetadata.merge(d.docId, d.actorIds)
+              this.docMetadata.add(d.docId, clock(d.actorIds))
+              this.ledgerMetadata.add(d.docId, clock(d.actorIds))
             })
             resolve()
           })
@@ -102,12 +102,12 @@ export class RepoBackend {
     return doc
   }
 
-  private addMetadata(docId: string, actorId: string) {
-    this.docMetadata.add(docId, actorId)
+  private addMetadata(docId: string, clock: Clock) {
+    this.docMetadata.add(docId, clock)
     this.ready.then(() => {
-      if (!this.ledgerMetadata.has(docId, actorId)) {
-        this.ledgerMetadata.add(docId, actorId)
-        this.ledger.append({ docId: docId, actorIds: [actorId] })
+      if (!this.ledgerMetadata.has(docId, clock)) {
+        this.ledgerMetadata.add(docId, clock)
+        this.ledger.append({ docId , actorIds: clock2strs(clock) })
       }
     })
   }
@@ -116,14 +116,20 @@ export class RepoBackend {
     let doc = this.docs.get(docId) || new DocBackend(this, docId)
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc)
-      this.addMetadata(docId, docId)
-      this.loadDocument(doc)
-      this.join(docId)
+      this.addMetadata(docId, clock(docId))
+      this.loadDocument(doc).then(() => {
+        this.join(docId)
+      })
     }
     return doc
   }
 
-  replicate(swarm: Swarm) {
+  merge(id: string, clock: Clock) {
+    this.addMetadata(id, clock)
+    // FIXME get all blocks inside this clock currently missing
+  }
+
+  replicate = (swarm: Swarm) => {
     if (this.swarm) {
       throw new Error("replicate called while already swarming")
     }
@@ -174,7 +180,7 @@ export class RepoBackend {
     })
   }
 
-  private loadDocument(doc: DocBackend) {
+  private loadDocument(doc: DocBackend) : Promise<any> {
     return this.ready.then(() =>
       this.allFeedData(doc).then(feedData => {
         const writer = feedData
@@ -230,7 +236,7 @@ export class RepoBackend {
   }
 
   actorIds(doc: DocBackend): string[] {
-    return [... this.docMetadata.get(doc.docId)]
+    return Object.keys(this.docMetadata.clock(doc.docId))
   }
 
   feed(actorId: string): Feed<Uint8Array> {
@@ -243,8 +249,7 @@ export class RepoBackend {
   peers(doc: DocBackend): Peer[] {
     return ([] as Peer[]).concat(
       ...this.actorIds(doc).map(actorId => [
-        ...(this.feedPeers.get(actorId) || []),
-      ]),
+        ...(this.feedPeers.get(actorId) || []), ]),
     )
   }
 
@@ -253,6 +258,18 @@ export class RepoBackend {
   }
 
   private initFeed(doc: DocBackend, keys: KeyBuffer): Queue<FeedFn> {
+    const actorId = Base58.encode(keys.publicKey)
+    this.addMetadata(doc.docId, clock(actorId))
+    return this.initFeed2(keys)
+  }
+
+  private feedDocs(actorId: string, cb: (doc: DocBackend) => void) {
+    //FIXME need SEQ
+    this.docMetadata.docsWith(actorId, 0).forEach( docId => cb( this.docs.get(docId)! ))
+  }
+
+  private initFeed2(keys: KeyBuffer): Queue<FeedFn> {
+    // FIXME - this code asssumes one doc to one feed - no longer true
     const { publicKey, secretKey } = keys
     const actorId = Base58.encode(publicKey)
     const storage = this.storageFn(actorId)
@@ -266,11 +283,11 @@ export class RepoBackend {
     this.feeds.set(dkString, feed)
     this.feedQs.set(dkString, q)
     this.feedPeers.set(actorId, peers)
-    this.addMetadata(doc.docId, actorId)
+//    this.addMetadata(doc.docId, clock(actorId))
     log("init feed", actorId)
     feed.ready(() => {
       this.feedSeq.set(actorId, 0)
-      doc.broadcastMetadata()
+      this.feedDocs(actorId, doc => doc.broadcastMetadata())
       this.join(actorId)
       feed.on("peer-remove", (peer: Peer) => {
         peers.delete(peer)
@@ -281,11 +298,15 @@ export class RepoBackend {
             const msg: string[] = JSON.parse(buf.toString())
             log("EXT", msg)
             // getFeed -> initFeed -> join()
-            msg.forEach(actorId => this.getFeed(doc, actorId, _ => { }))
+            this.feedDocs(actorId, doc => { // FIXME
+              msg.forEach(actorId => this.getFeed(doc, actorId, _ => { }))
+            })
           }
         })
         peers.add(peer)
-        doc.messageMetadata(peer)
+        this.feedDocs(actorId, doc => {
+          doc.messageMetadata(peer)
+        })
       })
 
       let remoteChanges: Change[] = []
@@ -293,8 +314,11 @@ export class RepoBackend {
         remoteChanges.push(JsonBuffer.parse(data))
       })
       feed.on("sync", () => {
-        doc.applyRemoteChanges(remoteChanges)
+        const batch = [ ... remoteChanges ]
         remoteChanges = []
+        this.feedDocs(actorId, doc => {
+          doc.applyRemoteChanges(batch)
+        })
       })
 
       this.feedQs.get(dkString)!.subscribe(f => f(feed))
@@ -368,6 +392,10 @@ export class RepoBackend {
           secretKey: Base58.decode(msg.secretKey)
         }
         this.createDocBackend(keys)
+        break;
+      }
+      case "MergeMsg": {
+        this.merge(msg.id, clock(msg.actors))
         break;
       }
       case "OpenMsg": {

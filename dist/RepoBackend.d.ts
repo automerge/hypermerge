@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import Queue from "./Queue";
 import { Feed, Peer } from "./hypercore";
-import { Change } from "automerge/backend";
+import { Clock, Change } from "automerge/backend";
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { DocBackend } from "./DocBackend";
 export declare const EXT = "hypermerge";
@@ -49,7 +49,8 @@ export declare class RepoBackend {
     private createDocBackend;
     private addMetadata;
     private openDocBackend;
-    replicate(swarm: Swarm): void;
+    merge(id: string, clock: Clock): void;
+    replicate: (swarm: Swarm) => void;
     private feedData;
     private allFeedData;
     writeChange(doc: DocBackend, actorId: string, change: Change): void;
@@ -65,6 +66,8 @@ export declare class RepoBackend {
     peers(doc: DocBackend): Peer[];
     private closeFeed;
     private initFeed;
+    private feedDocs;
+    private initFeed2;
     stream: (opts: any) => any;
     releaseManager(doc: DocBackend): void;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;

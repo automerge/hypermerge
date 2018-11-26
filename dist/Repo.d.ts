@@ -12,9 +12,9 @@ export declare class Repo {
     back: RepoBackend;
     id: Buffer;
     stream: (opts: any) => any;
+    create: () => string;
+    open: <T>(id: string) => Handle<T>;
+    replicate: (swarm: Swarm) => void;
     constructor(opts: Options);
-    create(): string;
-    open<T>(id: string): Handle<T>;
-    replicate(swarm: Swarm): void;
 }
 export {};

@@ -5,6 +5,8 @@ import * as crypto from "hypercore/lib/crypto"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import Handle from "./Handle"
 import { DocFrontend } from "./DocFrontend"
+import { Clock } from "automerge/frontend"
+import { clock2strs } from "./ClockSet"
 import Debug from "debug"
 
 Debug.formatters.b = Base58.encode
@@ -15,25 +17,51 @@ export class RepoFrontend {
   toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:tobackend")
   docs: Map<string, DocFrontend<any>> = new Map()
 
-  create(): string {
+  create = () : string => {
     const keys = crypto.keyPair()
     const publicKey = Base58.encode(keys.publicKey)
     const secretKey = Base58.encode(keys.secretKey)
     const docId = publicKey
     const actorId = publicKey
-    const doc = new DocFrontend(this.toBackend, { actorId, docId })
+    const doc = new DocFrontend(this, { actorId, docId })
     this.docs.set(docId, doc)
     this.toBackend.push({ type: "CreateMsg", publicKey, secretKey })
     return publicKey
   }
 
-  open<T>(id: string): Handle<T> {
+  open = <T>(id: string): Handle<T> => {
     const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id)
     return doc.handle()
   }
 
+  state<T>(id: string) : Promise<T> {
+    return new Promise((resolve) => {
+      const handle = this.open<T>(id)
+      handle.subscribe( val => {
+        resolve(val)
+        handle.close()
+      })
+    })
+  }
+
+  fork = (clock: Clock) : string => {
+    const id = this.create()
+    this.merge(id, clock)
+    return id
+  }
+
+  follow = (id: string, clock: Clock) => {
+    const actors = Object.keys(clock)
+    this.toBackend.push({ type: "MergeMsg", id, actors })
+  }
+
+  merge = (id: string, clock: Clock) => {
+    const actors = clock2strs(clock)
+    this.toBackend.push({ type: "MergeMsg", id, actors })
+  }
+
   private openDocFrontend<T>(id: string): DocFrontend<T> {
-    const doc: DocFrontend<T> = new DocFrontend(this.toBackend, { docId: id })
+    const doc: DocFrontend<T> = new DocFrontend(this, { docId: id })
     this.toBackend.push({ type: "OpenMsg", id })
     this.docs.set(id, doc)
     return doc

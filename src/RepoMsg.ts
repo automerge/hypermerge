@@ -1,12 +1,18 @@
 
-import { Patch, Doc, Change, ChangeFn } from "automerge/frontend"
+import { Clock, Patch, Doc, Change, ChangeFn } from "automerge/frontend"
 
-export type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CreateMsg | OpenMsg
+export type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | MergeMsg | CreateMsg | OpenMsg
  
 export interface CreateMsg {
   type: "CreateMsg"
   publicKey: string
   secretKey: string
+}
+
+export interface MergeMsg {
+  type: "MergeMsg"
+  id: string
+  actors: string[]
 }
 
 export interface OpenMsg {

@@ -14,6 +14,7 @@ const Queue_1 = __importDefault(require("./Queue"));
 const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
 const DocFrontend_1 = require("./DocFrontend");
+const ClockSet_1 = require("./ClockSet");
 const debug_1 = __importDefault(require("debug"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default("repo:front");
@@ -21,6 +22,34 @@ class RepoFrontend {
     constructor() {
         this.toBackend = new Queue_1.default("repo:tobackend");
         this.docs = new Map();
+        this.create = () => {
+            const keys = crypto.keyPair();
+            const publicKey = Base58.encode(keys.publicKey);
+            const secretKey = Base58.encode(keys.secretKey);
+            const docId = publicKey;
+            const actorId = publicKey;
+            const doc = new DocFrontend_1.DocFrontend(this, { actorId, docId });
+            this.docs.set(docId, doc);
+            this.toBackend.push({ type: "CreateMsg", publicKey, secretKey });
+            return publicKey;
+        };
+        this.open = (id) => {
+            const doc = this.docs.get(id) || this.openDocFrontend(id);
+            return doc.handle();
+        };
+        this.fork = (clock) => {
+            const id = this.create();
+            this.merge(id, clock);
+            return id;
+        };
+        this.follow = (id, clock) => {
+            const actors = Object.keys(clock);
+            this.toBackend.push({ type: "MergeMsg", id, actors });
+        };
+        this.merge = (id, clock) => {
+            const actors = ClockSet_1.clock2strs(clock);
+            this.toBackend.push({ type: "MergeMsg", id, actors });
+        };
         this.subscribe = (subscriber) => {
             this.toBackend.subscribe(subscriber);
         };
@@ -42,23 +71,17 @@ class RepoFrontend {
             }
         };
     }
-    create() {
-        const keys = crypto.keyPair();
-        const publicKey = Base58.encode(keys.publicKey);
-        const secretKey = Base58.encode(keys.secretKey);
-        const docId = publicKey;
-        const actorId = publicKey;
-        const doc = new DocFrontend_1.DocFrontend(this.toBackend, { actorId, docId });
-        this.docs.set(docId, doc);
-        this.toBackend.push({ type: "CreateMsg", publicKey, secretKey });
-        return publicKey;
-    }
-    open(id) {
-        const doc = this.docs.get(id) || this.openDocFrontend(id);
-        return doc.handle();
+    state(id) {
+        return new Promise((resolve) => {
+            const handle = this.open(id);
+            handle.subscribe(val => {
+                resolve(val);
+                handle.close();
+            });
+        });
     }
     openDocFrontend(id) {
-        const doc = new DocFrontend_1.DocFrontend(this.toBackend, { docId: id });
+        const doc = new DocFrontend_1.DocFrontend(this, { docId: id });
         this.toBackend.push({ type: "OpenMsg", id });
         this.docs.set(id, doc);
         return doc;
