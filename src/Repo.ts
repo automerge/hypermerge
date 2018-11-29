@@ -16,6 +16,7 @@ export class Repo {
   stream: (opts: any) => any
   create: () => string
   open: <T>(id: string) => Handle<T>
+  state: <T>(id: string) => Promise<T>
   replicate:  (swarm: Swarm) => void
 
   constructor(opts: Options) {
@@ -27,6 +28,7 @@ export class Repo {
     this.stream = this.back.stream
     this.create = this.front.create
     this.open = this.front.open
+    this.state = this.front.state
     this.replicate = this.back.replicate
   }
 }

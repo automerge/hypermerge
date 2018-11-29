@@ -34,7 +34,7 @@ export class RepoFrontend {
     return doc.handle()
   }
 
-  state<T>(id: string) : Promise<T> {
+  state = <T>(id: string): => Promise<T> {
     return new Promise((resolve) => {
       const handle = this.open<T>(id)
       handle.subscribe( val => {
