@@ -1,10 +1,14 @@
 import * as Backend from "automerge/backend";
-import { BackDoc } from "automerge/backend";
+import { Change, BackDoc } from "automerge/backend";
 import { RepoBackend } from "./RepoBackend";
 import { Feed, Peer } from "./hypercore";
+export interface Clock {
+    [actorId: string]: number;
+}
 export declare class DocBackend {
     docId: string;
     actorId?: string;
+    clock: Clock;
     private repo;
     private back?;
     private localChangeQ;
@@ -16,6 +20,7 @@ export declare class DocBackend {
     actorIds: () => string[];
     release: () => void;
     initActor: () => void;
+    updateClock(changes: Change[]): void;
     init: (changes: Backend.Change[], actorId?: string | undefined) => void;
     subscribeToRemoteChanges(): void;
     subscribeToLocalChanges(): void;

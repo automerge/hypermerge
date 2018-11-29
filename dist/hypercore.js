@@ -14,4 +14,15 @@ function hypercore(storage, arg2, arg3) {
     }
 }
 exports.hypercore = hypercore;
+function readFeed(feed, cb) {
+    if (feed.length > 0) {
+        feed.getBatch(0, feed.length, (err, data) => {
+            cb(data);
+        });
+    }
+    else {
+        cb([]);
+    }
+}
+exports.readFeed = readFeed;
 //# sourceMappingURL=hypercore.js.map

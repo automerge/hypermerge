@@ -6,12 +6,16 @@ import Queue from "./Queue"
 import { EXT, RepoBackend } from "./RepoBackend"
 import { Feed, Peer } from "./hypercore"
 
-
 const log = Debug("hypermerge:back")
+
+export interface Clock {
+  [actorId: string]: number
+}
 
 export class DocBackend {
   docId: string
   actorId?: string
+  clock: Clock = {}
   private repo: RepoBackend
   private back?: BackDoc
   private localChangeQ = new Queue<Change>("backend:localChangeQ")
@@ -61,6 +65,15 @@ export class DocBackend {
     }
   }
 
+  updateClock( changes: Change[] ) {
+    changes.forEach((change) => {
+      const actor = change.actor
+      const oldSeq = this.clock[actor] || 0
+      console.log(`change actor=${actor} old=${oldSeq} seq=${change.seq}`)
+      this.clock[actor] = Math.max(oldSeq, change.seq)
+    })
+  }
+
   init = (changes: Change[], actorId?: string) => {
     this.bench("init", () => {
       const [back, patch] = Backend.applyChanges(Backend.init(), changes)
@@ -69,6 +82,7 @@ export class DocBackend {
         this.actorId = this.repo.initActorFeed(this)
       }
       this.back = back
+      this.updateClock(changes)
       this.subscribeToLocalChanges()
       this.subscribeToRemoteChanges()
       this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: this.actorId, patch})
@@ -80,6 +94,8 @@ export class DocBackend {
       this.bench("applyRemoteChanges", () => {
         const [back, patch] = Backend.applyChanges(this.back!, changes)
         this.back = back
+        console.log("update clock", this.clock)
+        this.updateClock(changes)
         this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch })
       })
     })
@@ -90,8 +106,9 @@ export class DocBackend {
       this.bench(`applyLocalChange seq=${change.seq}`, () => {
         const [back, patch] = Backend.applyLocalChange(this.back!, change)
         this.back = back
+        this.updateClock([ change ])
         this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch })
-        this.repo.writeChange(this, this.actorId!, change)
+        this.repo.writeChange(this.actorId!, change)
       })
     })
   }

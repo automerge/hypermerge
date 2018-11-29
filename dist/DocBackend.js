@@ -17,6 +17,7 @@ const RepoBackend_1 = require("./RepoBackend");
 const log = debug_1.default("hypermerge:back");
 class DocBackend {
     constructor(core, docId, back) {
+        this.clock = {};
         this.localChangeQ = new Queue_1.default("backend:localChangeQ");
         this.remoteChangesQ = new Queue_1.default("backend:remoteChangesQ");
         this.wantsActor = false;
@@ -54,6 +55,7 @@ class DocBackend {
                     this.actorId = this.repo.initActorFeed(this);
                 }
                 this.back = back;
+                this.updateClock(changes);
                 this.subscribeToLocalChanges();
                 this.subscribeToRemoteChanges();
                 this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: this.actorId, patch });
@@ -69,11 +71,21 @@ class DocBackend {
             this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: docId });
         }
     }
+    updateClock(changes) {
+        changes.forEach((change) => {
+            const actor = change.actor;
+            const oldSeq = this.clock[actor] || 0;
+            console.log(`change actor=${actor} old=${oldSeq} seq=${change.seq}`);
+            this.clock[actor] = Math.max(oldSeq, change.seq);
+        });
+    }
     subscribeToRemoteChanges() {
         this.remoteChangesQ.subscribe(changes => {
             this.bench("applyRemoteChanges", () => {
                 const [back, patch] = Backend.applyChanges(this.back, changes);
                 this.back = back;
+                console.log("update clock", this.clock);
+                this.updateClock(changes);
                 this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch });
             });
         });
@@ -83,8 +95,9 @@ class DocBackend {
             this.bench(`applyLocalChange seq=${change.seq}`, () => {
                 const [back, patch] = Backend.applyLocalChange(this.back, change);
                 this.back = back;
+                this.updateClock([change]);
                 this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch });
-                this.repo.writeChange(this, this.actorId, change);
+                this.repo.writeChange(this.actorId, change);
             });
         });
     }

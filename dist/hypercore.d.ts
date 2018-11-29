@@ -21,7 +21,7 @@ export interface Feed<T> {
     on(event: "extension", cb: (a: any, b: any) => void): this;
     peers: Peer[];
     replicate: Function;
-    writable: Boolean;
+    writable: boolean;
     ready: Function;
     append(data: T): void;
     append(data: T, cb: (err: Error | null) => void): void;
@@ -32,6 +32,7 @@ export interface Feed<T> {
     id: Buffer;
     length: number;
 }
+export declare function readFeed<T>(feed: Feed<T>, cb: (data: T[]) => void): void;
 export interface Peer {
     feed: any;
     stream: any;

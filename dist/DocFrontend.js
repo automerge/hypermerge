@@ -11,6 +11,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const Frontend = __importStar(require("automerge/frontend"));
+const Clock_1 = require("./Clock");
 const Queue_1 = __importDefault(require("./Queue"));
 const Handle_1 = __importDefault(require("./Handle"));
 const debug_1 = __importDefault(require("debug"));
@@ -59,9 +60,7 @@ class DocFrontend {
         this.patch = (patch) => {
             this.bench("patch", () => {
                 this.front = Frontend.applyPatch(this.front, patch);
-                this.clock = this._clock();
-                console.log("CLOCK", this.clock);
-                // end
+                this.updateClockPatch(patch);
                 if (patch.diffs.length > 0) {
                     if (this.mode === "pending")
                         this.mode = "read";
@@ -106,19 +105,21 @@ class DocFrontend {
         this.changeQ.subscribe(fn => {
             const [doc, request] = Frontend.change(this.front, fn);
             this.front = doc;
-            this.clock = this._clock();
             log(`change complete doc=${this.docId} seq=${request ? request.seq : "null"}`);
             if (request) {
-                console.log("CLOCK", this.clock);
+                this.updateClockChange(request);
                 this.newState();
                 this.repo.toBackend.push({ type: "RequestMsg", id: this.docId, request });
             }
         });
     }
-    _clock() {
-        // FIXME - need a getClock() function
-        const [_, request] = Frontend.emptyChange(this.front);
-        return Object.assign({}, request.deps, { [request.actor]: request.seq - 1 });
+    updateClockChange(change) {
+        const oldSeq = this.clock[change.actor] || 0;
+        this.clock[change.actor] = Math.max(change.seq, oldSeq);
+    }
+    updateClockPatch(patch) {
+        this.clock = Clock_1.union(this.clock, patch.clock); // dont know which is better - use both??...
+        this.clock = Clock_1.union(this.clock, patch.deps);
     }
     bench(msg, f) {
         const start = Date.now();

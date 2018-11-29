@@ -24,36 +24,28 @@ export interface Options {
     path?: string;
     storage: Function;
 }
-export interface LedgerData {
-    docId: string;
-    actorIds: string[];
-}
 export declare class RepoBackend {
     path?: string;
     storage: Function;
-    ready: Promise<undefined>;
     joined: Set<Buffer>;
     feeds: Map<string, Feed<Uint8Array>>;
     feedQs: Map<string, Queue<FeedFn>>;
     feedPeers: Map<string, Set<Peer>>;
     docs: Map<string, DocBackend>;
-    feedSeq: Map<string, number>;
-    ledger: Feed<LedgerData>;
-    private ledgerMetadata;
-    private docMetadata;
+    changes: Map<string, Change[]>;
+    private meta;
     private opts;
     toFrontend: Queue<ToFrontendRepoMsg>;
     swarm?: Swarm;
     id: Buffer;
     constructor(opts: Options);
     private createDocBackend;
-    private addMetadata;
     private openDocBackend;
     merge(id: string, clock: Clock): void;
     replicate: (swarm: Swarm) => void;
     private feedData;
     private allFeedData;
-    writeChange(doc: DocBackend, actorId: string, change: Change): void;
+    writeChange(actorId: string, change: Change): void;
     private loadDocument;
     private join;
     private leave;
@@ -65,9 +57,10 @@ export declare class RepoBackend {
     feed(actorId: string): Feed<Uint8Array>;
     peers(doc: DocBackend): Peer[];
     private closeFeed;
-    private initFeed;
     private feedDocs;
-    private initFeed2;
+    private initFeed;
+    private message;
+    syncChanges(actor: string): void;
     stream: (opts: any) => any;
     releaseManager(doc: DocBackend): void;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;

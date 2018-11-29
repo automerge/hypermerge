@@ -1,8 +1,8 @@
-import { Patch, Doc, ChangeFn } from "automerge/frontend"
+import { Patch, Doc, Change, ChangeFn } from "automerge/frontend"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import { RepoFrontend } from "./RepoFrontend"
 import * as Frontend from "automerge/frontend"
-import { Clock } from "automerge/frontend"
+import { Clock, union } from "./Clock"
 import Queue from "./Queue"
 import Handle from "./Handle"
 import Debug from "debug"
@@ -118,26 +118,29 @@ export class DocFrontend<T> {
     this.changeQ.subscribe(fn => {
       const [ doc, request ] = Frontend.change(this.front, fn)
       this.front = doc
-      this.clock = this._clock()
       log(`change complete doc=${this.docId} seq=${request ? request.seq : "null"}`)
       if (request) {
+        this.updateClockChange(request)
         this.newState()
         this.repo.toBackend.push({ type: "RequestMsg", id: this.docId, request })
       }
     })
   }
 
-  _clock() : Clock {
-    // FIXME - need a getClock() function
-    const [ _, request ] = Frontend.emptyChange(this.front)
-    return { ... request!.deps, [request!.actor]: request!.seq - 1 }
+  private updateClockChange( change: Change) {
+    const oldSeq = this.clock[change.actor] || 0
+    this.clock[change.actor] = Math.max(change.seq, oldSeq)
+  }
+
+  private updateClockPatch( patch: Patch) {
+    this.clock = union(this.clock, patch.clock) // dont know which is better - use both??...
+    this.clock = union(this.clock, patch.deps)
   }
 
   patch = (patch: Patch) => {
     this.bench("patch", () => {
       this.front = Frontend.applyPatch(this.front, patch)
-      this.clock = this._clock()
-      // end
+      this.updateClockPatch(patch)
       if (patch.diffs.length > 0) {
         if (this.mode === "pending") this.mode = "read"
         this.newState()

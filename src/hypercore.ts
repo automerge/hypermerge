@@ -42,7 +42,7 @@ export interface Feed<T> {
 
   peers: Peer[]
   replicate: Function
-  writable: Boolean
+  writable: boolean
   ready: Function
   append(data: T): void
   append(data: T, cb: (err: Error | null) => void): void
@@ -52,6 +52,16 @@ export interface Feed<T> {
   discoveryKey: Buffer
   id: Buffer
   length: number
+}
+
+export function readFeed<T>(feed: Feed<T>, cb: (data: T[]) => void ) {
+  if (feed.length > 0) {
+    feed.getBatch(0, feed.length, (err, data) => {
+      cb(data)
+    })
+  } else {
+    cb([])
+  }
 }
 
 export interface Peer {

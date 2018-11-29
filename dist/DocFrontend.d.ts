@@ -1,6 +1,6 @@
 import { Patch, ChangeFn } from "automerge/frontend";
 import { RepoFrontend } from "./RepoFrontend";
-import { Clock } from "automerge/frontend";
+import { Clock } from "./Clock";
 import Handle from "./Handle";
 export declare type Patch = Patch;
 interface Config {
@@ -25,7 +25,8 @@ export declare class DocFrontend<T> {
     setActorId: (actorId: string) => void;
     init: (actorId?: string | undefined, patch?: Patch | undefined) => void;
     private enableWrites;
-    _clock(): Clock;
+    private updateClockChange;
+    private updateClockPatch;
     patch: (patch: Patch) => void;
     bench(msg: string, f: () => void): void;
 }
