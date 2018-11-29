@@ -56,11 +56,10 @@ class Handle {
         this.repo.merge(this.id, other.clock);
         return this;
     }
-    follow(other) {
-        if (other.clock === null)
-            throw new Error("cant merge a handle without state");
-        this.repo.follow(this.id, other.clock);
-        return this;
+    branch() {
+        const id = this.repo.create();
+        this.repo.follow(id, this.id);
+        return id;
     }
 }
 exports.default = Handle;

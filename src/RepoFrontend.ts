@@ -50,9 +50,8 @@ export class RepoFrontend {
     return id
   }
 
-  follow = (id: string, clock: Clock) => {
-    const actors = Object.keys(clock)
-    this.toBackend.push({ type: "MergeMsg", id, actors })
+  follow = (id: string, target: string) => {
+    this.toBackend.push({ type: "FollowMsg", id, target })
   }
 
   merge = (id: string, clock: Clock) => {

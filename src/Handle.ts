@@ -26,10 +26,10 @@ export default class Handle<T> {
     return this
   }
 
-  follow(other: Handle<T>) {
-    if (other.clock === null) throw new Error("cant merge a handle without state")
-    this.repo.follow(this.id, other.clock)
-    return this
+  branch() : string {
+    const id = this.repo.create()
+    this.repo.follow(id, this.id)
+    return id
   }
 
   push = (item: Doc<T>, clock: Clock) => {

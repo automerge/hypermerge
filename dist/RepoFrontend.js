@@ -42,9 +42,8 @@ class RepoFrontend {
             this.merge(id, clock);
             return id;
         };
-        this.follow = (id, clock) => {
-            const actors = Object.keys(clock);
-            this.toBackend.push({ type: "MergeMsg", id, actors });
+        this.follow = (id, target) => {
+            this.toBackend.push({ type: "FollowMsg", id, target });
         };
         this.merge = (id, clock) => {
             const actors = ClockSet_1.clock2strs(clock);

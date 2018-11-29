@@ -10,7 +10,7 @@ export default class Handle<T> {
     constructor(repo: RepoFrontend);
     fork(): string;
     merge(other: Handle<T>): this;
-    follow(other: Handle<T>): this;
+    branch(): string;
     push: (item: Doc<T>, clock: Clock) => void;
     once: (subscriber: (doc: Doc<T>, clock?: Clock | undefined, index?: number | undefined) => void) => this;
     subscribe: (subscriber: (doc: Doc<T>, clock?: Clock | undefined, index?: number | undefined) => void) => this;

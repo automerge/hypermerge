@@ -52,12 +52,12 @@ test("Create a doc backend - then wire it up to a frontend - make a change", (t)
   })
 })
 
-/*
 test("Test document forking...", (t) => {
   const repo = new Repo({ storage: ram })
   const id = repo.create()
   const handle = repo.open(id)
   handle.subscribe((state, clock, index) => {
+    console.log("SUBSCRIBE 1", state)
     switch (index) {
       case 0:
         t.equal(state.foo, undefined)
@@ -70,12 +70,16 @@ test("Test document forking...", (t) => {
   const id2 = handle.fork()
   const handle2 = repo.open(id2)
   handle2.subscribe((state, clock, index) => {
+    console.log("SUBSCRIBE 2", index, state)
     switch (index) {
       case 1:
         t.equal(state.foo, "bar")
-        t.end()
+        handle2.change(state => { state.bar = "foo" })
         break
+      case 3:
+        t.equal(state.bar, "foo")
+        t.end()
+        break;
     }
   })
 })
-*/

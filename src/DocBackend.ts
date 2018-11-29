@@ -69,7 +69,6 @@ export class DocBackend {
     changes.forEach((change) => {
       const actor = change.actor
       const oldSeq = this.clock[actor] || 0
-      console.log(`change actor=${actor} old=${oldSeq} seq=${change.seq}`)
       this.clock[actor] = Math.max(oldSeq, change.seq)
     })
   }
@@ -94,7 +93,6 @@ export class DocBackend {
       this.bench("applyRemoteChanges", () => {
         const [back, patch] = Backend.applyChanges(this.back!, changes)
         this.back = back
-        console.log("update clock", this.clock)
         this.updateClock(changes)
         this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch })
       })

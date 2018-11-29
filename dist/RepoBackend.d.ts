@@ -42,6 +42,7 @@ export declare class RepoBackend {
     private createDocBackend;
     private openDocBackend;
     merge(id: string, clock: Clock): void;
+    follow(id: string, target: string): void;
     replicate: (swarm: Swarm) => void;
     private feedData;
     private allFeedData;
@@ -58,6 +59,7 @@ export declare class RepoBackend {
     peers(doc: DocBackend): Peer[];
     private closeFeed;
     private feedDocs;
+    private initActors;
     private initFeed;
     private message;
     syncChanges(actor: string): void;

@@ -10,7 +10,7 @@ export declare class RepoFrontend {
     open: <T>(id: string) => Handle<T>;
     state<T>(id: string): Promise<T>;
     fork: (clock: Clock) => string;
-    follow: (id: string, clock: Clock) => void;
+    follow: (id: string, target: string) => void;
     merge: (id: string, clock: Clock) => void;
     private openDocFrontend;
     subscribe: (subscriber: (message: ToBackendRepoMsg) => void) => void;

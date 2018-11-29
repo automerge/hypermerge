@@ -1,7 +1,7 @@
 
 import Queue from "./Queue"
 import { MetadataBlock, Metadata } from "./Metadata"
-//import { ClockSet, clock, clock2strs } from "./ClockSet"
+import { clock } from "./ClockSet"
 import * as JsonBuffer from "./JsonBuffer"
 import * as Base58 from "bs58"
 import * as crypto from "hypercore/lib/crypto"
@@ -94,8 +94,13 @@ export class RepoBackend {
   }
 
   merge(id: string, clock: Clock) {
-    this.merge(id, clock)
-    // FIXME get all blocks inside this clock currently missing
+    this.meta.merge(id, clock)
+    this.initActors(Object.keys(clock))
+  }
+
+  follow(id: string, target: string) {
+    this.meta.follow(id, target)
+    this.initActors([ ... this.meta.actors(id)])
   }
 
   replicate = (swarm: Swarm) => {
@@ -217,6 +222,14 @@ export class RepoBackend {
     this.meta.docsWith(actorId, 0).forEach( docId => cb( this.docs.get(docId)! ))
   }
 
+  private initActors( actors: string[] ) {
+    actors.forEach( actor => { 
+      this.getFeed(actor, feed => {
+        this.syncChanges(actor)
+      })
+    })
+  }
+
   private initFeed(keys: KeyBuffer): Queue<FeedFn> {
     // FIXME - this code asssumes one doc to one feed - no longer true
     const { publicKey, secretKey } = keys
@@ -252,7 +265,7 @@ export class RepoBackend {
             this.meta.addBlocks(blocks)
             blocks.forEach(block => {
               // getFeed -> initFeed -> join()
-              block.actorIds!.forEach( actor => this.getFeed(actor, _ => {}))
+              this.initActors( [ ... block.actorIds! ])
             })
           }
         })
@@ -292,16 +305,17 @@ export class RepoBackend {
   }
 
   syncChanges(actor: string) {
-    log(`sycing changes for actor=${actor}`)
-    const ids = this.meta.docsWith(actor, 0)
+    const ids = this.meta.docsWith(actor)
     ids.forEach(id => {
-      const doc = this.docs.get(id)!
-      const max = this.meta.clock(id)[actor] || 0
-      const seq = doc.clock[actor] || 0
-      if (max > seq) {
-        const changes = this.changes.get(actor)!.slice(seq, max)
-        log(`changes found doc=${id} n=${changes.length} seq=${seq} max=${max} length=${changes.length}`)
-        doc.applyRemoteChanges(changes)
+      const doc = this.docs.get(id)
+      if (doc) { // doc may not be open... (forks and whatnot)
+        const max = this.meta.clock(id)[actor] || 0
+        const seq = doc.clock[actor] || 0
+        if (max > seq) {
+          const changes = this.changes.get(actor)!.slice(seq, max)
+          log(`changes found doc=${id} n=${changes.length} seq=${seq} max=${max} length=${changes.length}`)
+          doc.applyRemoteChanges(changes)
+        }
       }
     })
   }
@@ -367,7 +381,11 @@ export class RepoBackend {
         break;
       }
       case "MergeMsg": {
-//        this.merge(msg.id, clock(msg.actors))
+        this.merge(msg.id, clock(msg.actors))
+        break;
+      }
+      case "FollowMsg": {
+        this.follow(msg.id, msg.target)
         break;
       }
       case "OpenMsg": {

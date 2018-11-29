@@ -12,7 +12,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const Queue_1 = __importDefault(require("./Queue"));
 const Metadata_1 = require("./Metadata");
-//import { ClockSet, clock, clock2strs } from "./ClockSet"
+const ClockSet_1 = require("./ClockSet");
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
@@ -112,7 +112,11 @@ class RepoBackend {
                     break;
                 }
                 case "MergeMsg": {
-                    //        this.merge(msg.id, clock(msg.actors))
+                    this.merge(msg.id, ClockSet_1.clock(msg.actors));
+                    break;
+                }
+                case "FollowMsg": {
+                    this.follow(msg.id, msg.target);
                     break;
                 }
                 case "OpenMsg": {
@@ -148,8 +152,12 @@ class RepoBackend {
         return doc;
     }
     merge(id, clock) {
-        this.merge(id, clock);
-        // FIXME get all blocks inside this clock currently missing
+        this.meta.merge(id, clock);
+        this.initActors(Object.keys(clock));
+    }
+    follow(id, target) {
+        this.meta.follow(id, target);
+        this.initActors([...this.meta.actors(id)]);
     }
     feedData(actorId) {
         return new Promise((resolve, reject) => {
@@ -222,6 +230,13 @@ class RepoBackend {
         //FIXME need SEQ
         this.meta.docsWith(actorId, 0).forEach(docId => cb(this.docs.get(docId)));
     }
+    initActors(actors) {
+        actors.forEach(actor => {
+            this.getFeed(actor, feed => {
+                this.syncChanges(actor);
+            });
+        });
+    }
     initFeed(keys) {
         // FIXME - this code asssumes one doc to one feed - no longer true
         const { publicKey, secretKey } = keys;
@@ -257,7 +272,7 @@ class RepoBackend {
                         this.meta.addBlocks(blocks);
                         blocks.forEach(block => {
                             // getFeed -> initFeed -> join()
-                            block.actorIds.forEach(actor => this.getFeed(actor, _ => { }));
+                            this.initActors([...block.actorIds]);
                         });
                     }
                 });
@@ -290,16 +305,17 @@ class RepoBackend {
         peer.stream.extension(exports.EXT, Buffer.from(JSON.stringify(message)));
     }
     syncChanges(actor) {
-        log(`sycing changes for actor=${actor}`);
-        const ids = this.meta.docsWith(actor, 0);
+        const ids = this.meta.docsWith(actor);
         ids.forEach(id => {
             const doc = this.docs.get(id);
-            const max = this.meta.clock(id)[actor] || 0;
-            const seq = doc.clock[actor] || 0;
-            if (max > seq) {
-                const changes = this.changes.get(actor).slice(seq, max);
-                log(`changes found doc=${id} n=${changes.length} seq=${seq} max=${max} length=${changes.length}`);
-                doc.applyRemoteChanges(changes);
+            if (doc) { // doc may not be open... (forks and whatnot)
+                const max = this.meta.clock(id)[actor] || 0;
+                const seq = doc.clock[actor] || 0;
+                if (max > seq) {
+                    const changes = this.changes.get(actor).slice(seq, max);
+                    log(`changes found doc=${id} n=${changes.length} seq=${seq} max=${max} length=${changes.length}`);
+                    doc.applyRemoteChanges(changes);
+                }
             }
         });
     }

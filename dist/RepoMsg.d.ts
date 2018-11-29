@@ -1,5 +1,5 @@
 import { Patch, Change } from "automerge/frontend";
-export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | MergeMsg | CreateMsg | OpenMsg;
+export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | FollowMsg | MergeMsg | CreateMsg | OpenMsg;
 export interface CreateMsg {
     type: "CreateMsg";
     publicKey: string;
@@ -9,6 +9,11 @@ export interface MergeMsg {
     type: "MergeMsg";
     id: string;
     actors: string[];
+}
+export interface FollowMsg {
+    type: "FollowMsg";
+    id: string;
+    target: string;
 }
 export interface OpenMsg {
     type: "OpenMsg";
