@@ -14,6 +14,7 @@ export declare class Repo {
     stream: (opts: any) => any;
     create: () => string;
     open: <T>(id: string) => Handle<T>;
+    state: <T>(id: string) => Promise<T>;
     replicate: (swarm: Swarm) => void;
     constructor(opts: Options);
 }

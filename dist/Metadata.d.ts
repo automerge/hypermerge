@@ -23,7 +23,7 @@ export declare class Metadata {
     private writeThrough;
     private addBlock;
     setWritable(actor: string, writable: boolean): void;
-    localActor(actor: string): string | undefined;
+    localActor(id: string): string | undefined;
     actorsAsync(id: string, cb: (actors: Set<string>) => void): void;
     actors(id: string): Set<string>;
     private actorsSeen;

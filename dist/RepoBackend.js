@@ -13,6 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Queue_1 = __importDefault(require("./Queue"));
 const Metadata_1 = require("./Metadata");
 const ClockSet_1 = require("./ClockSet");
+const Clock_1 = require("./Clock");
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
@@ -123,6 +124,10 @@ class RepoBackend {
                     this.openDocBackend(msg.id);
                     break;
                 }
+                case "DebugMsg": {
+                    this.debug(msg.id);
+                    break;
+                }
             }
             //export type ToBackendMsg = NeedsActorIdMsg | RequestMsg | CreateMsg | OpenMsg
         };
@@ -141,6 +146,24 @@ class RepoBackend {
         this.meta.addActor(doc.docId, doc.docId);
         this.initFeed(keys);
         return doc;
+    }
+    debug(id) {
+        const doc = this.docs.get(id);
+        const short = id.substr(0, 5);
+        if (doc === undefined) {
+            console.log(`doc:backend NOT FOUND id=${short}`);
+        }
+        else {
+            console.log(`doc:backend id=${short}`);
+            console.log(`doc:backend clock=${Clock_1.clockDebug(doc.clock)}`);
+            const local = this.meta.localActor(id);
+            const actors = [...this.meta.actors(id)];
+            const info = actors.map(actor => {
+                const nm = actor.substr(0, 5);
+                return local === actor ? `*${nm}` : nm;
+            }).sort();
+            console.log(`doc:backend actors=${info.join(',')}`);
+        }
     }
     openDocBackend(docId) {
         let doc = this.docs.get(docId) || new DocBackend_1.DocBackend(this, docId);

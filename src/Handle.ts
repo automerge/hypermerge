@@ -26,7 +26,7 @@ export default class Handle<T> {
     return this
   }
 
-  branch() : string {
+  follow() : string {
     const id = this.repo.create()
     this.repo.follow(id, this.id)
     return id
@@ -65,6 +65,10 @@ export default class Handle<T> {
     this.subscription = undefined
     this.state = null
     this.cleanup()
+  }
+
+  debug() {
+    this.repo.debug(this.id)
   }
 
   cleanup = () => {}

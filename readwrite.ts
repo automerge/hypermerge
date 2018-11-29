@@ -25,6 +25,7 @@ if (id === undefined) {
     doc.change((state : any) => {
       state.foo = (state.foo || 0) + 1
     })
+//    doc.debug()
   },1000)
   doc.subscribe((state:any) => {
     console.log("STATE",state)
@@ -34,7 +35,7 @@ if (id === undefined) {
   const doc = repo.open(id)
   setTimeout(() => {
     console.log("forking doc")
-    const followid = doc.branch()
+    const followid = doc.follow()
     const forkid = doc.fork()
     const fork = repo.open(forkid)
     const follow = repo.open(followid)
@@ -51,8 +52,9 @@ if (id === undefined) {
     setInterval(() => {
       console.log("merge fork")
       follow.change((state: any) => { state.follow = (state.follow || 1000) + 1 })
-    }, 1000)
-  },3000)
+      fork.change((state:any) => { state.fork = (state.fork || 0) + 1 })
+    }, 3000)
+  }, 3000)
   setInterval(() => {
     doc.change((state : any) => {
       state.bar = (state.bar || 0) + 1

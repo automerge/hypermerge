@@ -40,6 +40,7 @@ export declare class RepoBackend {
     id: Buffer;
     constructor(opts: Options);
     private createDocBackend;
+    private debug;
     private openDocBackend;
     merge(id: string, clock: Clock): void;
     follow(id: string, target: string): void;

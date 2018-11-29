@@ -1,5 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+function clockDebug(c) {
+    const d = {};
+    Object.keys(c).forEach(actor => {
+        const short = actor.substr(0, 5);
+        d[short] = c[actor];
+    });
+    return JSON.stringify(d);
+}
+exports.clockDebug = clockDebug;
 function equivalent(c1, c2) {
     const actors = new Set([...Object.keys(c1), ...Object.keys(c2)]);
     for (let actor of actors) {

@@ -12,6 +12,7 @@ class Repo {
         this.stream = this.back.stream;
         this.create = this.front.create;
         this.open = this.front.open;
+        this.state = this.front.state;
         this.replicate = this.back.replicate;
     }
 }

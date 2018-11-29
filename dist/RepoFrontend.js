@@ -15,6 +15,7 @@ const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
 const DocFrontend_1 = require("./DocFrontend");
 const ClockSet_1 = require("./ClockSet");
+const Clock_1 = require("./Clock");
 const debug_1 = __importDefault(require("debug"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default("repo:front");
@@ -36,6 +37,15 @@ class RepoFrontend {
         this.open = (id) => {
             const doc = this.docs.get(id) || this.openDocFrontend(id);
             return doc.handle();
+        };
+        this.state = (id) => {
+            return new Promise((resolve) => {
+                const handle = this.open(id);
+                handle.subscribe(val => {
+                    resolve(val);
+                    handle.close();
+                });
+            });
         };
         this.fork = (clock) => {
             const id = this.create();
@@ -70,14 +80,17 @@ class RepoFrontend {
             }
         };
     }
-    state(id) {
-        return new Promise((resolve) => {
-            const handle = this.open(id);
-            handle.subscribe(val => {
-                resolve(val);
-                handle.close();
-            });
-        });
+    debug(id) {
+        const doc = this.docs.get(id);
+        const short = id.substr(0, 5);
+        if (doc === undefined) {
+            console.log(`doc:frontend undefined doc=${short}`);
+        }
+        else {
+            console.log(`doc:frontend id=${short}`);
+            console.log(`doc:frontend clock=${Clock_1.clockDebug(doc.clock)}`);
+        }
+        this.toBackend.push({ type: "DebugMsg", id });
     }
     openDocFrontend(id) {
         const doc = new DocFrontend_1.DocFrontend(this, { docId: id });

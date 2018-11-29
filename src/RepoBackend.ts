@@ -2,6 +2,7 @@
 import Queue from "./Queue"
 import { MetadataBlock, Metadata } from "./Metadata"
 import { clock } from "./ClockSet"
+import { clockDebug } from "./Clock"
 import * as JsonBuffer from "./JsonBuffer"
 import * as Base58 from "bs58"
 import * as crypto from "hypercore/lib/crypto"
@@ -81,6 +82,24 @@ export class RepoBackend {
     this.initFeed(keys)
 
     return doc
+  }
+
+  private debug(id: string) {
+    const doc = this.docs.get(id)
+    const short = id.substr(0,5)
+    if (doc === undefined) {
+      console.log(`doc:backend NOT FOUND id=${short}`)
+    } else {
+      console.log(`doc:backend id=${short}`)
+      console.log(`doc:backend clock=${clockDebug(doc.clock)}`)
+      const local = this.meta.localActor(id)
+      const actors = [ ... this.meta.actors(id) ]
+      const info = actors.map(actor => { 
+        const nm = actor.substr(0,5)
+        return local === actor ? `*${nm}` : nm 
+      }).sort()
+      console.log(`doc:backend actors=${info.join(',')}`)
+    }
   }
 
   private openDocBackend(docId: string): DocBackend {
@@ -390,6 +409,10 @@ export class RepoBackend {
       }
       case "OpenMsg": {
         this.openDocBackend(msg.id)
+        break
+      }
+      case "DebugMsg": {
+        this.debug(msg.id)
         break
       }
 

@@ -84,10 +84,10 @@ class Metadata {
     setWritable(actor, writable) {
         this.writable.set(actor, writable);
     }
-    localActor(actor) {
-        for (let id of this.primaryActors.get(actor)) {
-            if (this.writable.get(id) === true) {
-                return id;
+    localActor(id) {
+        for (let actor of this.primaryActors.get(id)) {
+            if (this.writable.get(actor) === true) {
+                return actor;
             }
         }
         return undefined;

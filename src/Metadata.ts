@@ -110,10 +110,10 @@ export class Metadata {
     this.writable.set(actor,writable)
   }
 
-  localActor(actor: string) : string | undefined {
-    for (let id of this.primaryActors.get(actor)!) {
-      if (this.writable.get(id) === true) {
-        return id
+  localActor(id: string) : string | undefined {
+    for (let actor of this.primaryActors.get(id)!) {
+      if (this.writable.get(actor) === true) {
+        return actor
       }
     }
     return undefined

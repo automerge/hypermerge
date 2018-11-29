@@ -5,8 +5,8 @@ import * as crypto from "hypercore/lib/crypto"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import Handle from "./Handle"
 import { DocFrontend } from "./DocFrontend"
-import { Clock } from "automerge/frontend"
 import { clock2strs } from "./ClockSet"
+import { Clock, clockDebug } from "./Clock"
 import Debug from "debug"
 
 Debug.formatters.b = Base58.encode
@@ -34,7 +34,7 @@ export class RepoFrontend {
     return doc.handle()
   }
 
-  state = <T>(id: string): => Promise<T> {
+  state = <T>(id: string): Promise<T> => {
     return new Promise((resolve) => {
       const handle = this.open<T>(id)
       handle.subscribe( val => {
@@ -42,6 +42,19 @@ export class RepoFrontend {
         handle.close()
       })
     })
+  }
+
+  debug(id :string) {
+    const doc = this.docs.get(id)
+    const short = id.substr(0,5)
+    if (doc === undefined) {
+      console.log(`doc:frontend undefined doc=${short}`)
+    } else {
+      console.log(`doc:frontend id=${short}`)
+      console.log(`doc:frontend clock=${clockDebug(doc.clock)}`)
+    }
+
+    this.toBackend.push({ type: "DebugMsg", id })
   }
 
   fork = (clock: Clock) : string => {

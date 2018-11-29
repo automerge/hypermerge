@@ -56,10 +56,13 @@ class Handle {
         this.repo.merge(this.id, other.clock);
         return this;
     }
-    branch() {
+    follow() {
         const id = this.repo.create();
         this.repo.follow(id, this.id);
         return id;
+    }
+    debug() {
+        this.repo.debug(this.id);
     }
 }
 exports.default = Handle;
