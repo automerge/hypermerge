@@ -23,7 +23,7 @@ class RepoFrontend {
     constructor() {
         this.toBackend = new Queue_1.default("repo:tobackend");
         this.docs = new Map();
-        this.create = () => {
+        this.create = (init) => {
             const keys = crypto.keyPair();
             const publicKey = Base58.encode(keys.publicKey);
             const secretKey = Base58.encode(keys.secretKey);
@@ -32,32 +32,48 @@ class RepoFrontend {
             const doc = new DocFrontend_1.DocFrontend(this, { actorId, docId });
             this.docs.set(docId, doc);
             this.toBackend.push({ type: "CreateMsg", publicKey, secretKey });
+            if (init) {
+                doc.change(state => {
+                    for (let key in init) {
+                        state[key] = init[key];
+                    }
+                });
+            }
             return publicKey;
         };
-        this.open = (id) => {
-            const doc = this.docs.get(id) || this.openDocFrontend(id);
-            return doc.handle();
-        };
-        this.state = (id) => {
-            return new Promise((resolve) => {
-                const handle = this.open(id);
-                handle.subscribe(val => {
-                    resolve(val);
-                    handle.close();
-                });
+        this.merge = (id, target) => {
+            this.doc(target, (doc, clock) => {
+                const actors = ClockSet_1.clock2strs(clock);
+                this.toBackend.push({ type: "MergeMsg", id, actors });
             });
         };
-        this.fork = (clock) => {
-            const id = this.create();
-            this.merge(id, clock);
-            return id;
+        this.fork = (id) => {
+            const fork = this.create();
+            this.merge(fork, id);
+            return fork;
         };
         this.follow = (id, target) => {
             this.toBackend.push({ type: "FollowMsg", id, target });
         };
-        this.merge = (id, clock) => {
-            const actors = ClockSet_1.clock2strs(clock);
-            this.toBackend.push({ type: "MergeMsg", id, actors });
+        this.watch = (id, cb) => {
+            const handle = this.open(id);
+            handle.subscribe(cb);
+            return handle;
+        };
+        this.doc = (id, cb) => {
+            return new Promise((resolve) => {
+                const handle = this.open(id);
+                handle.subscribe((val, clock) => {
+                    resolve(val);
+                    if (cb)
+                        cb(val, clock);
+                    handle.close();
+                });
+            });
+        };
+        this.open = (id) => {
+            const doc = this.docs.get(id) || this.openDocFrontend(id);
+            return doc.handle();
         };
         this.subscribe = (subscriber) => {
             this.toBackend.subscribe(subscriber);

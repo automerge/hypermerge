@@ -14,15 +14,11 @@ export default class Handle<T> {
   }
 
   fork() : string {
-    if (this.clock === null) throw new Error("cant fork a handle without state")
-    const id = this.repo.create()
-    this.repo.merge(id, this.clock)
-    return id
+    return this.repo.fork(this.id)
   } 
 
   merge(other: Handle<T>) : this {
-    if (other.clock === null) throw new Error("cant merge a handle without state")
-    this.repo.merge(this.id, other.clock)
+    this.repo.merge(this.id, other.id)
     return this
   }
 
