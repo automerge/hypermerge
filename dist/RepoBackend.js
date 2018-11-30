@@ -12,6 +12,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const Queue_1 = __importDefault(require("./Queue"));
 const Metadata_1 = require("./Metadata");
+const MapSet_1 = __importDefault(require("./MapSet"));
 const ClockSet_1 = require("./ClockSet");
 const Clock_1 = require("./Clock");
 const JsonBuffer = __importStar(require("./JsonBuffer"));
@@ -30,7 +31,7 @@ class RepoBackend {
         this.joined = new Set();
         this.feeds = new Map();
         this.feedQs = new Map();
-        this.feedPeers = new Map();
+        this.feedPeers = new MapSet_1.default();
         this.docs = new Map();
         this.changes = new Map();
         this.toFrontend = new Queue_1.default("repo:toFrontend");
@@ -214,8 +215,10 @@ class RepoBackend {
         });
     }
     loadDocument(doc) {
+        console.log("LOAD DOC");
         this.allFeedData(doc.docId).then(changes => {
             const localActor = this.meta.localActor(doc.docId);
+            console.log("CHANGES", changes.length);
             doc.init(changes, localActor);
         });
     }
@@ -246,7 +249,7 @@ class RepoBackend {
     }
     peers(doc) {
         return [].concat(...this.actorIds(doc).map(actorId => [
-            ...(this.feedPeers.get(actorId) || []),
+            ...(this.feedPeers.get(actorId)),
         ]));
     }
     feedDocs(actorId, cb) {
@@ -271,21 +274,20 @@ class RepoBackend {
             secretKey,
         });
         const q = new Queue_1.default();
-        const peers = new Set();
         const changes = [];
         this.changes.set(actorId, changes);
         this.feeds.set(dkString, feed);
         this.feedQs.set(actorId, q);
-        this.feedPeers.set(actorId, peers);
         log("init feed", actorId);
         feed.ready(() => {
             this.meta.setWritable(actorId, feed.writable);
             this.meta.docsWith(actorId).forEach(docId => {
-                const peers = this.feedPeers.get(docId);
-                peers.forEach(peer => this.message(peer, this.meta.forActor(actorId)));
+                this.feedPeers.get(docId).forEach(peer => {
+                    this.message(peer, this.meta.forActor(actorId));
+                });
             });
             feed.on("peer-remove", (peer) => {
-                peers.delete(peer);
+                this.feedPeers.remove(actorId, peer);
             });
             feed.on("peer-add", (peer) => {
                 peer.stream.on("extension", (ext, buf) => {
@@ -299,7 +301,7 @@ class RepoBackend {
                         });
                     }
                 });
-                peers.add(peer);
+                this.feedPeers.add(actorId, peer);
                 this.message(peer, this.meta.forActor(actorId));
             });
             feed.on("download", (idx, data) => {

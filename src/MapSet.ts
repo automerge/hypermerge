@@ -19,6 +19,14 @@ export default class MapSet<A,B> {
     return change
   }
 
+  delete(key: A) {
+    this.map.delete(key)
+  }
+
+  remove(key: A, val: B) {
+    this.get(key).delete(val)
+  }
+
   get(key: A) : Set<B> {
     return this.map.get(key) || new Set()
   }

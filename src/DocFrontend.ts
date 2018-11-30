@@ -141,10 +141,10 @@ export class DocFrontend<T> {
     this.bench("patch", () => {
       this.front = Frontend.applyPatch(this.front, patch)
       this.updateClockPatch(patch)
-      if (patch.diffs.length > 0) {
-        if (this.mode === "pending") this.mode = "read"
-        this.newState()
-      }
+//      if (patch.diffs.length > 0) {
+      if (this.mode === "pending") this.mode = "read"
+      this.newState()
+//      }
     })
   }
 

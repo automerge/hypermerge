@@ -18,6 +18,12 @@ class MapSet {
         }
         return change;
     }
+    delete(key) {
+        this.map.delete(key);
+    }
+    remove(key, val) {
+        this.get(key).delete(val);
+    }
     get(key) {
         return this.map.get(key) || new Set();
     }

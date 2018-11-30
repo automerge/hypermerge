@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import Queue from "./Queue";
+import MapSet from "./MapSet";
 import { Feed, Peer } from "./hypercore";
 import { Clock, Change } from "automerge/backend";
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
@@ -30,7 +31,7 @@ export declare class RepoBackend {
     joined: Set<Buffer>;
     feeds: Map<string, Feed<Uint8Array>>;
     feedQs: Map<string, Queue<FeedFn>>;
-    feedPeers: Map<string, Set<Peer>>;
+    feedPeers: MapSet<string, Peer>;
     docs: Map<string, DocBackend>;
     changes: Map<string, Change[]>;
     private meta;

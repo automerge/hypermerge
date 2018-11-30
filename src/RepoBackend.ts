@@ -1,6 +1,7 @@
 
 import Queue from "./Queue"
 import { MetadataBlock, Metadata } from "./Metadata"
+import MapSet from "./MapSet"
 import { clock } from "./ClockSet"
 import { clockDebug } from "./Clock"
 import * as JsonBuffer from "./JsonBuffer"
@@ -51,7 +52,7 @@ export class RepoBackend {
   joined: Set<Buffer> = new Set()
   feeds: Map<string, Feed<Uint8Array>> = new Map()
   feedQs: Map<string, Queue<FeedFn>> = new Map()
-  feedPeers: Map<string, Set<Peer>> = new Map()
+  feedPeers: MapSet<string, Peer> = new MapSet()
   docs: Map<string, DocBackend> = new Map()
   changes: Map<string, Change[]> = new Map()
 //  private docMetadata: Metadata = new Metadata()
@@ -167,8 +168,10 @@ export class RepoBackend {
   }
 
   private loadDocument(doc: DocBackend) {
+    console.log("LOAD DOC")
     this.allFeedData(doc.docId).then(changes => {
       const localActor = this.meta.localActor(doc.docId)
+      console.log("CHANGES", changes.length)
       doc.init(changes, localActor)
     })
   }
@@ -228,7 +231,7 @@ export class RepoBackend {
   peers(doc: DocBackend): Peer[] {
     return ([] as Peer[]).concat(
       ...this.actorIds(doc).map(actorId => [
-        ...(this.feedPeers.get(actorId) || []), ]),
+        ...(this.feedPeers.get(actorId)), ]),
     )
   }
 
@@ -260,21 +263,20 @@ export class RepoBackend {
       secretKey,
     })
     const q = new Queue<FeedFn>()
-    const peers = new Set()
     const changes : Change[] = []
     this.changes.set(actorId, changes)
     this.feeds.set(dkString, feed)
     this.feedQs.set(actorId, q)
-    this.feedPeers.set(actorId, peers)
     log("init feed", actorId)
     feed.ready(() => {
       this.meta.setWritable(actorId,feed.writable)
       this.meta.docsWith( actorId ).forEach( docId => {
-        const peers = this.feedPeers.get(docId)!
-        peers.forEach( peer => this.message(peer, this.meta.forActor(actorId) ))
+        this.feedPeers.get(docId).forEach( peer => {
+          this.message(peer, this.meta.forActor(actorId))
+        })
       })
       feed.on("peer-remove", (peer: Peer) => {
-        peers.delete(peer)
+        this.feedPeers.remove(actorId, peer)
       })
       feed.on("peer-add", (peer: Peer) => {
         peer.stream.on("extension", (ext: string, buf: Buffer) => {
@@ -288,7 +290,7 @@ export class RepoBackend {
             })
           }
         })
-        peers.add(peer)
+        this.feedPeers.add(actorId, peer)
         this.message(peer, this.meta.forActor(actorId))
       })
 
