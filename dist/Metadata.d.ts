@@ -24,8 +24,8 @@ export declare class Metadata {
     private addBlock;
     setWritable(actor: string, writable: boolean): void;
     localActor(id: string): string | undefined;
-    actorsAsync(id: string, cb: (actors: Set<string>) => void): void;
-    actors(id: string): Set<string>;
+    actorsAsync(id: string, cb: (actors: string[]) => void): void;
+    actors(id: string): string[];
     private actorsSeen;
     clock(id: string): Clock;
     private genClock;

@@ -40,15 +40,14 @@ export declare class RepoBackend {
     swarm?: Swarm;
     id: Buffer;
     constructor(opts: Options);
-    private createDocBackend;
+    private create;
     private debug;
-    private openDocBackend;
+    private open;
     merge(id: string, clock: Clock): void;
     follow(id: string, target: string): void;
     replicate: (swarm: Swarm) => void;
-    private feedData;
-    private allFeedData;
     writeChange(actorId: string, change: Change): void;
+    private syncAllFeeds;
     private loadDocument;
     private join;
     private leave;

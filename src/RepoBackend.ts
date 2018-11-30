@@ -71,7 +71,7 @@ export class RepoBackend {
     this.meta = new Metadata(ledger)
   }
 
-  private createDocBackend(keys: KeyBuffer): DocBackend {
+  private create(keys: KeyBuffer): DocBackend {
     const docId = Base58.encode(keys.publicKey)
     log("Create", docId)
     const doc = new DocBackend(this, docId, Backend.init())
@@ -94,7 +94,7 @@ export class RepoBackend {
       console.log(`doc:backend id=${short}`)
       console.log(`doc:backend clock=${clockDebug(doc.clock)}`)
       const local = this.meta.localActor(id)
-      const actors = [ ... this.meta.actors(id) ]
+      const actors = this.meta.actors(id)
       const info = actors.map(actor => { 
         const nm = actor.substr(0,5)
         return local === actor ? `*${nm}` : nm 
@@ -103,7 +103,7 @@ export class RepoBackend {
     }
   }
 
-  private openDocBackend(docId: string): DocBackend {
+  private open(docId: string): DocBackend {
     let doc = this.docs.get(docId) || new DocBackend(this, docId)
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc)
@@ -120,7 +120,7 @@ export class RepoBackend {
 
   follow(id: string, target: string) {
     this.meta.follow(id, target)
-    this.initActors([ ... this.meta.actors(id)])
+    this.initActors(this.meta.actors(id))
   }
 
   replicate = (swarm: Swarm) => {
@@ -131,24 +131,6 @@ export class RepoBackend {
     for (let dk of this.joined) {
       this.swarm.join(dk)
     }
-  }
-
-  private feedData(actorId: string): Promise<Change[]> {
-    return new Promise((resolve, reject) => {
-      this.getFeed(actorId, feed => {
-        resolve(this.changes.get(actorId)!)
-      })
-    })
-  }
-
-  private allFeedData(id: string): Promise<Change[]> {
-    const blank : Change[] = []
-    return new Promise((resolve) => {
-      this.meta.actorsAsync(id, (actors) => {
-        Promise.all([... actors].map(actor => this.feedData(actor)))
-        .then( changes => resolve( blank.concat( ... changes )))
-      })
-    })
   }
 
   writeChange(actorId: string, change: Change) {
@@ -167,11 +149,27 @@ export class RepoBackend {
     })
   }
 
+  private syncAllFeeds(id: string, cb: ( actors: string[] ) => void) {
+      this.meta.actorsAsync(id, (actors) => {
+        Promise.all(
+          actors.map( actor => new Promise( resolve => { this.getFeed(actor, resolve) } ) )
+        ).then(() => {
+          cb([ ... actors ])
+        })
+      })
+  }
+
   private loadDocument(doc: DocBackend) {
-    console.log("LOAD DOC")
-    this.allFeedData(doc.docId).then(changes => {
-      const localActor = this.meta.localActor(doc.docId)
-      console.log("CHANGES", changes.length)
+    const id = doc.docId
+    this.syncAllFeeds( id , (actors) => {
+      const localActor = this.meta.localActor(id)
+      const changes : Change[] = []
+      actors.forEach(actor => {
+        const max = this.meta.clock(id)[actor] || 0
+        const data = this.changes.get(actor) || []
+        const slice = data.slice(0, max)
+        changes.push( ...  slice )
+      })
       doc.init(changes, localActor)
     })
   }
@@ -218,7 +216,7 @@ export class RepoBackend {
   }
 
   actorIds(doc: DocBackend): string[] {
-    return [ ... this.meta.actors(doc.docId) ]
+    return this.meta.actors(doc.docId)
   }
 
   feed(actorId: string): Feed<Uint8Array> {
@@ -335,7 +333,9 @@ export class RepoBackend {
         if (max > seq) {
           const changes = this.changes.get(actor)!.slice(seq, max)
           log(`changes found doc=${id} n=${changes.length} seq=${seq} max=${max} length=${changes.length}`)
-          doc.applyRemoteChanges(changes)
+          if (changes.length > 0) {
+            doc.applyRemoteChanges(changes)
+          }
         }
       }
     })
@@ -398,7 +398,7 @@ export class RepoBackend {
           publicKey: Base58.decode(msg.publicKey),
           secretKey: Base58.decode(msg.secretKey)
         }
-        this.createDocBackend(keys)
+        this.create(keys)
         break;
       }
       case "MergeMsg": {
@@ -410,7 +410,7 @@ export class RepoBackend {
         break;
       }
       case "OpenMsg": {
-        this.openDocBackend(msg.id)
+        this.open(msg.id)
         break
       }
       case "DebugMsg": {

@@ -119,22 +119,23 @@ export class Metadata {
     return undefined
   }
 
-  actorsAsync(id: string, cb: (actors: Set<string>) => void) {
+  actorsAsync(id: string, cb: (actors: string[]) => void) {
     this.readyQ.push(() => {
       cb(this.actors(id))
     })
   }
 
-  actors(id: string) : Set<string> {
-    const actors = this.actorsSeen(id, [], new Set())
-    return new Set([ ... actors ])
+  actors(id: string) : string[] {
+    return this.actorsSeen(id, [], new Set())
   }
 
   // FIXME - i really need a hell scenario test for this
   // prevent cyclical dependancies from causing an infinite search
   private actorsSeen(id: string, acc: string[], seen: Set<string>) : string[] {
     const primaryActors = this.primaryActors.get(id)!
+    const mergeActors = Object.keys((this.merges.get(id) || {}))
     acc.push( ... primaryActors )
+    acc.push( ... mergeActors )
     seen.add(id)
     this.follows.get(id).forEach(follow => {
       if (!seen.has(follow)) {

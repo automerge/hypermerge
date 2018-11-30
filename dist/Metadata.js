@@ -98,14 +98,15 @@ class Metadata {
         });
     }
     actors(id) {
-        const actors = this.actorsSeen(id, [], new Set());
-        return new Set([...actors]);
+        return this.actorsSeen(id, [], new Set());
     }
     // FIXME - i really need a hell scenario test for this
     // prevent cyclical dependancies from causing an infinite search
     actorsSeen(id, acc, seen) {
         const primaryActors = this.primaryActors.get(id);
+        const mergeActors = Object.keys((this.merges.get(id) || {}));
         acc.push(...primaryActors);
+        acc.push(...mergeActors);
         seen.add(id);
         this.follows.get(id).forEach(follow => {
             if (!seen.has(follow)) {

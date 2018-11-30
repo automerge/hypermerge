@@ -110,7 +110,7 @@ class RepoBackend {
                         publicKey: Base58.decode(msg.publicKey),
                         secretKey: Base58.decode(msg.secretKey)
                     };
-                    this.createDocBackend(keys);
+                    this.create(keys);
                     break;
                 }
                 case "MergeMsg": {
@@ -122,7 +122,7 @@ class RepoBackend {
                     break;
                 }
                 case "OpenMsg": {
-                    this.openDocBackend(msg.id);
+                    this.open(msg.id);
                     break;
                 }
                 case "DebugMsg": {
@@ -139,7 +139,7 @@ class RepoBackend {
         this.id = ledger.id;
         this.meta = new Metadata_1.Metadata(ledger);
     }
-    createDocBackend(keys) {
+    create(keys) {
         const docId = Base58.encode(keys.publicKey);
         log("Create", docId);
         const doc = new DocBackend_1.DocBackend(this, docId, Backend.init());
@@ -158,7 +158,7 @@ class RepoBackend {
             console.log(`doc:backend id=${short}`);
             console.log(`doc:backend clock=${Clock_1.clockDebug(doc.clock)}`);
             const local = this.meta.localActor(id);
-            const actors = [...this.meta.actors(id)];
+            const actors = this.meta.actors(id);
             const info = actors.map(actor => {
                 const nm = actor.substr(0, 5);
                 return local === actor ? `*${nm}` : nm;
@@ -166,7 +166,7 @@ class RepoBackend {
             console.log(`doc:backend actors=${info.join(',')}`);
         }
     }
-    openDocBackend(docId) {
+    open(docId) {
         let doc = this.docs.get(docId) || new DocBackend_1.DocBackend(this, docId);
         if (!this.docs.has(docId)) {
             this.docs.set(docId, doc);
@@ -181,23 +181,7 @@ class RepoBackend {
     }
     follow(id, target) {
         this.meta.follow(id, target);
-        this.initActors([...this.meta.actors(id)]);
-    }
-    feedData(actorId) {
-        return new Promise((resolve, reject) => {
-            this.getFeed(actorId, feed => {
-                resolve(this.changes.get(actorId));
-            });
-        });
-    }
-    allFeedData(id) {
-        const blank = [];
-        return new Promise((resolve) => {
-            this.meta.actorsAsync(id, (actors) => {
-                Promise.all([...actors].map(actor => this.feedData(actor)))
-                    .then(changes => resolve(blank.concat(...changes)));
-            });
-        });
+        this.initActors(this.meta.actors(id));
     }
     writeChange(actorId, change) {
         const changes = this.changes.get(actorId);
@@ -214,11 +198,24 @@ class RepoBackend {
             });
         });
     }
+    syncAllFeeds(id, cb) {
+        this.meta.actorsAsync(id, (actors) => {
+            Promise.all(actors.map(actor => new Promise(resolve => { this.getFeed(actor, resolve); }))).then(() => {
+                cb([...actors]);
+            });
+        });
+    }
     loadDocument(doc) {
-        console.log("LOAD DOC");
-        this.allFeedData(doc.docId).then(changes => {
-            const localActor = this.meta.localActor(doc.docId);
-            console.log("CHANGES", changes.length);
+        const id = doc.docId;
+        this.syncAllFeeds(id, (actors) => {
+            const localActor = this.meta.localActor(id);
+            const changes = [];
+            actors.forEach(actor => {
+                const max = this.meta.clock(id)[actor] || 0;
+                const data = this.changes.get(actor) || [];
+                const slice = data.slice(0, max);
+                changes.push(...slice);
+            });
             doc.init(changes, localActor);
         });
     }
@@ -239,7 +236,7 @@ class RepoBackend {
         peer.stream.extension(exports.EXT, Buffer.from(JSON.stringify(data)));
     }
     actorIds(doc) {
-        return [...this.meta.actors(doc.docId)];
+        return this.meta.actors(doc.docId);
     }
     feed(actorId) {
         const publicKey = Base58.decode(actorId);
@@ -339,7 +336,9 @@ class RepoBackend {
                 if (max > seq) {
                     const changes = this.changes.get(actor).slice(seq, max);
                     log(`changes found doc=${id} n=${changes.length} seq=${seq} max=${max} length=${changes.length}`);
-                    doc.applyRemoteChanges(changes);
+                    if (changes.length > 0) {
+                        doc.applyRemoteChanges(changes);
+                    }
                 }
             }
         });
