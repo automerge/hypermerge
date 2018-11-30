@@ -8,11 +8,28 @@ with hypercore, a distributed append-only log.
 
 ### Repo
 
-A repo manages a collection of automerge documents.  It's two primary functions are `create` and `open`
-
 ```ts
-  const id = repo.create()
-  const handle = repo.open(id)
+  const id = repo.create({ initial: "state" })
+
+  repo.doc( id, (doc) => { ... } )
+  // or
+  repo.doc( id ).then((doc) => { ... })
+  
+  const handle = repo.warch( id, (doc) => {
+    ...
+  })
+  handle.close()
+
+  // fork a document
+  const id2 = repo.fork(id)
+
+  // manually fork a document
+  const id3 = repo.create()
+  repo.merge(id3,id2)
+
+  // tell a document to follow another document
+  const id4 = repo.create()
+  repo.follow(id4, id)
 ```
 
 Repo's can be split in to frontend and backend if you dont want the documents
