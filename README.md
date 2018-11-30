@@ -6,7 +6,7 @@ with hypercore, a distributed append-only log.
 
 ## Concepts
 
-### Repo
+### Repo API
 
 ```ts
   const id = repo.create({ initial: "state" })
