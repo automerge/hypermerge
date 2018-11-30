@@ -15,10 +15,16 @@ with hypercore, a distributed append-only log.
   // or
   repo.doc( id ).then((doc) => { ... })
   
+  // watch a doc change over time
   const handle = repo.warch( id, (doc) => {
     ...
   })
   handle.close()
+
+  // change a doc
+  repo.change(id, (doc) => {
+    doc.foo = "bar"
+  })
 
   // fork a document
   const id2 = repo.fork(id)
@@ -26,6 +32,7 @@ with hypercore, a distributed append-only log.
   // manually fork a document
   const id3 = repo.create()
   repo.merge(id3,id2)
+
 
   // tell a document to follow another document
   const id4 = repo.create()

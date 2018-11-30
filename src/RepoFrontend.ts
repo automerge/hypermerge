@@ -4,6 +4,7 @@ import * as Base58 from "bs58"
 import * as crypto from "hypercore/lib/crypto"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import Handle from "./Handle"
+import { ChangeFn } from "automerge/frontend"
 import { DocFrontend } from "./DocFrontend"
 import { clock2strs } from "./ClockSet"
 import { Clock, clockDebug } from "./Clock"
@@ -34,6 +35,10 @@ export class RepoFrontend {
       })
     }
     return publicKey
+  }
+
+  change = <T>(id: string, fn: ChangeFn<T>) => {
+    this.open<T>(id).change(fn)
   }
 
 

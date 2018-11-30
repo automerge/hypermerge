@@ -1,12 +1,14 @@
 import Queue from "./Queue";
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import Handle from "./Handle";
+import { ChangeFn } from "automerge/frontend";
 import { DocFrontend } from "./DocFrontend";
 import { Clock } from "./Clock";
 export declare class RepoFrontend {
     toBackend: Queue<ToBackendRepoMsg>;
     docs: Map<string, DocFrontend<any>>;
     create: (init?: any) => string;
+    change: <T>(id: string, fn: ChangeFn<T>) => void;
     merge: (id: string, target: string) => void;
     fork: (id: string) => string;
     follow: (id: string, target: string) => void;

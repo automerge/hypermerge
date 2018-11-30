@@ -15,6 +15,7 @@ class Repo {
         this.follow = this.front.follow;
         this.doc = this.front.doc;
         this.fork = this.front.fork;
+        this.change = this.front.change;
         this.watch = this.front.watch;
         this.merge = this.front.merge;
         this.replicate = this.back.replicate;

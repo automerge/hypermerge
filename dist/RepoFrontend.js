@@ -41,6 +41,9 @@ class RepoFrontend {
             }
             return publicKey;
         };
+        this.change = (id, fn) => {
+            this.open(id).change(fn);
+        };
         this.merge = (id, target) => {
             this.doc(target, (doc, clock) => {
                 const actors = ClockSet_1.clock2strs(clock);
