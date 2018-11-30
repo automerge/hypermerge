@@ -16,7 +16,7 @@ with hypercore, a distributed append-only log.
   repo.doc( id ).then((doc) => { ... })
   
   // watch a doc change over time
-  const handle = repo.warch( id, (doc) => {
+  const handle = repo.watch( id, (doc) => {
     ...
   })
   handle.close()
