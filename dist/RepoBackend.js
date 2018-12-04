@@ -59,9 +59,15 @@ class RepoBackend {
             this.joined.delete(dk);
         };
         this.getFeed = (actorId, cb) => {
-            const publicKey = Base58.decode(actorId);
-            const q = this.feedQs.get(actorId) || this.initFeed({ publicKey });
-            q.push(cb);
+            try {
+                const publicKey = Base58.decode(actorId);
+                const q = this.feedQs.get(actorId) || this.initFeed({ publicKey });
+                q.push(cb);
+            }
+            catch (e) {
+                // Likely an invalid actorId
+                console.warn(e);
+            }
         };
         this.closeFeed = (actorId) => {
             this.feed(actorId).close();
