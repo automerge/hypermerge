@@ -55,7 +55,7 @@ export class RepoBackend {
   feedPeers: MapSet<string, Peer> = new MapSet()
   docs: Map<string, DocBackend> = new Map()
   changes: Map<string, Change[]> = new Map()
-//  private docMetadata: Metadata = new Metadata()
+  //  private docMetadata: Metadata = new Metadata()
   private meta: Metadata
   private opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue("repo:toFrontend")
@@ -66,7 +66,7 @@ export class RepoBackend {
     this.opts = opts
     this.path = opts.path || "default"
     this.storage = opts.storage
-    const ledger : Feed<MetadataBlock> = hypercore(this.storageFn("ledger"), { valueEncoding: "json" })
+    const ledger: Feed<MetadataBlock> = hypercore(this.storageFn("ledger"), { valueEncoding: "json" })
     this.id = ledger.id
     this.meta = new Metadata(ledger)
   }
@@ -87,7 +87,7 @@ export class RepoBackend {
 
   private debug(id: string) {
     const doc = this.docs.get(id)
-    const short = id.substr(0,5)
+    const short = id.substr(0, 5)
     if (doc === undefined) {
       console.log(`doc:backend NOT FOUND id=${short}`)
     } else {
@@ -95,9 +95,9 @@ export class RepoBackend {
       console.log(`doc:backend clock=${clockDebug(doc.clock)}`)
       const local = this.meta.localActor(id)
       const actors = this.meta.actors(id)
-      const info = actors.map(actor => { 
-        const nm = actor.substr(0,5)
-        return local === actor ? `*${nm}` : nm 
+      const info = actors.map(actor => {
+        const nm = actor.substr(0, 5)
+        return local === actor ? `*${nm}` : nm
       }).sort()
       console.log(`doc:backend actors=${info.join(',')}`)
     }
@@ -149,26 +149,26 @@ export class RepoBackend {
     })
   }
 
-  private syncAllFeeds(id: string, cb: ( actors: string[] ) => void) {
-      this.meta.actorsAsync(id, (actors) => {
-        Promise.all(
-          actors.map( actor => new Promise( resolve => { this.getFeed(actor, resolve) } ) )
-        ).then(() => {
-          cb([ ... actors ])
-        })
+  private syncAllFeeds(id: string, cb: (actors: string[]) => void) {
+    this.meta.actorsAsync(id, (actors) => {
+      Promise.all(
+        actors.map(actor => new Promise(resolve => { this.getFeed(actor, resolve) }))
+      ).then(() => {
+        cb([...actors])
       })
+    })
   }
 
   private loadDocument(doc: DocBackend) {
     const id = doc.docId
-    this.syncAllFeeds( id , (actors) => {
+    this.syncAllFeeds(id, (actors) => {
       const localActor = this.meta.localActor(id)
-      const changes : Change[] = []
+      const changes: Change[] = []
       actors.forEach(actor => {
         const max = this.meta.clock(id)[actor] || 0
         const data = this.changes.get(actor) || []
         const slice = data.slice(0, max)
-        changes.push( ...  slice )
+        changes.push(...slice)
       })
       doc.init(changes, localActor)
     })
@@ -191,9 +191,14 @@ export class RepoBackend {
   }
 
   private getFeed = (actorId: string, cb: FeedFn) => {
-    const publicKey = Base58.decode(actorId)
-    const q = this.feedQs.get(actorId) || this.initFeed({ publicKey })
-    q.push(cb)
+    try {
+      const publicKey = Base58.decode(actorId)
+      const q = this.feedQs.get(actorId) || this.initFeed({ publicKey })
+      q.push(cb)
+    } catch (e) {
+      // Likely an invalid actorId
+      console.warn(e)
+    }
   }
 
   private storageFn(path: string): Function {
@@ -229,7 +234,7 @@ export class RepoBackend {
   peers(doc: DocBackend): Peer[] {
     return ([] as Peer[]).concat(
       ...this.actorIds(doc).map(actorId => [
-        ...(this.feedPeers.get(actorId)), ]),
+        ...(this.feedPeers.get(actorId)),]),
     )
   }
 
@@ -239,11 +244,11 @@ export class RepoBackend {
 
   private feedDocs(actorId: string, cb: (doc: DocBackend) => void) {
     //FIXME need SEQ
-    this.meta.docsWith(actorId, 0).forEach( docId => cb( this.docs.get(docId)! ))
+    this.meta.docsWith(actorId, 0).forEach(docId => cb(this.docs.get(docId)!))
   }
 
-  private initActors( actors: string[] ) {
-    actors.forEach( actor => { 
+  private initActors(actors: string[]) {
+    actors.forEach(actor => {
       this.getFeed(actor, feed => {
         this.syncChanges(actor)
       })
@@ -261,15 +266,15 @@ export class RepoBackend {
       secretKey,
     })
     const q = new Queue<FeedFn>()
-    const changes : Change[] = []
+    const changes: Change[] = []
     this.changes.set(actorId, changes)
     this.feeds.set(dkString, feed)
     this.feedQs.set(actorId, q)
     log("init feed", actorId)
     feed.ready(() => {
-      this.meta.setWritable(actorId,feed.writable)
-      this.meta.docsWith( actorId ).forEach( docId => {
-        this.feedPeers.get(docId).forEach( peer => {
+      this.meta.setWritable(actorId, feed.writable)
+      this.meta.docsWith(actorId).forEach(docId => {
+        this.feedPeers.get(docId).forEach(peer => {
           this.message(peer, this.meta.forActor(actorId))
         })
       })
@@ -284,7 +289,7 @@ export class RepoBackend {
             this.meta.addBlocks(blocks)
             blocks.forEach(block => {
               // getFeed -> initFeed -> join()
-              this.initActors( [ ... block.actorIds! ])
+              this.initActors([...block.actorIds!])
             })
           }
         })
@@ -302,7 +307,7 @@ export class RepoBackend {
 
       // read everything from disk before subscribing to the queue
       readFeed(feed, datas => {
-        changes.push( ... datas.map(JsonBuffer.parse))
+        changes.push(...datas.map(JsonBuffer.parse))
         this.join(actorId)
         q.subscribe(f => f(feed))
       })
@@ -317,7 +322,7 @@ export class RepoBackend {
       })
     })
     return q
-   }
+  }
 
   private message(peer: Peer, message: any) {
     peer.stream.extension(EXT, Buffer.from(JSON.stringify(message)))
