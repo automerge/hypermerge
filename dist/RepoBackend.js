@@ -297,6 +297,14 @@ class RepoBackend {
                     if (ext === exports.EXT) {
                         const blocks = JSON.parse(buf.toString());
                         log("EXT", blocks);
+                        if (!Array.isArray(blocks)) {
+                            return console.log("Not a valid extension message", blocks);
+                        }
+                        for (const block of blocks) {
+                            if (!Metadata_1.isMetadataBlock(block)) {
+                                return console.log("Not a valid block", block);
+                            }
+                        }
                         this.meta.addBlocks(blocks);
                         blocks.forEach(block => {
                             // getFeed -> initFeed -> join()

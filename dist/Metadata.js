@@ -7,6 +7,13 @@ const Queue_1 = __importDefault(require("./Queue"));
 const MapSet_1 = __importDefault(require("./MapSet"));
 const hypercore_1 = require("./hypercore");
 const Clock_1 = require("./Clock");
+function isMetadataBlock(block) {
+    // TODO: this isn't perfect, but good enough for now
+    return typeof block === "object"
+        && block != null
+        && typeof block.docId === "string";
+}
+exports.isMetadataBlock = isMetadataBlock;
 class MetadataState {
 }
 class Metadata {

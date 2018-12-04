@@ -6,6 +6,7 @@ export interface MetadataBlock {
     follows?: string[];
     merge?: Clock;
 }
+export declare function isMetadataBlock(block: any): block is MetadataBlock;
 export declare class Metadata {
     private primaryActors;
     private follows;
