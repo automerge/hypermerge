@@ -12,17 +12,24 @@ export interface MetadataBlock {
   merge?: Clock
 }
 
+export function isMetadataBlock(block: any): block is MetadataBlock {
+  // TODO: this isn't perfect, but good enough for now
+  return typeof block === "object"
+    && block != null
+    && typeof block.docId === "string"
+}
+
 class MetadataState {
 }
 
 export class Metadata {
-  private primaryActors: MapSet<string,string> = new MapSet()
-  private follows: MapSet<string,string> = new MapSet()
-  private merges: Map<string,Clock> = new Map()
+  private primaryActors: MapSet<string, string> = new MapSet()
+  private follows: MapSet<string, string> = new MapSet()
+  private merges: Map<string, Clock> = new Map()
   private readyQ: Queue<() => void> = new Queue()
-  private clocks: Map<string,Clock> = new Map()
+  private clocks: Map<string, Clock> = new Map()
 
-  private writable: Map<string,boolean> = new Map()
+  private writable: Map<string, boolean> = new Map()
 
   // whats up with this ready/replay thing
   // there is a situation where someone opens a new document before the ledger is done readying
@@ -41,7 +48,7 @@ export class Metadata {
   private ledger: Feed<MetadataBlock>
 
 
-  constructor(ledger : Feed<MetadataBlock>) {
+  constructor(ledger: Feed<MetadataBlock>) {
     this.ledger = ledger
     this.ledger.ready(() => {
       readFeed(this.ledger, this.loadLedger)
@@ -60,12 +67,12 @@ export class Metadata {
     this.readyQ.subscribe(f => f())
   }
 
-  private hasBlock(block: MetadataBlock) : boolean {
+  private hasBlock(block: MetadataBlock): boolean {
     return false
   }
 
   private batchAdd(blocks: MetadataBlock[]) {
-    blocks.forEach( block => this.addBlock(block) )
+    blocks.forEach(block => this.addBlock(block))
   }
 
   // write through caching strategy
@@ -80,7 +87,7 @@ export class Metadata {
     this.genClocks()
   }
 
-  private addBlock(block: MetadataBlock) : boolean {
+  private addBlock(block: MetadataBlock): boolean {
     let changedActors = false
     let changedFollow = false
     let changedMerge = false
@@ -95,9 +102,9 @@ export class Metadata {
     }
 
     if (block.merge !== undefined) {
-      const oldClock : Clock = this.merges.get(id) || {}
+      const oldClock: Clock = this.merges.get(id) || {}
       const newClock = union(oldClock, block.merge)
-      changedMerge = !equivalent(newClock,oldClock)
+      changedMerge = !equivalent(newClock, oldClock)
       if (changedMerge) {
         this.merges.set(id, newClock)
       }
@@ -107,10 +114,10 @@ export class Metadata {
   }
 
   setWritable(actor: string, writable: boolean) {
-    this.writable.set(actor,writable)
+    this.writable.set(actor, writable)
   }
 
-  localActor(id: string) : string | undefined {
+  localActor(id: string): string | undefined {
     for (let actor of this.primaryActors.get(id)!) {
       if (this.writable.get(actor) === true) {
         return actor
@@ -125,17 +132,17 @@ export class Metadata {
     })
   }
 
-  actors(id: string) : string[] {
+  actors(id: string): string[] {
     return this.actorsSeen(id, [], new Set())
   }
 
   // FIXME - i really need a hell scenario test for this
   // prevent cyclical dependancies from causing an infinite search
-  private actorsSeen(id: string, acc: string[], seen: Set<string>) : string[] {
+  private actorsSeen(id: string, acc: string[], seen: Set<string>): string[] {
     const primaryActors = this.primaryActors.get(id)!
     const mergeActors = Object.keys((this.merges.get(id) || {}))
-    acc.push( ... primaryActors )
-    acc.push( ... mergeActors )
+    acc.push(...primaryActors)
+    acc.push(...mergeActors)
     seen.add(id)
     this.follows.get(id).forEach(follow => {
       if (!seen.has(follow)) {
@@ -145,13 +152,13 @@ export class Metadata {
     return acc
   }
 
-  clock(id: string) : Clock {
+  clock(id: string): Clock {
     return this.clocks.get(id)!
   }
 
-  private genClock(id: string) : Clock {
-    const infinityClock : Clock = {}
-    this.actors(id).forEach( actor => {
+  private genClock(id: string): Clock {
+    const infinityClock: Clock = {}
+    this.actors(id).forEach(actor => {
       infinityClock[actor] = Infinity
     })
     return union(this.merges.get(id) || {}, infinityClock)
@@ -159,61 +166,61 @@ export class Metadata {
 
   private genClocks() {
     // dont really need to regen them all (but follow...)
-    const clocks : Map<string,Clock> = new Map()
-    const docs = this.primaryActors.keys().forEach( id => {
-      clocks.set(id , this.genClock(id))
+    const clocks: Map<string, Clock> = new Map()
+    const docs = this.primaryActors.keys().forEach(id => {
+      clocks.set(id, this.genClock(id))
     })
     this.clocks = clocks
   }
 
-  docsWith(actor: string, seq: number = 0) : string[] {
+  docsWith(actor: string, seq: number = 0): string[] {
     return this.docs().filter(id => this.has(id, actor, seq))
   }
 
-  covered(id: string, clock: Clock) : Clock {
+  covered(id: string, clock: Clock): Clock {
     return intersection(this.clock(id), clock)
   }
 
-  docs() : string[] {
-    return [ ... this.clocks.keys() ]
+  docs(): string[] {
+    return [... this.clocks.keys()]
   }
 
-  has(id: string, actor: string, seq: number) : boolean {
+  has(id: string, actor: string, seq: number): boolean {
     return (this.clock(id)[actor] || 0) >= seq
   }
 
-  merge(id: string, merge: Clock ) {
+  merge(id: string, merge: Clock) {
     this.writeThrough({ docId: id, merge })
   }
 
-  follow( id: string, follow: string ) {
-    this.writeThrough({ docId: id, follows: [ follow ] })
+  follow(id: string, follow: string) {
+    this.writeThrough({ docId: id, follows: [follow] })
   }
 
-  addActor( id: string, actorId: string) {
-    this.addActors(id, [ actorId ])
+  addActor(id: string, actorId: string) {
+    this.addActors(id, [actorId])
   }
 
-  addBlocks( blocks: MetadataBlock[] ) {
-    blocks.forEach( block => {
-      this.writeThrough( block )
+  addBlocks(blocks: MetadataBlock[]) {
+    blocks.forEach(block => {
+      this.writeThrough(block)
     })
   }
 
-  addActors( id: string, actorIds: string[] ) {
+  addActors(id: string, actorIds: string[]) {
     this.writeThrough({ docId: id, actorIds })
   }
 
-  forDoc( id: string ) : MetadataBlock {
+  forDoc(id: string): MetadataBlock {
     return {
       docId: id,
-      actorIds: [ ... this.primaryActors.get(id) ],
-      follows: [ ... this.follows.get(id) ],
+      actorIds: [... this.primaryActors.get(id)],
+      follows: [... this.follows.get(id)],
       merge: this.merges.get(id) || {}
     }
   }
 
-  forActor( actor: string) : MetadataBlock[] {
+  forActor(actor: string): MetadataBlock[] {
     return this.docsWith(actor, 0).map(id => this.forDoc(id))
   }
 }

@@ -1,6 +1,6 @@
 
 import Queue from "./Queue"
-import { MetadataBlock, Metadata } from "./Metadata"
+import { MetadataBlock, Metadata, isMetadataBlock } from "./Metadata"
 import MapSet from "./MapSet"
 import { clock } from "./ClockSet"
 import { clockDebug } from "./Clock"
@@ -284,8 +284,18 @@ export class RepoBackend {
       feed.on("peer-add", (peer: Peer) => {
         peer.stream.on("extension", (ext: string, buf: Buffer) => {
           if (ext === EXT) {
-            const blocks: MetadataBlock[] = JSON.parse(buf.toString())
+            const blocks = JSON.parse(buf.toString()) as unknown
             log("EXT", blocks)
+
+            if (!Array.isArray(blocks)) {
+              return console.log("Not a valid extension message", blocks)
+            }
+            for (const block of blocks) {
+              if (!isMetadataBlock(block)) {
+                return console.log("Not a valid block", block)
+              }
+            }
+
             this.meta.addBlocks(blocks)
             blocks.forEach(block => {
               // getFeed -> initFeed -> join()
