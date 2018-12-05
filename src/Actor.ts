@@ -153,7 +153,6 @@ export class Actor {
   }
 
   handleBlock = (idx: number, data: Uint8Array) => {
-    console.log("HANDLE BLOCK", idx)
     switch (this.type) {
       case "Automerge": 
         this.changes.push(JsonBuffer.parse(data))

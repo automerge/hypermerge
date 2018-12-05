@@ -178,7 +178,6 @@ export class RepoBackend {
   }
 
   private getReadyActor = (actorId: string, cb: (actor: Actor) => void) => {
-    console.log("getReadyActor")
     const publicKey = Base58.decode(actorId)
     const actor = this.actors.get(actorId) || this.initActor({ publicKey })
     actor.push(cb)
@@ -258,7 +257,6 @@ export class RepoBackend {
   }
 
   stream = (opts: any): any => {
-    console.log("STREAM", opts)
     const stream = HypercoreProtocol({
       live: true,
       id: this.id,
