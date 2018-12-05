@@ -13,10 +13,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const debug_1 = __importDefault(require("debug"));
 const Backend = __importStar(require("automerge/backend"));
 const Queue_1 = __importDefault(require("./Queue"));
-const RepoBackend_1 = require("./RepoBackend");
 const log = debug_1.default("hypermerge:back");
 class DocBackend {
-    constructor(core, docId, back) {
+    constructor(core, id, back) {
         this.clock = {};
         this.localChangeQ = new Queue_1.default("backend:localChangeQ");
         this.remoteChangesQ = new Queue_1.default("backend:remoteChangesQ");
@@ -26,9 +25,6 @@ class DocBackend {
         };
         this.applyLocalChange = (change) => {
             this.localChangeQ.push(change);
-        };
-        this.actorIds = () => {
-            return this.repo.actorIds(this);
         };
         this.release = () => {
             this.repo.releaseManager(this);
@@ -40,7 +36,7 @@ class DocBackend {
                 if (!this.actorId) {
                     this.actorId = this.repo.initActorFeed(this);
                 }
-                this.repo.toFrontend.push({ type: "ActorIdMsg", id: this.docId, actorId: this.actorId });
+                this.repo.toFrontend.push({ type: "ActorIdMsg", id: this.id, actorId: this.actorId });
             }
             else {
                 // remember we want one for when init happens
@@ -58,17 +54,17 @@ class DocBackend {
                 this.updateClock(changes);
                 this.subscribeToLocalChanges();
                 this.subscribeToRemoteChanges();
-                this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: this.actorId, patch });
+                this.repo.toFrontend.push({ type: "ReadyMsg", id: this.id, actorId: this.actorId, patch });
             });
         };
         this.repo = core;
-        this.docId = docId;
+        this.id = id;
         if (back) {
             this.back = back;
-            this.actorId = docId;
+            this.actorId = id;
             this.subscribeToRemoteChanges();
             this.subscribeToLocalChanges();
-            this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: docId });
+            this.repo.toFrontend.push({ type: "ReadyMsg", id: this.id, actorId: id });
         }
     }
     updateClock(changes) {
@@ -84,7 +80,7 @@ class DocBackend {
                 const [back, patch] = Backend.applyChanges(this.back, changes);
                 this.back = back;
                 this.updateClock(changes);
-                this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch });
+                this.repo.toFrontend.push({ type: "PatchMsg", id: this.id, patch });
             });
         });
     }
@@ -94,37 +90,16 @@ class DocBackend {
                 const [back, patch] = Backend.applyLocalChange(this.back, change);
                 this.back = back;
                 this.updateClock([change]);
-                this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch });
-                this.repo.writeChange(this.actorId, change);
+                this.repo.toFrontend.push({ type: "PatchMsg", id: this.id, patch });
+                this.repo.actor(this.actorId).writeChange(change);
             });
         });
-    }
-    peers() {
-        return this.repo.peers(this);
-    }
-    feeds() {
-        return this.actorIds().map(actorId => this.repo.feed(actorId));
-    }
-    broadcast(message) {
-        this.peers().forEach(peer => this.message(peer, message));
-    }
-    message(peer, message) {
-        peer.stream.extension(RepoBackend_1.EXT, Buffer.from(JSON.stringify(message)));
-    }
-    messageMetadata(peer) {
-        this.message(peer, this.metadata());
-    }
-    broadcastMetadata() {
-        this.broadcast(this.actorIds());
-    }
-    metadata() {
-        return this.actorIds();
     }
     bench(msg, f) {
         const start = Date.now();
         f();
         const duration = Date.now() - start;
-        log(`docId=${this.docId} task=${msg} time=${duration}ms`);
+        log(`id=${this.id} task=${msg} time=${duration}ms`);
     }
 }
 exports.DocBackend = DocBackend;

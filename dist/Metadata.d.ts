@@ -1,12 +1,13 @@
 import { Feed } from "./hypercore";
 import { Clock } from "./Clock";
 export interface MetadataBlock {
-    docId: string;
+    id: string;
+    docId?: string;
+    bytes?: number;
     actorIds?: string[];
     follows?: string[];
     merge?: Clock;
 }
-export declare function isMetadataBlock(block: any): block is MetadataBlock;
 export declare class Metadata {
     private primaryActors;
     private follows;
@@ -24,7 +25,7 @@ export declare class Metadata {
     private writeThrough;
     private addBlock;
     setWritable(actor: string, writable: boolean): void;
-    localActor(id: string): string | undefined;
+    localActorId(id: string): string | undefined;
     actorsAsync(id: string, cb: (actors: string[]) => void): void;
     actors(id: string): string[];
     private actorsSeen;
@@ -37,6 +38,7 @@ export declare class Metadata {
     has(id: string, actor: string, seq: number): boolean;
     merge(id: string, merge: Clock): void;
     follow(id: string, follow: string): void;
+    addFile(id: string, bytes: number): void;
     addActor(id: string, actorId: string): void;
     addBlocks(blocks: MetadataBlock[]): void;
     addActors(id: string, actorIds: string[]): void;

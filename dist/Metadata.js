@@ -7,13 +7,14 @@ const Queue_1 = __importDefault(require("./Queue"));
 const MapSet_1 = __importDefault(require("./MapSet"));
 const hypercore_1 = require("./hypercore");
 const Clock_1 = require("./Clock");
-function isMetadataBlock(block) {
-    // TODO: this isn't perfect, but good enough for now
-    return typeof block === "object"
-        && block != null
-        && typeof block.docId === "string";
+/*
+export function isMetadataBlock(block: any): block is MetadataBlock {
+  // TODO: this isn't perfect, but good enough for now
+  return typeof block === "object"
+    && block != null
+    && typeof block.docId === "string"
 }
-exports.isMetadataBlock = isMetadataBlock;
+*/
 class MetadataState {
 }
 class Metadata {
@@ -71,7 +72,7 @@ class Metadata {
         let changedActors = false;
         let changedFollow = false;
         let changedMerge = false;
-        let id = block.docId;
+        let id = block.id || block.docId || block.id; // olds feeds have block.docId
         if (block.actorIds !== undefined) {
             changedActors = this.primaryActors.merge(id, block.actorIds);
         }
@@ -91,7 +92,7 @@ class Metadata {
     setWritable(actor, writable) {
         this.writable.set(actor, writable);
     }
-    localActor(id) {
+    localActorId(id) {
         for (let actor of this.primaryActors.get(id)) {
             if (this.writable.get(actor) === true) {
                 return actor;
@@ -153,10 +154,13 @@ class Metadata {
         return (this.clock(id)[actor] || 0) >= seq;
     }
     merge(id, merge) {
-        this.writeThrough({ docId: id, merge });
+        this.writeThrough({ id, merge });
     }
     follow(id, follow) {
-        this.writeThrough({ docId: id, follows: [follow] });
+        this.writeThrough({ id, follows: [follow] });
+    }
+    addFile(id, bytes) {
+        this.writeThrough({ id, bytes });
     }
     addActor(id, actorId) {
         this.addActors(id, [actorId]);
@@ -167,11 +171,11 @@ class Metadata {
         });
     }
     addActors(id, actorIds) {
-        this.writeThrough({ docId: id, actorIds });
+        this.writeThrough({ id, actorIds });
     }
     forDoc(id) {
         return {
-            docId: id,
+            id,
             actorIds: [...this.primaryActors.get(id)],
             follows: [...this.follows.get(id)],
             merge: this.merges.get(id) || {}

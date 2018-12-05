@@ -37,6 +37,10 @@ with hypercore, a distributed append-only log.
   // tell a document to follow another document
   const id4 = repo.create()
   repo.follow(id4, id)
+
+  const file = fs.readSync("file.jpg")
+  const id5 = repo.writeFile(file)
+  repo.readFile(id5, (file) => { ... })
 ```
 
 Repo's can be split in to frontend and backend if you dont want the documents

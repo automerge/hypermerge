@@ -24,7 +24,8 @@
     "bs58": "^4.0.1",
     "debug": "^4.1.0",
     "hypercore": "^6.20.2",
-    "hypercore-protocol": "^6.7.1"
+    "hypercore-protocol": "^6.7.1",
+    "js-sha1": "^0.6.0"
   },
   "devDependencies": {
     "@types/debug": "^0.0.31",

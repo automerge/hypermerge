@@ -12,9 +12,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const Queue_1 = __importDefault(require("./Queue"));
 const Base58 = __importStar(require("bs58"));
+const MapSet_1 = __importDefault(require("./MapSet"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
 const DocFrontend_1 = require("./DocFrontend");
-const ClockSet_1 = require("./ClockSet");
 const Clock_1 = require("./Clock");
 const debug_1 = __importDefault(require("debug"));
 debug_1.default.formatters.b = Base58.encode;
@@ -23,6 +23,7 @@ class RepoFrontend {
     constructor() {
         this.toBackend = new Queue_1.default("repo:tobackend");
         this.docs = new Map();
+        this.readFiles = new MapSet_1.default();
         this.create = (init) => {
             const keys = crypto.keyPair();
             const publicKey = Base58.encode(keys.publicKey);
@@ -46,9 +47,21 @@ class RepoFrontend {
         };
         this.merge = (id, target) => {
             this.doc(target, (doc, clock) => {
-                const actors = ClockSet_1.clock2strs(clock);
+                const actors = Clock_1.clock2strs(clock);
                 this.toBackend.push({ type: "MergeMsg", id, actors });
             });
+        };
+        this.writeFile = (data) => {
+            const keys = crypto.keyPair();
+            const publicKey = Base58.encode(keys.publicKey);
+            const secretKey = Base58.encode(keys.secretKey);
+            this.toBackend.push(data);
+            this.toBackend.push({ type: "WriteFile", publicKey, secretKey });
+            return publicKey;
+        };
+        this.readFile = (id, cb) => {
+            this.readFiles.add(id, cb);
+            this.toBackend.push({ type: "ReadFile", id });
         };
         this.fork = (id) => {
             const fork = this.create();
@@ -82,19 +95,30 @@ class RepoFrontend {
             this.toBackend.subscribe(subscriber);
         };
         this.receive = (msg) => {
-            const doc = this.docs.get(msg.id);
-            switch (msg.type) {
-                case "PatchMsg": {
-                    doc.patch(msg.patch);
-                    break;
-                }
-                case "ActorIdMsg": {
-                    doc.setActorId(msg.actorId);
-                    break;
-                }
-                case "ReadyMsg": {
-                    doc.init(msg.actorId, msg.patch);
-                    break;
+            if (msg instanceof Uint8Array) {
+                this.file = msg;
+            }
+            else {
+                const doc = this.docs.get(msg.id);
+                switch (msg.type) {
+                    case "ReadFileReply": {
+                        this.readFiles.get(msg.id).forEach(cb => cb(this.file));
+                        this.readFiles.delete(msg.id);
+                        delete this.file;
+                        break;
+                    }
+                    case "PatchMsg": {
+                        doc.patch(msg.patch);
+                        break;
+                    }
+                    case "ActorIdMsg": {
+                        doc.setActorId(msg.actorId);
+                        break;
+                    }
+                    case "ReadyMsg": {
+                        doc.init(msg.actorId, msg.patch);
+                        break;
+                    }
                 }
             }
         };

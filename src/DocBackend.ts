@@ -13,8 +13,8 @@ export interface Clock {
 }
 
 export class DocBackend {
-  docId: string
-  actorId?: string
+  id: string
+  actorId?: string // this might be easier to have as the actor object - FIXME
   clock: Clock = {}
   private repo: RepoBackend
   private back?: BackDoc
@@ -22,16 +22,16 @@ export class DocBackend {
   private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ")
   private wantsActor: boolean = false
 
-  constructor(core: RepoBackend, docId: string, back?: BackDoc) {
+  constructor(core: RepoBackend, id: string, back?: BackDoc) {
     this.repo = core
-    this.docId = docId
+    this.id = id
 
     if (back) {
       this.back = back
-      this.actorId = docId
+      this.actorId = id
       this.subscribeToRemoteChanges()
       this.subscribeToLocalChanges()
-      this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: docId })
+      this.repo.toFrontend.push({ type: "ReadyMsg", id: this.id, actorId: id })
     }
   }
 
@@ -41,10 +41,6 @@ export class DocBackend {
 
   applyLocalChange = (change: Change): void => {
     this.localChangeQ.push(change)
-  }
-
-  actorIds = (): string[] => {
-    return this.repo.actorIds(this)
   }
 
   release = () => {
@@ -58,7 +54,7 @@ export class DocBackend {
       if (!this.actorId) {
         this.actorId = this.repo.initActorFeed(this)
       }
-      this.repo.toFrontend.push({ type: "ActorIdMsg", id: this.docId, actorId: this.actorId})
+      this.repo.toFrontend.push({ type: "ActorIdMsg", id: this.id, actorId: this.actorId})
     } else {
       // remember we want one for when init happens
       this.wantsActor = true
@@ -84,7 +80,7 @@ export class DocBackend {
       this.updateClock(changes)
       this.subscribeToLocalChanges()
       this.subscribeToRemoteChanges()
-      this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: this.actorId, patch})
+      this.repo.toFrontend.push({ type: "ReadyMsg", id: this.id, actorId: this.actorId, patch})
     })
   }
 
@@ -94,7 +90,7 @@ export class DocBackend {
         const [back, patch] = Backend.applyChanges(this.back!, changes)
         this.back = back
         this.updateClock(changes)
-        this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch })
+        this.repo.toFrontend.push({ type: "PatchMsg", id: this.id, patch })
       })
     })
   }
@@ -105,44 +101,16 @@ export class DocBackend {
         const [back, patch] = Backend.applyLocalChange(this.back!, change)
         this.back = back
         this.updateClock([ change ])
-        this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch })
-        this.repo.writeChange(this.actorId!, change)
+        this.repo.toFrontend.push({ type: "PatchMsg", id: this.id, patch })
+        this.repo.actor(this.actorId!)!.writeChange(change)
       })
     })
-  }
-
-  peers(): Peer[] {
-    return this.repo.peers(this)
-  }
-
-  feeds(): Feed<Uint8Array>[] {
-    return this.actorIds().map(actorId => this.repo.feed(actorId))
-  }
-
-  broadcast(message: any) {
-    this.peers().forEach(peer => this.message(peer, message))
-  }
-
-  message(peer: Peer, message: any) {
-    peer.stream.extension(EXT, Buffer.from(JSON.stringify(message)))
-  }
-
-  messageMetadata(peer: Peer) {
-    this.message(peer, this.metadata())
-  }
-
-  broadcastMetadata() {
-    this.broadcast(this.actorIds())
-  }
-
-  metadata(): string[] {
-    return this.actorIds()
   }
 
   private bench(msg: string, f: () => void): void {
     const start = Date.now()
     f()
     const duration = Date.now() - start
-    log(`docId=${this.docId} task=${msg} time=${duration}ms`)
+    log(`id=${this.id} task=${msg} time=${duration}ms`)
   }
 }

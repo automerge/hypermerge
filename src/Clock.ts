@@ -4,6 +4,32 @@ export interface Clock {
   [actorId: string]: number
 }
 
+export function strs2clock(input: string | string[]) : Clock {
+  if (typeof input === 'string') {
+    return { [input]: Infinity }
+  } else {
+    let ids : string[] = input
+    let clock : Clock = {}
+    ids.map(str => str.split(":")).forEach(([id,max]) => {
+      clock[id] = max ? parseInt(max) : Infinity
+    })
+    return clock
+  }
+}
+
+export function clock2strs(clock: Clock) : string[] {
+  let ids = []
+  for (let id in clock) {
+    const max = clock[id]
+    if (max === Infinity) {
+      ids.push(id)
+    } else {
+      ids.push( id + ":" + max)
+    }
+  }
+  return ids
+}
+
 export function clockDebug(c : Clock) : string {
   const d : any = {}
   Object.keys(c).forEach( actor => {

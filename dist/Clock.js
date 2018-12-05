@@ -1,5 +1,33 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+function strs2clock(input) {
+    if (typeof input === 'string') {
+        return { [input]: Infinity };
+    }
+    else {
+        let ids = input;
+        let clock = {};
+        ids.map(str => str.split(":")).forEach(([id, max]) => {
+            clock[id] = max ? parseInt(max) : Infinity;
+        });
+        return clock;
+    }
+}
+exports.strs2clock = strs2clock;
+function clock2strs(clock) {
+    let ids = [];
+    for (let id in clock) {
+        const max = clock[id];
+        if (max === Infinity) {
+            ids.push(id);
+        }
+        else {
+            ids.push(id + ":" + max);
+        }
+    }
+    return ids;
+}
+exports.clock2strs = clock2strs;
 function clockDebug(c) {
     const d = {};
     Object.keys(c).forEach(actor => {

@@ -1,12 +1,23 @@
 
 import { Clock, Patch, Doc, Change, ChangeFn } from "automerge/frontend"
 
-export type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | FollowMsg | MergeMsg | CreateMsg | OpenMsg | DebugMsg
+export type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | FollowMsg | MergeMsg | CreateMsg | OpenMsg | DebugMsg | WriteFile | ReadFile | Uint8Array
  
 export interface CreateMsg {
   type: "CreateMsg"
   publicKey: string
   secretKey: string
+}
+
+export interface WriteFile {
+  type: "WriteFile"
+  publicKey: string
+  secretKey: string
+}
+
+export interface ReadFile {
+  type: "ReadFile"
+  id: string
 }
 
 export interface MergeMsg {
@@ -42,12 +53,17 @@ export interface RequestMsg {
   request: Change
 }
 
-export type ToFrontendRepoMsg = PatchMsg | ActorIdMsg | ReadyMsg
+export type ToFrontendRepoMsg = PatchMsg | ActorIdMsg | ReadyMsg | ReadFileReply | Uint8Array
 
 export interface PatchMsg {
   type: "PatchMsg"
   id: string
   patch: Patch
+}
+
+export interface ReadFileReply {
+  type: "ReadFileReply"
+  id: string
 }
 
 export interface ActorIdMsg {

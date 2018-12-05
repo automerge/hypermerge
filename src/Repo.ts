@@ -26,6 +26,8 @@ export class Repo {
   doc: <T>(id: string, cb?: (val: T, clock? : Clock) => void) => Promise<T>
   merge: (id: string, target: string ) => void
   change: <T>(id: string, fn: ChangeFn<T>) => void
+  writeFile: <T>(data: Uint8Array) => string
+  readFile: <T>(id: string, cb: (data: Uint8Array) => void) => void
 
 
 
@@ -42,6 +44,8 @@ export class Repo {
     this.doc = this.front.doc
     this.fork = this.front.fork
     this.change = this.front.change
+    this.readFile = this.front.readFile
+    this.writeFile = this.front.writeFile
     this.watch = this.front.watch
     this.merge = this.front.merge
     this.replicate = this.back.replicate

@@ -6,18 +6,22 @@ import { readFeed, Feed } from "./hypercore"
 import { Clock, equivalent, union, intersection } from "./Clock"
 
 export interface MetadataBlock {
-  docId: string
+  id: string
+  docId?: string // backward compatibility
+  bytes?: number
   actorIds?: string[]
   follows?: string[]
   merge?: Clock
 }
 
+/*
 export function isMetadataBlock(block: any): block is MetadataBlock {
   // TODO: this isn't perfect, but good enough for now
   return typeof block === "object"
     && block != null
     && typeof block.docId === "string"
 }
+*/
 
 class MetadataState {
 }
@@ -46,7 +50,6 @@ export class Metadata {
   private replay: MetadataBlock[] = []
 
   private ledger: Feed<MetadataBlock>
-
 
   constructor(ledger: Feed<MetadataBlock>) {
     this.ledger = ledger
@@ -91,7 +94,7 @@ export class Metadata {
     let changedActors = false
     let changedFollow = false
     let changedMerge = false
-    let id = block.docId
+    let id = block.id || block.docId || block.id // olds feeds have block.docId
 
     if (block.actorIds !== undefined) {
       changedActors = this.primaryActors.merge(id, block.actorIds)
@@ -117,7 +120,7 @@ export class Metadata {
     this.writable.set(actor, writable)
   }
 
-  localActor(id: string): string | undefined {
+  localActorId(id: string): string | undefined {
     for (let actor of this.primaryActors.get(id)!) {
       if (this.writable.get(actor) === true) {
         return actor
@@ -190,11 +193,15 @@ export class Metadata {
   }
 
   merge(id: string, merge: Clock) {
-    this.writeThrough({ docId: id, merge })
+    this.writeThrough({ id, merge })
   }
 
   follow(id: string, follow: string) {
-    this.writeThrough({ docId: id, follows: [follow] })
+    this.writeThrough({ id, follows: [follow] })
+  }
+
+  addFile(id: string, bytes: number) {
+    this.writeThrough({ id, bytes })
   }
 
   addActor(id: string, actorId: string) {
@@ -208,12 +215,12 @@ export class Metadata {
   }
 
   addActors(id: string, actorIds: string[]) {
-    this.writeThrough({ docId: id, actorIds })
+    this.writeThrough({ id, actorIds })
   }
 
   forDoc(id: string): MetadataBlock {
     return {
-      docId: id,
+      id,
       actorIds: [... this.primaryActors.get(id)],
       follows: [... this.follows.get(id)],
       merge: this.merges.get(id) || {}

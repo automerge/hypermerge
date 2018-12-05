@@ -1,9 +1,18 @@
 import { Patch, Change } from "automerge/frontend";
-export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | FollowMsg | MergeMsg | CreateMsg | OpenMsg | DebugMsg;
+export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | FollowMsg | MergeMsg | CreateMsg | OpenMsg | DebugMsg | WriteFile | ReadFile | Uint8Array;
 export interface CreateMsg {
     type: "CreateMsg";
     publicKey: string;
     secretKey: string;
+}
+export interface WriteFile {
+    type: "WriteFile";
+    publicKey: string;
+    secretKey: string;
+}
+export interface ReadFile {
+    type: "ReadFile";
+    id: string;
 }
 export interface MergeMsg {
     type: "MergeMsg";
@@ -32,11 +41,15 @@ export interface RequestMsg {
     id: string;
     request: Change;
 }
-export declare type ToFrontendRepoMsg = PatchMsg | ActorIdMsg | ReadyMsg;
+export declare type ToFrontendRepoMsg = PatchMsg | ActorIdMsg | ReadyMsg | ReadFileReply | Uint8Array;
 export interface PatchMsg {
     type: "PatchMsg";
     id: string;
     patch: Patch;
+}
+export interface ReadFileReply {
+    type: "ReadFileReply";
+    id: string;
 }
 export interface ActorIdMsg {
     type: "ActorIdMsg";

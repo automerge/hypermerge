@@ -1,13 +1,13 @@
 
 import Queue from "./Queue"
 import * as Base58 from "bs58"
+import MapSet from "./MapSet"
 import * as crypto from "hypercore/lib/crypto"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import Handle from "./Handle"
 import { ChangeFn } from "automerge/frontend"
 import { DocFrontend } from "./DocFrontend"
-import { clock2strs } from "./ClockSet"
-import { Clock, clockDebug } from "./Clock"
+import { clock2strs, Clock, clockDebug } from "./Clock"
 import Debug from "debug"
 
 Debug.formatters.b = Base58.encode
@@ -17,6 +17,8 @@ const log = Debug("repo:front")
 export class RepoFrontend {
   toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:tobackend")
   docs: Map<string, DocFrontend<any>> = new Map()
+  readFiles: MapSet<string,(data: Uint8Array) => void> = new MapSet()
+  file?: Uint8Array
 
   create = ( init?: any ): string => {
     const keys = crypto.keyPair()
@@ -47,6 +49,20 @@ export class RepoFrontend {
       const actors = clock2strs(clock!)
       this.toBackend.push({ type: "MergeMsg", id, actors })
     })
+  }
+
+  writeFile = <T>(data: Uint8Array) : string => {
+    const keys = crypto.keyPair()
+    const publicKey = Base58.encode(keys.publicKey)
+    const secretKey = Base58.encode(keys.secretKey)
+    this.toBackend.push(data)
+    this.toBackend.push({ type: "WriteFile", publicKey, secretKey })
+    return publicKey
+  }
+
+  readFile = <T>(id: string, cb: (data: Uint8Array) => void) : void => {
+    this.readFiles.add(id, cb)
+    this.toBackend.push({ type: "ReadFile", id })
   }
 
   fork = (id: string ) : string => {
@@ -106,19 +122,29 @@ export class RepoFrontend {
   }
 
   receive = (msg: ToFrontendRepoMsg) => {
-    const doc = this.docs.get(msg.id)!
-    switch (msg.type) {
-      case "PatchMsg": {
-        doc.patch(msg.patch)
-        break
-      }
-      case "ActorIdMsg": {
-        doc.setActorId(msg.actorId)
-        break
-      }
-      case "ReadyMsg": {
-        doc.init(msg.actorId, msg.patch)
-        break
+    if (msg instanceof Uint8Array) {
+      this.file = msg
+    } else {
+      const doc = this.docs.get(msg.id)!
+      switch (msg.type) {
+        case "ReadFileReply": {
+          this.readFiles.get(msg.id).forEach(cb => cb(this.file!))
+          this.readFiles.delete(msg.id)
+          delete this.file
+          break
+        }
+        case "PatchMsg": {
+          doc.patch(msg.patch)
+          break
+        }
+        case "ActorIdMsg": {
+          doc.setActorId(msg.actorId)
+          break
+        }
+        case "ReadyMsg": {
+          doc.init(msg.actorId, msg.patch)
+          break
+        }
       }
     }
   }

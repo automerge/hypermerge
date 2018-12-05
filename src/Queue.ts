@@ -11,6 +11,12 @@ export default class Queue<T> {
     this.push = this.enqueue
   }
 
+  once(subscriber: (item: T) => void) {
+    if (this.subscription === undefined) {
+      this.subscribe(subscriber)
+    }
+  }
+
   subscribe(subscriber: (item: T) => void) {
     if (this.subscription) {
       throw new Error("only one subscriber at a time to a queue")

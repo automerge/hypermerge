@@ -23,6 +23,8 @@ export declare class Repo {
     doc: <T>(id: string, cb?: (val: T, clock?: Clock) => void) => Promise<T>;
     merge: (id: string, target: string) => void;
     change: <T>(id: string, fn: ChangeFn<T>) => void;
+    writeFile: <T>(data: Uint8Array) => string;
+    readFile: <T>(id: string, cb: (data: Uint8Array) => void) => void;
     constructor(opts: Options);
 }
 export {};
