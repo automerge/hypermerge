@@ -19,7 +19,7 @@ interface ActorSync {
     type: "ActorSync";
     actor: Actor;
 }
-export declare const EXT = "hypermerge";
+export declare const EXT = "hypermerge.2";
 interface ActorConfig {
     keys: KeyBuffer;
     meta: Metadata;

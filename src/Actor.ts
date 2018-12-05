@@ -35,7 +35,7 @@ interface ActorSync {
   actor: Actor
 }
 
-export const EXT = "hypermerge"
+export const EXT = "hypermerge.2"
 
 interface ActorConfig {
   keys: KeyBuffer,

@@ -18,7 +18,7 @@ const debug_1 = __importDefault(require("debug"));
 const log = debug_1.default("feedmgr");
 const KB = 1024;
 const MB = 1024 * KB;
-exports.EXT = "hypermerge";
+exports.EXT = "hypermerge.2";
 class Actor {
     constructor(config) {
         this.changes = [];
@@ -74,7 +74,6 @@ class Actor {
             this.notify({ type: "ActorSync", actor: this });
         };
         this.handleBlock = (idx, data) => {
-            console.log("HANDLE BLOCK", idx);
             switch (this.type) {
                 case "Automerge":
                     this.changes.push(JsonBuffer.parse(data));
