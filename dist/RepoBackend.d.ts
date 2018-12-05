@@ -2,11 +2,9 @@
 import Queue from "./Queue";
 import { Metadata } from "./Metadata";
 import { Actor } from "./Actor";
-import { Peer } from "./hypercore";
 import { Clock, Change } from "automerge/backend";
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { DocBackend } from "./DocBackend";
-export declare const EXT = "hypermerge";
 interface Swarm {
     join(dk: Buffer): void;
     leave(dk: Buffer): void;
@@ -54,7 +52,6 @@ export declare class RepoBackend {
     private getReadyActor;
     storageFn: (path: string) => Function;
     initActorFeed(doc: DocBackend): string;
-    sendToPeer(peer: Peer, data: any): void;
     actorIds(doc: DocBackend): string[];
     docActors(doc: DocBackend): Actor[];
     syncReadyActors: (ids: string[]) => void;

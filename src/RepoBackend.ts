@@ -1,7 +1,7 @@
 
 import Queue from "./Queue"
 import { MetadataBlock, Metadata } from "./Metadata"
-import { Actor, ActorMsg } from "./Actor"
+import { Actor, ActorMsg, EXT } from "./Actor"
 import MapSet from "./MapSet"
 import { strs2clock, clockDebug } from "./Clock"
 import * as JsonBuffer from "./JsonBuffer"
@@ -14,8 +14,6 @@ import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import { DocBackend } from "./DocBackend"
 import * as Misc from "./Misc"
 import Debug from "debug"
-
-export const EXT = "hypermerge"
 
 interface Swarm {
   join(dk: Buffer): void
@@ -198,9 +196,11 @@ export class RepoBackend {
     return actorId
   }
 
+/*
   sendToPeer(peer: Peer, data: any) {
     peer.stream.extension(EXT, Buffer.from(JSON.stringify(data)))
   }
+*/
 
   actorIds(doc: DocBackend): string[] {
     return this.meta.actors(doc.id)

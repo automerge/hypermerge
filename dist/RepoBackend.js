@@ -21,7 +21,6 @@ const Backend = __importStar(require("automerge/backend"));
 const DocBackend_1 = require("./DocBackend");
 const Misc = __importStar(require("./Misc"));
 const debug_1 = __importDefault(require("debug"));
-exports.EXT = "hypermerge";
 debug_1.default.formatters.b = Base58.encode;
 const HypercoreProtocol = require("hypercore-protocol");
 const log = debug_1.default("repo:backend");
@@ -103,7 +102,7 @@ class RepoBackend {
                 id: this.id,
                 encrypt: false,
                 timeout: 10000,
-                extensions: [exports.EXT],
+                extensions: [Actor_1.EXT],
             });
             let add = (dk) => {
                 const actor = this.actorsDk.get(Base58.encode(dk));
@@ -267,9 +266,11 @@ class RepoBackend {
         this.initActor(keys);
         return actorId;
     }
-    sendToPeer(peer, data) {
-        peer.stream.extension(exports.EXT, Buffer.from(JSON.stringify(data)));
-    }
+    /*
+      sendToPeer(peer: Peer, data: any) {
+        peer.stream.extension(EXT, Buffer.from(JSON.stringify(data)))
+      }
+    */
     actorIds(doc) {
         return this.meta.actors(doc.id);
     }
