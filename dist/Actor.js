@@ -33,7 +33,7 @@ class Actor {
             });
             feed.on("peer-remove", this.peerRemove);
             feed.on("peer-add", this.peerAdd);
-            feed.on("download", this.handleBlock);
+            feed.on("download", this.handleDownload);
             feed.on("sync", this.sync);
             hypercore_1.readFeed(feed, this.init); // subscibe begins here
             feed.on("close", this.close);
@@ -47,6 +47,7 @@ class Actor {
         };
         this.peerRemove = (peer) => {
             this.peers.delete(peer);
+            this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
         };
         this.peerAdd = (peer) => {
             peer.stream.on("extension", (ext, input) => {
@@ -56,6 +57,7 @@ class Actor {
             });
             this.peers.add(peer);
             this.message(this.meta.forActor(this.id), peer);
+            this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
         };
         this.close = () => {
             log("closing feed", this.id);
@@ -63,6 +65,10 @@ class Actor {
         this.sync = () => {
             this.syncQ.once(f => f());
             this.notify({ type: "ActorSync", actor: this });
+        };
+        this.handleDownload = (idx, data) => {
+            this.handleBlock(idx, data);
+            this.notify({ type: "Download", actor: this, index: idx });
         };
         this.handleBlock = (idx, data) => {
             switch (this.type) {

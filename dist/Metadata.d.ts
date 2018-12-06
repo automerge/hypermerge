@@ -12,7 +12,6 @@ export interface MetadataBlock {
 }
 export declare function isValidID(id: any): boolean;
 export declare function validateID(id: string): void;
-export declare function isMetadataBlock(block: any): block is MetadataBlock;
 export declare class Metadata {
     private primaryActors;
     private follows;

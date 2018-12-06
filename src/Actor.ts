@@ -15,7 +15,7 @@ const log = Debug("feedmgr")
 const KB = 1024
 const MB = 1024 * KB
 
-export type ActorMsg = NewMetadata | ActorSync
+export type ActorMsg = NewMetadata | ActorSync | PeerUpdate | Download
 export type FeedHead = FileMetadata | Change
 
 export type FeedType = "Unknown" | "Automerge" | "File"
@@ -33,6 +33,18 @@ interface NewMetadata {
 interface ActorSync {
   type: "ActorSync"
   actor: Actor
+}
+
+interface PeerUpdate {
+  type: "PeerUpdate"
+  actor: Actor
+  peers: number
+}
+
+interface Download {
+  type: "Download"
+  actor: Actor
+  index: number
 }
 
 export const EXT = "hypermerge.2"
@@ -92,7 +104,7 @@ export class Actor {
 
     feed.on("peer-remove", this.peerRemove)
     feed.on("peer-add", this.peerAdd)
-    feed.on("download", this.handleBlock)
+    feed.on("download", this.handleDownload)
     feed.on("sync", this.sync)
 
     readFeed(feed, this.init) // subscibe begins here
@@ -122,6 +134,7 @@ export class Actor {
 
   peerRemove = (peer: Peer) => {
     this.peers.delete(peer)
+    this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }
 
   peerAdd = (peer: Peer) => {
@@ -132,6 +145,7 @@ export class Actor {
     })
     this.peers.add(peer)
     this.message(this.meta.forActor(this.id), peer)
+    this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }
 
   close = () => {
@@ -141,6 +155,11 @@ export class Actor {
   sync = () => {
     this.syncQ.once(f => f())
     this.notify({ type: "ActorSync", actor: this })
+  }
+
+  handleDownload = (idx: number, data: Uint8Array) => {
+    this.handleBlock(idx,data)
+    this.notify({ type: "Download", actor: this, index: idx })
   }
 
   handleBlock = (idx: number, data: Uint8Array) => {

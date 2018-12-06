@@ -118,13 +118,6 @@ function validateID(id) {
     }
 }
 exports.validateID = validateID;
-function isMetadataBlock(block) {
-    // TODO: this isn't perfect, but good enough for now
-    return typeof block === "object"
-        && block != null
-        && typeof block.id === "string";
-}
-exports.isMetadataBlock = isMetadataBlock;
 class Metadata {
     constructor(ledger) {
         this.primaryActors = new MapSet_1.default();

@@ -113,13 +113,6 @@ export function validateID(id: string) {
   }
 }
 
-export function isMetadataBlock(block: any): block is MetadataBlock {
-  // TODO: this isn't perfect, but good enough for now
-  return typeof block === "object"
-    && block != null
-    && typeof block.id === "string"
-}
-
 export class Metadata {
   private primaryActors: MapSet<string, string> = new MapSet()
   private follows: MapSet<string, string> = new MapSet()

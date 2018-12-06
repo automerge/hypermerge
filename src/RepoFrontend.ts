@@ -44,7 +44,6 @@ export class RepoFrontend {
     this.open<T>(id).change(fn)
   }
 
-
   merge = (id: string, target: string ) => {
     this.doc(target, (doc, clock) => {
       const actors = clock2strs(clock!)

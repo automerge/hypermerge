@@ -4,7 +4,7 @@ import { Feed, Peer } from "./hypercore";
 import { Change } from "automerge/backend";
 import { Metadata } from "./Metadata";
 import Queue from "./Queue";
-export declare type ActorMsg = NewMetadata | ActorSync;
+export declare type ActorMsg = NewMetadata | ActorSync | PeerUpdate | Download;
 export declare type FeedHead = FileMetadata | Change;
 export declare type FeedType = "Unknown" | "Automerge" | "File";
 interface FileMetadata {
@@ -18,6 +18,16 @@ interface NewMetadata {
 interface ActorSync {
     type: "ActorSync";
     actor: Actor;
+}
+interface PeerUpdate {
+    type: "PeerUpdate";
+    actor: Actor;
+    peers: number;
+}
+interface Download {
+    type: "Download";
+    actor: Actor;
+    index: number;
 }
 export declare const EXT = "hypermerge.2";
 interface ActorConfig {
@@ -48,6 +58,7 @@ export declare class Actor {
     peerAdd: (peer: Peer) => void;
     close: () => void;
     sync: () => void;
+    handleDownload: (idx: number, data: Uint8Array) => void;
     handleBlock: (idx: number, data: Uint8Array) => void;
     push: (cb: (actor: Actor) => void) => void;
     writeFile(data: Uint8Array): void;
