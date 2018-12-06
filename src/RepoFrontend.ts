@@ -9,6 +9,7 @@ import { ChangeFn } from "automerge/frontend"
 import { DocFrontend } from "./DocFrontend"
 import { clock2strs, Clock, clockDebug } from "./Clock"
 import Debug from "debug"
+import { validateID } from "./Metadata"
 
 Debug.formatters.b = Base58.encode
 
@@ -61,6 +62,7 @@ export class RepoFrontend {
   }
 
   readFile = <T>(id: string, cb: (data: Uint8Array) => void) : void => {
+    validateID(id)
     this.readFiles.add(id, cb)
     this.toBackend.push({ type: "ReadFile", id })
   }
@@ -72,6 +74,7 @@ export class RepoFrontend {
   }
 
   follow = (id: string, target: string) => {
+    validateID(id)
     this.toBackend.push({ type: "FollowMsg", id, target })
   }
 
@@ -82,6 +85,7 @@ export class RepoFrontend {
   }
 
   doc = <T>(id: string, cb?: (val: T, clock? : Clock) => void): Promise<T> => {
+    validateID(id)
     return new Promise((resolve) => {
       const handle = this.open<T>(id)
       handle.subscribe( (val, clock) => {
@@ -93,11 +97,13 @@ export class RepoFrontend {
   }
 
   open = <T>(id: string): Handle<T> => {
+    validateID(id)
     const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id)
     return doc.handle()
   }
 
   debug(id :string) {
+    validateID(id)
     const doc = this.docs.get(id)
     const short = id.substr(0,5)
     if (doc === undefined) {

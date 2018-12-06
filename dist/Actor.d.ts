@@ -2,7 +2,7 @@
 import { KeyBuffer } from "./RepoBackend";
 import { Feed, Peer } from "./hypercore";
 import { Change } from "automerge/backend";
-import { MetadataBlock, Metadata } from "./Metadata";
+import { Metadata } from "./Metadata";
 import Queue from "./Queue";
 export declare type ActorMsg = NewMetadata | ActorSync;
 export declare type FeedHead = FileMetadata | Change;
@@ -13,7 +13,7 @@ interface FileMetadata {
 }
 interface NewMetadata {
     type: "NewMetadata";
-    blocks: MetadataBlock[];
+    input: Uint8Array;
 }
 interface ActorSync {
     type: "ActorSync";

@@ -2,21 +2,130 @@
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const Queue_1 = __importDefault(require("./Queue"));
 const MapSet_1 = __importDefault(require("./MapSet"));
+const Base58 = __importStar(require("bs58"));
 const hypercore_1 = require("./hypercore");
+const debug_1 = __importDefault(require("debug"));
+const log = debug_1.default("metadata");
 const Clock_1 = require("./Clock");
-/*
-export function isMetadataBlock(block: any): block is MetadataBlock {
-  // TODO: this isn't perfect, but good enough for now
-  return typeof block === "object"
-    && block != null
-    && typeof block.docId === "string"
+//const blocks = validateMetadataMsg(: MetadataBlock[] = JSON.parse(msg.input.toString())
+function validateMetadataMsg(input) {
+    try {
+        const result = JSON.parse(input.toString());
+        if (result instanceof Array) {
+            return filterMetadataInputs(result);
+        }
+        else {
+            log("WARNING: Metadata Msg is not an array");
+            return [];
+        }
+    }
+    catch (e) {
+        log("WARNING: Metadata Msg is invalid JSON");
+        return [];
+    }
 }
-*/
-class MetadataState {
+exports.validateMetadataMsg = validateMetadataMsg;
+function cleanMetadataInput(input) {
+    console.log("CLEAN", input);
+    const id = input.id || input.docId;
+    if (typeof id !== 'string')
+        return undefined;
+    const bytes = input.bytes;
+    if (typeof bytes !== 'undefined' && typeof bytes !== 'number')
+        return undefined;
+    const actors = input.actors || input.actorIds;
+    const follows = input.follows;
+    const merge = input.merge;
+    if (actors !== undefined) {
+        if (!(actors instanceof Array))
+            return undefined;
+        if (!actors.every(isValidID))
+            return undefined;
+    }
+    if (follows !== undefined) {
+        if (!(follows instanceof Array))
+            return undefined;
+        if (follows.every(isValidID))
+            return undefined;
+    }
+    if (merge !== undefined) {
+        if (typeof merge !== 'object')
+            return undefined;
+        if (!Object.keys(merge).every(isValidID))
+            return undefined;
+        if (!Object.values(merge).every(isNumber))
+            return undefined;
+    }
+    const meta = actors || follows || merge;
+    if (meta === undefined && bytes === undefined)
+        return undefined;
+    if (meta !== undefined && bytes !== undefined)
+        return undefined;
+    return {
+        id,
+        bytes,
+        actors,
+        follows,
+        merge
+    };
 }
+exports.cleanMetadataInput = cleanMetadataInput;
+function filterMetadataInputs(input) {
+    const metadata = [];
+    input.forEach(i => {
+        const cleaned = cleanMetadataInput(i);
+        if (cleaned !== undefined) {
+            metadata.push(cleaned);
+        }
+        else {
+            log("WARNING: Metadata Input Invalid - ignoring", i);
+        }
+    });
+    return metadata;
+}
+exports.filterMetadataInputs = filterMetadataInputs;
+// Can I use stuff like this to let ID's be a type other than string?
+//   export function isActorId(id: string) id is ActorId { }
+//   export type ActorId = string & { _: "ActorId" }
+//   export type DocId = string & { _: "ActorId", _2: "DocId" }
+// are try catchs as expensive as I remember?  Not sure - I wrote this logic twice
+function isNumber(n) {
+    return typeof n === 'number';
+}
+function isValidID(id) {
+    try {
+        const buffer = Base58.decode(id);
+        return (buffer.length === 32);
+    }
+    catch (e) {
+        return false;
+    }
+}
+exports.isValidID = isValidID;
+function validateID(id) {
+    const buffer = Base58.decode(id);
+    if (buffer.length !== 32) {
+        throw new Error(`invalid id ${id}`);
+    }
+}
+exports.validateID = validateID;
+function isMetadataBlock(block) {
+    // TODO: this isn't perfect, but good enough for now
+    return typeof block === "object"
+        && block != null
+        && typeof block.id === "string";
+}
+exports.isMetadataBlock = isMetadataBlock;
 class Metadata {
     constructor(ledger) {
         this.primaryActors = new MapSet_1.default();
@@ -37,7 +146,8 @@ class Metadata {
         // but this would cause the ledger to have potientially massive amounts of redundant data in it
         this.ready = false;
         this.replay = [];
-        this.loadLedger = (data) => {
+        this.loadLedger = (input) => {
+            const data = filterMetadataInputs(input); // FIXME
             this.primaryActors = new MapSet_1.default();
             this.follows = new MapSet_1.default();
             this.merges = new Map();
@@ -72,9 +182,9 @@ class Metadata {
         let changedActors = false;
         let changedFollow = false;
         let changedMerge = false;
-        let id = block.id || block.docId || block.id; // olds feeds have block.docId
-        if (block.actorIds !== undefined) {
-            changedActors = this.primaryActors.merge(id, block.actorIds);
+        let id = block.id;
+        if (block.actors !== undefined) {
+            changedActors = this.primaryActors.merge(id, block.actors);
         }
         if (block.follows !== undefined) {
             changedFollow = this.follows.merge(id, block.follows);
@@ -170,13 +280,13 @@ class Metadata {
             this.writeThrough(block);
         });
     }
-    addActors(id, actorIds) {
-        this.writeThrough({ id, actorIds });
+    addActors(id, actors) {
+        this.writeThrough({ id, actors });
     }
     forDoc(id) {
         return {
             id,
-            actorIds: [...this.primaryActors.get(id)],
+            actors: [...this.primaryActors.get(id)],
             follows: [...this.follows.get(id)],
             merge: this.merges.get(id) || {}
         };

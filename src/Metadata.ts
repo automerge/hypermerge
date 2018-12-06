@@ -1,29 +1,124 @@
 
 import Queue from "./Queue"
 import MapSet from "./MapSet"
+import * as Base58 from "bs58"
 import { readFeed, Feed } from "./hypercore"
+import Debug from "debug"
+const log = Debug("metadata")
 
 import { Clock, equivalent, union, intersection } from "./Clock"
 
+//const blocks = validateMetadataMsg(: MetadataBlock[] = JSON.parse(msg.input.toString())
+
+export function validateMetadataMsg(input: Uint8Array) : MetadataBlock[] {
+  try {
+    const result = JSON.parse(input.toString())
+    if (result instanceof Array) {
+      return filterMetadataInputs(result)
+    } else {
+      log("WARNING: Metadata Msg is not an array")
+      return []
+    }
+  } catch (e) {
+    log("WARNING: Metadata Msg is invalid JSON")
+    return []
+  }
+}
+
+export function cleanMetadataInput(input: any) : MetadataBlock | undefined {
+    console.log("CLEAN",input)
+    const id = input.id || input.docId
+    if (typeof id !== 'string') return undefined
+
+    const bytes = input.bytes
+    if (typeof bytes !== 'undefined' && typeof bytes !== 'number') return undefined
+
+    const actors = input.actors || input.actorIds
+    const follows = input.follows
+    const merge = input.merge
+
+    if (actors !== undefined) {
+      if (!(actors instanceof Array)) return undefined
+      if (!actors.every(isValidID)) return undefined
+    }
+
+    if (follows !== undefined) {
+      if (!(follows instanceof Array)) return undefined
+      if (follows.every(isValidID)) return undefined
+    }
+
+    if (merge !== undefined) {
+      if (typeof merge !== 'object') return undefined
+      if (!Object.keys(merge).every(isValidID)) return undefined
+      if (!Object.values(merge).every(isNumber)) return undefined
+    }
+
+    const meta = actors || follows || merge
+
+    if (meta === undefined && bytes === undefined) return undefined
+
+    if (meta !== undefined && bytes !== undefined) return undefined
+
+    return {
+      id,
+      bytes,
+      actors,
+      follows,
+      merge
+    }
+}
+
+export function filterMetadataInputs(input: any[]) : MetadataBlock[] {
+  const metadata : MetadataBlock[] = []
+  input.forEach( i => {
+    const cleaned = cleanMetadataInput(i)
+    if (cleaned !== undefined) {
+      metadata.push(cleaned)
+    } else {
+      log("WARNING: Metadata Input Invalid - ignoring", i)
+    }
+  })
+  return metadata
+}
+
 export interface MetadataBlock {
   id: string
-  docId?: string // backward compatibility
   bytes?: number
-  actorIds?: string[]
+  actors?: string[]
   follows?: string[]
   merge?: Clock
 }
 
-/*
+// Can I use stuff like this to let ID's be a type other than string?
+//   export function isActorId(id: string) id is ActorId { }
+//   export type ActorId = string & { _: "ActorId" }
+//   export type DocId = string & { _: "ActorId", _2: "DocId" }
+
+// are try catchs as expensive as I remember?  Not sure - I wrote this logic twice
+function isNumber(n: any) : boolean {
+  return typeof n === 'number'
+}
+export function isValidID(id: any) : boolean {
+  try {
+    const buffer = Base58.decode(id)
+    return (buffer.length === 32)
+  } catch (e) {
+    return false
+  }
+}
+
+export function validateID(id: string) {
+  const buffer = Base58.decode(id)
+  if (buffer.length !== 32) {
+    throw new Error(`invalid id ${id}`)
+  }
+}
+
 export function isMetadataBlock(block: any): block is MetadataBlock {
   // TODO: this isn't perfect, but good enough for now
   return typeof block === "object"
     && block != null
-    && typeof block.docId === "string"
-}
-*/
-
-class MetadataState {
+    && typeof block.id === "string"
 }
 
 export class Metadata {
@@ -49,16 +144,17 @@ export class Metadata {
   private ready: boolean = false
   private replay: MetadataBlock[] = []
 
-  private ledger: Feed<MetadataBlock>
+  private ledger: Feed<any>
 
-  constructor(ledger: Feed<MetadataBlock>) {
+  constructor(ledger: Feed<any>) {
     this.ledger = ledger
     this.ledger.ready(() => {
       readFeed(this.ledger, this.loadLedger)
     })
   }
 
-  private loadLedger = (data: MetadataBlock[]) => {
+  private loadLedger = (input: any[]) => {
+    const data = filterMetadataInputs(input) // FIXME
     this.primaryActors = new MapSet()
     this.follows = new MapSet()
     this.merges = new Map()
@@ -94,10 +190,10 @@ export class Metadata {
     let changedActors = false
     let changedFollow = false
     let changedMerge = false
-    let id = block.id || block.docId || block.id // olds feeds have block.docId
+    let id = block.id
 
-    if (block.actorIds !== undefined) {
-      changedActors = this.primaryActors.merge(id, block.actorIds)
+    if (block.actors !== undefined) {
+      changedActors = this.primaryActors.merge(id, block.actors)
     }
 
     if (block.follows !== undefined) {
@@ -214,14 +310,14 @@ export class Metadata {
     })
   }
 
-  addActors(id: string, actorIds: string[]) {
-    this.writeThrough({ id, actorIds })
+  addActors(id: string, actors: string[]) {
+    this.writeThrough({ id, actors })
   }
 
   forDoc(id: string): MetadataBlock {
     return {
       id,
-      actorIds: [... this.primaryActors.get(id)],
+      actors: [... this.primaryActors.get(id)],
       follows: [... this.follows.get(id)],
       merge: this.merges.get(id) || {}
     }

@@ -49,10 +49,10 @@ class Actor {
             this.peers.delete(peer);
         };
         this.peerAdd = (peer) => {
-            peer.stream.on("extension", (ext, buf) => {
+            peer.stream.on("extension", (ext, input) => {
                 if (ext === exports.EXT) {
-                    const blocks = JSON.parse(buf.toString());
-                    this.notify({ type: "NewMetadata", blocks });
+                    //        const blocks: MetadataBlock[] = JSON.parse(buf.toString())
+                    this.notify({ type: "NewMetadata", input });
                     /*
                             log("EXT", blocks)
                             this.meta.addBlocks(blocks)

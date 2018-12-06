@@ -27,7 +27,7 @@ interface FileMetadata {
 
 interface NewMetadata {
   type: "NewMetadata"
-  blocks: MetadataBlock[]
+  input: Uint8Array
 }
 
 interface ActorSync {
@@ -125,10 +125,10 @@ export class Actor {
   }
 
   peerAdd = (peer: Peer) => {
-    peer.stream.on("extension", (ext: string, buf: Buffer) => {
+    peer.stream.on("extension", (ext: string, input: Uint8Array) => {
       if (ext === EXT) {
-        const blocks: MetadataBlock[] = JSON.parse(buf.toString())
-        this.notify({ type: "NewMetadata", blocks })
+//        const blocks: MetadataBlock[] = JSON.parse(buf.toString())
+        this.notify({ type: "NewMetadata", input })
 /*
         log("EXT", blocks)
         this.meta.addBlocks(blocks)

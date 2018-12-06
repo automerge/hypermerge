@@ -1,13 +1,18 @@
 import { Feed } from "./hypercore";
 import { Clock } from "./Clock";
+export declare function validateMetadataMsg(input: Uint8Array): MetadataBlock[];
+export declare function cleanMetadataInput(input: any): MetadataBlock | undefined;
+export declare function filterMetadataInputs(input: any[]): MetadataBlock[];
 export interface MetadataBlock {
     id: string;
-    docId?: string;
     bytes?: number;
-    actorIds?: string[];
+    actors?: string[];
     follows?: string[];
     merge?: Clock;
 }
+export declare function isValidID(id: any): boolean;
+export declare function validateID(id: string): void;
+export declare function isMetadataBlock(block: any): block is MetadataBlock;
 export declare class Metadata {
     private primaryActors;
     private follows;
@@ -18,7 +23,7 @@ export declare class Metadata {
     private ready;
     private replay;
     private ledger;
-    constructor(ledger: Feed<MetadataBlock>);
+    constructor(ledger: Feed<any>);
     private loadLedger;
     private hasBlock;
     private batchAdd;
@@ -41,7 +46,7 @@ export declare class Metadata {
     addFile(id: string, bytes: number): void;
     addActor(id: string, actorId: string): void;
     addBlocks(blocks: MetadataBlock[]): void;
-    addActors(id: string, actorIds: string[]): void;
+    addActors(id: string, actors: string[]): void;
     forDoc(id: string): MetadataBlock;
     forActor(actor: string): MetadataBlock[];
 }

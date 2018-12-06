@@ -17,6 +17,7 @@ const crypto = __importStar(require("hypercore/lib/crypto"));
 const DocFrontend_1 = require("./DocFrontend");
 const Clock_1 = require("./Clock");
 const debug_1 = __importDefault(require("debug"));
+const Metadata_1 = require("./Metadata");
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default("repo:front");
 class RepoFrontend {
@@ -60,6 +61,7 @@ class RepoFrontend {
             return publicKey;
         };
         this.readFile = (id, cb) => {
+            Metadata_1.validateID(id);
             this.readFiles.add(id, cb);
             this.toBackend.push({ type: "ReadFile", id });
         };
@@ -69,6 +71,7 @@ class RepoFrontend {
             return fork;
         };
         this.follow = (id, target) => {
+            Metadata_1.validateID(id);
             this.toBackend.push({ type: "FollowMsg", id, target });
         };
         this.watch = (id, cb) => {
@@ -77,6 +80,7 @@ class RepoFrontend {
             return handle;
         };
         this.doc = (id, cb) => {
+            Metadata_1.validateID(id);
             return new Promise((resolve) => {
                 const handle = this.open(id);
                 handle.subscribe((val, clock) => {
@@ -88,6 +92,7 @@ class RepoFrontend {
             });
         };
         this.open = (id) => {
+            Metadata_1.validateID(id);
             const doc = this.docs.get(id) || this.openDocFrontend(id);
             return doc.handle();
         };
@@ -124,6 +129,7 @@ class RepoFrontend {
         };
     }
     debug(id) {
+        Metadata_1.validateID(id);
         const doc = this.docs.get(id);
         const short = id.substr(0, 5);
         if (doc === undefined) {

@@ -55,6 +55,7 @@ class RepoBackend {
             this.joined.delete(dk);
         };
         this.getReadyActor = (actorId, cb) => {
+            console.log("GET READY ACTOR", actorId);
             const publicKey = Base58.decode(actorId);
             const actor = this.actors.get(actorId) || this.initActor({ publicKey });
             actor.push(cb);
@@ -70,8 +71,9 @@ class RepoBackend {
         this.actorNotify = (msg) => {
             switch (msg.type) {
                 case "NewMetadata":
-                    this.meta.addBlocks(msg.blocks);
-                    msg.blocks.map(block => this.syncReadyActors(block.actorIds || []));
+                    const blocks = Metadata_1.validateMetadataMsg(msg.input);
+                    this.meta.addBlocks(blocks);
+                    blocks.map(block => this.syncReadyActors(block.actors || []));
                     break;
                 case "ActorSync":
                     this.syncChanges(msg.actor);
@@ -97,6 +99,7 @@ class RepoBackend {
             });
         };
         this.stream = (opts) => {
+            console.log("STREAM", opts);
             const stream = HypercoreProtocol({
                 live: true,
                 id: this.id,
@@ -183,6 +186,7 @@ class RepoBackend {
                 }
             }
         };
+        console.log("REPO BACKEND");
         this.opts = opts;
         this.path = opts.path || "default";
         this.storage = opts.storage;
