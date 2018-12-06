@@ -55,7 +55,6 @@ class RepoBackend {
             this.joined.delete(dk);
         };
         this.getReadyActor = (actorId, cb) => {
-            console.log("GET READY ACTOR", actorId);
             const publicKey = Base58.decode(actorId);
             const actor = this.actors.get(actorId) || this.initActor({ publicKey });
             actor.push(cb);
@@ -99,7 +98,6 @@ class RepoBackend {
             });
         };
         this.stream = (opts) => {
-            console.log("STREAM", opts);
             const stream = HypercoreProtocol({
                 live: true,
                 id: this.id,
@@ -186,7 +184,6 @@ class RepoBackend {
                 }
             }
         };
-        console.log("REPO BACKEND");
         this.opts = opts;
         this.path = opts.path || "default";
         this.storage = opts.storage;

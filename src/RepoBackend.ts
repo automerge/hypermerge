@@ -58,7 +58,6 @@ export class RepoBackend {
   file?: Uint8Array
 
   constructor(opts: Options) {
-    console.log("REPO BACKEND")
     this.opts = opts
     this.path = opts.path || "default"
     this.storage = opts.storage
@@ -177,7 +176,6 @@ export class RepoBackend {
   }
 
   private getReadyActor = (actorId: string, cb: (actor: Actor) => void) => {
-    console.log("GET READY ACTOR", actorId)
     const publicKey = Base58.decode(actorId)
     const actor = this.actors.get(actorId) || this.initActor({ publicKey })
     actor.push(cb)
@@ -260,7 +258,6 @@ export class RepoBackend {
   }
 
   stream = (opts: any): any => {
-    console.log("STREAM", opts)
     const stream = HypercoreProtocol({
       live: true,
       id: this.id,

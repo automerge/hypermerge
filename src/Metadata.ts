@@ -26,7 +26,6 @@ export function validateMetadataMsg(input: Uint8Array) : MetadataBlock[] {
 }
 
 export function cleanMetadataInput(input: any) : MetadataBlock | undefined {
-    console.log("CLEAN",input)
     const id = input.id || input.docId
     if (typeof id !== 'string') return undefined
 
@@ -70,9 +69,9 @@ export function cleanMetadataInput(input: any) : MetadataBlock | undefined {
 
 export function filterMetadataInputs(input: any[]) : MetadataBlock[] {
   const metadata : MetadataBlock[] = []
-  input.forEach( i => {
+  input.forEach(i => {
     const cleaned = cleanMetadataInput(i)
-    if (cleaned !== undefined) {
+    if (cleaned) {
       metadata.push(cleaned)
     } else {
       log("WARNING: Metadata Input Invalid - ignoring", i)

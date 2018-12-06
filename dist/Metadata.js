@@ -36,7 +36,6 @@ function validateMetadataMsg(input) {
 }
 exports.validateMetadataMsg = validateMetadataMsg;
 function cleanMetadataInput(input) {
-    console.log("CLEAN", input);
     const id = input.id || input.docId;
     if (typeof id !== 'string')
         return undefined;
@@ -84,7 +83,7 @@ function filterMetadataInputs(input) {
     const metadata = [];
     input.forEach(i => {
         const cleaned = cleanMetadataInput(i);
-        if (cleaned !== undefined) {
+        if (cleaned) {
             metadata.push(cleaned);
         }
         else {
