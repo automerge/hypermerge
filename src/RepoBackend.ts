@@ -196,12 +196,6 @@ export class RepoBackend {
     return actorId
   }
 
-/*
-  sendToPeer(peer: Peer, data: any) {
-    peer.stream.extension(EXT, Buffer.from(JSON.stringify(data)))
-  }
-*/
-
   actorIds(doc: DocBackend): string[] {
     return this.meta.actors(doc.id)
   }

@@ -1,5 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+// core actors 
+// dependant docs / dependant actors
 function clock(input) {
     if (typeof input === 'string') {
         return { [input]: Infinity };

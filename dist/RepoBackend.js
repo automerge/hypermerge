@@ -273,11 +273,6 @@ class RepoBackend {
         this.initActor(keys);
         return actorId;
     }
-    /*
-      sendToPeer(peer: Peer, data: any) {
-        peer.stream.extension(EXT, Buffer.from(JSON.stringify(data)))
-      }
-    */
     actorIds(doc) {
         return this.meta.actors(doc.id);
     }

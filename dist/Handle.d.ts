@@ -9,8 +9,8 @@ export declare class Handle<T> {
     private repo;
     constructor(repo: RepoFrontend);
     fork(): string;
-    merge(other: Handle<T>): this;
     follow(): string;
+    merge(other: Handle<T>): this;
     push: (item: Doc<T>, clock: Clock) => void;
     once: (subscriber: (doc: Doc<T>, clock?: Clock | undefined, index?: number | undefined) => void) => this;
     subscribe: (subscriber: (doc: Doc<T>, clock?: Clock | undefined, index?: number | undefined) => void) => this;
