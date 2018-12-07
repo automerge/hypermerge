@@ -149,6 +149,12 @@ class RepoBackend {
                         delete this.file;
                         break;
                     }
+                    case "MaterializeMsg": {
+                        const changes = this.getChanges(msg.clock);
+                        const [back, patch] = Backend.applyChanges(Backend.init(), changes);
+                        this.toFrontend.push({ type: "PatchMsg", id: msg.id, patch });
+                        break;
+                    }
                     case "ReadFile": {
                         const id = msg.id;
                         this.readFile(id, (file) => {
@@ -290,6 +296,14 @@ class RepoBackend {
     }
     releaseManager(doc) {
         // FIXME - need reference count with many feeds <-> docs
+    }
+    getChanges(clock) {
+        const changes = [];
+        for (let i in clock) {
+            const actor = this.actors.get(i);
+            changes.push(...actor.changes.slice(0, clock[i]));
+        }
+        return changes;
     }
     actor(id) {
         return this.actors.get(id);

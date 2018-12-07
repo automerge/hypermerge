@@ -1,7 +1,13 @@
 
 import { Clock, Patch, Doc, Change, ChangeFn } from "automerge/frontend"
 
-export type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | FollowMsg | MergeMsg | CreateMsg | OpenMsg | DebugMsg | WriteFile | ReadFile | Uint8Array
+export type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | FollowMsg | MergeMsg | CreateMsg | OpenMsg | DebugMsg | WriteFile | ReadFile | MaterializeMsg | Uint8Array
+
+export interface MaterializeMsg {
+  type: "MaterializeMsg"
+  clock: Clock
+  id: string
+}
  
 export interface CreateMsg {
   type: "CreateMsg"

@@ -5,7 +5,8 @@ import MapSet from "./MapSet"
 import * as crypto from "hypercore/lib/crypto"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import Handle from "./Handle"
-import { ChangeFn } from "automerge/frontend"
+import { ChangeFn, Doc, Patch } from "automerge/frontend"
+import * as Frontend from "automerge/frontend"
 import { DocFrontend } from "./DocFrontend"
 import { clock2strs, Clock, clockDebug } from "./Clock"
 import Debug from "debug"
@@ -18,6 +19,7 @@ const log = Debug("repo:front")
 export class RepoFrontend {
   toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:tobackend")
   docs: Map<string, DocFrontend<any>> = new Map()
+  msgcb: Map<string, (patch: Patch) => void> = new Map()
   readFiles: MapSet<string,(data: Uint8Array) => void> = new MapSet()
   file?: Uint8Array
 
@@ -95,6 +97,15 @@ export class RepoFrontend {
     })
   }
 
+  materialize = <T>(clock: Clock, cb: (val: T) => void) => {
+    const id = Math.random().toString()
+    this.msgcb.set(id,( patch: Patch) => {
+      const doc = Frontend.init({ deferActorId: true }) as Doc<T>
+      cb(Frontend.applyPatch(doc, patch))
+    })
+    this.toBackend.push({ type: "MaterializeMsg", clock, id })
+  }
+
   open = <T>(id: string): Handle<T> => {
     validateID(id)
     const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id)
@@ -131,6 +142,7 @@ export class RepoFrontend {
       this.file = msg
     } else {
       const doc = this.docs.get(msg.id)!
+      const cb = this.msgcb.get(msg.id)
       switch (msg.type) {
         case "ReadFileReply": {
           this.readFiles.get(msg.id).forEach(cb => cb(this.file!))
@@ -139,7 +151,11 @@ export class RepoFrontend {
           break
         }
         case "PatchMsg": {
-          doc.patch(msg.patch)
+          if (cb) {
+            cb(msg.patch)
+          } else {
+            doc.patch(msg.patch)
+          }
           break
         }
         case "ActorIdMsg": {

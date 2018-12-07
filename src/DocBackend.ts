@@ -61,7 +61,7 @@ export class DocBackend {
     }
   }
 
-  updateClock( changes: Change[] ) {
+  updateClock(changes: Change[] ) {
     changes.forEach((change) => {
       const actor = change.actor
       const oldSeq = this.clock[actor] || 0

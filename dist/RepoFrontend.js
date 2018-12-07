@@ -14,6 +14,7 @@ const Queue_1 = __importDefault(require("./Queue"));
 const Base58 = __importStar(require("bs58"));
 const MapSet_1 = __importDefault(require("./MapSet"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
+const Frontend = __importStar(require("automerge/frontend"));
 const DocFrontend_1 = require("./DocFrontend");
 const Clock_1 = require("./Clock");
 const debug_1 = __importDefault(require("debug"));
@@ -24,6 +25,7 @@ class RepoFrontend {
     constructor() {
         this.toBackend = new Queue_1.default("repo:tobackend");
         this.docs = new Map();
+        this.msgcb = new Map();
         this.readFiles = new MapSet_1.default();
         this.create = (init) => {
             const keys = crypto.keyPair();
@@ -91,6 +93,14 @@ class RepoFrontend {
                 });
             });
         };
+        this.materialize = (clock, cb) => {
+            const id = Math.random().toString();
+            this.msgcb.set(id, (patch) => {
+                const doc = Frontend.init({ deferActorId: true });
+                cb(Frontend.applyPatch(doc, patch));
+            });
+            this.toBackend.push({ type: "MaterializeMsg", clock, id });
+        };
         this.open = (id) => {
             Metadata_1.validateID(id);
             const doc = this.docs.get(id) || this.openDocFrontend(id);
@@ -105,6 +115,7 @@ class RepoFrontend {
             }
             else {
                 const doc = this.docs.get(msg.id);
+                const cb = this.msgcb.get(msg.id);
                 switch (msg.type) {
                     case "ReadFileReply": {
                         this.readFiles.get(msg.id).forEach(cb => cb(this.file));
@@ -113,7 +124,12 @@ class RepoFrontend {
                         break;
                     }
                     case "PatchMsg": {
-                        doc.patch(msg.patch);
+                        if (cb) {
+                            cb(msg.patch);
+                        }
+                        else {
+                            doc.patch(msg.patch);
+                        }
                         break;
                     }
                     case "ActorIdMsg": {

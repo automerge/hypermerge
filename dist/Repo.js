@@ -21,6 +21,7 @@ class Repo {
         this.watch = this.front.watch;
         this.merge = this.front.merge;
         this.replicate = this.back.replicate;
+        this.materialize = this.front.materialize;
     }
 }
 exports.Repo = Repo;

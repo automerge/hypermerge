@@ -1,5 +1,10 @@
-import { Patch, Change } from "automerge/frontend";
-export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | FollowMsg | MergeMsg | CreateMsg | OpenMsg | DebugMsg | WriteFile | ReadFile | Uint8Array;
+import { Clock, Patch, Change } from "automerge/frontend";
+export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | FollowMsg | MergeMsg | CreateMsg | OpenMsg | DebugMsg | WriteFile | ReadFile | MaterializeMsg | Uint8Array;
+export interface MaterializeMsg {
+    type: "MaterializeMsg";
+    clock: Clock;
+    id: string;
+}
 export interface CreateMsg {
     type: "CreateMsg";
     publicKey: string;

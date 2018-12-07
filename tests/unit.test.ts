@@ -57,7 +57,6 @@ test("Test document forking...", (t) => {
   const id = repo.create()
   const handle = repo.open(id)
   handle.subscribe((state, clock, index) => {
-    console.log("SUBSCRIBE 1", state)
     switch (index) {
       case 0:
         t.equal(state.foo, undefined)
@@ -70,7 +69,6 @@ test("Test document forking...", (t) => {
   const id2 = handle.fork()
   const handle2 = repo.open(id2)
   handle2.subscribe((state, clock, index) => {
-    console.log("SUBSCRIBE 2", index, state)
     switch (index) {
       case 1:
         t.equal(state.foo, "bar")
@@ -81,5 +79,34 @@ test("Test document forking...", (t) => {
         t.end()
         break;
     }
+  })
+})
+
+test("Test materialize...", (t) => {
+  const repo = new Repo({ storage: ram })
+  const id = repo.create({ foo: "bar0" })
+  let _clock = {}
+  const handle = repo.watch<any>(id, (state,clock,index) => {
+    //console.log("INDEX=",index, state)
+    if (index === 1) {
+      t.equal(state.foo, "bar1")
+      _clock = clock!
+    }
+    if (index === 5) {
+      t.equal(state.foo, "bar3")
+      repo.materialize<any>(_clock, (state) => {
+        t.equal(state.foo, "bar1")
+        t.end()
+      })
+    }
+  })
+  repo.change(id, state => {
+    state.foo = "bar1"
+  })
+  repo.change(id, state => {
+    state.foo = "bar2"
+  })
+  repo.change(id, state => {
+    state.foo = "bar3"
   })
 })

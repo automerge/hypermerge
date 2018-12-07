@@ -28,6 +28,7 @@ export class Repo {
   change: <T>(id: string, fn: ChangeFn<T>) => void
   writeFile: <T>(data: Uint8Array) => string
   readFile: <T>(id: string, cb: (data: Uint8Array) => void) => void
+  materialize: <T>(clock: Clock, cb: (val: T) => void) => void
 
 
 
@@ -49,5 +50,6 @@ export class Repo {
     this.watch = this.front.watch
     this.merge = this.front.merge
     this.replicate = this.back.replicate
+    this.materialize = this.front.materialize
   }
 }
