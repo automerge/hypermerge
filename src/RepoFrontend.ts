@@ -4,7 +4,7 @@ import * as Base58 from "bs58"
 import MapSet from "./MapSet"
 import * as crypto from "hypercore/lib/crypto"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
-import Handle from "./Handle"
+import { Handle } from "./Handle"
 import { ChangeFn, Doc, Patch } from "automerge/frontend"
 import * as Frontend from "automerge/frontend"
 import { DocFrontend } from "./DocFrontend"
@@ -112,13 +112,16 @@ export class RepoFrontend {
     })
   }
 
-  materialize = <T>(clock: Clock, cb: (val: T) => void) => {
-    const id = Math.random().toString()
-    this.msgcb.set(id,( patch: Patch) => {
+  materialize = <T>(id: string, seq: number, cb: (val: T) => void) => {
+    const meta = this.meta(id)!
+    const clock = { ... meta.clock, [meta.actor!]: seq }
+    const _id = Math.random().toString()
+
+    this.msgcb.set(_id,( patch: Patch) => {
       const doc = Frontend.init({ deferActorId: true }) as Doc<T>
       cb(Frontend.applyPatch(doc, patch))
     })
-    this.toBackend.push({ type: "MaterializeMsg", clock, id })
+    this.toBackend.push({ type: "MaterializeMsg", clock, id: _id })
   }
 
   open = <T>(id: string): Handle<T> => {

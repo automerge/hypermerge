@@ -59,5 +59,5 @@ class Handle {
         this.repo.debug(this.id);
     }
 }
-exports.default = Handle;
+exports.Handle = Handle;
 //# sourceMappingURL=Handle.js.map

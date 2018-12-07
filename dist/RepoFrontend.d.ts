@@ -1,7 +1,7 @@
 import Queue from "./Queue";
 import MapSet from "./MapSet";
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
-import Handle from "./Handle";
+import { Handle } from "./Handle";
 import { ChangeFn, Patch } from "automerge/frontend";
 import { DocFrontend } from "./DocFrontend";
 import { Clock } from "./Clock";
@@ -25,7 +25,7 @@ export declare class RepoFrontend {
     follow: (id: string, target: string) => void;
     watch: <T>(id: string, cb: (val: T, clock?: Clock | undefined, index?: number | undefined) => void) => Handle<T>;
     doc: <T>(id: string, cb?: ((val: T, clock?: Clock | undefined) => void) | undefined) => Promise<T>;
-    materialize: <T>(clock: Clock, cb: (val: T) => void) => void;
+    materialize: <T>(id: string, seq: number, cb: (val: T) => void) => void;
     open: <T>(id: string) => Handle<T>;
     debug(id: string): void;
     private openDocFrontend;

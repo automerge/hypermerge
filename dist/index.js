@@ -3,6 +3,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var Repo_1 = require("./Repo");
 exports.Repo = Repo_1.Repo;
+var Handle_1 = require("./Handle");
+exports.Handle = Handle_1.Handle;
 var RepoBackend_1 = require("./RepoBackend");
 exports.RepoBackend = RepoBackend_1.RepoBackend;
 var RepoFrontend_1 = require("./RepoFrontend");

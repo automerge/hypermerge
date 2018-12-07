@@ -85,16 +85,14 @@ test("Test document forking...", (t) => {
 test("Test materialize...", (t) => {
   const repo = new Repo({ storage: ram })
   const id = repo.create({ foo: "bar0" })
-  let _clock = {}
   const handle = repo.watch<any>(id, (state,clock,index) => {
     //console.log("INDEX=",index, state)
     if (index === 1) {
       t.equal(state.foo, "bar1")
-      _clock = clock!
     }
     if (index === 5) {
       t.equal(state.foo, "bar3")
-      repo.materialize<any>(_clock, (state) => {
+      repo.materialize<any>(id, 2, (state) => {
         t.equal(state.foo, "bar1")
         t.end()
       })

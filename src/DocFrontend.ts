@@ -4,7 +4,7 @@ import { RepoFrontend } from "./RepoFrontend"
 import * as Frontend from "automerge/frontend"
 import { Clock, union } from "./Clock"
 import Queue from "./Queue"
-import Handle from "./Handle"
+import { Handle } from "./Handle"
 import Debug from "debug"
 
 // TODO - i bet this can be rewritten where the Frontend allocates the actorid on write - this

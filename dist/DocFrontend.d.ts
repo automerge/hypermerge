@@ -1,7 +1,7 @@
 import { Patch, ChangeFn } from "automerge/frontend";
 import { RepoFrontend } from "./RepoFrontend";
 import { Clock } from "./Clock";
-import Handle from "./Handle";
+import { Handle } from "./Handle";
 export declare type Patch = Patch;
 interface Config {
     docId: string;

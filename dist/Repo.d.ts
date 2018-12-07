@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { Options, RepoBackend } from "./RepoBackend";
 import { RepoFrontend, DocMetadata } from "./RepoFrontend";
-import Handle from "./Handle";
+import { Handle } from "./Handle";
 import { Clock } from "./Clock";
 import { ChangeFn } from "automerge/frontend";
 interface Swarm {
@@ -25,7 +25,7 @@ export declare class Repo {
     change: <T>(id: string, fn: ChangeFn<T>) => void;
     writeFile: <T>(data: Uint8Array) => string;
     readFile: <T>(id: string, cb: (data: Uint8Array) => void) => void;
-    materialize: <T>(clock: Clock, cb: (val: T) => void) => void;
+    materialize: <T>(id: string, seq: number, cb: (val: T) => void) => void;
     meta: (id: string) => DocMetadata | undefined;
     constructor(opts: Options);
 }

@@ -1,7 +1,7 @@
 import { Clock, Doc, ChangeFn } from "automerge/frontend"
 import { RepoFrontend } from "./RepoFrontend"
 
-export default class Handle<T> {
+export class Handle<T> {
   id: string = ""
   state: Doc<T> | null = null
   clock: Clock | null = null

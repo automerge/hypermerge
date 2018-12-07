@@ -103,13 +103,15 @@ class RepoFrontend {
                 });
             });
         };
-        this.materialize = (clock, cb) => {
-            const id = Math.random().toString();
-            this.msgcb.set(id, (patch) => {
+        this.materialize = (id, seq, cb) => {
+            const meta = this.meta(id);
+            const clock = Object.assign({}, meta.clock, { [meta.actor]: seq });
+            const _id = Math.random().toString();
+            this.msgcb.set(_id, (patch) => {
                 const doc = Frontend.init({ deferActorId: true });
                 cb(Frontend.applyPatch(doc, patch));
             });
-            this.toBackend.push({ type: "MaterializeMsg", clock, id });
+            this.toBackend.push({ type: "MaterializeMsg", clock, id: _id });
         };
         this.open = (id) => {
             Metadata_1.validateID(id);

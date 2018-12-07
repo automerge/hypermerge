@@ -13,7 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Frontend = __importStar(require("automerge/frontend"));
 const Clock_1 = require("./Clock");
 const Queue_1 = __importDefault(require("./Queue"));
-const Handle_1 = __importDefault(require("./Handle"));
+const Handle_1 = require("./Handle");
 const debug_1 = __importDefault(require("debug"));
 // TODO - i bet this can be rewritten where the Frontend allocates the actorid on write - this
 // would make first writes a few ms faster
@@ -85,7 +85,7 @@ class DocFrontend {
         }
     }
     handle() {
-        let handle = new Handle_1.default(this.repo);
+        let handle = new Handle_1.Handle(this.repo);
         this.handles.add(handle);
         handle.cleanup = () => this.handles.delete(handle);
         handle.changeFn = this.change;
