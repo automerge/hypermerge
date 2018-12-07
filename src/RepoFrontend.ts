@@ -16,6 +16,11 @@ Debug.formatters.b = Base58.encode
 
 const log = Debug("repo:front")
 
+export interface DocMetadata {
+  clock: Clock
+  actor?: string
+}
+
 export class RepoFrontend {
   toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:tobackend")
   docs: Map<string, DocFrontend<any>> = new Map()
@@ -44,6 +49,16 @@ export class RepoFrontend {
 
   change = <T>(id: string, fn: ChangeFn<T>) => {
     this.open<T>(id).change(fn)
+  }
+
+  meta = (id: string) : DocMetadata | undefined => {
+    validateID(id)
+    const doc = this.docs.get(id)
+    if (!doc) return
+    return {
+      actor: doc.actorId,
+      clock: doc.clock
+    }
   }
 
   merge = (id: string, target: string ) => {

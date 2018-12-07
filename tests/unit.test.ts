@@ -110,3 +110,29 @@ test("Test materialize...", (t) => {
     state.foo = "bar3"
   })
 })
+
+test("Test meta...", (t) => {
+  const repo = new Repo({ storage: ram })
+  const id = repo.create({ foo: "bar0" })
+  const handle = repo.watch<any>(id, (state,clock,index) => {
+    const meta = repo.meta(id)!
+    //console.log("INDEX=",index, state, meta)
+    if (index === 1) {
+      const actor = meta.actor!
+      const seq = meta.clock[actor]
+      t.equal(seq, 2)
+    }
+    if (index === 3) {
+      const actor = meta.actor!
+      const seq = meta.clock[actor]
+      t.equal(seq, 3)
+      t.end();
+    }
+  })
+  repo.change(id, state => {
+    state.foo = "bar1"
+  })
+  repo.change(id, state => {
+    state.foo = "bar2"
+  })
+})

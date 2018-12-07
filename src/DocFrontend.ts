@@ -23,7 +23,7 @@ interface Config {
 
 export class DocFrontend<T> {
   private docId: string
-  private actorId?: string
+  actorId?: string
 //  private toBackend: Queue<ToBackendRepoMsg>
   private changeQ = new Queue<ChangeFn<T>>("frontend:change")
   private front: Doc<T>

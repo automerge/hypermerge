@@ -9,7 +9,7 @@ interface Config {
 }
 export declare class DocFrontend<T> {
     private docId;
-    private actorId?;
+    actorId?: string;
     private changeQ;
     private front;
     private mode;

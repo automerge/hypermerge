@@ -48,6 +48,16 @@ class RepoFrontend {
         this.change = (id, fn) => {
             this.open(id).change(fn);
         };
+        this.meta = (id) => {
+            Metadata_1.validateID(id);
+            const doc = this.docs.get(id);
+            if (!doc)
+                return;
+            return {
+                actor: doc.actorId,
+                clock: doc.clock
+            };
+        };
         this.merge = (id, target) => {
             this.doc(target, (doc, clock) => {
                 const actors = Clock_1.clock2strs(clock);
