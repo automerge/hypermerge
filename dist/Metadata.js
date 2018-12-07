@@ -54,7 +54,7 @@ function cleanMetadataInput(input) {
     if (follows !== undefined) {
         if (!(follows instanceof Array))
             return undefined;
-        if (follows.every(isValidID))
+        if (!follows.every(isValidID))
             return undefined;
     }
     if (merge !== undefined) {
