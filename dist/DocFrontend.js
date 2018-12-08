@@ -21,11 +21,11 @@ const log = debug_1.default("hypermerge:front");
 class DocFrontend {
     constructor(repo, config) {
         //super()
+        this.history = 0;
         //  private toBackend: Queue<ToBackendRepoMsg>
         this.changeQ = new Queue_1.default("frontend:change");
         this.mode = "pending";
         this.handles = new Set();
-        this.history = 0;
         this.fork = () => {
             return "";
         };

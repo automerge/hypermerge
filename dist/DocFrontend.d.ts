@@ -10,12 +10,12 @@ interface Config {
 export declare class DocFrontend<T> {
     private docId;
     actorId?: string;
+    history: number;
     private changeQ;
     private front;
     private mode;
     private handles;
     private repo;
-    private history;
     clock: Clock;
     constructor(repo: RepoFrontend, config: Config);
     handle(): Handle<T>;

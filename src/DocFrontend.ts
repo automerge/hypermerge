@@ -24,13 +24,13 @@ interface Config {
 export class DocFrontend<T> {
   private docId: string;
   actorId?: string;
+  history: number = 0;
   //  private toBackend: Queue<ToBackendRepoMsg>
   private changeQ = new Queue<ChangeFn<T>>("frontend:change");
   private front: Doc<T>;
   private mode: Mode = "pending";
   private handles: Set<Handle<T>> = new Set();
   private repo: RepoFrontend;
-  private history: number = 0;
 
   clock: Clock;
 

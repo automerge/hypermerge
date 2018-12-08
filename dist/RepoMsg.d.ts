@@ -1,9 +1,10 @@
-import { Clock, Patch, Change } from "automerge/frontend";
+import { Patch, Change } from "automerge/frontend";
 export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | FollowMsg | MergeMsg | CreateMsg | OpenMsg | DebugMsg | WriteFile | ReadFile | MaterializeMsg | Uint8Array;
 export interface MaterializeMsg {
     type: "MaterializeMsg";
-    clock: Clock;
     id: string;
+    history: number;
+    msgid: number;
 }
 export interface CreateMsg {
     type: "CreateMsg";
@@ -46,12 +47,17 @@ export interface RequestMsg {
     id: string;
     request: Change;
 }
-export declare type ToFrontendRepoMsg = PatchMsg | ActorIdMsg | ReadyMsg | ReadFileReply | Uint8Array;
+export declare type ToFrontendRepoMsg = PatchMsg | ActorIdMsg | ReadyMsg | ReadFileReply | MaterializeReplyMsg | Uint8Array;
 export interface PatchMsg {
     type: "PatchMsg";
     id: string;
     patch: Patch;
     history: number;
+}
+export interface MaterializeReplyMsg {
+    type: "MaterializeReplyMsg";
+    msgid: number;
+    patch: Patch;
 }
 export interface ReadFileReply {
     type: "ReadFileReply";

@@ -92,7 +92,7 @@ test("Test materialize...", (t) => {
     }
     if (index === 5) {
       t.equal(state.foo, "bar3")
-      repo.materialize<any>(id, 2, (state) => {
+      repo.materialize(id, 2, (state:any) => {
         t.equal(state.foo, "bar1")
         t.end()
       })

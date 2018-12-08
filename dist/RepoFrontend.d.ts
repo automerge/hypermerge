@@ -7,12 +7,13 @@ import { DocFrontend } from "./DocFrontend";
 import { Clock } from "./Clock";
 export interface DocMetadata {
     clock: Clock;
+    history: number;
     actor?: string;
 }
 export declare class RepoFrontend {
     toBackend: Queue<ToBackendRepoMsg>;
     docs: Map<string, DocFrontend<any>>;
-    msgcb: Map<string, (patch: Patch) => void>;
+    msgcb: Map<number, (patch: Patch) => void>;
     readFiles: MapSet<string, (data: Uint8Array) => void>;
     file?: Uint8Array;
     create: (init?: any) => string;
@@ -25,7 +26,7 @@ export declare class RepoFrontend {
     follow: (id: string, target: string) => void;
     watch: <T>(id: string, cb: (val: T, clock?: Clock | undefined, index?: number | undefined) => void) => Handle<T>;
     doc: <T>(id: string, cb?: ((val: T, clock?: Clock | undefined) => void) | undefined) => Promise<T>;
-    materialize: <T>(id: string, seq: number, cb: (val: T) => void) => void;
+    materialize: <T>(id: string, history: number, cb: (val: T) => void) => void;
     open: <T>(id: string) => Handle<T>;
     debug(id: string): void;
     private openDocFrontend;

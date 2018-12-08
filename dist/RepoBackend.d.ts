@@ -62,7 +62,6 @@ export declare class RepoBackend {
     releaseManager(doc: DocBackend): void;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;
     receive: (msg: ToBackendRepoMsg) => void;
-    getChanges(clock: Clock): Change[];
     actor(id: string): Actor | undefined;
 }
 export {};

@@ -15,8 +15,9 @@ export type ToBackendRepoMsg =
 
 export interface MaterializeMsg {
   type: "MaterializeMsg";
-  clock: Clock;
   id: string;
+  history: number;
+  msgid: number;
 }
 
 export interface CreateMsg {
@@ -74,6 +75,7 @@ export type ToFrontendRepoMsg =
   | ActorIdMsg
   | ReadyMsg
   | ReadFileReply
+  | MaterializeReplyMsg
   | Uint8Array;
 
 export interface PatchMsg {
@@ -81,6 +83,12 @@ export interface PatchMsg {
   id: string;
   patch: Patch;
   history: number;
+}
+
+export interface MaterializeReplyMsg {
+  type: "MaterializeReplyMsg";
+  msgid: number;
+  patch: Patch;
 }
 
 export interface ReadFileReply {

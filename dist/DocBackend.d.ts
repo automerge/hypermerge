@@ -8,8 +8,8 @@ export declare class DocBackend {
     id: string;
     actorId?: string;
     clock: Clock;
+    back?: BackDoc;
     private repo;
-    private back?;
     private localChangeQ;
     private remoteChangesQ;
     private wantsActor;

@@ -324,15 +324,13 @@ export class RepoBackend {
           break;
         }
         case "MaterializeMsg": {
-          const changes = this.getChanges(msg.clock);
-          const [back, patch] = Backend.applyChanges(Backend.init(), changes);
-          //          const history = back.getIn(['opSet', 'history']).length
-          const history = 0;
+          const doc = this.docs.get(msg.id)!
+          const changes = (doc.back as any).getIn(['opSet', 'history']).slice(0,msg.history).toArray()
+          const [_, patch] = Backend.applyChanges(Backend.init(), changes);
           this.toFrontend.push({
-            type: "PatchMsg",
-            id: msg.id,
-            patch,
-            history
+            type: "MaterializeReplyMsg",
+            msgid: msg.msgid,
+            patch
           });
           break;
         }
@@ -389,6 +387,7 @@ export class RepoBackend {
   }
 */
 
+/*
   getChanges(clock: Clock): Change[] {
     const changes = [];
     for (let i in clock) {
@@ -397,6 +396,7 @@ export class RepoBackend {
     }
     return changes;
   }
+*/
 
   actor(id: string): Actor | undefined {
     return this.actors.get(id);

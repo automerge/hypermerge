@@ -17,13 +17,16 @@ const log = Debug("repo:front");
 
 export interface DocMetadata {
   clock: Clock;
+  history: number;
   actor?: string;
 }
+
+let msgid = 1
 
 export class RepoFrontend {
   toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:tobackend");
   docs: Map<string, DocFrontend<any>> = new Map();
-  msgcb: Map<string, (patch: Patch) => void> = new Map();
+  msgcb: Map<number, (patch: Patch) => void> = new Map();
   readFiles: MapSet<string, (data: Uint8Array) => void> = new MapSet();
   file?: Uint8Array;
 
@@ -56,6 +59,7 @@ export class RepoFrontend {
     if (!doc) return;
     return {
       actor: doc.actorId,
+      history: doc.history,
       clock: doc.clock
     };
   };
@@ -114,16 +118,19 @@ export class RepoFrontend {
     });
   };
 
-  materialize = <T>(id: string, seq: number, cb: (val: T) => void) => {
-    const meta = this.meta(id)!;
-    const clock = { ...meta.clock, [meta.actor!]: seq };
-    const _id = Math.random().toString();
+  materialize = <T>(id: string, history: number, cb: (val: T) => void) => {
+    validateID(id);
+    const doc = this.docs.get(id);
+    if (doc === undefined) { throw new Error(`No such document ${id}`) }
+    if (history < 0 && history >= doc.history) { throw new Error(`Invalid history ${history} for id ${id}`) }
 
-    this.msgcb.set(_id, (patch: Patch) => {
+    msgid += 1 // global counter
+
+    this.msgcb.set(msgid, (patch: Patch) => {
       const doc = Frontend.init({ deferActorId: true }) as Doc<T>;
       cb(Frontend.applyPatch(doc, patch));
     });
-    this.toBackend.push({ type: "MaterializeMsg", clock, id: _id });
+    this.toBackend.push({ type: "MaterializeMsg", history, id, msgid });
   };
 
   open = <T>(id: string): Handle<T> => {
@@ -161,28 +168,31 @@ export class RepoFrontend {
     if (msg instanceof Uint8Array) {
       this.file = msg;
     } else {
-      const doc = this.docs.get(msg.id)!;
-      const cb = this.msgcb.get(msg.id);
       switch (msg.type) {
         case "ReadFileReply": {
+          const doc = this.docs.get(msg.id)!;
           this.readFiles.get(msg.id).forEach(cb => cb(this.file!));
           this.readFiles.delete(msg.id);
           delete this.file;
           break;
         }
         case "PatchMsg": {
-          if (cb) {
-            cb(msg.patch);
-          } else {
-            doc.patch(msg.patch, msg.history);
-          }
+          const doc = this.docs.get(msg.id)!;
+          doc.patch(msg.patch, msg.history);
+          break;
+        }
+        case "MaterializeReplyMsg": {
+          const cb = this.msgcb.get(msg.msgid)!;
+          cb(msg.patch);
           break;
         }
         case "ActorIdMsg": {
+          const doc = this.docs.get(msg.id)!;
           doc.setActorId(msg.actorId);
           break;
         }
         case "ReadyMsg": {
+          const doc = this.docs.get(msg.id)!;
           doc.init(msg.actorId, msg.patch);
           break;
         }

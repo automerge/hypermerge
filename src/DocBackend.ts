@@ -16,8 +16,8 @@ export class DocBackend {
   id: string;
   actorId?: string; // this might be easier to have as the actor object - FIXME
   clock: Clock = {};
+  back?: BackDoc; // can we make this private?
   private repo: RepoBackend;
-  private back?: BackDoc;
   private localChangeQ = new Queue<Change>("backend:localChangeQ");
   private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ");
   private wantsActor: boolean = false;
