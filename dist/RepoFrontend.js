@@ -52,8 +52,10 @@ class RepoFrontend {
         this.meta = (id) => {
             Metadata_1.validateID(id);
             const doc = this.docs.get(id);
+            console.log("META FOR ", id);
             if (!doc)
                 return;
+            console.log("DOC.H", doc.history);
             return {
                 actor: doc.actorId,
                 history: doc.history,
@@ -159,7 +161,7 @@ class RepoFrontend {
                     }
                     case "ReadyMsg": {
                         const doc = this.docs.get(msg.id);
-                        doc.init(msg.actorId, msg.patch);
+                        doc.init(msg.actorId, msg.patch, msg.history);
                         break;
                     }
                 }

@@ -100,7 +100,7 @@ export class DocFrontend<T> {
 
   init = (actorId?: string, patch?: Patch, history?: number) => {
     log(
-      `init docid=${this.docId} actorId=${actorId} patch=${!!patch} mode=${
+      `init docid=${this.docId} actorId=${actorId} patch=${!!patch} history=${history} mode=${
         this.mode
       }`
     );

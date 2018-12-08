@@ -48,7 +48,7 @@ class DocFrontend {
                 this.enableWrites(); // has to be after the queue
         };
         this.init = (actorId, patch, history) => {
-            log(`init docid=${this.docId} actorId=${actorId} patch=${!!patch} mode=${this.mode}`);
+            log(`init docid=${this.docId} actorId=${actorId} patch=${!!patch} history=${history} mode=${this.mode}`);
             if (this.mode !== "pending")
                 return;
             if (actorId)

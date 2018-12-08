@@ -31,7 +31,7 @@ export class DocBackend {
       this.actorId = id;
       this.subscribeToRemoteChanges();
       this.subscribeToLocalChanges();
-      const history = (this.back as any).getIn(["opSet", "history"]).length;
+      const history = (this.back as any).getIn(["opSet", "history"]).size;
       this.repo.toFrontend.push({
         type: "ReadyMsg",
         id: this.id,
@@ -90,7 +90,7 @@ export class DocBackend {
       this.updateClock(changes);
       this.subscribeToLocalChanges();
       this.subscribeToRemoteChanges();
-      const history = (this.back as any).getIn(["opSet", "history"]).length;
+      const history = (this.back as any).getIn(["opSet", "history"]).size;
       this.repo.toFrontend.push({
         type: "ReadyMsg",
         id: this.id,
@@ -107,7 +107,7 @@ export class DocBackend {
         const [back, patch] = Backend.applyChanges(this.back!, changes);
         this.back = back;
         this.updateClock(changes);
-        const history = (this.back as any).getIn(["opSet", "history"]).length;
+        const history = (this.back as any).getIn(["opSet", "history"]).size;
         this.repo.toFrontend.push({
           type: "PatchMsg",
           id: this.id,
@@ -124,7 +124,7 @@ export class DocBackend {
         const [back, patch] = Backend.applyLocalChange(this.back!, change);
         this.back = back;
         this.updateClock([change]);
-        const history = (this.back as any).getIn(["opSet", "history"]).length;
+        const history = (this.back as any).getIn(["opSet", "history"]).size;
         this.repo.toFrontend.push({
           type: "PatchMsg",
           id: this.id,
