@@ -84,7 +84,8 @@ class RepoBackend {
             const docIds = this.meta.docsWith(actorId);
             docIds.forEach(docId => {
                 const doc = this.docs.get(docId);
-                if (doc) { // doc may not be open... (forks and whatnot)
+                if (doc) {
+                    // doc may not be open... (forks and whatnot)
                     const max = this.meta.clock(docId)[actorId] || 0;
                     const seq = doc.clock[actorId] || 0;
                     if (max > seq) {
@@ -103,7 +104,7 @@ class RepoBackend {
                 id: this.id,
                 encrypt: false,
                 timeout: 10000,
-                extensions: [Actor_1.EXT],
+                extensions: [Actor_1.EXT]
             });
             let add = (dk) => {
                 const actor = this.actorsDk.get(Base58.encode(dk));
@@ -111,7 +112,7 @@ class RepoBackend {
                     log("replicate feed!", Base58.encode(dk));
                     actor.feed.replicate({
                         stream,
-                        live: true,
+                        live: true
                     });
                 }
             };
@@ -152,12 +153,19 @@ class RepoBackend {
                     case "MaterializeMsg": {
                         const changes = this.getChanges(msg.clock);
                         const [back, patch] = Backend.applyChanges(Backend.init(), changes);
-                        this.toFrontend.push({ type: "PatchMsg", id: msg.id, patch });
+                        //          const history = back.getIn(['opSet', 'history']).length
+                        const history = 0;
+                        this.toFrontend.push({
+                            type: "PatchMsg",
+                            id: msg.id,
+                            patch,
+                            history
+                        });
                         break;
                     }
                     case "ReadFile": {
                         const id = msg.id;
-                        this.readFile(id, (file) => {
+                        this.readFile(id, file => {
                             this.toFrontend.push(file);
                             this.toFrontend.push({ type: "ReadFileReply", id });
                         });
@@ -193,7 +201,9 @@ class RepoBackend {
         this.opts = opts;
         this.path = opts.path || "default";
         this.storage = opts.storage;
-        const ledger = hypercore_1.hypercore(this.storageFn("ledger"), { valueEncoding: "json" });
+        const ledger = hypercore_1.hypercore(this.storageFn("ledger"), {
+            valueEncoding: "json"
+        });
         this.id = ledger.id;
         this.meta = new Metadata_1.Metadata(ledger);
     }
@@ -226,11 +236,13 @@ class RepoBackend {
             console.log(`doc:backend clock=${Clock_1.clockDebug(doc.clock)}`);
             const local = this.meta.localActorId(id);
             const actors = this.meta.actors(id);
-            const info = actors.map(actor => {
+            const info = actors
+                .map(actor => {
                 const nm = actor.substr(0, 5);
                 return local === actor ? `*${nm}` : nm;
-            }).sort();
-            console.log(`doc:backend actors=${info.join(',')}`);
+            })
+                .sort();
+            console.log(`doc:backend actors=${info.join(",")}`);
         }
     }
     open(docId) {
@@ -251,11 +263,11 @@ class RepoBackend {
         this.syncReadyActors(this.meta.actors(id));
     }
     allReadyActors(docId, cb) {
-        const a2p = (id) => (new Promise(resolve => this.getReadyActor(id, resolve)));
+        const a2p = (id) => new Promise(resolve => this.getReadyActor(id, resolve));
         this.meta.actorsAsync(docId, ids => Promise.all(ids.map(a2p)).then(cb));
     }
     loadDocument(doc) {
-        this.allReadyActors(doc.id, (actors) => {
+        this.allReadyActors(doc.id, actors => {
             const changes = [];
             actors.forEach(actor => {
                 const max = this.meta.clock(doc.id)[actor.id] || 0;
@@ -277,7 +289,9 @@ class RepoBackend {
         return this.meta.actors(doc.id);
     }
     docActors(doc) {
-        return this.actorIds(doc).map(id => this.actors.get(id)).filter(Misc.notEmpty);
+        return this.actorIds(doc)
+            .map(id => this.actors.get(id))
+            .filter(Misc.notEmpty);
     }
     initActor(keys) {
         const meta = this.meta;
@@ -286,12 +300,30 @@ class RepoBackend {
         const actor = new Actor_1.Actor({ keys, meta, notify, storage });
         this.actors.set(actor.id, actor);
         this.actorsDk.set(actor.dkString, actor);
-        actor.push(() => { this.join(actor.id); });
+        actor.push(() => {
+            this.join(actor.id);
+        });
         return actor;
     }
     releaseManager(doc) {
         // FIXME - need reference count with many feeds <-> docs
     }
+    /*
+    private getHistories(id: string) {
+      const doc = this.doc.get(id)!
+      let a = doc.getIn(['opSet', 'history']).toArray().map(tmp = tmp.toJS())
+      return history.map((change, index) => {
+        return {
+          get change () {
+            return change.toJS()
+          },
+          get snapshot () {
+            return docFromChanges(actor, history.slice(0, index + 1))
+          }
+        }
+      }).toArray()
+    }
+  */
     getChanges(clock) {
         const changes = [];
         for (let i in clock) {

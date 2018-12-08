@@ -93,7 +93,7 @@ class RepoFrontend {
         };
         this.doc = (id, cb) => {
             Metadata_1.validateID(id);
-            return new Promise((resolve) => {
+            return new Promise(resolve => {
                 const handle = this.open(id);
                 handle.subscribe((val, clock) => {
                     resolve(val);
@@ -140,7 +140,7 @@ class RepoFrontend {
                             cb(msg.patch);
                         }
                         else {
-                            doc.patch(msg.patch);
+                            doc.patch(msg.patch, msg.history);
                         }
                         break;
                     }

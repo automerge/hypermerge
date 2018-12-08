@@ -107,6 +107,7 @@ class Actor {
         peers.forEach(peer => peer.stream.extension(exports.EXT, payload));
     }
     handleFeedHead(head) {
+        // type is FeedHead
         if (head.hasOwnProperty("type")) {
             this.type = "File";
             this.fileMetadata = head;

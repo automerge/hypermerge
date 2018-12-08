@@ -15,6 +15,7 @@ export declare class DocFrontend<T> {
     private mode;
     private handles;
     private repo;
+    private history;
     clock: Clock;
     constructor(repo: RepoFrontend, config: Config);
     handle(): Handle<T>;
@@ -23,11 +24,11 @@ export declare class DocFrontend<T> {
     change: (fn: ChangeFn<T>) => void;
     release: () => void;
     setActorId: (actorId: string) => void;
-    init: (actorId?: string | undefined, patch?: Patch | undefined) => void;
+    init: (actorId?: string | undefined, patch?: Patch | undefined, history?: number | undefined) => void;
     private enableWrites;
     private updateClockChange;
     private updateClockPatch;
-    patch: (patch: Patch) => void;
+    patch: (patch: Patch, history: number) => void;
     bench(msg: string, f: () => void): void;
 }
 export {};

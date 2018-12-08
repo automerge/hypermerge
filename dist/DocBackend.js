@@ -36,7 +36,11 @@ class DocBackend {
                 if (!this.actorId) {
                     this.actorId = this.repo.initActorFeed(this);
                 }
-                this.repo.toFrontend.push({ type: "ActorIdMsg", id: this.id, actorId: this.actorId });
+                this.repo.toFrontend.push({
+                    type: "ActorIdMsg",
+                    id: this.id,
+                    actorId: this.actorId
+                });
             }
             else {
                 // remember we want one for when init happens
@@ -54,7 +58,14 @@ class DocBackend {
                 this.updateClock(changes);
                 this.subscribeToLocalChanges();
                 this.subscribeToRemoteChanges();
-                this.repo.toFrontend.push({ type: "ReadyMsg", id: this.id, actorId: this.actorId, patch });
+                const history = this.back.getIn(["opSet", "history"]).length;
+                this.repo.toFrontend.push({
+                    type: "ReadyMsg",
+                    id: this.id,
+                    actorId: this.actorId,
+                    patch,
+                    history
+                });
             });
         };
         this.repo = core;
@@ -64,11 +75,17 @@ class DocBackend {
             this.actorId = id;
             this.subscribeToRemoteChanges();
             this.subscribeToLocalChanges();
-            this.repo.toFrontend.push({ type: "ReadyMsg", id: this.id, actorId: id });
+            const history = this.back.getIn(["opSet", "history"]).length;
+            this.repo.toFrontend.push({
+                type: "ReadyMsg",
+                id: this.id,
+                actorId: id,
+                history
+            });
         }
     }
     updateClock(changes) {
-        changes.forEach((change) => {
+        changes.forEach(change => {
             const actor = change.actor;
             const oldSeq = this.clock[actor] || 0;
             this.clock[actor] = Math.max(oldSeq, change.seq);
@@ -80,7 +97,13 @@ class DocBackend {
                 const [back, patch] = Backend.applyChanges(this.back, changes);
                 this.back = back;
                 this.updateClock(changes);
-                this.repo.toFrontend.push({ type: "PatchMsg", id: this.id, patch });
+                const history = this.back.getIn(["opSet", "history"]).length;
+                this.repo.toFrontend.push({
+                    type: "PatchMsg",
+                    id: this.id,
+                    patch,
+                    history
+                });
             });
         });
     }
@@ -90,7 +113,13 @@ class DocBackend {
                 const [back, patch] = Backend.applyLocalChange(this.back, change);
                 this.back = back;
                 this.updateClock([change]);
-                this.repo.toFrontend.push({ type: "PatchMsg", id: this.id, patch });
+                const history = this.back.getIn(["opSet", "history"]).length;
+                this.repo.toFrontend.push({
+                    type: "PatchMsg",
+                    id: this.id,
+                    patch,
+                    history
+                });
                 this.repo.actor(this.actorId).writeChange(change);
             });
         });

@@ -1,13 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 function strs2clock(input) {
-    if (typeof input === 'string') {
+    if (typeof input === "string") {
         return { [input]: Infinity };
     }
     else {
         let ids = input;
         let clock = {};
-        ids.map(str => str.split(":")).forEach(([id, max]) => {
+        ids
+            .map(str => str.split(":"))
+            .forEach(([id, max]) => {
             clock[id] = max ? parseInt(max) : Infinity;
         });
         return clock;

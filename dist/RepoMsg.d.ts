@@ -51,6 +51,7 @@ export interface PatchMsg {
     type: "PatchMsg";
     id: string;
     patch: Patch;
+    history: number;
 }
 export interface ReadFileReply {
     type: "ReadFileReply";
@@ -66,4 +67,5 @@ export interface ReadyMsg {
     id: string;
     actorId?: string;
     patch?: Patch;
+    history?: number;
 }

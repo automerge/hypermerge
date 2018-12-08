@@ -37,10 +37,10 @@ function validateMetadataMsg(input) {
 exports.validateMetadataMsg = validateMetadataMsg;
 function cleanMetadataInput(input) {
     const id = input.id || input.docId;
-    if (typeof id !== 'string')
+    if (typeof id !== "string")
         return undefined;
     const bytes = input.bytes;
-    if (typeof bytes !== 'undefined' && typeof bytes !== 'number')
+    if (typeof bytes !== "undefined" && typeof bytes !== "number")
         return undefined;
     const actors = input.actors || input.actorIds;
     const follows = input.follows;
@@ -58,7 +58,7 @@ function cleanMetadataInput(input) {
             return undefined;
     }
     if (merge !== undefined) {
-        if (typeof merge !== 'object')
+        if (typeof merge !== "object")
             return undefined;
         if (!Object.keys(merge).every(isValidID))
             return undefined;
@@ -99,12 +99,12 @@ exports.filterMetadataInputs = filterMetadataInputs;
 //   export type DocId = string & { _: "ActorId", _2: "DocId" }
 // are try catchs as expensive as I remember?  Not sure - I wrote this logic twice
 function isNumber(n) {
-    return typeof n === 'number';
+    return typeof n === "number";
 }
 function isValidID(id) {
     try {
         const buffer = Base58.decode(id);
-        return (buffer.length === 32);
+        return buffer.length === 32;
     }
     catch (e) {
         return false;
@@ -214,7 +214,7 @@ class Metadata {
     // prevent cyclical dependancies from causing an infinite search
     actorsSeen(id, acc, seen) {
         const primaryActors = this.primaryActors.get(id);
-        const mergeActors = Object.keys((this.merges.get(id) || {}));
+        const mergeActors = Object.keys(this.merges.get(id) || {});
         acc.push(...primaryActors);
         acc.push(...mergeActors);
         seen.add(id);

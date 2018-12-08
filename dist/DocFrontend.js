@@ -25,6 +25,7 @@ class DocFrontend {
         this.changeQ = new Queue_1.default("frontend:change");
         this.mode = "pending";
         this.handles = new Set();
+        this.history = 0;
         this.fork = () => {
             return "";
         };
@@ -46,19 +47,20 @@ class DocFrontend {
             if (this.mode === "read")
                 this.enableWrites(); // has to be after the queue
         };
-        this.init = (actorId, patch) => {
+        this.init = (actorId, patch, history) => {
             log(`init docid=${this.docId} actorId=${actorId} patch=${!!patch} mode=${this.mode}`);
             if (this.mode !== "pending")
                 return;
             if (actorId)
                 this.setActorId(actorId); // must set before patch
             if (patch)
-                this.patch(patch); // first patch!
+                this.patch(patch, history); // first patch!
             if (actorId)
                 this.enableWrites(); // must enable after patch
         };
-        this.patch = (patch) => {
+        this.patch = (patch, history) => {
             this.bench("patch", () => {
+                this.history = history;
                 this.front = Frontend.applyPatch(this.front, patch);
                 this.updateClockPatch(patch);
                 //      if (patch.diffs.length > 0) {
@@ -109,7 +111,11 @@ class DocFrontend {
             if (request) {
                 this.updateClockChange(request);
                 this.newState();
-                this.repo.toBackend.push({ type: "RequestMsg", id: this.docId, request });
+                this.repo.toBackend.push({
+                    type: "RequestMsg",
+                    id: this.docId,
+                    request
+                });
             }
         });
     }

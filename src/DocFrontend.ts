@@ -1,157 +1,167 @@
-import { Patch, Doc, Change, ChangeFn } from "automerge/frontend"
-import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
-import { RepoFrontend } from "./RepoFrontend"
-import * as Frontend from "automerge/frontend"
-import { Clock, union } from "./Clock"
-import Queue from "./Queue"
-import { Handle } from "./Handle"
-import Debug from "debug"
+import { Patch, Doc, Change, ChangeFn } from "automerge/frontend";
+import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
+import { RepoFrontend } from "./RepoFrontend";
+import * as Frontend from "automerge/frontend";
+import { Clock, union } from "./Clock";
+import Queue from "./Queue";
+import { Handle } from "./Handle";
+import Debug from "debug";
 
 // TODO - i bet this can be rewritten where the Frontend allocates the actorid on write - this
 // would make first writes a few ms faster
 
-const log = Debug("hypermerge:front")
+const log = Debug("hypermerge:front");
 
-export type Patch = Patch
+export type Patch = Patch;
 
-type Mode = "pending" | "read" | "write"
+type Mode = "pending" | "read" | "write";
 
 interface Config {
-  docId: string
-  actorId?: string
+  docId: string;
+  actorId?: string;
 }
 
 export class DocFrontend<T> {
-  private docId: string
-  actorId?: string
-//  private toBackend: Queue<ToBackendRepoMsg>
-  private changeQ = new Queue<ChangeFn<T>>("frontend:change")
-  private front: Doc<T>
-  private mode: Mode = "pending"
-  private handles: Set<Handle<T>> = new Set()
-  private repo: RepoFrontend
+  private docId: string;
+  actorId?: string;
+  //  private toBackend: Queue<ToBackendRepoMsg>
+  private changeQ = new Queue<ChangeFn<T>>("frontend:change");
+  private front: Doc<T>;
+  private mode: Mode = "pending";
+  private handles: Set<Handle<T>> = new Set();
+  private repo: RepoFrontend;
+  private history: number = 0;
 
-  clock: Clock
+  clock: Clock;
 
   constructor(repo: RepoFrontend, config: Config) {
     //super()
 
-    const docId = config.docId
-    const actorId = config.actorId
-    this.repo = repo
-    this.clock = {}
-//    this.toBackend = toBackend
+    const docId = config.docId;
+    const actorId = config.actorId;
+    this.repo = repo;
+    this.clock = {};
+    //    this.toBackend = toBackend
 
     if (actorId) {
-      this.front = Frontend.init(actorId) as Doc<T>
-      this.docId = docId
-      this.actorId = actorId
-      this.enableWrites()
+      this.front = Frontend.init(actorId) as Doc<T>;
+      this.docId = docId;
+      this.actorId = actorId;
+      this.enableWrites();
     } else {
-      this.front = Frontend.init({ deferActorId: true }) as Doc<T>
-      this.docId = docId
+      this.front = Frontend.init({ deferActorId: true }) as Doc<T>;
+      this.docId = docId;
     }
   }
 
   handle(): Handle<T> {
-    let handle = new Handle<T>(this.repo)
-    this.handles.add(handle)
-    handle.cleanup = () => this.handles.delete(handle)
-    handle.changeFn = this.change
-    handle.id = this.docId
+    let handle = new Handle<T>(this.repo);
+    this.handles.add(handle);
+    handle.cleanup = () => this.handles.delete(handle);
+    handle.changeFn = this.change;
+    handle.id = this.docId;
     if (this.mode != "pending") {
-      handle.push(this.front, this.clock)
+      handle.push(this.front, this.clock);
     }
 
-    return handle
+    return handle;
   }
 
   newState() {
     this.handles.forEach(handle => {
-      handle.push(this.front, this.clock)
-    })
+      handle.push(this.front, this.clock);
+    });
   }
 
-  fork = () : string => {
-    return ""
-  }
+  fork = (): string => {
+    return "";
+  };
 
   change = (fn: ChangeFn<T>) => {
-    log("change", this.docId)
+    log("change", this.docId);
     if (!this.actorId) {
-      log("change needsActorId", this.docId)
-      this.repo.toBackend.push({ type: "NeedsActorIdMsg", id: this.docId })
+      log("change needsActorId", this.docId);
+      this.repo.toBackend.push({ type: "NeedsActorIdMsg", id: this.docId });
     }
-    this.changeQ.push(fn)
-  }
+    this.changeQ.push(fn);
+  };
 
   release = () => {
     // what does this do now? - FIXME
-  }
+  };
 
   setActorId = (actorId: string) => {
-    log("setActorId", this.docId, actorId, this.mode)
-    this.actorId = actorId
-    this.front = Frontend.setActorId(this.front, actorId)
+    log("setActorId", this.docId, actorId, this.mode);
+    this.actorId = actorId;
+    this.front = Frontend.setActorId(this.front, actorId);
 
-    if (this.mode === "read") this.enableWrites() // has to be after the queue
-  }
+    if (this.mode === "read") this.enableWrites(); // has to be after the queue
+  };
 
-  init = (actorId?: string, patch?: Patch) => {
+  init = (actorId?: string, patch?: Patch, history?: number) => {
     log(
       `init docid=${this.docId} actorId=${actorId} patch=${!!patch} mode=${
-      this.mode
-      }`,
-    )
+        this.mode
+      }`
+    );
 
-    if (this.mode !== "pending") return
+    if (this.mode !== "pending") return;
 
-    if (actorId) this.setActorId(actorId) // must set before patch
+    if (actorId) this.setActorId(actorId); // must set before patch
 
-    if (patch) this.patch(patch) // first patch!
+    if (patch) this.patch(patch, history!); // first patch!
 
-    if (actorId) this.enableWrites() // must enable after patch
-  }
+    if (actorId) this.enableWrites(); // must enable after patch
+  };
 
   private enableWrites() {
-    this.mode = "write"
+    this.mode = "write";
     this.changeQ.subscribe(fn => {
-      const [ doc, request ] = Frontend.change(this.front, fn)
-      this.front = doc
-      log(`change complete doc=${this.docId} seq=${request ? request.seq : "null"}`)
+      const [doc, request] = Frontend.change(this.front, fn);
+      this.front = doc;
+      log(
+        `change complete doc=${this.docId} seq=${
+          request ? request.seq : "null"
+        }`
+      );
       if (request) {
-        this.updateClockChange(request)
-        this.newState()
-        this.repo.toBackend.push({ type: "RequestMsg", id: this.docId, request })
+        this.updateClockChange(request);
+        this.newState();
+        this.repo.toBackend.push({
+          type: "RequestMsg",
+          id: this.docId,
+          request
+        });
       }
-    })
+    });
   }
 
-  private updateClockChange( change: Change) {
-    const oldSeq = this.clock[change.actor] || 0
-    this.clock[change.actor] = Math.max(change.seq, oldSeq)
+  private updateClockChange(change: Change) {
+    const oldSeq = this.clock[change.actor] || 0;
+    this.clock[change.actor] = Math.max(change.seq, oldSeq);
   }
 
-  private updateClockPatch( patch: Patch) {
-    this.clock = union(this.clock, patch.clock) // dont know which is better - use both??...
-    this.clock = union(this.clock, patch.deps)
+  private updateClockPatch(patch: Patch) {
+    this.clock = union(this.clock, patch.clock); // dont know which is better - use both??...
+    this.clock = union(this.clock, patch.deps);
   }
 
-  patch = (patch: Patch) => {
+  patch = (patch: Patch, history: number) => {
     this.bench("patch", () => {
-      this.front = Frontend.applyPatch(this.front, patch)
-      this.updateClockPatch(patch)
-//      if (patch.diffs.length > 0) {
-      if (this.mode === "pending") this.mode = "read"
-      this.newState()
-//      }
-    })
-  }
+      this.history = history;
+      this.front = Frontend.applyPatch(this.front, patch);
+      this.updateClockPatch(patch);
+      //      if (patch.diffs.length > 0) {
+      if (this.mode === "pending") this.mode = "read";
+      this.newState();
+      //      }
+    });
+  };
 
   bench(msg: string, f: () => void): void {
-    const start = Date.now()
-    f()
-    const duration = Date.now() - start
-    log(`docId=${this.docId} task=${msg} time=${duration}ms`)
+    const start = Date.now();
+    f();
+    const duration = Date.now() - start;
+    log(`docId=${this.docId} task=${msg} time=${duration}ms`);
   }
 }

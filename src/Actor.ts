@@ -1,226 +1,230 @@
+import { RepoBackend, KeyBuffer } from "./RepoBackend";
+import { readFeed, hypercore, Feed, Peer, discoveryKey } from "./hypercore";
+import { Clock, Change } from "automerge/backend";
+import { MetadataBlock, Metadata } from "./Metadata";
+import { DocBackend } from "./DocBackend";
+import Queue from "./Queue";
+import * as JsonBuffer from "./JsonBuffer";
+import * as Base58 from "bs58";
+import * as Misc from "./Misc";
+import Debug from "debug";
 
-import { RepoBackend, KeyBuffer } from "./RepoBackend"
-import { readFeed, hypercore, Feed, Peer, discoveryKey } from "./hypercore"
-import { Clock, Change } from "automerge/backend"
-import { MetadataBlock, Metadata } from "./Metadata"
-import { DocBackend } from "./DocBackend"
-import Queue from "./Queue"
-import * as JsonBuffer from "./JsonBuffer"
-import * as Base58 from "bs58"
-import * as Misc from "./Misc"
-import Debug from "debug"
+const log = Debug("feedmgr");
 
-const log = Debug("feedmgr")
+const KB = 1024;
+const MB = 1024 * KB;
 
-const KB = 1024
-const MB = 1024 * KB
+export type ActorMsg = NewMetadata | ActorSync | PeerUpdate | Download;
+export type FeedHead = FileMetadata | Change;
 
-export type ActorMsg = NewMetadata | ActorSync | PeerUpdate | Download
-export type FeedHead = FileMetadata | Change
-
-export type FeedType = "Unknown" | "Automerge" | "File"
+export type FeedType = "Unknown" | "Automerge" | "File";
 
 interface FileMetadata {
-  type: "File"
-  bytes: number
+  type: "File";
+  bytes: number;
 }
 
 interface NewMetadata {
-  type: "NewMetadata"
-  input: Uint8Array
+  type: "NewMetadata";
+  input: Uint8Array;
 }
 
 interface ActorSync {
-  type: "ActorSync"
-  actor: Actor
+  type: "ActorSync";
+  actor: Actor;
 }
 
 interface PeerUpdate {
-  type: "PeerUpdate"
-  actor: Actor
-  peers: number
+  type: "PeerUpdate";
+  actor: Actor;
+  peers: number;
 }
 
 interface Download {
-  type: "Download"
-  actor: Actor
-  index: number
+  type: "Download";
+  actor: Actor;
+  index: number;
 }
 
-export const EXT = "hypermerge.2"
+export const EXT = "hypermerge.2";
 
 interface ActorConfig {
-  keys: KeyBuffer,
-  meta: Metadata,
-  notify: (msg: ActorMsg) => void
-  storage: (path: string) => Function
+  keys: KeyBuffer;
+  meta: Metadata;
+  notify: (msg: ActorMsg) => void;
+  storage: (path: string) => Function;
 }
 
-
 export class Actor {
-  id: string
-  dkString: string
-  q: Queue<(actor: Actor) => void>
-  syncQ: Queue<() => void>
-  changes: Change[] = []
-  feed: Feed<Uint8Array>
-  peers: Set<Peer> = new Set()
-  meta: Metadata
-  notify: (msg: ActorMsg) => void
-  type: FeedType
-  data: Uint8Array[] = []
-  fileMetadata? : FileMetadata
+  id: string;
+  dkString: string;
+  q: Queue<(actor: Actor) => void>;
+  syncQ: Queue<() => void>;
+  changes: Change[] = [];
+  feed: Feed<Uint8Array>;
+  peers: Set<Peer> = new Set();
+  meta: Metadata;
+  notify: (msg: ActorMsg) => void;
+  type: FeedType;
+  data: Uint8Array[] = [];
+  fileMetadata?: FileMetadata;
 
   constructor(config: ActorConfig) {
-    const { publicKey, secretKey } = config.keys
-    const dk = discoveryKey(publicKey)
-    const id = Base58.encode(publicKey)
+    const { publicKey, secretKey } = config.keys;
+    const dk = discoveryKey(publicKey);
+    const id = Base58.encode(publicKey);
 
-    this.type = "Unknown"
-    this.id = id
-    this.notify = config.notify
-    this.meta = config.meta
-    this.dkString = Base58.encode(dk)
-    this.feed = hypercore(config.storage(id), publicKey, { secretKey })
-    this.q = new Queue<(actor: Actor) => void>()
-    this.syncQ = new Queue<() => void>()
-    this.feed.ready(this.feedReady)
+    this.type = "Unknown";
+    this.id = id;
+    this.notify = config.notify;
+    this.meta = config.meta;
+    this.dkString = Base58.encode(dk);
+    this.feed = hypercore(config.storage(id), publicKey, { secretKey });
+    this.q = new Queue<(actor: Actor) => void>();
+    this.syncQ = new Queue<() => void>();
+    this.feed.ready(this.feedReady);
   }
 
   message(message: any, target?: Peer) {
-    const peers = target ? [ target ] : [ ... this.peers ]
-    const payload = Buffer.from(JSON.stringify(message))
-    peers.forEach(peer => peer.stream.extension(EXT, payload))
+    const peers = target ? [target] : [...this.peers];
+    const payload = Buffer.from(JSON.stringify(message));
+    peers.forEach(peer => peer.stream.extension(EXT, payload));
   }
 
   feedReady = () => {
-    log("init feed", this.id)
-    const feed = this.feed
+    log("init feed", this.id);
+    const feed = this.feed;
 
-    this.meta.setWritable(this.id,feed.writable)
+    this.meta.setWritable(this.id, feed.writable);
     this.meta.docsWith(this.id).forEach(docId => {
-      this.message(this.meta.forActor(docId))
-    })
+      this.message(this.meta.forActor(docId));
+    });
 
-    feed.on("peer-remove", this.peerRemove)
-    feed.on("peer-add", this.peerAdd)
-    feed.on("download", this.handleDownload)
-    feed.on("sync", this.sync)
+    feed.on("peer-remove", this.peerRemove);
+    feed.on("peer-add", this.peerAdd);
+    feed.on("download", this.handleDownload);
+    feed.on("sync", this.sync);
 
-    readFeed(feed, this.init) // subscibe begins here
+    readFeed(feed, this.init); // subscibe begins here
 
-    feed.on("close", this.close)
-  }
+    feed.on("close", this.close);
+  };
 
-  handleFeedHead(head: any) { // type is FeedHead
+  handleFeedHead(head: any) {
+    // type is FeedHead
     if (head.hasOwnProperty("type")) {
-      this.type = "File"
-      this.fileMetadata = head
+      this.type = "File";
+      this.fileMetadata = head;
     } else {
-      this.type = "Automerge"
-      this.changes.push(head)
-      this.changes.push(... this.data.filter(data => data).map(data => JsonBuffer.parse(data)))
-      this.data = []
+      this.type = "Automerge";
+      this.changes.push(head);
+      this.changes.push(
+        ...this.data.filter(data => data).map(data => JsonBuffer.parse(data))
+      );
+      this.data = [];
     }
   }
 
-  init = (datas:Uint8Array[]) => {
-    datas.map( (data,i) => this.handleBlock(i, data))
+  init = (datas: Uint8Array[]) => {
+    datas.map((data, i) => this.handleBlock(i, data));
     if (datas.length > 0) {
-      this.syncQ.subscribe(f => f())
+      this.syncQ.subscribe(f => f());
     }
-    this.q.subscribe(f => f(this))
-  }
+    this.q.subscribe(f => f(this));
+  };
 
   peerRemove = (peer: Peer) => {
-    this.peers.delete(peer)
-    this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
-  }
+    this.peers.delete(peer);
+    this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
+  };
 
   peerAdd = (peer: Peer) => {
     peer.stream.on("extension", (ext: string, input: Uint8Array) => {
       if (ext === EXT) {
-        this.notify({ type: "NewMetadata", input })
+        this.notify({ type: "NewMetadata", input });
       }
-    })
-    this.peers.add(peer)
-    this.message(this.meta.forActor(this.id), peer)
-    this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
-  }
+    });
+    this.peers.add(peer);
+    this.message(this.meta.forActor(this.id), peer);
+    this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
+  };
 
   close = () => {
-    log("closing feed", this.id)
-  }
+    log("closing feed", this.id);
+  };
 
   sync = () => {
-    this.syncQ.once(f => f())
-    this.notify({ type: "ActorSync", actor: this })
-  }
+    this.syncQ.once(f => f());
+    this.notify({ type: "ActorSync", actor: this });
+  };
 
   handleDownload = (idx: number, data: Uint8Array) => {
-    this.handleBlock(idx,data)
-    this.notify({ type: "Download", actor: this, index: idx })
-  }
+    this.handleBlock(idx, data);
+    this.notify({ type: "Download", actor: this, index: idx });
+  };
 
   handleBlock = (idx: number, data: Uint8Array) => {
     switch (this.type) {
-      case "Automerge": 
-        this.changes.push(JsonBuffer.parse(data))
-        break
-      default: 
+      case "Automerge":
+        this.changes.push(JsonBuffer.parse(data));
+        break;
+      default:
         if (idx === 0) {
-          this.handleFeedHead(JsonBuffer.parse(data))
+          this.handleFeedHead(JsonBuffer.parse(data));
         } else {
-          this.data[idx - 1] = data
+          this.data[idx - 1] = data;
         }
         break;
     }
-  }
+  };
 
   push = (cb: (actor: Actor) => void) => {
-    this.q.push(cb)
-  }
+    this.q.push(cb);
+  };
 
   writeFile(data: Uint8Array) {
     this.q.push(() => {
-      if (this.data.length > 0 || this.changes.length > 0) throw new Error("writeFile called on existing feed")
-      const head : FileMetadata = { type: "File", bytes: data.length }
-      this.append(Buffer.from(JSON.stringify(head)))
-      const blockSize = 1 * MB
+      if (this.data.length > 0 || this.changes.length > 0)
+        throw new Error("writeFile called on existing feed");
+      const head: FileMetadata = { type: "File", bytes: data.length };
+      this.append(Buffer.from(JSON.stringify(head)));
+      const blockSize = 1 * MB;
       for (let i = 0; i < data.length; i += blockSize) {
-        const block = data.slice(i, i + blockSize)
-        this.append(block)
+        const block = data.slice(i, i + blockSize);
+        this.append(block);
       }
-    })
+    });
   }
 
   readFile(cb: (data: Buffer) => void) {
     this.syncQ.push(() => {
       // could ditch .data and re-read blocks here
-      console.log(`Rebuilding file from ${this.data.length} blocks`)
-      const file = Buffer.concat(this.data)
-      const bytes = this.fileMetadata!.bytes
+      console.log(`Rebuilding file from ${this.data.length} blocks`);
+      const file = Buffer.concat(this.data);
+      const bytes = this.fileMetadata!.bytes;
       if (file.length !== bytes) {
-        throw new Error(`File metadata error - file=${file.length} meta=${bytes}`)
+        throw new Error(
+          `File metadata error - file=${file.length} meta=${bytes}`
+        );
       }
-      cb(file)
-    })
+      cb(file);
+    });
   }
 
   append(block: Uint8Array) {
     this.feed.append(block, err => {
       if (err) {
-        throw new Error("failed to append to feed")
+        throw new Error("failed to append to feed");
       }
-    })
+    });
   }
 
   writeChange(change: Change) {
-    const feedLength = this.changes.length
-    const ok = feedLength + 1 === change.seq
-    log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`)
-    this.changes.push(change)
-    this.sync()
-    this.append(JsonBuffer.bufferify(change))
+    const feedLength = this.changes.length;
+    const ok = feedLength + 1 === change.seq;
+    log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`);
+    this.changes.push(change);
+    this.sync();
+    this.append(JsonBuffer.bufferify(change));
   }
 }
