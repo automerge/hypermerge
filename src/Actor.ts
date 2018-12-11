@@ -97,7 +97,7 @@ export class Actor {
 
     this.meta.setWritable(this.id, feed.writable);
     this.meta.docsWith(this.id).forEach(docId => {
-      this.message(this.meta.forActor(docId));
+      this.message(this.meta.forActor(this.id));
     });
 
     feed.on("peer-remove", this.peerRemove);
