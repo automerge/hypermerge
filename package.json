@@ -31,6 +31,7 @@
     "@types/debug": "^0.0.31",
     "@types/node": "^10.12.2",
     "@types/tape": "^4.2.32",
+    "@types/ws": "^6.0.1",
     "discovery-cloud-client": "https://github.com/orionz/discovery-cloud-client",
     "documentation": "^5.3.5",
     "husky": "^0.14.3",
