@@ -80,8 +80,8 @@ export class Actor {
     this.meta = config.meta;
     this.dkString = Base58.encode(dk);
     this.feed = hypercore(config.storage(id), publicKey, { secretKey });
-    this.q = new Queue<(actor: Actor) => void>();
-    this.syncQ = new Queue<() => void>();
+    this.q = new Queue<(actor: Actor) => void>("actor:q-" + id.slice(0, 4));
+    this.syncQ = new Queue<() => void>("actor:sync-" + id.slice(0, 4));
     this.feed.ready(this.feedReady);
   }
 
