@@ -29,7 +29,7 @@ class Actor {
             const feed = this.feed;
             this.meta.setWritable(this.id, feed.writable);
             this.meta.docsWith(this.id).forEach(docId => {
-                this.message(this.meta.forActor(docId));
+                this.message(this.meta.forActor(this.id));
             });
             feed.on("peer-remove", this.peerRemove);
             feed.on("peer-add", this.peerAdd);
@@ -97,8 +97,8 @@ class Actor {
         this.meta = config.meta;
         this.dkString = Base58.encode(dk);
         this.feed = hypercore_1.hypercore(config.storage(id), publicKey, { secretKey });
-        this.q = new Queue_1.default();
-        this.syncQ = new Queue_1.default();
+        this.q = new Queue_1.default("actor:q-" + id.slice(0, 4));
+        this.syncQ = new Queue_1.default("actor:sync-" + id.slice(0, 4));
         this.feed.ready(this.feedReady);
     }
     message(message, target) {
