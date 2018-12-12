@@ -1,8 +1,10 @@
 import Debug from "debug";
 import * as Backend from "automerge/backend";
 import { Change, BackDoc } from "automerge/backend";
+import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import Queue from "./Queue";
 import { RepoBackend } from "./RepoBackend";
+import { Feed, Peer } from "./hypercore";
 
 const log = Debug("hypermerge:back");
 
@@ -14,27 +16,29 @@ export class DocBackend {
   id: string;
   actorId?: string; // this might be easier to have as the actor object - FIXME
   clock: Clock = {};
-  back: BackDoc; // can we make this private?
+  back?: BackDoc; // can we make this private?
   private repo: RepoBackend;
   private localChangeQ = new Queue<Change>("backend:localChangeQ");
   private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ");
   private wantsActor: boolean = false;
 
-  constructor(core: RepoBackend, id: string) {
+  constructor(core: RepoBackend, id: string, back?: BackDoc) {
     this.repo = core;
     this.id = id;
 
-    this.back = Backend.init();
-    this.actorId = id;
-    this.subscribeToRemoteChanges();
-    this.subscribeToLocalChanges();
-    const history = (this.back as any).getIn(["opSet", "history"]).size;
-    this.repo.toFrontend.push({
-      type: "ReadyMsg",
-      id: this.id,
-      actorId: id,
-      history
-    });
+    if (back) {
+      this.back = back;
+      this.actorId = id;
+      this.subscribeToRemoteChanges();
+      this.subscribeToLocalChanges();
+      const history = (this.back as any).getIn(["opSet", "history"]).size;
+      this.repo.toFrontend.push({
+        type: "ReadyMsg",
+        id: this.id,
+        actorId: id,
+        history
+      });
+    }
   }
 
   applyRemoteChanges = (changes: Change[]): void => {
