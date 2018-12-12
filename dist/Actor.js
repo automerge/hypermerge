@@ -28,7 +28,12 @@ class Actor {
             log("init feed", this.id);
             const feed = this.feed;
             this.meta.setWritable(this.id, feed.writable);
-            this.message(this.meta.forActor(this.id));
+            const meta = this.meta.forActor(this.id);
+            this.meta.docsWith(this.id).forEach(docId => {
+                const actor = this.repo.actor(docId);
+                if (actor)
+                    actor.message(meta);
+            });
             feed.on("peer-remove", this.peerRemove);
             feed.on("peer-add", this.peerAdd);
             feed.on("download", this.handleDownload);
@@ -93,6 +98,7 @@ class Actor {
         this.id = id;
         this.notify = config.notify;
         this.meta = config.meta;
+        this.repo = config.repo;
         this.dkString = Base58.encode(dk);
         this.feed = hypercore_1.hypercore(config.storage(id), publicKey, { secretKey });
         this.q = new Queue_1.default("actor:q-" + id.slice(0, 4));

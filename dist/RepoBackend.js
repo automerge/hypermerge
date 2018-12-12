@@ -296,7 +296,7 @@ class RepoBackend {
         const meta = this.meta;
         const notify = this.actorNotify;
         const storage = this.storageFn;
-        const actor = new Actor_1.Actor({ keys, meta, notify, storage });
+        const actor = new Actor_1.Actor({ repo: this, keys, meta, notify, storage });
         this.actors.set(actor.id, actor);
         this.actorsDk.set(actor.dkString, actor);
         actor.push(() => {

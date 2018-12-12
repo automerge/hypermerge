@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { KeyBuffer } from "./RepoBackend";
+import { RepoBackend, KeyBuffer } from "./RepoBackend";
 import { Feed, Peer } from "./hypercore";
 import { Change } from "automerge/backend";
 import { Metadata } from "./Metadata";
@@ -35,6 +35,7 @@ interface ActorConfig {
     meta: Metadata;
     notify: (msg: ActorMsg) => void;
     storage: (path: string) => Function;
+    repo: RepoBackend;
 }
 export declare class Actor {
     id: string;
@@ -49,6 +50,7 @@ export declare class Actor {
     type: FeedType;
     data: Uint8Array[];
     fileMetadata?: FileMetadata;
+    repo: RepoBackend;
     constructor(config: ActorConfig);
     message(message: any, target?: Peer): void;
     feedReady: () => void;

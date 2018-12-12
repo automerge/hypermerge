@@ -53,6 +53,7 @@ interface ActorConfig {
   meta: Metadata;
   notify: (msg: ActorMsg) => void;
   storage: (path: string) => Function;
+  repo: RepoBackend;
 }
 
 export class Actor {
@@ -68,6 +69,7 @@ export class Actor {
   type: FeedType;
   data: Uint8Array[] = [];
   fileMetadata?: FileMetadata;
+  repo: RepoBackend;
 
   constructor(config: ActorConfig) {
     const { publicKey, secretKey } = config.keys;
@@ -78,6 +80,7 @@ export class Actor {
     this.id = id;
     this.notify = config.notify;
     this.meta = config.meta;
+    this.repo = config.repo;
     this.dkString = Base58.encode(dk);
     this.feed = hypercore(config.storage(id), publicKey, { secretKey });
     this.q = new Queue<(actor: Actor) => void>("actor:q-" + id.slice(0, 4));
@@ -97,7 +100,11 @@ export class Actor {
 
     this.meta.setWritable(this.id, feed.writable);
 
-    this.message(this.meta.forActor(this.id));
+    const meta = this.meta.forActor(this.id);
+    this.meta.docsWith(this.id).forEach(docId => {
+      const actor = this.repo.actor(docId);
+      if (actor) actor.message(meta);
+    })
 
     feed.on("peer-remove", this.peerRemove);
     feed.on("peer-add", this.peerAdd);
