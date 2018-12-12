@@ -1,12 +1,10 @@
 import Queue from "./Queue";
 import { MetadataBlock, Metadata, validateMetadataMsg } from "./Metadata";
 import { Actor, ActorMsg, EXT } from "./Actor";
-import MapSet from "./MapSet";
 import { strs2clock, clockDebug } from "./Clock";
-import * as JsonBuffer from "./JsonBuffer";
 import * as Base58 from "bs58";
 import * as crypto from "hypercore/lib/crypto";
-import { readFeed, hypercore, Feed, Peer, discoveryKey } from "./hypercore";
+import { hypercore, Feed, discoveryKey } from "./hypercore";
 import * as Backend from "automerge/backend";
 import { Clock, Change } from "automerge/backend";
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";

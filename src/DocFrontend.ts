@@ -1,5 +1,4 @@
 import { Patch, Doc, Change, ChangeFn } from "automerge/frontend";
-import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { RepoFrontend } from "./RepoFrontend";
 import * as Frontend from "automerge/frontend";
 import { Clock, union } from "./Clock";

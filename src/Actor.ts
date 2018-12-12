@@ -1,12 +1,10 @@
-import { RepoBackend, KeyBuffer } from "./RepoBackend";
+import { KeyBuffer } from "./RepoBackend";
 import { readFeed, hypercore, Feed, Peer, discoveryKey } from "./hypercore";
-import { Clock, Change } from "automerge/backend";
-import { MetadataBlock, Metadata } from "./Metadata";
-import { DocBackend } from "./DocBackend";
+import { Change } from "automerge/backend";
+import { Metadata } from "./Metadata";
 import Queue from "./Queue";
 import * as JsonBuffer from "./JsonBuffer";
 import * as Base58 from "bs58";
-import * as Misc from "./Misc";
 import Debug from "debug";
 
 const log = Debug("feedmgr");

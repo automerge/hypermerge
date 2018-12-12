@@ -1,4 +1,4 @@
-import { Clock, Patch, Doc, Change, ChangeFn } from "automerge/frontend";
+import { Patch, Change } from "automerge/frontend";
 
 export type ToBackendRepoMsg =
   | NeedsActorIdMsg
