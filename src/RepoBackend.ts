@@ -83,7 +83,7 @@ export class RepoBackend {
   private create(keys: KeyBuffer): DocBackend {
     const docId = Base58.encode(keys.publicKey);
     log("Create", docId);
-    const doc = new DocBackend(this, docId, Backend.init());
+    const doc = new DocBackend(this, docId);
 
     this.docs.set(docId, doc);
 
@@ -370,34 +370,6 @@ export class RepoBackend {
       }
     }
   };
-
-  /*
-  private getHistories(id: string) {
-    const doc = this.doc.get(id)!
-    let a = doc.getIn(['opSet', 'history']).toArray().map(tmp = tmp.toJS())
-    return history.map((change, index) => {
-      return {
-        get change () {
-          return change.toJS()
-        },
-        get snapshot () {
-          return docFromChanges(actor, history.slice(0, index + 1))
-        }
-      }
-    }).toArray()
-  }
-*/
-
-  /*
-    getChanges(clock: Clock): Change[] {
-      const changes = [];
-      for (let i in clock) {
-        const actor = this.actors.get(i)!;
-        changes.push(...actor.changes.slice(0, clock[i]));
-      }
-      return changes;
-    }
-  */
 
   actor(id: string): Actor | undefined {
     return this.actors.get(id);
