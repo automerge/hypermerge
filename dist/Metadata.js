@@ -243,7 +243,7 @@ class Metadata {
         });
         this.clocks = clocks;
     }
-    docsWith(actor, seq = 0) {
+    docsWith(actor, seq = 1) {
         return this.docs().filter(id => this.has(id, actor, seq));
     }
     covered(id, clock) {
@@ -253,7 +253,9 @@ class Metadata {
         return [...this.clocks.keys()];
     }
     has(id, actor, seq) {
-        return (this.clock(id)[actor] || 0) >= seq;
+        if (!(seq >= 1))
+            throw new Error("seq number must be 1 or greater");
+        return (this.clock(id)[actor] || -1) >= seq;
     }
     merge(id, merge) {
         this.writeThrough({ id, merge });
@@ -284,7 +286,7 @@ class Metadata {
         };
     }
     forActor(actor) {
-        return this.docsWith(actor, 0).map(id => this.forDoc(id));
+        return this.docsWith(actor).map(id => this.forDoc(id));
     }
 }
 exports.Metadata = Metadata;
