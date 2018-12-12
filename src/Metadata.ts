@@ -1,7 +1,7 @@
 import Queue from "./Queue";
 import MapSet from "./MapSet";
 import * as Base58 from "bs58";
-import { readFeed, Feed } from "./hypercore";
+import { hypercore, readFeed, Feed } from "./hypercore";
 import Debug from "debug";
 const log = Debug("metadata");
 
@@ -137,9 +137,13 @@ export class Metadata {
   private replay: MetadataBlock[] = [];
 
   private ledger: Feed<any>;
+  public id: Buffer // for the RepoBackend... used in examples (unwisely!) as a Peer ID
 
-  constructor(ledger: Feed<any>) {
-    this.ledger = ledger;
+  constructor(storageFn: Function) {
+    this.ledger = hypercore(storageFn("ledger"), {
+      valueEncoding: "json"
+    });
+    this.id = this.ledger.id
     this.ledger.ready(() => {
       readFeed(this.ledger, this.loadLedger);
     });

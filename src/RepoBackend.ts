@@ -1,10 +1,10 @@
 import Queue from "./Queue";
-import { MetadataBlock, Metadata, validateMetadataMsg } from "./Metadata";
+import { Metadata, validateMetadataMsg } from "./Metadata";
 import { Actor, ActorMsg, EXT } from "./Actor";
 import { strs2clock, clockDebug } from "./Clock";
 import * as Base58 from "bs58";
 import * as crypto from "hypercore/lib/crypto";
-import { hypercore, Feed, discoveryKey } from "./hypercore";
+import { discoveryKey } from "./hypercore";
 import * as Backend from "automerge/backend";
 import { Clock, Change } from "automerge/backend";
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
@@ -58,11 +58,9 @@ export class RepoBackend {
     this.opts = opts;
     this.path = opts.path || "default";
     this.storage = opts.storage;
-    const ledger: Feed<MetadataBlock> = hypercore(this.storageFn("ledger"), {
-      valueEncoding: "json"
-    });
-    this.id = ledger.id;
-    this.meta = new Metadata(ledger);
+    
+    this.meta = new Metadata(this.storageFn);
+    this.id = this.meta.id
   }
 
   private writeFile(keys: KeyBuffer, data: Uint8Array) {

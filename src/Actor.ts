@@ -1,4 +1,4 @@
-import { KeyBuffer } from "./RepoBackend";
+import { RepoBackend, KeyBuffer } from "./RepoBackend";
 import { readFeed, hypercore, Feed, Peer, discoveryKey } from "./hypercore";
 import { Change } from "automerge/backend";
 import { Metadata } from "./Metadata";
