@@ -71,6 +71,7 @@ class RepoBackend {
             switch (msg.type) {
                 case "NewMetadata":
                     const blocks = Metadata_1.validateMetadataMsg(msg.input);
+                    log("NewMetadata", blocks);
                     this.meta.addBlocks(blocks);
                     blocks.map(block => this.syncReadyActors(block.actors || []));
                     break;

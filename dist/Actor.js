@@ -28,9 +28,7 @@ class Actor {
             log("init feed", this.id);
             const feed = this.feed;
             this.meta.setWritable(this.id, feed.writable);
-            this.meta.docsWith(this.id).forEach(docId => {
-                this.message(this.meta.forActor(this.id));
-            });
+            this.message(this.meta.forActor(this.id));
             feed.on("peer-remove", this.peerRemove);
             feed.on("peer-add", this.peerAdd);
             feed.on("download", this.handleDownload);
