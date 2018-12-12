@@ -1,10 +1,8 @@
 import Debug from "debug";
 import * as Backend from "automerge/backend";
 import { Change, BackDoc } from "automerge/backend";
-import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import Queue from "./Queue";
 import { RepoBackend } from "./RepoBackend";
-import { Feed, Peer } from "./hypercore";
 
 const log = Debug("hypermerge:back");
 
