@@ -217,6 +217,7 @@ export class RepoBackend {
     switch (msg.type) {
       case "NewMetadata":
         const blocks = validateMetadataMsg(msg.input);
+        log("NewMetadata", blocks)
         this.meta.addBlocks(blocks);
         blocks.map(block => this.syncReadyActors(block.actors || []));
         break;
@@ -252,7 +253,7 @@ export class RepoBackend {
           const changes = actor.changes.slice(seq, max);
           log(
             `changes found doc=${docId} n=${
-              changes.length
+            changes.length
             } seq=${seq} max=${max} length=${changes.length}`
           );
           if (changes.length > 0) {
@@ -325,7 +326,7 @@ export class RepoBackend {
         }
         case "MaterializeMsg": {
           const doc = this.docs.get(msg.id)!
-          const changes = (doc.back as any).getIn(['opSet', 'history']).slice(0,msg.history).toArray()
+          const changes = (doc.back as any).getIn(['opSet', 'history']).slice(0, msg.history).toArray()
           const [_, patch] = Backend.applyChanges(Backend.init(), changes);
           this.toFrontend.push({
             type: "MaterializeReplyMsg",
@@ -387,16 +388,16 @@ export class RepoBackend {
   }
 */
 
-/*
-  getChanges(clock: Clock): Change[] {
-    const changes = [];
-    for (let i in clock) {
-      const actor = this.actors.get(i)!;
-      changes.push(...actor.changes.slice(0, clock[i]));
+  /*
+    getChanges(clock: Clock): Change[] {
+      const changes = [];
+      for (let i in clock) {
+        const actor = this.actors.get(i)!;
+        changes.push(...actor.changes.slice(0, clock[i]));
+      }
+      return changes;
     }
-    return changes;
-  }
-*/
+  */
 
   actor(id: string): Actor | undefined {
     return this.actors.get(id);
