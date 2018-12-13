@@ -119,7 +119,7 @@ function validateID(id) {
 }
 exports.validateID = validateID;
 class Metadata {
-    constructor(ledger) {
+    constructor(storageFn) {
         this.primaryActors = new MapSet_1.default();
         this.follows = new MapSet_1.default();
         this.merges = new Map();
@@ -159,7 +159,10 @@ class Metadata {
                 this.ledger.append(block);
             this.genClocks();
         };
-        this.ledger = ledger;
+        this.ledger = hypercore_1.hypercore(storageFn("ledger"), {
+            valueEncoding: "json"
+        });
+        this.id = this.ledger.id;
         this.ledger.ready(() => {
             hypercore_1.readFeed(this.ledger, this.loadLedger);
         });

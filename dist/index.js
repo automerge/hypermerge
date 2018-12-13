@@ -1,5 +1,4 @@
 "use strict";
-//export { Feed, Peer } from "./hypercore"
 Object.defineProperty(exports, "__esModule", { value: true });
 var Repo_1 = require("./Repo");
 exports.Repo = Repo_1.Repo;

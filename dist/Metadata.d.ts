@@ -1,4 +1,4 @@
-import { Feed } from "./hypercore";
+/// <reference types="node" />
 import { Clock } from "./Clock";
 export declare function validateMetadataMsg(input: Uint8Array): MetadataBlock[];
 export declare function cleanMetadataInput(input: any): MetadataBlock | undefined;
@@ -22,7 +22,8 @@ export declare class Metadata {
     private ready;
     private replay;
     private ledger;
-    constructor(ledger: Feed<any>);
+    id: Buffer;
+    constructor(storageFn: Function);
     private loadLedger;
     private hasBlock;
     private batchAdd;

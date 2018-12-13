@@ -200,11 +200,8 @@ class RepoBackend {
         this.opts = opts;
         this.path = opts.path || "default";
         this.storage = opts.storage;
-        const ledger = hypercore_1.hypercore(this.storageFn("ledger"), {
-            valueEncoding: "json"
-        });
-        this.id = ledger.id;
-        this.meta = new Metadata_1.Metadata(ledger);
+        this.meta = new Metadata_1.Metadata(this.storageFn);
+        this.id = this.meta.id;
     }
     writeFile(keys, data) {
         const fileId = Base58.encode(keys.publicKey);
@@ -307,32 +304,6 @@ class RepoBackend {
     releaseManager(doc) {
         // FIXME - need reference count with many feeds <-> docs
     }
-    /*
-    private getHistories(id: string) {
-      const doc = this.doc.get(id)!
-      let a = doc.getIn(['opSet', 'history']).toArray().map(tmp = tmp.toJS())
-      return history.map((change, index) => {
-        return {
-          get change () {
-            return change.toJS()
-          },
-          get snapshot () {
-            return docFromChanges(actor, history.slice(0, index + 1))
-          }
-        }
-      }).toArray()
-    }
-  */
-    /*
-      getChanges(clock: Clock): Change[] {
-        const changes = [];
-        for (let i in clock) {
-          const actor = this.actors.get(i)!;
-          changes.push(...actor.changes.slice(0, clock[i]));
-        }
-        return changes;
-      }
-    */
     actor(id) {
         return this.actors.get(id);
     }
