@@ -117,7 +117,7 @@ export class Metadata {
   private primaryActors: MapSet<string, string> = new MapSet();
   private follows: MapSet<string, string> = new MapSet();
   private merges: Map<string, Clock> = new Map();
-  private readyQ: Queue<() => void> = new Queue();
+  readyQ: Queue<() => void> = new Queue(); // FIXME - need a better api for accessing metadata
   private clocks: Map<string, Clock> = new Map();
 
   private writable: Map<string, boolean> = new Map();

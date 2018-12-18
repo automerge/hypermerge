@@ -123,7 +123,7 @@ class Metadata {
         this.primaryActors = new MapSet_1.default();
         this.follows = new MapSet_1.default();
         this.merges = new Map();
-        this.readyQ = new Queue_1.default();
+        this.readyQ = new Queue_1.default(); // FIXME - need a better api for accessing metadata
         this.clocks = new Map();
         this.writable = new Map();
         // whats up with this ready/replay thing

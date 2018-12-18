@@ -1,4 +1,5 @@
 /// <reference types="node" />
+import Queue from "./Queue";
 import { Clock } from "./Clock";
 export declare function validateMetadataMsg(input: Uint8Array): MetadataBlock[];
 export declare function cleanMetadataInput(input: any): MetadataBlock | undefined;
@@ -16,7 +17,7 @@ export declare class Metadata {
     private primaryActors;
     private follows;
     private merges;
-    private readyQ;
+    readyQ: Queue<() => void>;
     private clocks;
     private writable;
     private ready;
