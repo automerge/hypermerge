@@ -20,6 +20,15 @@ interface Config {
   actorId?: string;
 }
 
+type ProgressListener = (e: DownloadEvent) => void
+
+interface DownloadEvent {
+  actor: string;
+  index: number;
+  size: number;
+  time: number;
+}
+
 export class DocFrontend<T> {
   private docId: string;
   actorId?: string;
@@ -29,6 +38,7 @@ export class DocFrontend<T> {
   private front: Doc<T>;
   private mode: Mode = "pending";
   private handles: Set<Handle<T>> = new Set();
+  private progressListeners: Set<ProgressListener> = new Set()
   private repo: RepoFrontend;
 
   clock: Clock;
@@ -70,6 +80,13 @@ export class DocFrontend<T> {
     this.handles.forEach(handle => {
       handle.push(this.front, this.clock);
     });
+  }
+
+  subscribeProgress(listener: ProgressListener) {
+    this.progressListeners.add(listener)
+  }
+  progressHappened(progressEvent: DownloadEvent) {
+    this.progressListeners.forEach(l => l(progressEvent))
   }
 
   fork = (): string => {

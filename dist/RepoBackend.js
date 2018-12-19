@@ -78,6 +78,18 @@ class RepoBackend {
                 case "ActorSync":
                     this.syncChanges(msg.actor);
                     break;
+                case "Download":
+                    this.meta.docsWith(msg.actor.id).forEach((doc) => {
+                        this.toFrontend.push({
+                            type: "ActorBlockDownloadedMsg",
+                            id: doc,
+                            actorId: msg.actor.id,
+                            index: msg.index,
+                            size: msg.size,
+                            time: msg.time
+                        });
+                    });
+                    break;
             }
         };
         this.syncChanges = (actor) => {

@@ -72,6 +72,7 @@ export interface RequestMsg {
 
 export type ToFrontendRepoMsg =
   | PatchMsg
+  | ActorBlockDownloadedMsg
   | ActorIdMsg
   | ReadyMsg
   | ReadFileReply
@@ -108,4 +109,13 @@ export interface ReadyMsg {
   actorId?: string;
   patch?: Patch;
   history?: number;
+}
+
+export interface ActorBlockDownloadedMsg {
+  type: "ActorBlockDownloadedMsg";
+  id: string;
+  actorId: string;
+  index: number;
+  size: number;
+  time: number;
 }

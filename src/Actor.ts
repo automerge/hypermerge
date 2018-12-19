@@ -41,6 +41,8 @@ interface PeerUpdate {
 interface Download {
   type: "Download";
   actor: Actor;
+  time: number;
+  size: number;
   index: number;
 }
 
@@ -163,11 +165,17 @@ export class Actor {
     this.notify({ type: "ActorSync", actor: this });
   };
 
-  handleDownload = (idx: number, data: Uint8Array) => {
-    this.handleBlock(idx, data);
-    this.notify({ type: "Download", actor: this, index: idx });
-  };
+  handleDownload = (index: number, data: Uint8Array) => {
+    this.handleBlock(index, data);
+    const time = Date.now()
+    const size = data.byteLength
 
+    this.notify({ type: "Download",
+                  actor: this, 
+                  index, 
+                  size, 
+                  time });
+  };
   handleBlock = (idx: number, data: Uint8Array) => {
     switch (this.type) {
       case "Automerge":

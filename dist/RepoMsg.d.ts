@@ -47,7 +47,7 @@ export interface RequestMsg {
     id: string;
     request: Change;
 }
-export declare type ToFrontendRepoMsg = PatchMsg | ActorIdMsg | ReadyMsg | ReadFileReply | MaterializeReplyMsg | Uint8Array;
+export declare type ToFrontendRepoMsg = PatchMsg | ActorBlockDownloadedMsg | ActorIdMsg | ReadyMsg | ReadFileReply | MaterializeReplyMsg | Uint8Array;
 export interface PatchMsg {
     type: "PatchMsg";
     id: string;
@@ -74,4 +74,12 @@ export interface ReadyMsg {
     actorId?: string;
     patch?: Patch;
     history?: number;
+}
+export interface ActorBlockDownloadedMsg {
+    type: "ActorBlockDownloadedMsg";
+    id: string;
+    actorId: string;
+    index: number;
+    size: number;
+    time: number;
 }

@@ -162,6 +162,17 @@ class RepoFrontend {
                         doc.init(msg.actorId, msg.patch, msg.history);
                         break;
                     }
+                    case "ActorBlockDownloadedMsg": {
+                        const doc = this.docs.get(msg.id);
+                        const downloadEvent = {
+                            actor: msg.actorId,
+                            index: msg.index,
+                            size: msg.size,
+                            time: msg.time
+                        };
+                        doc.progressHappened(downloadEvent);
+                        break;
+                    }
                 }
             }
         };

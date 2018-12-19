@@ -70,9 +70,15 @@ class Actor {
             this.syncQ.once(f => f());
             this.notify({ type: "ActorSync", actor: this });
         };
-        this.handleDownload = (idx, data) => {
-            this.handleBlock(idx, data);
-            this.notify({ type: "Download", actor: this, index: idx });
+        this.handleDownload = (index, data) => {
+            this.handleBlock(index, data);
+            const time = Date.now();
+            const size = data.byteLength;
+            this.notify({ type: "Download",
+                actor: this,
+                index,
+                size,
+                time });
         };
         this.handleBlock = (idx, data) => {
             switch (this.type) {

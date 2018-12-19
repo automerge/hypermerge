@@ -27,6 +27,8 @@ interface PeerUpdate {
 interface Download {
     type: "Download";
     actor: Actor;
+    time: number;
+    size: number;
     index: number;
 }
 export declare const EXT = "hypermerge.2";
@@ -60,7 +62,7 @@ export declare class Actor {
     peerAdd: (peer: Peer) => void;
     close: () => void;
     sync: () => void;
-    handleDownload: (idx: number, data: Uint8Array) => void;
+    handleDownload: (index: number, data: Uint8Array) => void;
     handleBlock: (idx: number, data: Uint8Array) => void;
     push: (cb: (actor: Actor) => void) => void;
     writeFile(data: Uint8Array): void;
