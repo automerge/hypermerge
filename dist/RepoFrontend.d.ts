@@ -10,6 +10,12 @@ export interface DocMetadata {
     history: number;
     actor?: string;
 }
+export interface ProgressEvent {
+    actor: string;
+    index: number;
+    size: number;
+    time: number;
+}
 export declare class RepoFrontend {
     toBackend: Queue<ToBackendRepoMsg>;
     docs: Map<string, DocFrontend<any>>;

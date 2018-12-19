@@ -26,7 +26,6 @@ class DocFrontend {
         this.changeQ = new Queue_1.default("frontend:change");
         this.mode = "pending";
         this.handles = new Set();
-        this.progressListeners = new Set();
         this.fork = () => {
             return "";
         };
@@ -103,11 +102,10 @@ class DocFrontend {
             handle.push(this.front, this.clock);
         });
     }
-    subscribeProgress(listener) {
-        this.progressListeners.add(listener);
-    }
-    progressHappened(progressEvent) {
-        this.progressListeners.forEach(l => l(progressEvent));
+    progress(progressEvent) {
+        this.handles.forEach(handle => {
+            handle.pushProgress(progressEvent);
+        });
     }
     enableWrites() {
         this.mode = "write";

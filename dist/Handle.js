@@ -13,6 +13,11 @@ class Handle {
                 this.subscription(item, clock, this.counter++);
             }
         };
+        this.pushProgress = (progress) => {
+            if (this.progressSubscription) {
+                this.progressSubscription(progress);
+            }
+        };
         this.once = (subscriber) => {
             this.subscribe((doc, clock, index) => {
                 subscriber(doc, clock, index);
@@ -28,6 +33,13 @@ class Handle {
             if (this.state != null && this.clock != null) {
                 subscriber(this.state, this.clock, this.counter++);
             }
+            return this;
+        };
+        this.subscribeProgress = (subscriber) => {
+            if (this.progressSubscription) {
+                throw new Error("only one progress subscriber for a doc handle");
+            }
+            this.progressSubscription = subscriber;
             return this;
         };
         this.close = () => {

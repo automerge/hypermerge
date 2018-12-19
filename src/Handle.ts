@@ -1,11 +1,12 @@
 import { Clock, Doc, ChangeFn } from "automerge/frontend";
-import { RepoFrontend } from "./RepoFrontend";
+import { RepoFrontend, ProgressEvent } from "./RepoFrontend";
 
 export class Handle<T> {
   id: string = "";
   state: Doc<T> | null = null;
   clock: Clock | null = null;
   subscription?: (item: Doc<T>, clock?: Clock, index?: number) => void;
+  progressSubscription?: (event: ProgressEvent) => void;
   private counter: number = 0;
   private repo: RepoFrontend;
 
@@ -36,6 +37,12 @@ export class Handle<T> {
     }
   };
 
+  pushProgress = (progress: ProgressEvent) => {
+    if (this.progressSubscription) {
+      this.progressSubscription(progress)
+    }
+  }
+
   once = (
     subscriber: (doc: Doc<T>, clock?: Clock, index?: number) => void
   ): this => {
@@ -60,6 +67,18 @@ export class Handle<T> {
     }
     return this;
   };
+
+  subscribeProgress = (
+    subscriber: (event: ProgressEvent) => void
+  ): this => {
+    if (this.progressSubscription) {
+      throw new Error("only one progress subscriber for a doc handle")
+    }
+    
+    this.progressSubscription = subscriber
+  
+    return this
+  }
 
   close = () => {
     this.subscription = undefined;
