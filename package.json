@@ -1,12 +1,13 @@
 {
   "name": "hypermerge",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "why merge when you can HYPERMERGE",
   "main": "dist/index.js",
   "scripts": {
     "doc-serve": "documentation serve --watch index.js",
     "doc-build": "documentation build index.js -f html -o docs",
     "build": "tsc",
+    "peek": "ts-node --files tools/Peek.ts $1 $2 $3",
     "tape": "ts-node --files node_modules/tape/bin/tape tests/*.ts"
   },
   "repository": {

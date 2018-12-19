@@ -214,7 +214,7 @@ class RepoBackend {
     }
     create(keys) {
         const docId = Base58.encode(keys.publicKey);
-        log("Create", docId);
+        log("create", docId);
         const doc = new DocBackend_1.DocBackend(this, docId, Backend.init());
         this.docs.set(docId, doc);
         this.meta.addActor(doc.id, doc.id);
@@ -242,6 +242,7 @@ class RepoBackend {
         }
     }
     open(docId) {
+        log("open", docId);
         let doc = this.docs.get(docId) || new DocBackend_1.DocBackend(this, docId);
         if (!this.docs.has(docId)) {
             this.docs.set(docId, doc);
@@ -270,6 +271,7 @@ class RepoBackend {
                 const slice = actor.changes.slice(0, max);
                 changes.push(...slice);
             });
+            log("loading doc", doc.id, `changes=${changes.length}`);
             doc.init(changes, this.meta.localActorId(doc.id));
         });
     }

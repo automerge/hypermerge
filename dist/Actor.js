@@ -15,7 +15,7 @@ const Queue_1 = __importDefault(require("./Queue"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Base58 = __importStar(require("bs58"));
 const debug_1 = __importDefault(require("debug"));
-const log = debug_1.default("feedmgr");
+const log = debug_1.default("repo:actor");
 const KB = 1024;
 const MB = 1024 * KB;
 exports.EXT = "hypermerge.2";
@@ -42,6 +42,7 @@ class Actor {
             feed.on("close", this.close);
         };
         this.init = (datas) => {
+            log("loaded blocks", this.id, datas.length);
             datas.map((data, i) => this.handleBlock(i, data));
             if (datas.length > 0) {
                 this.syncQ.subscribe(f => f());
@@ -139,7 +140,7 @@ class Actor {
     readFile(cb) {
         this.syncQ.push(() => {
             // could ditch .data and re-read blocks here
-            console.log(`Rebuilding file from ${this.data.length} blocks`);
+            log(`Rebuilding file from ${this.data.length} blocks`);
             const file = Buffer.concat(this.data);
             const bytes = this.fileMetadata.bytes;
             if (file.length !== bytes) {

@@ -10,6 +10,12 @@ export interface Options {
   valueEncoding?: string;
 }
 
+export interface ReadOpts {
+  wait?: boolean;
+  timeout?: number;
+  valueEncoding?: string;
+}
+
 export function discoveryKey(buf: Buffer): Buffer {
   return _hypercore.discoveryKey(buf);
 }
@@ -46,21 +52,50 @@ export interface Feed<T> {
   ready: Function;
   append(data: T): void;
   append(data: T, cb: (err: Error | null) => void): void;
+  clear(index:number, cb:() => void) : void;
+  clear(start:number, end: number, cb:() => void) : void;
+  downloaded() : number;
+  downloaded(start: number) : number;
+  downloaded(start: number, end: number) : number;
+  has(index:number) : boolean;
+  has(start:number,end:number) : boolean;
+  signature(cb:(err: any, sig: any) => void) : void;
+  signature(index: number, cb:(err: any, sig: any) => void) : void;
+  verify(index: number, sig: Buffer, cb:(err: any, roots: any) => void) : void;
   close(): void;
   get(index: number, cb: (data: T) => void): void;
   getBatch(start: number, end: number, cb: (Err: any, data: T[]) => void): void;
+  getBatch(start: number, end: number, config: any, cb: (Err: any, data: T[]) => void): void;
   discoveryKey: Buffer;
   id: Buffer;
   length: number;
 }
 
+function readFeedN<T>(feed: Feed<T>, index: number, cb: (data: T[]) => void) {
+  const id = feed.id.toString('hex').slice(0,4)
+  feed.getBatch(0, index, { wait: false }, (err, data) => {
+    if (err) throw err;
+    cb(data)
+  })
+}
+
 export function readFeed<T>(feed: Feed<T>, cb: (data: T[]) => void) {
-  if (feed.length > 0) {
-    feed.getBatch(0, feed.length, (err, data) => {
-      cb(data);
-    });
-  } else {
-    cb([]);
+  const id = feed.id.toString('hex').slice(0,4)
+  const length = feed.downloaded()
+
+  //console.log("readFeed", id, `downloaded=${length}`, `feed.length=${feed.length}`)
+
+  if (length === 0) return cb([])
+  if (feed.has(0, length)) return readFeedN(feed,length, cb)
+
+  for (let i = 0; i < length; i++) {
+    if (!feed.has(i)) {
+//      console.log("readFeed.clear", i, length)
+      feed.clear(i, feed.length, () => {
+        readFeedN(feed, i - 1, cb)
+      })
+      break;
+    }
   }
 }
 

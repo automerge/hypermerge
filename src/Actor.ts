@@ -7,7 +7,7 @@ import * as JsonBuffer from "./JsonBuffer";
 import * as Base58 from "bs58";
 import Debug from "debug";
 
-const log = Debug("feedmgr");
+const log = Debug("repo:actor");
 
 const KB = 1024;
 const MB = 1024 * KB;
@@ -130,6 +130,7 @@ export class Actor {
   }
 
   init = (datas: Uint8Array[]) => {
+    log("loaded blocks", this.id, datas.length);
     datas.map((data, i) => this.handleBlock(i, data));
     if (datas.length > 0) {
       this.syncQ.subscribe(f => f());
@@ -203,7 +204,7 @@ export class Actor {
   readFile(cb: (data: Buffer) => void) {
     this.syncQ.push(() => {
       // could ditch .data and re-read blocks here
-      console.log(`Rebuilding file from ${this.data.length} blocks`);
+      log(`Rebuilding file from ${this.data.length} blocks`);
       const file = Buffer.concat(this.data);
       const bytes = this.fileMetadata!.bytes;
       if (file.length !== bytes) {
