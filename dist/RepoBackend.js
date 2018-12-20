@@ -37,12 +37,14 @@ class RepoBackend {
             }
             this.swarm = swarm;
             for (let dk of this.joined) {
+                log("swarm.join");
                 this.swarm.join(dk);
             }
         };
         this.join = (actorId) => {
             const dk = hypercore_1.discoveryKey(Base58.decode(actorId));
             if (this.swarm && !this.joined.has(dk)) {
+                log("swarm.join", actorId);
                 this.swarm.join(dk);
             }
             this.joined.add(dk);
@@ -119,6 +121,7 @@ class RepoBackend {
                 timeout: 10000,
                 extensions: [Actor_1.EXT]
             });
+            log("stream");
             let add = (dk) => {
                 const actor = this.actorsDk.get(Base58.encode(dk));
                 if (actor) {

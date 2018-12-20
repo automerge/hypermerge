@@ -90,11 +90,8 @@ export function readFeed<T>(feed: Feed<T>, cb: (data: T[]) => void) {
 
   log("readFeed", id, `downloaded=${length}`, `feed.length=${feed.length}`)
 
-  log("mark1")
   if (length === 0) return cb([])
-  log("mark2")
   if (feed.has(0, length)) return readFeedN(feed,length, cb)
-  log("mark3")
 
   for (let i = 0; i < length; i++) {
     if (!feed.has(i)) {
@@ -105,7 +102,6 @@ export function readFeed<T>(feed: Feed<T>, cb: (data: T[]) => void) {
       break;
     }
   }
-  log("mark4")
 }
 
 export interface Peer {

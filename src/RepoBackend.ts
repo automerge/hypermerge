@@ -138,6 +138,7 @@ export class RepoBackend {
     }
     this.swarm = swarm;
     for (let dk of this.joined) {
+      log("swarm.join") 
       this.swarm.join(dk);
     }
   };
@@ -164,6 +165,7 @@ export class RepoBackend {
   join = (actorId: string) => {
     const dk = discoveryKey(Base58.decode(actorId));
     if (this.swarm && !this.joined.has(dk)) {
+      log("swarm.join",actorId) 
       this.swarm.join(dk);
     }
     this.joined.add(dk);
@@ -283,6 +285,7 @@ export class RepoBackend {
       timeout: 10000,
       extensions: [EXT]
     });
+    log("stream")
 
     let add = (dk: Buffer) => {
       const actor = this.actorsDk.get(Base58.encode(dk));

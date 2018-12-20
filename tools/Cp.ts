@@ -5,15 +5,16 @@ import mime from "mime-types"
 
 const raf: Function = require("random-access-file")
 const file = process.argv[2]
-const path = process.argv[3]
+const _path = process.argv[3]
+const path = _path || ".data"
 
-if (path === undefined || file === undefined) {
-  console.log("Usage: cp FILE REPO")
+if (file === undefined) {
+  console.log("Usage: cp FILE [REPO]")
   process.exit()
 }
 
-if (!fs.existsSync(path + "/ledger")) {
-  console.log("No repo found: " + path)
+if (_path && !fs.existsSync(_path + "/ledger")) {
+  console.log("No repo found: " + _path)
   process.exit()
 }
 
@@ -26,7 +27,6 @@ setTimeout(() => {}, 50000) // dont exit yet
 
 const data = fs.readFileSync(file)
 const mimeType = mime.lookup(file) || 'application/octet-stream'
-
 
 const repo = new Repo({ path, storage: raf })
 const id = repo.writeFile(data,mimeType)

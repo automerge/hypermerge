@@ -33,13 +33,10 @@ function readFeed(feed, cb) {
     const id = feed.id.toString('hex').slice(0, 4);
     const length = feed.downloaded();
     log("readFeed", id, `downloaded=${length}`, `feed.length=${feed.length}`);
-    log("mark1");
     if (length === 0)
         return cb([]);
-    log("mark2");
     if (feed.has(0, length))
         return readFeedN(feed, length, cb);
-    log("mark3");
     for (let i = 0; i < length; i++) {
         if (!feed.has(i)) {
             log("readFeed.clear", i, length);
@@ -49,7 +46,6 @@ function readFeed(feed, cb) {
             break;
         }
     }
-    log("mark4");
 }
 exports.readFeed = readFeed;
 //# sourceMappingURL=hypercore.js.map
