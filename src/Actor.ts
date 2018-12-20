@@ -61,7 +61,7 @@ export class Actor {
   id: string;
   dkString: string;
   q: Queue<(actor: Actor) => void>;
-  syncQ: Queue<() => void>;
+  private syncQ: Queue<() => void>;
   changes: Change[] = [];
   feed: Feed<Uint8Array>;
   peers: Set<Peer> = new Set();

@@ -225,6 +225,7 @@ class RepoBackend {
         actor.writeFile(data, mimeType);
     }
     readFile(id, cb) {
+        log("readFile", id);
         this.getReadyActor(id, actor => actor.readFile(cb));
     }
     create(keys) {

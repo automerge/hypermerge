@@ -73,6 +73,7 @@ export class RepoBackend {
   }
 
   private readFile(id: string, cb: (data: Uint8Array, mimeType: string) => void) {
+    log("readFile",id)
     this.getReadyActor(id, actor => actor.readFile(cb));
   }
 
