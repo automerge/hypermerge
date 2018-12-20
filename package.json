@@ -8,6 +8,8 @@
     "doc-build": "documentation build index.js -f html -o docs",
     "build": "tsc",
     "peek": "ts-node --files tools/Peek.ts $1 $2 $3",
+    "cp": "ts-node --files tools/Cp.ts $1 $2 $3",
+    "cat": "ts-node --files tools/Cat.ts $1 $2 $3",
     "tape": "ts-node --files node_modules/tape/bin/tape tests/*.ts"
   },
   "repository": {
@@ -30,12 +32,14 @@
   },
   "devDependencies": {
     "@types/debug": "^0.0.31",
+    "@types/mime-types": "^2.1.0",
     "@types/node": "^10.12.2",
     "@types/tape": "^4.2.32",
     "@types/ws": "^6.0.1",
     "discovery-cloud-client": "https://github.com/orionz/discovery-cloud-client",
     "documentation": "^5.3.5",
     "husky": "^0.14.3",
+    "mime-types": "^2.1.21",
     "nyc": "^11.4.1",
     "opn-cli": "^3.1.0",
     "pump": "^3.0.0",

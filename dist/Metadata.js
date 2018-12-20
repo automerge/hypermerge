@@ -15,7 +15,7 @@ const MapSet_1 = __importDefault(require("./MapSet"));
 const Base58 = __importStar(require("bs58"));
 const hypercore_1 = require("./hypercore");
 const debug_1 = __importDefault(require("debug"));
-const log = debug_1.default("metadata");
+const log = debug_1.default("repo:metadata");
 const Clock_1 = require("./Clock");
 //const blocks = validateMetadataMsg(: MetadataBlock[] = JSON.parse(msg.input.toString())
 function validateMetadataMsg(input) {
@@ -112,6 +112,7 @@ function isValidID(id) {
 }
 exports.isValidID = isValidID;
 function validateID(id) {
+    log(`id '${id}'`);
     const buffer = Base58.decode(id);
     if (buffer.length !== 32) {
         throw new Error(`invalid id ${id}`);
@@ -139,6 +140,7 @@ class Metadata {
         this.ready = false;
         this.replay = [];
         this.loadLedger = (input) => {
+            log("readling ledger", input.length, "blocks");
             const data = filterMetadataInputs(input); // FIXME
             this.primaryActors = new MapSet_1.default();
             this.follows = new MapSet_1.default();

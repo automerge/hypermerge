@@ -20,14 +20,14 @@ export declare class RepoFrontend {
     toBackend: Queue<ToBackendRepoMsg>;
     docs: Map<string, DocFrontend<any>>;
     msgcb: Map<number, (patch: Patch) => void>;
-    readFiles: MapSet<string, (data: Uint8Array) => void>;
+    readFiles: MapSet<string, (data: Uint8Array, mimeType: string) => void>;
     file?: Uint8Array;
     create: (init?: any) => string;
     change: <T>(id: string, fn: ChangeFn<T>) => void;
     meta: (id: string) => DocMetadata | undefined;
     merge: (id: string, target: string) => void;
-    writeFile: <T>(data: Uint8Array) => string;
-    readFile: <T>(id: string, cb: (data: Uint8Array) => void) => void;
+    writeFile: <T>(data: Uint8Array, mimeType: string) => string;
+    readFile: <T>(id: string, cb: (data: Uint8Array, mimeType: string) => void) => void;
     fork: (id: string) => string;
     follow: (id: string, target: string) => void;
     watch: <T>(id: string, cb: (val: T, clock?: Clock | undefined, index?: number | undefined) => void) => Handle<T>;

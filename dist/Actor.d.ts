@@ -5,11 +5,12 @@ import { Change } from "automerge/backend";
 import { Metadata } from "./Metadata";
 import Queue from "./Queue";
 export declare type ActorMsg = NewMetadata | ActorSync | PeerUpdate | Download;
-export declare type FeedHead = FileMetadata | Change;
+export declare type FeedHead = FeedHeadMetadata | Change;
 export declare type FeedType = "Unknown" | "Automerge" | "File";
-interface FileMetadata {
+interface FeedHeadMetadata {
     type: "File";
     bytes: number;
+    mimeType: string;
 }
 interface NewMetadata {
     type: "NewMetadata";
@@ -51,7 +52,7 @@ export declare class Actor {
     notify: (msg: ActorMsg) => void;
     type: FeedType;
     data: Uint8Array[];
-    fileMetadata?: FileMetadata;
+    fileMetadata?: FeedHeadMetadata;
     repo: RepoBackend;
     constructor(config: ActorConfig);
     message(message: any, target?: Peer): void;
@@ -65,9 +66,9 @@ export declare class Actor {
     handleDownload: (index: number, data: Uint8Array) => void;
     handleBlock: (idx: number, data: Uint8Array) => void;
     push: (cb: (actor: Actor) => void) => void;
-    writeFile(data: Uint8Array): void;
-    readFile(cb: (data: Buffer) => void): void;
-    append(block: Uint8Array): void;
+    writeFile(data: Uint8Array, mimeType: string): void;
+    readFile(cb: (data: Buffer, mimeType: string) => void): void;
+    append(block: Uint8Array, cb?: () => void): void;
     writeChange(change: Change): void;
 }
 export {};

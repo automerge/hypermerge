@@ -3,7 +3,7 @@ import MapSet from "./MapSet";
 import * as Base58 from "bs58";
 import { hypercore, readFeed, Feed } from "./hypercore";
 import Debug from "debug";
-const log = Debug("metadata");
+const log = Debug("repo:metadata");
 
 import { Clock, equivalent, union, intersection } from "./Clock";
 
@@ -107,6 +107,7 @@ export function isValidID(id: any): boolean {
 }
 
 export function validateID(id: string) {
+  log(`id '${id}'`)
   const buffer = Base58.decode(id);
   if (buffer.length !== 32) {
     throw new Error(`invalid id ${id}`);
@@ -150,6 +151,7 @@ export class Metadata {
   }
 
   private loadLedger = (input: any[]) => {
+    log("readling ledger", input.length, "blocks")
     const data = filterMetadataInputs(input); // FIXME
     this.primaryActors = new MapSet();
     this.follows = new MapSet();

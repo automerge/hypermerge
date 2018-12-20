@@ -2,6 +2,9 @@ declare function require(moduleName: string): any;
 
 let _hypercore = require("hypercore");
 
+import Debug from "debug";
+const log = Debug("repo:hypermerge");
+
 type Key = string | Buffer;
 type Storage = string | Function;
 
@@ -73,8 +76,10 @@ export interface Feed<T> {
 
 function readFeedN<T>(feed: Feed<T>, index: number, cb: (data: T[]) => void) {
   const id = feed.id.toString('hex').slice(0,4)
+  log("readFeed.getBatch",0,index)
   feed.getBatch(0, index, { wait: false }, (err, data) => {
     if (err) throw err;
+    log("readFeed.getBatch calling cb",data.length)
     cb(data)
   })
 }
@@ -83,20 +88,24 @@ export function readFeed<T>(feed: Feed<T>, cb: (data: T[]) => void) {
   const id = feed.id.toString('hex').slice(0,4)
   const length = feed.downloaded()
 
-  //console.log("readFeed", id, `downloaded=${length}`, `feed.length=${feed.length}`)
+  log("readFeed", id, `downloaded=${length}`, `feed.length=${feed.length}`)
 
+  log("mark1")
   if (length === 0) return cb([])
+  log("mark2")
   if (feed.has(0, length)) return readFeedN(feed,length, cb)
+  log("mark3")
 
   for (let i = 0; i < length; i++) {
     if (!feed.has(i)) {
-//      console.log("readFeed.clear", i, length)
+      log("readFeed.clear", i, length)
       feed.clear(i, feed.length, () => {
         readFeedN(feed, i - 1, cb)
       })
       break;
     }
   }
+  log("mark4")
 }
 
 export interface Peer {

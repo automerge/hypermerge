@@ -15,6 +15,7 @@ export interface WriteFile {
     type: "WriteFile";
     publicKey: string;
     secretKey: string;
+    mimeType: string;
 }
 export interface ReadFile {
     type: "ReadFile";
@@ -62,6 +63,7 @@ export interface MaterializeReplyMsg {
 export interface ReadFileReply {
     type: "ReadFileReply";
     id: string;
+    mimeType: string;
 }
 export interface ActorIdMsg {
     type: "ActorIdMsg";

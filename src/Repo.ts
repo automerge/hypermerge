@@ -28,8 +28,8 @@ export class Repo {
   doc: <T>(id: string, cb?: (val: T, clock?: Clock) => void) => Promise<T>;
   merge: (id: string, target: string) => void;
   change: <T>(id: string, fn: ChangeFn<T>) => void;
-  writeFile: <T>(data: Uint8Array) => string;
-  readFile: <T>(id: string, cb: (data: Uint8Array) => void) => void;
+  writeFile: <T>(data: Uint8Array, mimeType: string) => string;
+  readFile: <T>(id: string, cb: (data: Uint8Array, mimeType: string) => void) => void;
   materialize: <T>(id: string, seq: number, cb: (val: T) => void) => void;
   meta: (id: string) => DocMetadata | undefined;
 

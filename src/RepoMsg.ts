@@ -30,6 +30,7 @@ export interface WriteFile {
   type: "WriteFile";
   publicKey: string;
   secretKey: string;
+  mimeType: string;
 }
 
 export interface ReadFile {
@@ -95,6 +96,7 @@ export interface MaterializeReplyMsg {
 export interface ReadFileReply {
   type: "ReadFileReply";
   id: string;
+  mimeType: string;
 }
 
 export interface ActorIdMsg {

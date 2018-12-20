@@ -130,36 +130,52 @@ class Actor {
             this.data = [];
         }
     }
-    writeFile(data) {
+    writeFile(data, mimeType) {
+        log("writing file");
         this.q.push(() => {
+            log("writing file", data.length, "bytes", mimeType);
             if (this.data.length > 0 || this.changes.length > 0)
                 throw new Error("writeFile called on existing feed");
-            const head = { type: "File", bytes: data.length };
-            this.append(Buffer.from(JSON.stringify(head)));
+            this.fileMetadata = { type: "File", bytes: data.length, mimeType };
+            this.append(Buffer.from(JSON.stringify(this.fileMetadata)));
             const blockSize = 1 * MB;
             for (let i = 0; i < data.length; i += blockSize) {
                 const block = data.slice(i, i + blockSize);
-                this.append(block);
+                this.data.push(block);
+                const last = i + blockSize >= data.length;
+                this.append(block, () => {
+                    if (last) {
+                        // I dont want read's to work until its synced to disk - could speed this up
+                        // by returning sooner but was having issues where command line tools would
+                        // exit before disk syncing was done
+                        this.syncQ.subscribe(f => f());
+                    }
+                });
             }
         });
     }
     readFile(cb) {
+        log("reading file...");
         this.syncQ.push(() => {
             // could ditch .data and re-read blocks here
             log(`Rebuilding file from ${this.data.length} blocks`);
             const file = Buffer.concat(this.data);
             const bytes = this.fileMetadata.bytes;
+            const mimeType = this.fileMetadata.mimeType;
             if (file.length !== bytes) {
                 throw new Error(`File metadata error - file=${file.length} meta=${bytes}`);
             }
-            cb(file);
+            cb(file, mimeType);
         });
     }
-    append(block) {
+    append(block, cb) {
         this.feed.append(block, err => {
+            log("Feed.append", block.length, "bytes");
             if (err) {
                 throw new Error("failed to append to feed");
             }
+            if (cb)
+                cb();
         });
     }
     writeChange(change) {

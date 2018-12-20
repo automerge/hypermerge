@@ -10,6 +10,7 @@ import { DocFrontend } from "./DocFrontend";
 import { clock2strs, Clock, clockDebug } from "./Clock";
 import Debug from "debug";
 import { validateID } from "./Metadata";
+import mime from "mime-types";
 
 Debug.formatters.b = Base58.encode;
 
@@ -33,7 +34,7 @@ export class RepoFrontend {
   toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:tobackend");
   docs: Map<string, DocFrontend<any>> = new Map();
   msgcb: Map<number, (patch: Patch) => void> = new Map();
-  readFiles: MapSet<string, (data: Uint8Array) => void> = new MapSet();
+  readFiles: MapSet<string, (data: Uint8Array, mimeType: string) => void> = new MapSet();
   file?: Uint8Array;
 
   create = (init?: any): string => {
@@ -60,7 +61,7 @@ export class RepoFrontend {
   };
 
   meta = (id: string): DocMetadata | undefined => {
-    validateID(id);
+     validateID(id);
     const doc = this.docs.get(id);
     if (!doc) return;
     return {
@@ -77,16 +78,19 @@ export class RepoFrontend {
     });
   };
 
-  writeFile = <T>(data: Uint8Array): string => {
+  writeFile = <T>(data: Uint8Array, mimeType: string): string => {
     const keys = crypto.keyPair();
     const publicKey = Base58.encode(keys.publicKey);
     const secretKey = Base58.encode(keys.secretKey);
+    if (mime.extensions[mimeType] === undefined) {
+      throw new Error(`invalid mime type ${mimeType}`)
+    }
     this.toBackend.push(data);
-    this.toBackend.push({ type: "WriteFile", publicKey, secretKey });
+    this.toBackend.push({ type: "WriteFile", publicKey, secretKey, mimeType });
     return publicKey;
   };
 
-  readFile = <T>(id: string, cb: (data: Uint8Array) => void): void => {
+  readFile = <T>(id: string, cb: (data: Uint8Array, mimeType: string) => void): void => {
     validateID(id);
     this.readFiles.add(id, cb);
     this.toBackend.push({ type: "ReadFile", id });
@@ -177,7 +181,7 @@ export class RepoFrontend {
       switch (msg.type) {
         case "ReadFileReply": {
           const doc = this.docs.get(msg.id)!;
-          this.readFiles.get(msg.id).forEach(cb => cb(this.file!));
+          this.readFiles.get(msg.id).forEach(cb => cb(this.file!, msg.mimeType));
           this.readFiles.delete(msg.id);
           delete this.file;
           break;

@@ -19,6 +19,7 @@ const DocFrontend_1 = require("./DocFrontend");
 const Clock_1 = require("./Clock");
 const debug_1 = __importDefault(require("debug"));
 const Metadata_1 = require("./Metadata");
+const mime_types_1 = __importDefault(require("mime-types"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default("repo:front");
 let msgid = 1;
@@ -66,12 +67,15 @@ class RepoFrontend {
                 this.toBackend.push({ type: "MergeMsg", id, actors });
             });
         };
-        this.writeFile = (data) => {
+        this.writeFile = (data, mimeType) => {
             const keys = crypto.keyPair();
             const publicKey = Base58.encode(keys.publicKey);
             const secretKey = Base58.encode(keys.secretKey);
+            if (mime_types_1.default.extensions[mimeType] === undefined) {
+                throw new Error(`invalid mime type ${mimeType}`);
+            }
             this.toBackend.push(data);
-            this.toBackend.push({ type: "WriteFile", publicKey, secretKey });
+            this.toBackend.push({ type: "WriteFile", publicKey, secretKey, mimeType });
             return publicKey;
         };
         this.readFile = (id, cb) => {
@@ -137,7 +141,7 @@ class RepoFrontend {
                 switch (msg.type) {
                     case "ReadFileReply": {
                         const doc = this.docs.get(msg.id);
-                        this.readFiles.get(msg.id).forEach(cb => cb(this.file));
+                        this.readFiles.get(msg.id).forEach(cb => cb(this.file, msg.mimeType));
                         this.readFiles.delete(msg.id);
                         delete this.file;
                         break;

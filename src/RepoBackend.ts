@@ -63,16 +63,16 @@ export class RepoBackend {
     this.id = this.meta.id
   }
 
-  private writeFile(keys: KeyBuffer, data: Uint8Array) {
+  private writeFile(keys: KeyBuffer, data: Uint8Array, mimeType: string) {
     const fileId = Base58.encode(keys.publicKey);
 
     this.meta.addFile(fileId, data.length);
 
     const actor = this.initActor(keys);
-    actor.writeFile(data);
+    actor.writeFile(data, mimeType);
   }
 
-  private readFile(id: string, cb: (data: Uint8Array) => void) {
+  private readFile(id: string, cb: (data: Uint8Array, mimeType: string) => void) {
     this.getReadyActor(id, actor => actor.readFile(cb));
   }
 
@@ -330,7 +330,8 @@ export class RepoBackend {
             publicKey: Base58.decode(msg.publicKey),
             secretKey: Base58.decode(msg.secretKey)
           };
-          this.writeFile(keys, this.file!);
+          log("write file", msg.mimeType)
+          this.writeFile(keys, this.file!, msg.mimeType);
           delete this.file;
           break;
         }
@@ -347,9 +348,11 @@ export class RepoBackend {
         }
         case "ReadFile": {
           const id = msg.id;
-          this.readFile(id, file => {
+          log("read file", id)
+          this.readFile(id, (file, mimeType) => {
+            log("read file done", file.length, "bytes", mimeType)
             this.toFrontend.push(file);
-            this.toFrontend.push({ type: "ReadFileReply", id });
+            this.toFrontend.push({ type: "ReadFileReply", id, mimeType });
           });
           break;
         }
