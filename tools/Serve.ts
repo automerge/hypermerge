@@ -4,16 +4,15 @@ import { Repo } from "../src"
 import mime from "mime-types"
 
 const raf: Function = require("random-access-file")
-const _path = process.argv[2]
+const id = process.argv[2]
+const _path = process.argv[3]
 const path = _path || ".data"
 
 
-/*
-if (path === undefined) {
-  console.log("Usage: run [REPO]")
+if (id === undefined) {
+  console.log("Usage: serve ID [REPO]")
   process.exit()
 }
-*/
 
 if (_path && !fs.existsSync(_path + "/ledger")) {
   console.log("No repo found: " + _path)
@@ -30,4 +29,4 @@ const discovery = new Client({
 })
 repo.replicate(discovery)
 
-repo.open("BTzDbAhy1LhJBezvXy7byPJKj6UrqpL7DNvfiGNATpnp")
+repo.open(id)

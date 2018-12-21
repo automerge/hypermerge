@@ -35,6 +35,7 @@ export function cleanMetadataInput(input: any): MetadataBlock | undefined {
   const actors = input.actors || input.actorIds;
   const follows = input.follows;
   const merge = input.merge;
+  const mimeType = input.mimeType
 
   if (actors !== undefined) {
     if (!(actors instanceof Array)) return undefined;
@@ -61,6 +62,7 @@ export function cleanMetadataInput(input: any): MetadataBlock | undefined {
   return {
     id,
     bytes,
+    mimeType,
     actors,
     follows,
     merge
@@ -80,9 +82,12 @@ export function filterMetadataInputs(input: any[]): MetadataBlock[] {
   return metadata;
 }
 
+// this really should be FileMetadata | DocMetadata - cant easily add a type field
+// b/c of backward compat
 export interface MetadataBlock {
   id: string;
   bytes?: number;
+  mimeType?: string;
   actors?: string[];
   follows?: string[];
   merge?: Clock;
@@ -117,6 +122,8 @@ export function validateID(id: string) {
 export class Metadata {
   private primaryActors: MapSet<string, string> = new MapSet();
   private follows: MapSet<string, string> = new MapSet();
+  private files: Map<string, number> = new Map();
+  private mimeTypes: Map<string, string> = new Map();
   private merges: Map<string, Clock> = new Map();
   readyQ: Queue<() => void> = new Queue(); // FIXME - need a better api for accessing metadata
   private clocks: Map<string, Clock> = new Map();
@@ -155,6 +162,8 @@ export class Metadata {
     const data = filterMetadataInputs(input); // FIXME
     this.primaryActors = new MapSet();
     this.follows = new MapSet();
+    this.files = new Map();
+    this.mimeTypes = new Map();
     this.merges = new Map();
     this.ready = true;
     this.batchAdd(data);
@@ -186,6 +195,7 @@ export class Metadata {
   private addBlock(block: MetadataBlock): boolean {
     let changedActors = false;
     let changedFollow = false;
+    let changedFiles = false;
     let changedMerge = false;
     let id = block.id;
 
@@ -197,6 +207,14 @@ export class Metadata {
       changedFollow = this.follows.merge(id, block.follows);
     }
 
+    if (block.bytes !== undefined && block.mimeType !== undefined) {
+      if (this.files.get(id) !== block.bytes || this.mimeTypes.get(id) !== block.mimeType) {
+        changedFiles = true;
+        this.files.set(id, block.bytes)
+        this.mimeTypes.set(id, block.mimeType)
+      }
+    }
+
     if (block.merge !== undefined) {
       const oldClock: Clock = this.merges.get(id) || {};
       const newClock = union(oldClock, block.merge);
@@ -206,7 +224,7 @@ export class Metadata {
       }
     }
 
-    return changedActors || changedFollow || changedMerge;
+    return changedActors || changedFollow || changedMerge || changedFiles;
   }
 
   setWritable(actor: string, writable: boolean) {
@@ -295,8 +313,8 @@ export class Metadata {
     this.writeThrough({ id, follows: [follow] });
   }
 
-  addFile(id: string, bytes: number) {
-    this.writeThrough({ id, bytes });
+  addFile(id: string, bytes: number, mimeType: string) {
+    this.writeThrough({ id, bytes, mimeType });
   }
 
   addActor(id: string, actorId: string) {
@@ -313,6 +331,41 @@ export class Metadata {
     this.writeThrough({ id, actors });
   }
 
+  isFile(id: string) : boolean {
+    return this.files.get(id) !== undefined
+  }
+
+  isKnown(id: string) : boolean {
+    return this.isFile(id) || this.isDoc(id)
+  }
+
+  isDoc(id: string) : boolean {
+    return this.primaryActors.get(id).size > 0
+  }
+
+  publicMetadata(id: string) : PublicMetadata | null {
+    if (this.isDoc(id)) {
+      return {
+        type: "Document",
+        clock: {},
+        history: 0,
+        actor: this.localActorId(id),
+        actors: this.actors(id),
+        follows: [...this.follows.get(id)] 
+      }
+    } else if (this.isFile(id)) {
+      const bytes = this.files.get(id)!
+      const mimeType = this.mimeTypes.get(id)!
+      return {
+        type: "File",
+        bytes,
+        mimeType
+      }
+    } else {
+      return null
+    }
+  }
+
   forDoc(id: string): MetadataBlock {
     return {
       id,
@@ -326,3 +379,24 @@ export class Metadata {
     return this.docsWith(actor).map(id => this.forDoc(id));
   }
 }
+
+
+export type PublicMetadata =
+  | PublicDocMetadata
+  | PublicFileMetadata
+
+export type PublicDocMetadata = {
+  type: "Document";  
+  clock: Clock;
+  history: number;
+  actor: string | undefined;
+  actors: string[];
+  follows: string[];
+}
+
+export type PublicFileMetadata = {
+  type: "File" ;
+  bytes: number;
+  mimeType: string;
+}
+

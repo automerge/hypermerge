@@ -2,14 +2,14 @@ import Queue from "./Queue";
 import * as Base58 from "bs58";
 import MapSet from "./MapSet";
 import * as crypto from "hypercore/lib/crypto";
-import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
+import { ToFrontendReplyMsg, ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { Handle } from "./Handle";
 import { ChangeFn, Doc, Patch } from "automerge/frontend";
 import * as Frontend from "automerge/frontend";
 import { DocFrontend } from "./DocFrontend";
 import { clock2strs, Clock, clockDebug } from "./Clock";
 import Debug from "debug";
-import { validateID } from "./Metadata";
+import { PublicMetadata, validateID } from "./Metadata";
 import mime from "mime-types";
 
 Debug.formatters.b = Base58.encode;
@@ -21,6 +21,7 @@ export interface DocMetadata {
   history: number;
   actor?: string;
 }
+
 export interface ProgressEvent {
   actor: string;
   index: number;
@@ -33,6 +34,7 @@ let msgid = 1
 export class RepoFrontend {
   toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:tobackend");
   docs: Map<string, DocFrontend<any>> = new Map();
+  cb: Map<number, (reply: any) => void> = new Map();
   msgcb: Map<number, (patch: Patch) => void> = new Map();
   readFiles: MapSet<string, (data: Uint8Array, mimeType: string) => void> = new MapSet();
   file?: Uint8Array;
@@ -60,8 +62,12 @@ export class RepoFrontend {
     this.open<T>(id).change(fn);
   };
 
+  meta2 = (id: string, cb:(meta: PublicMetadata | undefined) => void): void => {
+    validateID(id);
+  }
+
   meta = (id: string): DocMetadata | undefined => {
-     validateID(id);
+    validateID(id);
     const doc = this.docs.get(id);
     if (!doc) return;
     return {
@@ -134,6 +140,7 @@ export class RepoFrontend {
     if (doc === undefined) { throw new Error(`No such document ${id}`) }
     if (history < 0 && history >= doc.history) { throw new Error(`Invalid history ${history} for id ${id}`) }
 
+/*
     msgid += 1 // global counter
 
     this.msgcb.set(msgid, (patch: Patch) => {
@@ -141,13 +148,25 @@ export class RepoFrontend {
       cb(Frontend.applyPatch(doc, patch));
     });
     this.toBackend.push({ type: "MaterializeMsg", history, id, msgid });
-  };
+*/
+    this.queryBackend({ type: "MaterializeMsg", history, id }, (patch: Patch) => {
+      const doc = Frontend.init({ deferActorId: true }) as Doc<T>;
+      cb(Frontend.applyPatch(doc, patch));
+    });
+  }
+
+  queryBackend( query: ToBackendQueryMsg, cb: (arg: any) => void ) {
+    msgid += 1 // global counter
+    const id = msgid
+    this.cb.set(id,cb)
+    this.toBackend.push({type: "Query", id, query})
+  }
 
   open = <T>(id: string): Handle<T> => {
     validateID(id);
     const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id);
     return doc.handle();
-  };
+  }
 
   debug(id: string) {
     validateID(id);
@@ -174,6 +193,17 @@ export class RepoFrontend {
     this.toBackend.subscribe(subscriber);
   };
 
+  handleReply = (id: number, reply: ToFrontendReplyMsg) => {
+    const cb = this.cb.get(id)!
+    switch (reply.type) {
+      case "MaterializeReplyMsg": {
+        cb(reply.patch);
+        break;
+      }
+    }
+    this.cb.delete(id)
+  }
+
   receive = (msg: ToFrontendRepoMsg) => {
     if (msg instanceof Uint8Array) {
       this.file = msg;
@@ -191,9 +221,10 @@ export class RepoFrontend {
           doc.patch(msg.patch, msg.history);
           break;
         }
-        case "MaterializeReplyMsg": {
-          const cb = this.msgcb.get(msg.msgid)!;
-          cb(msg.patch);
+        case "Reply": {
+          const id = msg.id
+          const reply = msg.reply
+          this.handleReply(id,reply)
           break;
         }
         case "ActorIdMsg": {

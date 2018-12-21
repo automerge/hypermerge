@@ -1,5 +1,11 @@
 import { Patch, Change } from "automerge/frontend";
 
+export type ToBackendQueryMsg =
+  MaterializeMsg
+
+export type ToFrontendReplyMsg =
+  MaterializeReplyMsg
+
 export type ToBackendRepoMsg =
   | NeedsActorIdMsg
   | RequestMsg
@@ -10,14 +16,27 @@ export type ToBackendRepoMsg =
   | DebugMsg
   | WriteFile
   | ReadFile
-  | MaterializeMsg
+  | QueryMsg
+//  | MaterializeMsg
   | Uint8Array;
+
+export interface QueryMsg {
+  type: "Query";
+  id: number;
+  query: ToBackendQueryMsg;
+}
+
+export interface ReplyMsg {
+  type: "Reply";
+  id: number;
+  reply: ToFrontendReplyMsg;
+}
 
 export interface MaterializeMsg {
   type: "MaterializeMsg";
   id: string;
   history: number;
-  msgid: number;
+//  msgid: number;
 }
 
 export interface CreateMsg {
@@ -77,7 +96,8 @@ export type ToFrontendRepoMsg =
   | ActorIdMsg
   | ReadyMsg
   | ReadFileReply
-  | MaterializeReplyMsg
+//  | MaterializeReplyMsg
+  | ReplyMsg
   | Uint8Array;
 
 export interface PatchMsg {
@@ -89,7 +109,7 @@ export interface PatchMsg {
 
 export interface MaterializeReplyMsg {
   type: "MaterializeReplyMsg";
-  msgid: number;
+//  msgid: number;
   patch: Patch;
 }
 

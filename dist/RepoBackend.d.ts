@@ -61,6 +61,8 @@ export declare class RepoBackend {
     stream: (opts: any) => any;
     releaseManager(doc: DocBackend): void;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;
+    reply: (id: number, reply: import("./RepoMsg").MaterializeReplyMsg) => void;
+    handleQuery: (id: number, query: import("./RepoMsg").MaterializeMsg) => void;
     receive: (msg: ToBackendRepoMsg) => void;
     actor(id: string): Actor | undefined;
 }

@@ -7,6 +7,7 @@ export declare function filterMetadataInputs(input: any[]): MetadataBlock[];
 export interface MetadataBlock {
     id: string;
     bytes?: number;
+    mimeType?: string;
     actors?: string[];
     follows?: string[];
     merge?: Clock;
@@ -16,6 +17,8 @@ export declare function validateID(id: string): void;
 export declare class Metadata {
     private primaryActors;
     private follows;
+    private files;
+    private mimeTypes;
     private merges;
     readyQ: Queue<() => void>;
     private clocks;
@@ -44,10 +47,28 @@ export declare class Metadata {
     has(id: string, actor: string, seq: number): boolean;
     merge(id: string, merge: Clock): void;
     follow(id: string, follow: string): void;
-    addFile(id: string, bytes: number): void;
+    addFile(id: string, bytes: number, mimeType: string): void;
     addActor(id: string, actorId: string): void;
     addBlocks(blocks: MetadataBlock[]): void;
     addActors(id: string, actors: string[]): void;
+    isFile(id: string): boolean;
+    isKnown(id: string): boolean;
+    isDoc(id: string): boolean;
+    publicMetadata(id: string): PublicMetadata | null;
     forDoc(id: string): MetadataBlock;
     forActor(actor: string): MetadataBlock[];
 }
+export declare type PublicMetadata = PublicDocMetadata | PublicFileMetadata;
+export declare type PublicDocMetadata = {
+    type: "Document";
+    clock: Clock;
+    history: number;
+    actor: string | undefined;
+    actors: string[];
+    follows: string[];
+};
+export declare type PublicFileMetadata = {
+    type: "File";
+    bytes: number;
+    mimeType: string;
+};

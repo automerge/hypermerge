@@ -27,6 +27,7 @@ class RepoFrontend {
     constructor() {
         this.toBackend = new Queue_1.default("repo:tobackend");
         this.docs = new Map();
+        this.cb = new Map();
         this.msgcb = new Map();
         this.readFiles = new MapSet_1.default();
         this.create = (init) => {
@@ -49,6 +50,9 @@ class RepoFrontend {
         };
         this.change = (id, fn) => {
             this.open(id).change(fn);
+        };
+        this.meta2 = (id, cb) => {
+            Metadata_1.validateID(id);
         };
         this.meta = (id) => {
             Metadata_1.validateID(id);
@@ -118,12 +122,19 @@ class RepoFrontend {
             if (history < 0 && history >= doc.history) {
                 throw new Error(`Invalid history ${history} for id ${id}`);
             }
-            msgid += 1; // global counter
-            this.msgcb.set(msgid, (patch) => {
+            /*
+                msgid += 1 // global counter
+            
+                this.msgcb.set(msgid, (patch: Patch) => {
+                  const doc = Frontend.init({ deferActorId: true }) as Doc<T>;
+                  cb(Frontend.applyPatch(doc, patch));
+                });
+                this.toBackend.push({ type: "MaterializeMsg", history, id, msgid });
+            */
+            this.queryBackend({ type: "MaterializeMsg", history, id }, (patch) => {
                 const doc = Frontend.init({ deferActorId: true });
                 cb(Frontend.applyPatch(doc, patch));
             });
-            this.toBackend.push({ type: "MaterializeMsg", history, id, msgid });
         };
         this.open = (id) => {
             Metadata_1.validateID(id);
@@ -132,6 +143,19 @@ class RepoFrontend {
         };
         this.subscribe = (subscriber) => {
             this.toBackend.subscribe(subscriber);
+        };
+        this.handleReply = (id, reply) => {
+            const cb = this.cb.get(id);
+            console.log("this.cb.get", id, cb);
+            console.log("HANDLE REPLY", id, cb);
+            switch (reply.type) {
+                case "MaterializeReplyMsg": {
+                    cb(reply.patch);
+                    break;
+                }
+            }
+            this.cb.delete(id);
+            console.log("this.cb.delete", id);
         };
         this.receive = (msg) => {
             if (msg instanceof Uint8Array) {
@@ -151,9 +175,10 @@ class RepoFrontend {
                         doc.patch(msg.patch, msg.history);
                         break;
                     }
-                    case "MaterializeReplyMsg": {
-                        const cb = this.msgcb.get(msg.msgid);
-                        cb(msg.patch);
+                    case "Reply": {
+                        const id = msg.id;
+                        const reply = msg.reply;
+                        this.handleReply(id, reply);
                         break;
                     }
                     case "ActorIdMsg": {
@@ -180,6 +205,14 @@ class RepoFrontend {
                 }
             }
         };
+    }
+    queryBackend(query, cb) {
+        msgid += 1; // global counter
+        const id = msgid;
+        console.log("this.cb.set", id, cb);
+        this.cb.set(id, cb);
+        console.log("QUERY", id, query, cb);
+        this.toBackend.push({ type: "Query", id, query });
     }
     debug(id) {
         Metadata_1.validateID(id);

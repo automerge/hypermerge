@@ -7,7 +7,7 @@ import * as crypto from "hypercore/lib/crypto";
 import { discoveryKey } from "./hypercore";
 import * as Backend from "automerge/backend";
 import { Clock, Change } from "automerge/backend";
-import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
+import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendReplyMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { DocBackend } from "./DocBackend";
 import * as Misc from "./Misc";
 import Debug from "debug";
@@ -66,14 +66,15 @@ export class RepoBackend {
   private writeFile(keys: KeyBuffer, data: Uint8Array, mimeType: string) {
     const fileId = Base58.encode(keys.publicKey);
 
-    this.meta.addFile(fileId, data.length);
+    this.meta.addFile(fileId, data.length, mimeType);
 
     const actor = this.initActor(keys);
     actor.writeFile(data, mimeType);
   }
 
   private readFile(id: string, cb: (data: Uint8Array, mimeType: string) => void) {
-    log("readFile",id)
+    log("readFile",id, this.meta.forDoc(id))
+    if (this.meta.isDoc(id)) { throw new Error("trying to open a document like a file") }
     this.getReadyActor(id, actor => actor.readFile(cb));
   }
 
@@ -111,8 +112,10 @@ export class RepoBackend {
     }
   }
 
+  // opening a file fucks it up
   private open(docId: string): DocBackend {
-    log("open", docId);
+    log("open", docId, this.meta.forDoc(docId));
+    if (this.meta.isFile(docId)) { throw new Error("trying to open a file like a document") }
     let doc = this.docs.get(docId) || new DocBackend(this, docId);
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc);
@@ -314,6 +317,25 @@ export class RepoBackend {
     this.toFrontend.subscribe(subscriber);
   };
 
+  reply = (id: number, reply: ToFrontendReplyMsg) => {
+    this.toFrontend.push({ type: "Reply", id, reply })
+  }
+
+  handleQuery = (id: number, query: ToBackendQueryMsg) => {
+    switch (query.type) {
+      case "MaterializeMsg": {
+        const doc = this.docs.get(query.id)!
+        const changes = (doc.back as any).getIn(['opSet', 'history']).slice(0, query.history).toArray()
+        const [_, patch] = Backend.applyChanges(Backend.init(), changes);
+        this.reply(id, {
+          type: "MaterializeReplyMsg",
+          patch
+        });
+        break;
+      }
+    }
+  }
+
   receive = (msg: ToBackendRepoMsg) => {
     if (msg instanceof Uint8Array) {
       this.file = msg;
@@ -339,16 +361,11 @@ export class RepoBackend {
           delete this.file;
           break;
         }
-        case "MaterializeMsg": {
-          const doc = this.docs.get(msg.id)!
-          const changes = (doc.back as any).getIn(['opSet', 'history']).slice(0, msg.history).toArray()
-          const [_, patch] = Backend.applyChanges(Backend.init(), changes);
-          this.toFrontend.push({
-            type: "MaterializeReplyMsg",
-            msgid: msg.msgid,
-            patch
-          });
-          break;
+        case "Query": {
+          const query = msg.query
+          const id = msg.id
+          this.handleQuery(id, query)
+          break
         }
         case "ReadFile": {
           const id = msg.id;

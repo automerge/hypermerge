@@ -45,6 +45,7 @@ function cleanMetadataInput(input) {
     const actors = input.actors || input.actorIds;
     const follows = input.follows;
     const merge = input.merge;
+    const mimeType = input.mimeType;
     if (actors !== undefined) {
         if (!(actors instanceof Array))
             return undefined;
@@ -73,6 +74,7 @@ function cleanMetadataInput(input) {
     return {
         id,
         bytes,
+        mimeType,
         actors,
         follows,
         merge
@@ -123,6 +125,8 @@ class Metadata {
     constructor(storageFn) {
         this.primaryActors = new MapSet_1.default();
         this.follows = new MapSet_1.default();
+        this.files = new Map();
+        this.mimeTypes = new Map();
         this.merges = new Map();
         this.readyQ = new Queue_1.default(); // FIXME - need a better api for accessing metadata
         this.clocks = new Map();
@@ -144,6 +148,8 @@ class Metadata {
             const data = filterMetadataInputs(input); // FIXME
             this.primaryActors = new MapSet_1.default();
             this.follows = new MapSet_1.default();
+            this.files = new Map();
+            this.mimeTypes = new Map();
             this.merges = new Map();
             this.ready = true;
             this.batchAdd(data);
@@ -178,6 +184,7 @@ class Metadata {
     addBlock(block) {
         let changedActors = false;
         let changedFollow = false;
+        let changedFiles = false;
         let changedMerge = false;
         let id = block.id;
         if (block.actors !== undefined) {
@@ -185,6 +192,13 @@ class Metadata {
         }
         if (block.follows !== undefined) {
             changedFollow = this.follows.merge(id, block.follows);
+        }
+        if (block.bytes !== undefined && block.mimeType !== undefined) {
+            if (this.files.get(id) !== block.bytes || this.mimeTypes.get(id) !== block.mimeType) {
+                changedFiles = true;
+                this.files.set(id, block.bytes);
+                this.mimeTypes.set(id, block.mimeType);
+            }
         }
         if (block.merge !== undefined) {
             const oldClock = this.merges.get(id) || {};
@@ -194,7 +208,7 @@ class Metadata {
                 this.merges.set(id, newClock);
             }
         }
-        return changedActors || changedFollow || changedMerge;
+        return changedActors || changedFollow || changedMerge || changedFiles;
     }
     setWritable(actor, writable) {
         this.writable.set(actor, writable);
@@ -268,8 +282,8 @@ class Metadata {
     follow(id, follow) {
         this.writeThrough({ id, follows: [follow] });
     }
-    addFile(id, bytes) {
-        this.writeThrough({ id, bytes });
+    addFile(id, bytes, mimeType) {
+        this.writeThrough({ id, bytes, mimeType });
     }
     addActor(id, actorId) {
         this.addActors(id, [actorId]);
@@ -281,6 +295,39 @@ class Metadata {
     }
     addActors(id, actors) {
         this.writeThrough({ id, actors });
+    }
+    isFile(id) {
+        return this.files.get(id) !== undefined;
+    }
+    isKnown(id) {
+        return this.isFile(id) || this.isDoc(id);
+    }
+    isDoc(id) {
+        return this.primaryActors.get(id).size > 0;
+    }
+    publicMetadata(id) {
+        if (this.isDoc(id)) {
+            return {
+                type: "Document",
+                clock: {},
+                history: 0,
+                actor: this.localActorId(id),
+                actors: this.actors(id),
+                follows: [...this.follows.get(id)]
+            };
+        }
+        else if (this.isFile(id)) {
+            const bytes = this.files.get(id);
+            const mimeType = this.mimeTypes.get(id);
+            return {
+                type: "File",
+                bytes,
+                mimeType
+            };
+        }
+        else {
+            return null;
+        }
     }
     forDoc(id) {
         return {

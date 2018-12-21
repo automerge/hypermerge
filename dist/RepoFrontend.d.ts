@@ -1,6 +1,6 @@
 import Queue from "./Queue";
 import MapSet from "./MapSet";
-import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
+import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { Handle } from "./Handle";
 import { ChangeFn, Patch } from "automerge/frontend";
 import { DocFrontend } from "./DocFrontend";
@@ -19,11 +19,13 @@ export interface ProgressEvent {
 export declare class RepoFrontend {
     toBackend: Queue<ToBackendRepoMsg>;
     docs: Map<string, DocFrontend<any>>;
+    cb: Map<number, (reply: any) => void>;
     msgcb: Map<number, (patch: Patch) => void>;
     readFiles: MapSet<string, (data: Uint8Array, mimeType: string) => void>;
     file?: Uint8Array;
     create: (init?: any) => string;
     change: <T>(id: string, fn: ChangeFn<T>) => void;
+    meta2: (id: string, cb: (meta: import("./Metadata").PublicDocMetadata | import("./Metadata").PublicFileMetadata | undefined) => void) => void;
     meta: (id: string) => DocMetadata | undefined;
     merge: (id: string, target: string) => void;
     writeFile: <T>(data: Uint8Array, mimeType: string) => string;
@@ -33,9 +35,11 @@ export declare class RepoFrontend {
     watch: <T>(id: string, cb: (val: T, clock?: Clock | undefined, index?: number | undefined) => void) => Handle<T>;
     doc: <T>(id: string, cb?: ((val: T, clock?: Clock | undefined) => void) | undefined) => Promise<T>;
     materialize: <T>(id: string, history: number, cb: (val: T) => void) => void;
+    queryBackend(query: ToBackendQueryMsg, cb: (arg: any) => void): void;
     open: <T>(id: string) => Handle<T>;
     debug(id: string): void;
     private openDocFrontend;
     subscribe: (subscriber: (message: ToBackendRepoMsg) => void) => void;
+    handleReply: (id: number, reply: import("./RepoMsg").MaterializeReplyMsg) => void;
     receive: (msg: ToFrontendRepoMsg) => void;
 }

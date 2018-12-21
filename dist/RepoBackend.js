@@ -141,6 +141,25 @@ class RepoBackend {
         this.subscribe = (subscriber) => {
             this.toFrontend.subscribe(subscriber);
         };
+        this.reply = (id, reply) => {
+            console.log("REPLY", id, reply);
+            this.toFrontend.push({ type: "Reply", id, reply });
+        };
+        this.handleQuery = (id, query) => {
+            console.log("HANDLE QUERY", id, query);
+            switch (query.type) {
+                case "MaterializeMsg": {
+                    const doc = this.docs.get(query.id);
+                    const changes = doc.back.getIn(['opSet', 'history']).slice(0, query.history).toArray();
+                    const [_, patch] = Backend.applyChanges(Backend.init(), changes);
+                    this.reply(id, {
+                        type: "MaterializeReplyMsg",
+                        patch
+                    });
+                    break;
+                }
+            }
+        };
         this.receive = (msg) => {
             if (msg instanceof Uint8Array) {
                 this.file = msg;
@@ -167,15 +186,10 @@ class RepoBackend {
                         delete this.file;
                         break;
                     }
-                    case "MaterializeMsg": {
-                        const doc = this.docs.get(msg.id);
-                        const changes = doc.back.getIn(['opSet', 'history']).slice(0, msg.history).toArray();
-                        const [_, patch] = Backend.applyChanges(Backend.init(), changes);
-                        this.toFrontend.push({
-                            type: "MaterializeReplyMsg",
-                            msgid: msg.msgid,
-                            patch
-                        });
+                    case "Query": {
+                        const query = msg.query;
+                        const id = msg.id;
+                        this.handleQuery(id, query);
                         break;
                     }
                     case "ReadFile": {
@@ -223,12 +237,15 @@ class RepoBackend {
     }
     writeFile(keys, data, mimeType) {
         const fileId = Base58.encode(keys.publicKey);
-        this.meta.addFile(fileId, data.length);
+        this.meta.addFile(fileId, data.length, mimeType);
         const actor = this.initActor(keys);
         actor.writeFile(data, mimeType);
     }
     readFile(id, cb) {
-        log("readFile", id);
+        log("readFile", id, this.meta.forDoc(id));
+        if (this.meta.isDoc(id)) {
+            throw new Error("trying to open a document like a file");
+        }
         this.getReadyActor(id, actor => actor.readFile(cb));
     }
     create(keys) {
@@ -260,8 +277,12 @@ class RepoBackend {
             console.log(`doc:backend actors=${info.join(",")}`);
         }
     }
+    // opening a file fucks it up
     open(docId) {
-        log("open", docId);
+        log("open", docId, this.meta.forDoc(docId));
+        if (this.meta.isFile(docId)) {
+            throw new Error("trying to open a file like a document");
+        }
         let doc = this.docs.get(docId) || new DocBackend_1.DocBackend(this, docId);
         if (!this.docs.has(docId)) {
             this.docs.set(docId, doc);
