@@ -1,10 +1,13 @@
 import { Patch, Change } from "automerge/frontend";
+import { PublicMetadata } from "./Metadata"
 
 export type ToBackendQueryMsg =
-  MaterializeMsg
+  | MaterializeMsg
+  | MetadataMsg
 
 export type ToFrontendReplyMsg =
-  MaterializeReplyMsg
+  | MaterializeReplyMsg
+  | MetadataReplyMsg
 
 export type ToBackendRepoMsg =
   | NeedsActorIdMsg
@@ -29,14 +32,19 @@ export interface QueryMsg {
 export interface ReplyMsg {
   type: "Reply";
   id: number;
-  reply: ToFrontendReplyMsg;
+  payload: any // PublicMetadata | Patch
+//  reply: ToFrontendReplyMsg;
 }
 
 export interface MaterializeMsg {
   type: "MaterializeMsg";
   id: string;
   history: number;
-//  msgid: number;
+}
+
+export interface MetadataMsg {
+  type: "MetadataMsg";
+  id: string;
 }
 
 export interface CreateMsg {
@@ -96,7 +104,6 @@ export type ToFrontendRepoMsg =
   | ActorIdMsg
   | ReadyMsg
   | ReadFileReply
-//  | MaterializeReplyMsg
   | ReplyMsg
   | Uint8Array;
 
@@ -109,8 +116,12 @@ export interface PatchMsg {
 
 export interface MaterializeReplyMsg {
   type: "MaterializeReplyMsg";
-//  msgid: number;
   patch: Patch;
+}
+
+export interface MetadataReplyMsg {
+  type: "MetadataReplyMsg";
+  metadata: PublicMetadata | null;
 }
 
 export interface ReadFileReply {

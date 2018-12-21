@@ -1,6 +1,7 @@
 import { Options, RepoBackend } from "./RepoBackend";
 import { RepoFrontend, DocMetadata } from "./RepoFrontend";
 import { Handle } from "./Handle";
+import { PublicMetadata } from "./Metadata";
 import { Clock } from "./Clock";
 import { ChangeFn } from "automerge/frontend";
 
@@ -31,7 +32,7 @@ export class Repo {
   writeFile: <T>(data: Uint8Array, mimeType: string) => string;
   readFile: <T>(id: string, cb: (data: Uint8Array, mimeType: string) => void) => void;
   materialize: <T>(id: string, seq: number, cb: (val: T) => void) => void;
-  meta: (id: string) => DocMetadata | undefined;
+  meta: (id: string, cb: (meta: PublicMetadata | undefined) => void) => void;
 
   constructor(opts: Options) {
     this.front = new RepoFrontend();

@@ -317,20 +317,19 @@ export class RepoBackend {
     this.toFrontend.subscribe(subscriber);
   };
 
-  reply = (id: number, reply: ToFrontendReplyMsg) => {
-    this.toFrontend.push({ type: "Reply", id, reply })
-  }
-
   handleQuery = (id: number, query: ToBackendQueryMsg) => {
     switch (query.type) {
+      case "MetadataMsg": {
+        this.meta.publicMetadata(query.id, (payload) => {
+          this.toFrontend.push({ type: "Reply", id, payload })
+        })
+        break;
+      }
       case "MaterializeMsg": {
         const doc = this.docs.get(query.id)!
         const changes = (doc.back as any).getIn(['opSet', 'history']).slice(0, query.history).toArray()
         const [_, patch] = Backend.applyChanges(Backend.init(), changes);
-        this.reply(id, {
-          type: "MaterializeReplyMsg",
-          patch
-        });
+        this.toFrontend.push({ type: "Reply", id, payload: patch})
         break;
       }
     }

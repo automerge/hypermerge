@@ -25,8 +25,8 @@ export declare class RepoFrontend {
     file?: Uint8Array;
     create: (init?: any) => string;
     change: <T>(id: string, fn: ChangeFn<T>) => void;
-    meta2: (id: string, cb: (meta: import("./Metadata").PublicDocMetadata | import("./Metadata").PublicFileMetadata | undefined) => void) => void;
-    meta: (id: string) => DocMetadata | undefined;
+    meta: (id: string, cb: (meta: import("./Metadata").PublicDocMetadata | import("./Metadata").PublicFileMetadata | undefined) => void) => void;
+    meta2: (id: string) => DocMetadata | undefined;
     merge: (id: string, target: string) => void;
     writeFile: <T>(data: Uint8Array, mimeType: string) => string;
     readFile: <T>(id: string, cb: (data: Uint8Array, mimeType: string) => void) => void;
@@ -40,6 +40,5 @@ export declare class RepoFrontend {
     debug(id: string): void;
     private openDocFrontend;
     subscribe: (subscriber: (message: ToBackendRepoMsg) => void) => void;
-    handleReply: (id: number, reply: import("./RepoMsg").MaterializeReplyMsg) => void;
     receive: (msg: ToFrontendRepoMsg) => void;
 }

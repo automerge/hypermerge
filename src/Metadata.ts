@@ -7,8 +7,6 @@ const log = Debug("repo:metadata");
 
 import { Clock, equivalent, union, intersection } from "./Clock";
 
-//const blocks = validateMetadataMsg(: MetadataBlock[] = JSON.parse(msg.input.toString())
-
 export function validateMetadataMsg(input: Uint8Array): MetadataBlock[] {
   try {
     const result = JSON.parse(input.toString());
@@ -152,7 +150,9 @@ export class Metadata {
       valueEncoding: "json"
     });
     this.id = this.ledger.id
+    log("LEDGER READY (1)")
     this.ledger.ready(() => {
+      log("LEDGER READY (2)")
       readFeed(this.ledger, this.loadLedger);
     });
   }
@@ -178,11 +178,13 @@ export class Metadata {
   }
 
   private batchAdd(blocks: MetadataBlock[]) {
+    log("Batch add", blocks.length)
     blocks.forEach(block => this.addBlock(block));
   }
 
   // write through caching strategy
   private writeThrough = (block: MetadataBlock) => {
+    log("writeThrough", block)
     if (!this.ready) this.replay.push(block);
 
     const dirty = this.addBlock(block);
@@ -193,6 +195,7 @@ export class Metadata {
   };
 
   private addBlock(block: MetadataBlock): boolean {
+    log("addd block", block)
     let changedActors = false;
     let changedFollow = false;
     let changedFiles = false;
@@ -343,27 +346,29 @@ export class Metadata {
     return this.primaryActors.get(id).size > 0
   }
 
-  publicMetadata(id: string) : PublicMetadata | null {
-    if (this.isDoc(id)) {
-      return {
-        type: "Document",
-        clock: {},
-        history: 0,
-        actor: this.localActorId(id),
-        actors: this.actors(id),
-        follows: [...this.follows.get(id)] 
+  publicMetadata(id: string, cb: (meta: PublicMetadata | null) => void) {
+    this.readyQ.push(() => {
+      if (this.isDoc(id)) {
+        cb({
+          type: "Document",
+          clock: {},
+          history: 0,
+          actor: this.localActorId(id), // FIXME - why is this undefined??
+          actors: this.actors(id),
+          follows: [...this.follows.get(id)] 
+        })
+      } else if (this.isFile(id)) {
+        const bytes = this.files.get(id)!
+        const mimeType = this.mimeTypes.get(id)!
+        cb({
+          type: "File",
+          bytes,
+          mimeType
+        })
+      } else {
+        cb(null)
       }
-    } else if (this.isFile(id)) {
-      const bytes = this.files.get(id)!
-      const mimeType = this.mimeTypes.get(id)!
-      return {
-        type: "File",
-        bytes,
-        mimeType
-      }
-    } else {
-      return null
-    }
+    })
   }
 
   forDoc(id: string): MetadataBlock {

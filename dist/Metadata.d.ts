@@ -54,7 +54,7 @@ export declare class Metadata {
     isFile(id: string): boolean;
     isKnown(id: string): boolean;
     isDoc(id: string): boolean;
-    publicMetadata(id: string): PublicMetadata | null;
+    publicMetadata(id: string, cb: (meta: PublicMetadata | null) => void): void;
     forDoc(id: string): MetadataBlock;
     forActor(actor: string): MetadataBlock[];
 }

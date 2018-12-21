@@ -62,11 +62,22 @@ export class RepoFrontend {
     this.open<T>(id).change(fn);
   };
 
-  meta2 = (id: string, cb:(meta: PublicMetadata | undefined) => void): void => {
+  meta = (id: string, cb:(meta: PublicMetadata | undefined) => void): void => {
     validateID(id);
+    this.queryBackend({ type: "MetadataMsg", id }, (meta: PublicMetadata | undefined) => {
+      if (meta) {
+      const doc = this.docs.get(id);
+        if (doc && meta.type === "Document") {
+          meta.actor = doc.actorId
+          meta.history = doc.history
+          meta.clock = doc.clock
+        }
+      }
+      cb(meta)
+    })
   }
 
-  meta = (id: string): DocMetadata | undefined => {
+  meta2 = (id: string): DocMetadata | undefined => {
     validateID(id);
     const doc = this.docs.get(id);
     if (!doc) return;
@@ -139,16 +150,6 @@ export class RepoFrontend {
     const doc = this.docs.get(id);
     if (doc === undefined) { throw new Error(`No such document ${id}`) }
     if (history < 0 && history >= doc.history) { throw new Error(`Invalid history ${history} for id ${id}`) }
-
-/*
-    msgid += 1 // global counter
-
-    this.msgcb.set(msgid, (patch: Patch) => {
-      const doc = Frontend.init({ deferActorId: true }) as Doc<T>;
-      cb(Frontend.applyPatch(doc, patch));
-    });
-    this.toBackend.push({ type: "MaterializeMsg", history, id, msgid });
-*/
     this.queryBackend({ type: "MaterializeMsg", history, id }, (patch: Patch) => {
       const doc = Frontend.init({ deferActorId: true }) as Doc<T>;
       cb(Frontend.applyPatch(doc, patch));
@@ -193,6 +194,7 @@ export class RepoFrontend {
     this.toBackend.subscribe(subscriber);
   };
 
+/*
   handleReply = (id: number, reply: ToFrontendReplyMsg) => {
     const cb = this.cb.get(id)!
     switch (reply.type) {
@@ -203,6 +205,7 @@ export class RepoFrontend {
     }
     this.cb.delete(id)
   }
+*/
 
   receive = (msg: ToFrontendRepoMsg) => {
     if (msg instanceof Uint8Array) {
@@ -223,8 +226,11 @@ export class RepoFrontend {
         }
         case "Reply": {
           const id = msg.id
-          const reply = msg.reply
-          this.handleReply(id,reply)
+//          const reply = msg.reply
+         // this.handleReply(id,reply)
+          const cb = this.cb.get(id)!
+          cb(msg.payload)
+          this.cb.delete(id)!
           break;
         }
         case "ActorIdMsg": {

@@ -17,7 +17,6 @@ const hypercore_1 = require("./hypercore");
 const debug_1 = __importDefault(require("debug"));
 const log = debug_1.default("repo:metadata");
 const Clock_1 = require("./Clock");
-//const blocks = validateMetadataMsg(: MetadataBlock[] = JSON.parse(msg.input.toString())
 function validateMetadataMsg(input) {
     try {
         const result = JSON.parse(input.toString());
@@ -160,6 +159,7 @@ class Metadata {
         };
         // write through caching strategy
         this.writeThrough = (block) => {
+            log("writeThrough", block);
             if (!this.ready)
                 this.replay.push(block);
             const dirty = this.addBlock(block);
@@ -171,7 +171,9 @@ class Metadata {
             valueEncoding: "json"
         });
         this.id = this.ledger.id;
+        log("LEDGER READY (1)");
         this.ledger.ready(() => {
+            log("LEDGER READY (2)");
             hypercore_1.readFeed(this.ledger, this.loadLedger);
         });
     }
@@ -179,9 +181,11 @@ class Metadata {
         return false;
     }
     batchAdd(blocks) {
+        log("Batch add", blocks.length);
         blocks.forEach(block => this.addBlock(block));
     }
     addBlock(block) {
+        log("addd block", block);
         let changedActors = false;
         let changedFollow = false;
         let changedFiles = false;
@@ -305,29 +309,31 @@ class Metadata {
     isDoc(id) {
         return this.primaryActors.get(id).size > 0;
     }
-    publicMetadata(id) {
-        if (this.isDoc(id)) {
-            return {
-                type: "Document",
-                clock: {},
-                history: 0,
-                actor: this.localActorId(id),
-                actors: this.actors(id),
-                follows: [...this.follows.get(id)]
-            };
-        }
-        else if (this.isFile(id)) {
-            const bytes = this.files.get(id);
-            const mimeType = this.mimeTypes.get(id);
-            return {
-                type: "File",
-                bytes,
-                mimeType
-            };
-        }
-        else {
-            return null;
-        }
+    publicMetadata(id, cb) {
+        this.readyQ.push(() => {
+            if (this.isDoc(id)) {
+                cb({
+                    type: "Document",
+                    clock: {},
+                    history: 0,
+                    actor: this.localActorId(id),
+                    actors: this.actors(id),
+                    follows: [...this.follows.get(id)]
+                });
+            }
+            else if (this.isFile(id)) {
+                const bytes = this.files.get(id);
+                const mimeType = this.mimeTypes.get(id);
+                cb({
+                    type: "File",
+                    bytes,
+                    mimeType
+                });
+            }
+            else {
+                cb(null);
+            }
+        });
     }
     forDoc(id) {
         return {

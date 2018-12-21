@@ -3,7 +3,7 @@ import Queue from "./Queue";
 import { Metadata } from "./Metadata";
 import { Actor } from "./Actor";
 import { Clock, Change } from "automerge/backend";
-import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
+import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { DocBackend } from "./DocBackend";
 interface Swarm {
     join(dk: Buffer): void;
@@ -61,8 +61,7 @@ export declare class RepoBackend {
     stream: (opts: any) => any;
     releaseManager(doc: DocBackend): void;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;
-    reply: (id: number, reply: import("./RepoMsg").MaterializeReplyMsg) => void;
-    handleQuery: (id: number, query: import("./RepoMsg").MaterializeMsg) => void;
+    handleQuery: (id: number, query: ToBackendQueryMsg) => void;
     receive: (msg: ToBackendRepoMsg) => void;
     actor(id: string): Actor | undefined;
 }

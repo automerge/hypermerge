@@ -27,6 +27,19 @@ const discovery = new Client({
   id: repo.id,
   stream: repo.stream,
 })
+
 repo.replicate(discovery)
 
-repo.open(id)
+repo.meta(id,(meta) => {
+  console.log(meta)
+  if (meta === undefined) { throw new Error("No object in store:" + id) }
+  if (meta.type === "File") {
+    repo.readFile(id, (file,mimeType) => {
+      console.log("FILE",file.length,mimeType)
+    })
+  } else {
+    repo.watch(id, val => {
+      console.log("DOC",val)
+    })
+  }
+})
