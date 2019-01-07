@@ -20,17 +20,23 @@ setTimeout(() => {}, 50000)
 
 const repo = new Repo({ path, storage: raf })
 
-import Client from "discovery-cloud-client"
-const discovery = new Client({
-  url: "wss://discovery-cloud.herokuapp.com",
-  id: repo.id,
-  stream: repo.stream,
-})
-repo.replicate(discovery)
-
-repo.readFile(id, (data,mimeType) => {
-  console.log("hyperfile://" + id)
-  console.log("File Size: ", data.length)
-  console.log("File Type: ", mimeType)
-  process.exit()
+repo.meta(id,(meta) => {
+  console.log(meta)
+  if (!meta) {
+    console.log("No such doc or file in repo")
+    process.exit()
+  } else if (meta.type === "Document") {
+    repo.doc(id, (doc,c) => {
+      console.log("Clock", c)
+      console.log(doc)
+      process.exit()
+    })
+  } else if (meta.type === "File") {
+    repo.readFile(id, (data,mimeType) => {
+      console.log("hyperfile://" + id)
+      console.log("File Size: ", data.length)
+      console.log("File Type: ", mimeType)
+      process.exit()
+    })
+  }
 })

@@ -195,7 +195,7 @@ export class Metadata {
   };
 
   private addBlock(block: MetadataBlock): boolean {
-    log("addd block", block)
+    log("add block", block)
     let changedActors = false;
     let changedFollow = false;
     let changedFiles = false;

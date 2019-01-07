@@ -70,17 +70,27 @@ class RepoBackend {
             ids.map(id => this.getReadyActor(id, this.syncChanges));
         };
         this.actorNotify = (msg) => {
+            log(`actor notify ${msg.type}`);
             switch (msg.type) {
                 case "NewMetadata":
                     const blocks = Metadata_1.validateMetadataMsg(msg.input);
                     log("NewMetadata", blocks);
                     this.meta.addBlocks(blocks);
-                    blocks.map(block => this.syncReadyActors(block.actors || []));
+                    blocks.map(block => {
+                        if (block.actors)
+                            this.syncReadyActors(block.actors);
+                        if (block.merge)
+                            this.syncReadyActors(Object.keys(block.merge));
+                        if (block.follows)
+                            block.follows.forEach(id => this.open(id));
+                    });
                     break;
                 case "ActorSync":
+                    log("ActorSync", msg.actor.id);
                     this.syncChanges(msg.actor);
                     break;
                 case "Download":
+                    log("Actor Download", msg.actor.id, msg.index);
                     this.meta.docsWith(msg.actor.id).forEach((doc) => {
                         this.toFrontend.push({
                             type: "ActorBlockDownloadedMsg",
@@ -100,16 +110,18 @@ class RepoBackend {
             docIds.forEach(docId => {
                 const doc = this.docs.get(docId);
                 if (doc) {
-                    // doc may not be open... (forks and whatnot)
-                    const max = this.meta.clock(docId)[actorId] || 0;
-                    const seq = doc.clock[actorId] || 0;
-                    if (max > seq) {
-                        const changes = actor.changes.slice(seq, max);
-                        log(`changes found doc=${docId} n=${changes.length} seq=${seq} max=${max} length=${changes.length}`);
-                        if (changes.length > 0) {
-                            doc.applyRemoteChanges(changes);
+                    doc.ready.push(() => {
+                        const max = this.meta.clock(docId)[actorId] || 0;
+                        const seq = doc.clock[actorId] || 0;
+                        if (max > seq) {
+                            const changes = actor.changes.slice(seq, max);
+                            if (changes.length > 0) {
+                                log("doc clock", doc.clock);
+                                log(`changes found doc=${docId} n=${changes.length} seq=${seq} length=${changes.length}`);
+                                doc.applyRemoteChanges(changes);
+                            }
                         }
-                    }
+                    });
                 }
             });
         };
@@ -302,11 +314,14 @@ class RepoBackend {
         this.meta.actorsAsync(docId, ids => Promise.all(ids.map(a2p)).then(cb));
     }
     loadDocument(doc) {
+        log("load document 1", doc.id);
         this.allReadyActors(doc.id, actors => {
+            log(`load document 2 actors=${actors.map((a) => a.id)}`);
             const changes = [];
             actors.forEach(actor => {
                 const max = this.meta.clock(doc.id)[actor.id] || 0;
                 const slice = actor.changes.slice(0, max);
+                log(`change actor=${actor.id} max=${max} changes=${slice}`);
                 changes.push(...slice);
             });
             log("loading doc", doc.id, `changes=${changes.length}`);

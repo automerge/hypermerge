@@ -197,13 +197,15 @@ class RepoFrontend {
                     }
                     case "ActorBlockDownloadedMsg": {
                         const doc = this.docs.get(msg.id);
-                        const progressEvent = {
-                            actor: msg.actorId,
-                            index: msg.index,
-                            size: msg.size,
-                            time: msg.time
-                        };
-                        doc.progress(progressEvent);
+                        if (doc) {
+                            const progressEvent = {
+                                actor: msg.actorId,
+                                index: msg.index,
+                                size: msg.size,
+                                time: msg.time
+                            };
+                            doc.progress(progressEvent);
+                        }
                         break;
                     }
                 }

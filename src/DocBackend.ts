@@ -16,6 +16,7 @@ export class DocBackend {
   clock: Clock = {};
   back?: BackDoc; // can we make this private?
   private repo: RepoBackend;
+  ready = new Queue<Function>("backend:ready");
   private localChangeQ = new Queue<Change>("backend:localChangeQ");
   private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ");
   private wantsActor: boolean = false;
@@ -79,6 +80,7 @@ export class DocBackend {
 
   init = (changes: Change[], actorId?: string) => {
     this.bench("init", () => {
+      log(`init xxx changes=${changes.length})`)
       const [back, patch] = Backend.applyChanges(Backend.init(), changes);
       this.actorId = actorId;
       if (this.wantsActor && !actorId) {
@@ -86,6 +88,7 @@ export class DocBackend {
       }
       this.back = back;
       this.updateClock(changes);
+      this.ready.subscribe(f => f());
       this.subscribeToLocalChanges();
       this.subscribeToRemoteChanges();
       const history = (this.back as any).getIn(["opSet", "history"]).size;
@@ -102,6 +105,7 @@ export class DocBackend {
   subscribeToRemoteChanges() {
     this.remoteChangesQ.subscribe(changes => {
       this.bench("applyRemoteChanges", () => {
+        log(`remote xxx changes=${changes.length})`)
         const [back, patch] = Backend.applyChanges(this.back!, changes);
         this.back = back;
         this.updateClock(changes);

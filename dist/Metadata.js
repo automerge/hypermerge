@@ -185,7 +185,7 @@ class Metadata {
         blocks.forEach(block => this.addBlock(block));
     }
     addBlock(block) {
-        log("addd block", block);
+        log("add block", block);
         let changedActors = false;
         let changedFollow = false;
         let changedFiles = false;

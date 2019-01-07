@@ -1,5 +1,6 @@
 import * as Backend from "automerge/backend";
 import { Change, BackDoc } from "automerge/backend";
+import Queue from "./Queue";
 import { RepoBackend } from "./RepoBackend";
 export interface Clock {
     [actorId: string]: number;
@@ -10,6 +11,7 @@ export declare class DocBackend {
     clock: Clock;
     back?: BackDoc;
     private repo;
+    ready: Queue<Function>;
     private localChangeQ;
     private remoteChangesQ;
     private wantsActor;
