@@ -2,6 +2,7 @@
 import fs from "fs"
 import { Repo } from "../src"
 const raf: Function = require("random-access-file")
+const ram: Function = require("random-access-memory")
 const DiscoverySwarm = require("discovery-swarm");
 const defaults = require('dat-swarm-defaults')
 const id = process.argv[2]
@@ -18,7 +19,7 @@ if (_path && !fs.existsSync(_path + "/ledger")) {
   process.exit()
 }
 
-const repo = new Repo({ path, storage: raf })
+const repo = new Repo({ path, storage: ram })
 
 const hyperswarmwrapper = new DiscoverySwarm(defaults({stream: repo.stream, id: repo.id }));
 
@@ -32,7 +33,7 @@ repo.meta(id,(meta) => {
     })
   } else {
     repo.watch(id, (val,c) => {
-      //console.log("CLOCK",c)
+      console.log("CLOCK",c)
       console.log(val)
     })
   }

@@ -84,7 +84,7 @@ class Actor {
         this.handleBlock = (idx, data) => {
             switch (this.type) {
                 case "Automerge":
-                    this.changes.push(JsonBuffer.parse(data));
+                    this.changes[idx] = JsonBuffer.parse(data);
                     break;
                 default:
                     if (idx === 0) {

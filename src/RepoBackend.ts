@@ -18,6 +18,10 @@ interface Swarm {
   on: Function;
 }
 
+function _id(id: string) : string {
+  return id.slice(0,4)
+}
+
 Debug.formatters.b = Base58.encode;
 
 const HypercoreProtocol: Function = require("hypercore-protocol");
@@ -58,7 +62,7 @@ export class RepoBackend {
     this.opts = opts;
     this.path = opts.path || "default";
     this.storage = opts.storage;
-    
+
     this.meta = new Metadata(this.storageFn);
     this.id = this.meta.id
   }
@@ -141,7 +145,7 @@ export class RepoBackend {
     }
     this.swarm = swarm;
     for (let dk of this.joined) {
-      log("swarm.join") 
+      log("swarm.join")
       this.swarm.join(dk);
     }
   };
@@ -160,7 +164,8 @@ export class RepoBackend {
       actors.forEach(actor => {
         const max = this.meta.clock(doc.id)[actor.id] || 0;
         const slice = actor.changes.slice(0, max);
-        log(`change actor=${actor.id} max=${max} changes=${slice}`) 
+        doc.changes.set(actor.id,slice.length)
+        log(`change actor=${actor.id} max=${max} changes=${slice}`)
         changes.push(...slice);
       });
       log("loading doc", doc.id, `changes=${changes.length}`)
@@ -171,7 +176,7 @@ export class RepoBackend {
   join = (actorId: string) => {
     const dk = discoveryKey(Base58.decode(actorId));
     if (this.swarm && !this.joined.has(dk)) {
-      log("swarm.join",actorId) 
+      log("swarm.join",actorId)
       this.swarm.join(dk);
     }
     this.joined.add(dk);
@@ -226,7 +231,7 @@ export class RepoBackend {
         const blocks = validateMetadataMsg(msg.input);
         log("NewMetadata", blocks)
         this.meta.addBlocks(blocks);
-        blocks.map(block => { 
+        blocks.map(block => {
           if (block.actors) this.syncReadyActors(block.actors)
           if (block.merge) this.syncReadyActors(Object.keys(block.merge))
           if (block.follows) block.follows.forEach(id => this.open(id))
@@ -271,21 +276,18 @@ export class RepoBackend {
     docIds.forEach(docId => {
       const doc = this.docs.get(docId);
       if (doc) {
-        doc.ready.push(() => {
-          const max = this.meta.clock(docId)[actorId] || 0;
-          const seq = doc.clock[actorId] || 0;
-          if (max > seq) {
-            const changes = actor.changes.slice(seq, max);
-            if (changes.length > 0) {
-              log(
-                `changes found doc=${docId} n=${
-                changes.length
-                } seq=${seq} length=${changes.length}`
-              );
-              doc.applyRemoteChanges(changes);
-            }
-          }
-        })
+        const max = this.meta.clock(docId)[actorId] || 0;
+        const min = doc.changes.get(actorId) || 0
+        const changes = []
+        let i = min;
+        for (; i < max && actor.changes.hasOwnProperty(i); i++) {
+          changes.push(actor.changes[i])
+        }
+        doc.changes.set(actorId,i)
+        log(`changes found doc=${_id(docId)} actor=${_id(actor.id)} min=${min} length=${changes.length}`);
+        if (changes.length > 0) {
+          doc.applyRemoteChanges(changes);
+        }
       }
     });
   };

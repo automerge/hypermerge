@@ -10,6 +10,7 @@ export declare class DocBackend {
     actorId?: string;
     clock: Clock;
     back?: BackDoc;
+    changes: Map<string, number>;
     private repo;
     ready: Queue<Function>;
     private localChangeQ;

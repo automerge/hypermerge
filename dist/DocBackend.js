@@ -13,10 +13,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Backend = __importStar(require("automerge/backend"));
 const Queue_1 = __importDefault(require("./Queue"));
 const debug_1 = __importDefault(require("debug"));
-const log = debug_1.default("hypermerge:back");
+const log = debug_1.default("repo:doc:back");
+function _id(id) {
+    return id.slice(0, 4);
+}
 class DocBackend {
     constructor(core, id, back) {
         this.clock = {};
+        this.changes = new Map();
         this.ready = new Queue_1.default("backend:ready");
         this.localChangeQ = new Queue_1.default("backend:localChangeQ");
         this.remoteChangesQ = new Queue_1.default("backend:remoteChangesQ");
@@ -50,7 +54,6 @@ class DocBackend {
         };
         this.init = (changes, actorId) => {
             this.bench("init", () => {
-                log(`init xxx changes=${changes.length})`);
                 const [back, patch] = Backend.applyChanges(Backend.init(), changes);
                 this.actorId = actorId;
                 if (this.wantsActor && !actorId) {
@@ -98,7 +101,6 @@ class DocBackend {
     subscribeToRemoteChanges() {
         this.remoteChangesQ.subscribe(changes => {
             this.bench("applyRemoteChanges", () => {
-                log(`remote xxx changes=${changes.length})`);
                 const [back, patch] = Backend.applyChanges(this.back, changes);
                 this.back = back;
                 this.updateClock(changes);

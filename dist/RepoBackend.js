@@ -21,6 +21,9 @@ const Backend = __importStar(require("automerge/backend"));
 const DocBackend_1 = require("./DocBackend");
 const Misc = __importStar(require("./Misc"));
 const debug_1 = __importDefault(require("debug"));
+function _id(id) {
+    return id.slice(0, 4);
+}
 debug_1.default.formatters.b = Base58.encode;
 const HypercoreProtocol = require("hypercore-protocol");
 const log = debug_1.default("repo:backend");
@@ -109,17 +112,18 @@ class RepoBackend {
             docIds.forEach(docId => {
                 const doc = this.docs.get(docId);
                 if (doc) {
-                    doc.ready.push(() => {
-                        const max = this.meta.clock(docId)[actorId] || 0;
-                        const seq = doc.clock[actorId] || 0;
-                        if (max > seq) {
-                            const changes = actor.changes.slice(seq, max);
-                            if (changes.length > 0) {
-                                log(`changes found doc=${docId} n=${changes.length} seq=${seq} length=${changes.length}`);
-                                doc.applyRemoteChanges(changes);
-                            }
-                        }
-                    });
+                    const max = this.meta.clock(docId)[actorId] || 0;
+                    const min = doc.changes.get(actorId) || 0;
+                    const changes = [];
+                    let i = min;
+                    for (; i < max && actor.changes.hasOwnProperty(i); i++) {
+                        changes.push(actor.changes[i]);
+                    }
+                    doc.changes.set(actorId, i);
+                    log(`changes found doc=${_id(docId)} actor=${_id(actor.id)} min=${min} length=${changes.length}`);
+                    if (changes.length > 0) {
+                        doc.applyRemoteChanges(changes);
+                    }
                 }
             });
         };
@@ -319,6 +323,7 @@ class RepoBackend {
             actors.forEach(actor => {
                 const max = this.meta.clock(doc.id)[actor.id] || 0;
                 const slice = actor.changes.slice(0, max);
+                doc.changes.set(actor.id, slice.length);
                 log(`change actor=${actor.id} max=${max} changes=${slice}`);
                 changes.push(...slice);
             });

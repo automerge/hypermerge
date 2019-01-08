@@ -4,7 +4,11 @@ import Queue from "./Queue";
 import { RepoBackend } from "./RepoBackend";
 import Debug from "debug";
 
-const log = Debug("hypermerge:back");
+const log = Debug("repo:doc:back");
+
+function _id(id: string) : string {
+  return id.slice(0,4)
+}
 
 export interface Clock {
   [actorId: string]: number;
@@ -15,6 +19,7 @@ export class DocBackend {
   actorId?: string; // this might be easier to have as the actor object - FIXME
   clock: Clock = {};
   back?: BackDoc; // can we make this private?
+  changes: Map<string, number> = new Map()
   private repo: RepoBackend;
   ready = new Queue<Function>("backend:ready");
   private localChangeQ = new Queue<Change>("backend:localChangeQ");
@@ -81,7 +86,6 @@ export class DocBackend {
 
   init = (changes: Change[], actorId?: string) => {
     this.bench("init", () => {
-      log(`init xxx changes=${changes.length})`)
       const [back, patch] = Backend.applyChanges(Backend.init(), changes);
       this.actorId = actorId;
       if (this.wantsActor && !actorId) {
@@ -106,7 +110,6 @@ export class DocBackend {
   subscribeToRemoteChanges() {
     this.remoteChangesQ.subscribe(changes => {
       this.bench("applyRemoteChanges", () => {
-        log(`remote xxx changes=${changes.length})`)
         const [back, patch] = Backend.applyChanges(this.back!, changes);
         this.back = back;
         this.updateClock(changes);
