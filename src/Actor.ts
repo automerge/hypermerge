@@ -176,6 +176,7 @@ export class Actor {
                   index, 
                   size, 
                   time });
+    this.sync();
   };
   handleBlock = (idx: number, data: Uint8Array) => {
     switch (this.type) {

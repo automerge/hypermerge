@@ -4,35 +4,34 @@ import { Repo } from "./dist"
 import Client from "discovery-cloud-client"
 
 const ram: Function = require("random-access-memory")
+const DiscoverySwarm = require("discovery-swarm");
+const defaults = require('dat-swarm-defaults')
 
 const repo = new Repo({ storage: ram })
 
-const discovery = new Client({
-  url: "wss://discovery-cloud.herokuapp.com",
-  id: repo.id,
-  stream: repo.stream,
-})
+const hyperswarmwrapper = new DiscoverySwarm(defaults({stream: repo.stream, id: repo.id }));
 
-repo.replicate(discovery)
+repo.replicate(hyperswarmwrapper);
 
 const id = process.argv[2]
 
 if (id === undefined) {
   const id = repo.create()
-  console.log("ID",id)
-  const doc = repo.open(id)
+  console.log("ts-node readwrite.ts",id)
+//  const doc = repo.open(id)
   setInterval(() => {
-    doc.change((state : any) => {
+    repo.change(id, (state : any) => {
       state.foo = (state.foo || 0) + 1
     })
 //    doc.debug()
   },1000)
-  doc.subscribe((state:any) => {
-    console.log("STATE",state)
+  repo.watch(id, (state:any, clock) => {
+    console.log("STATE",state, clock)
   })
 } else {
   console.log("OPEN",id)
-  const doc = repo.open(id)
+//  const doc = repo.open(id)
+/*
   setTimeout(() => {
     console.log("forking doc")
     const followid = doc.follow()
@@ -55,14 +54,14 @@ if (id === undefined) {
       fork.change((state:any) => { state.fork = (state.fork || 0) + 1 })
     }, 3000)
   }, 3000)
+*/
   setInterval(() => {
-    doc.change((state : any) => {
+    repo.change(id, (state : any) => {
       state.bar = (state.bar || 0) + 1
     })
   },1000)
-  doc.subscribe((state:any) => {
-    console.log("STATE",state)
+  repo.watch(id, (state:any, clock) => {
+    console.log("STATE",state, clock)
   })
 }
 console.log(process.argv)
-console.log("replicate...")

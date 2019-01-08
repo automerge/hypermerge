@@ -221,7 +221,6 @@ export class RepoBackend {
   };
 
   private actorNotify = (msg: ActorMsg) => {
-    log(`actor notify ${msg.type}`)
     switch (msg.type) {
       case "NewMetadata":
         const blocks = validateMetadataMsg(msg.input);
@@ -278,7 +277,6 @@ export class RepoBackend {
           if (max > seq) {
             const changes = actor.changes.slice(seq, max);
             if (changes.length > 0) {
-              log("doc clock", doc.clock)
               log(
                 `changes found doc=${docId} n=${
                 changes.length

@@ -70,7 +70,6 @@ class RepoBackend {
             ids.map(id => this.getReadyActor(id, this.syncChanges));
         };
         this.actorNotify = (msg) => {
-            log(`actor notify ${msg.type}`);
             switch (msg.type) {
                 case "NewMetadata":
                     const blocks = Metadata_1.validateMetadataMsg(msg.input);
@@ -116,7 +115,6 @@ class RepoBackend {
                         if (max > seq) {
                             const changes = actor.changes.slice(seq, max);
                             if (changes.length > 0) {
-                                log("doc clock", doc.clock);
                                 log(`changes found doc=${docId} n=${changes.length} seq=${seq} length=${changes.length}`);
                                 doc.applyRemoteChanges(changes);
                             }

@@ -79,6 +79,7 @@ class Actor {
                 index,
                 size,
                 time });
+            this.sync();
         };
         this.handleBlock = (idx, data) => {
             switch (this.type) {

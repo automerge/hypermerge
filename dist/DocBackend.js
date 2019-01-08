@@ -76,6 +76,7 @@ class DocBackend {
         if (back) {
             this.back = back;
             this.actorId = id;
+            this.ready.subscribe(f => f());
             this.subscribeToRemoteChanges();
             this.subscribeToLocalChanges();
             const history = this.back.getIn(["opSet", "history"]).size;
