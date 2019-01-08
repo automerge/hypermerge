@@ -1,6 +1,6 @@
-import test from "tape";
+import test from "tape"
 import { Repo } from "../src"
-import Client from 'discovery-cloud-client'
+import Client from "discovery-cloud-client"
 
 const ram: Function = require("random-access-memory")
 
@@ -33,17 +33,24 @@ test("Share a doc between two repos", t => {
     doc.b = 2
   })
 
-  const handleA = repoA.open(id).subscribe(expectDocs(t, [
-    [{ a: 1 }, "repoA should have create(doc)"],
-    [{ a: 1, b: 2 }, "repoA should have repoB's change"],
-  ]))
+  const handleA = repoA
+    .open(id)
+    .subscribe(
+      expectDocs(t, [
+        [{ a: 1 }, "repoA should have create(doc)"],
+        [{ a: 1, b: 2 }, "repoA should have repoB's change"],
+      ]),
+    )
 
-  const handleB = repoB.open(id).subscribe(expectDocs(t, [
-    [{}, "starts as an empty doc after open"], // not sure we want this
-    [{ b: 2 }, "repoB gets repoB's change"],
-    [{ b: 2 }, "repoB gets repoB's change again"], // probably shouldn't emit twice
-    [{ a: 1, b: 2 }, "repoB gets repoA's change"],
-  ]))
+  const handleB = repoB.open(id).subscribe(
+    expectDocs(t, [
+      [{}, "starts as an empty doc after open"], // not sure we want this
+      [{ b: 2 }, "repoB gets repoB's change"],
+      [{ b: 2 }, "repoB gets repoB's change again"], // probably shouldn't emit twice
+      [{ b: 2 }, "repoB gets repoB's change a thrid time"], // probably shouldn't emit three times
+      [{ a: 1, b: 2 }, "repoB gets repoA's change"],
+    ]),
+  )
 
   test.onFinish(() => {
     t.comment("Tests are finished")
@@ -59,7 +66,6 @@ test("Share a doc between two repos", t => {
     clientB.removeAllListeners()
   })
 })
-
 
 function expectDocs(t: test.Test, docs: [any, string][]) {
   let i = 0
