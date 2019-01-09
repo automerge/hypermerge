@@ -14,12 +14,15 @@ if (id === undefined) {
   process.exit()
 }
 
+/*
 if (_path && !fs.existsSync(_path + "/ledger")) {
   console.log("No repo found: " + _path)
   process.exit()
 }
+*/
 
-const repo = new Repo({ path, storage: ram })
+const storage = _path ? raf : ram
+const repo = new Repo({ path, storage })
 
 const hyperswarmwrapper = new DiscoverySwarm(defaults({stream: repo.stream, id: repo.id }));
 

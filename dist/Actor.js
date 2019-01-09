@@ -11,6 +11,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const hypercore_1 = require("./hypercore");
+const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Base58 = __importStar(require("bs58"));
@@ -24,8 +25,9 @@ class Actor {
         this.changes = [];
         this.peers = new Set();
         this.data = [];
+        this.pending = [];
         this.feedReady = () => {
-            log("init feed", this.id);
+            log("init feed xxx", Misc_1.ID(this.id));
             const feed = this.feed;
             this.meta.setWritable(this.id, feed.writable);
             const meta = this.meta.forActor(this.id);
@@ -43,7 +45,7 @@ class Actor {
         };
         this.init = (datas) => {
             log("loaded blocks", this.id, datas.length);
-            datas.map((data, i) => this.handleBlock(i, data));
+            datas.map((data, i) => this.handleBlock(data, i));
             if (datas.length > 0) {
                 this.syncQ.subscribe(f => f());
             }
@@ -54,6 +56,7 @@ class Actor {
             this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
         };
         this.peerAdd = (peer) => {
+            log("peer-add feed", Misc_1.ID(this.id));
             peer.stream.on("extension", (ext, input) => {
                 if (ext === exports.EXT) {
                     this.notify({ type: "NewMetadata", input });
@@ -67,11 +70,22 @@ class Actor {
             log("closing feed", this.id);
         };
         this.sync = () => {
+            log("sync feed", Misc_1.ID(this.id));
             this.syncQ.once(f => f());
             this.notify({ type: "ActorSync", actor: this });
         };
         this.handleDownload = (index, data) => {
-            this.handleBlock(index, data);
+            if (this.type === "Unknown") {
+                if (index === 0) {
+                    this.handleFeedHead(data);
+                }
+                else {
+                    this.pending[index] = data;
+                }
+            }
+            else {
+                this.handleBlock(data, index);
+            }
             const time = Date.now();
             const size = data.byteLength;
             this.notify({ type: "Download",
@@ -79,20 +93,20 @@ class Actor {
                 index,
                 size,
                 time });
-            this.sync();
+            //    this.sync();
         };
-        this.handleBlock = (idx, data) => {
+        this.handleBlock = (data, idx) => {
             switch (this.type) {
                 case "Automerge":
-                    this.changes[idx] = JsonBuffer.parse(data);
+                    const change = JsonBuffer.parse(data);
+                    this.changes[idx] = change;
+                    log(`block xxx idx=${idx} actor=${Misc_1.ID(change.actor)} seq=${change.seq}`);
+                    break;
+                case "File":
+                    this.data[idx - 1] = data;
                     break;
                 default:
-                    if (idx === 0) {
-                        this.handleFeedHead(JsonBuffer.parse(data));
-                    }
-                    else {
-                        this.data[idx - 1] = data;
-                    }
+                    throw new Error("cant handle block if we don't know the type");
                     break;
             }
         };
@@ -118,7 +132,8 @@ class Actor {
         const payload = Buffer.from(JSON.stringify(message));
         peers.forEach(peer => peer.stream.extension(exports.EXT, payload));
     }
-    handleFeedHead(head) {
+    handleFeedHead(data) {
+        const head = JsonBuffer.parse(data);
         // type is FeedHead
         if (head.hasOwnProperty("type")) {
             this.type = "File";
@@ -126,9 +141,9 @@ class Actor {
         }
         else {
             this.type = "Automerge";
-            this.changes.push(head);
-            this.changes.push(...this.data.filter(data => data).map(data => JsonBuffer.parse(data)));
-            this.data = [];
+            this.handleBlock(data, 0);
+            this.pending.map(this.handleBlock);
+            this.pending = [];
         }
     }
     writeFile(data, mimeType) {

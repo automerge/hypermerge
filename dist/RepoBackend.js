@@ -19,11 +19,8 @@ const crypto = __importStar(require("hypercore/lib/crypto"));
 const hypercore_1 = require("./hypercore");
 const Backend = __importStar(require("automerge/backend"));
 const DocBackend_1 = require("./DocBackend");
-const Misc = __importStar(require("./Misc"));
+const Misc_1 = require("./Misc");
 const debug_1 = __importDefault(require("debug"));
-function _id(id) {
-    return id.slice(0, 4);
-}
 debug_1.default.formatters.b = Base58.encode;
 const HypercoreProtocol = require("hypercore-protocol");
 const log = debug_1.default("repo:backend");
@@ -46,6 +43,7 @@ class RepoBackend {
         };
         this.join = (actorId) => {
             const dk = hypercore_1.discoveryKey(Base58.decode(actorId));
+            log("join", Misc_1.ID(actorId), Misc_1.ID(Base58.encode(dk)));
             if (this.swarm && !this.joined.has(dk)) {
                 log("swarm.join", actorId);
                 this.swarm.join(dk);
@@ -92,7 +90,6 @@ class RepoBackend {
                     this.syncChanges(msg.actor);
                     break;
                 case "Download":
-                    log("Actor Download", msg.actor.id, msg.index);
                     this.meta.docsWith(msg.actor.id).forEach((doc) => {
                         this.toFrontend.push({
                             type: "ActorBlockDownloadedMsg",
@@ -117,10 +114,12 @@ class RepoBackend {
                     const changes = [];
                     let i = min;
                     for (; i < max && actor.changes.hasOwnProperty(i); i++) {
-                        changes.push(actor.changes[i]);
+                        const change = actor.changes[i];
+                        log(`change push xxx id=${Misc_1.ID(actor.id)} seq=${change.seq}`);
+                        changes.push(change);
                     }
                     doc.changes.set(actorId, i);
-                    log(`changes found doc=${_id(docId)} actor=${_id(actor.id)} min=${min} length=${changes.length}`);
+                    //        log(`changes found xxx doc=${ID(docId)} actor=${ID(actor.id)} n=[${min}+${changes.length}/${max}]`);
                     if (changes.length > 0) {
                         doc.applyRemoteChanges(changes);
                     }
@@ -135,11 +134,10 @@ class RepoBackend {
                 timeout: 10000,
                 extensions: [Actor_1.EXT]
             });
-            log("stream");
             let add = (dk) => {
                 const actor = this.actorsDk.get(Base58.encode(dk));
                 if (actor) {
-                    log("replicate feed!", Base58.encode(dk));
+                    log("replicate feed!", Misc_1.ID(Base58.encode(dk)));
                     actor.feed.replicate({
                         stream,
                         live: true
@@ -345,7 +343,7 @@ class RepoBackend {
     docActors(doc) {
         return this.actorIds(doc)
             .map(id => this.actors.get(id))
-            .filter(Misc.notEmpty);
+            .filter(Misc_1.notEmpty);
     }
     initActor(keys) {
         const meta = this.meta;

@@ -2,6 +2,7 @@ import { RepoBackend, KeyBuffer } from "./RepoBackend";
 import { readFeed, hypercore, Feed, Peer, discoveryKey } from "./hypercore";
 import { Change } from "automerge/backend";
 import { Metadata } from "./Metadata";
+import { ID } from "./Misc";
 import Queue from "./Queue";
 import * as JsonBuffer from "./JsonBuffer";
 import * as Base58 from "bs58";
@@ -69,6 +70,7 @@ export class Actor {
   notify: (msg: ActorMsg) => void;
   type: FeedType;
   data: Uint8Array[] = [];
+  pending: Uint8Array[] = [];
   fileMetadata?: FeedHeadMetadata;
   repo: RepoBackend;
 
@@ -96,7 +98,7 @@ export class Actor {
   }
 
   feedReady = () => {
-    log("init feed", this.id);
+    log("init feed xxx", ID(this.id));
     const feed = this.feed;
 
     this.meta.setWritable(this.id, feed.writable);
@@ -117,24 +119,23 @@ export class Actor {
     feed.on("close", this.close);
   };
 
-  handleFeedHead(head: any) {
+  handleFeedHead(data: Uint8Array) {
+    const head : any = JsonBuffer.parse(data);
     // type is FeedHead
     if (head.hasOwnProperty("type")) {
       this.type = "File";
       this.fileMetadata = head;
     } else {
       this.type = "Automerge";
-      this.changes.push(head);
-      this.changes.push(
-        ...this.data.filter(data => data).map(data => JsonBuffer.parse(data))
-      );
-      this.data = [];
+      this.handleBlock(data, 0)
+      this.pending.map(this.handleBlock)
+      this.pending = [];
     }
   }
 
   init = (datas: Uint8Array[]) => {
     log("loaded blocks", this.id, datas.length);
-    datas.map((data, i) => this.handleBlock(i, data));
+    datas.map((data, i) => this.handleBlock(data, i));
     if (datas.length > 0) {
       this.syncQ.subscribe(f => f());
     }
@@ -147,6 +148,7 @@ export class Actor {
   };
 
   peerAdd = (peer: Peer) => {
+    log("peer-add feed", ID(this.id));
     peer.stream.on("extension", (ext: string, input: Uint8Array) => {
       if (ext === EXT) {
         this.notify({ type: "NewMetadata", input });
@@ -162,33 +164,44 @@ export class Actor {
   };
 
   sync = () => {
+    log("sync feed", ID(this.id));
     this.syncQ.once(f => f());
     this.notify({ type: "ActorSync", actor: this });
   };
 
   handleDownload = (index: number, data: Uint8Array) => {
-    this.handleBlock(index, data);
+    if (this.type === "Unknown") {
+      if (index === 0) {
+        this.handleFeedHead(data);
+      } else {
+        this.pending[index] = data;
+      }
+    } else {
+      this.handleBlock(data, index);
+    }
     const time = Date.now()
     const size = data.byteLength
 
     this.notify({ type: "Download",
-                  actor: this, 
-                  index, 
-                  size, 
+                  actor: this,
+                  index,
+                  size,
                   time });
-    this.sync();
+//    this.sync();
   };
-  handleBlock = (idx: number, data: Uint8Array) => {
+
+  handleBlock = (data: Uint8Array, idx: number) => {
     switch (this.type) {
       case "Automerge":
-        this.changes[idx] = JsonBuffer.parse(data);
+        const change = JsonBuffer.parse(data);
+        this.changes[idx] = change
+        log(`block xxx idx=${idx} actor=${ID(change.actor)} seq=${change.seq}`)
+        break;
+      case "File":
+        this.data[idx - 1] = data;
         break;
       default:
-        if (idx === 0) {
-          this.handleFeedHead(JsonBuffer.parse(data));
-        } else {
-          this.data[idx - 1] = data;
-        }
+        throw new Error("cant handle block if we don't know the type")
         break;
     }
   };

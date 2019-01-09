@@ -9,17 +9,13 @@ import * as Backend from "automerge/backend";
 import { Clock, Change } from "automerge/backend";
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendReplyMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { DocBackend } from "./DocBackend";
-import * as Misc from "./Misc";
+import { notEmpty, ID } from "./Misc";
 import Debug from "debug";
 
 interface Swarm {
   join(dk: Buffer): void;
   leave(dk: Buffer): void;
   on: Function;
-}
-
-function _id(id: string) : string {
-  return id.slice(0,4)
 }
 
 Debug.formatters.b = Base58.encode;
@@ -175,6 +171,7 @@ export class RepoBackend {
 
   join = (actorId: string) => {
     const dk = discoveryKey(Base58.decode(actorId));
+    log("join",ID(actorId), ID(Base58.encode(dk)))
     if (this.swarm && !this.joined.has(dk)) {
       log("swarm.join",actorId)
       this.swarm.join(dk);
@@ -218,7 +215,7 @@ export class RepoBackend {
   docActors(doc: DocBackend): Actor[] {
     return this.actorIds(doc)
       .map(id => this.actors.get(id))
-      .filter(Misc.notEmpty);
+      .filter(notEmpty);
   }
 
   syncReadyActors = (ids: string[]) => {
@@ -242,7 +239,6 @@ export class RepoBackend {
         this.syncChanges(msg.actor);
         break;
       case "Download":
-        log("Actor Download", msg.actor.id, msg.index)
         this.meta.docsWith(msg.actor.id).forEach( (doc: string) => {
           this.toFrontend.push({
             type: "ActorBlockDownloadedMsg",
@@ -276,15 +272,17 @@ export class RepoBackend {
     docIds.forEach(docId => {
       const doc = this.docs.get(docId);
       if (doc) {
-        const max = this.meta.clock(docId)[actorId] || 0;
+        const max = this.meta.clock(docId)[actorId] || 0
         const min = doc.changes.get(actorId) || 0
         const changes = []
         let i = min;
         for (; i < max && actor.changes.hasOwnProperty(i); i++) {
-          changes.push(actor.changes[i])
+          const change = actor.changes[i]
+          log(`change push xxx id=${ID(actor.id)} seq=${change.seq}`)
+          changes.push(change)
         }
         doc.changes.set(actorId,i)
-        log(`changes found doc=${_id(docId)} actor=${_id(actor.id)} min=${min} length=${changes.length}`);
+//        log(`changes found xxx doc=${ID(docId)} actor=${ID(actor.id)} n=[${min}+${changes.length}/${max}]`);
         if (changes.length > 0) {
           doc.applyRemoteChanges(changes);
         }
@@ -300,12 +298,11 @@ export class RepoBackend {
       timeout: 10000,
       extensions: [EXT]
     });
-    log("stream")
 
     let add = (dk: Buffer) => {
       const actor = this.actorsDk.get(Base58.encode(dk));
       if (actor) {
-        log("replicate feed!", Base58.encode(dk));
+        log("replicate feed!", ID(Base58.encode(dk)));
         actor.feed.replicate({
           stream,
           live: true
