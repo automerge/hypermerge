@@ -148,7 +148,13 @@ export class RepoBackend {
 
   private allReadyActors(docId: string, cb: (actors: Actor[]) => void) {
     const a2p = (id: string): Promise<Actor> =>
-      new Promise(resolve => this.getReadyActor(id, resolve));
+      new Promise((resolve, reject) => {
+        try {
+          this.getReadyActor(id, resolve)
+        } catch (e) {
+          reject(e)
+        }
+      });
     this.meta.actorsAsync(docId, ids => Promise.all(ids.map(a2p)).then(cb));
   }
 

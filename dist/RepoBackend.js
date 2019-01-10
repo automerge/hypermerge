@@ -312,7 +312,14 @@ class RepoBackend {
         this.syncReadyActors(this.meta.actors(id));
     }
     allReadyActors(docId, cb) {
-        const a2p = (id) => new Promise(resolve => this.getReadyActor(id, resolve));
+        const a2p = (id) => new Promise((resolve, reject) => {
+            try {
+                this.getReadyActor(id, resolve);
+            }
+            catch (e) {
+                reject(e);
+            }
+        });
         this.meta.actorsAsync(docId, ids => Promise.all(ids.map(a2p)).then(cb));
     }
     loadDocument(doc) {

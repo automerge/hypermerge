@@ -49,7 +49,7 @@ export interface Feed<T> {
     id: Buffer;
     length: number;
 }
-export declare function readFeed<T>(feed: Feed<T>, cb: (data: T[]) => void): void;
+export declare function readFeed<T>(id: string, feed: Feed<T>, cb: (data: T[]) => void): void;
 export interface Peer {
     feed: any;
     stream: any;

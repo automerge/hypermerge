@@ -153,7 +153,7 @@ export class Metadata {
     log("LEDGER READY (1)")
     this.ledger.ready(() => {
       log("LEDGER READY (2)")
-      readFeed(this.ledger, this.loadLedger);
+      readFeed("ledger", this.ledger, this.loadLedger);
     });
   }
 

@@ -39,7 +39,7 @@ class Actor {
             feed.on("peer-add", this.peerAdd);
             feed.on("download", this.handleDownload);
             feed.on("sync", this.sync);
-            hypercore_1.readFeed(feed, this.init); // subscibe begins here
+            hypercore_1.readFeed(this.id, feed, this.init); // subscibe begins here
             feed.on("close", this.close);
         };
         this.init = (datas) => {

@@ -174,7 +174,7 @@ class Metadata {
         log("LEDGER READY (1)");
         this.ledger.ready(() => {
             log("LEDGER READY (2)");
-            hypercore_1.readFeed(this.ledger, this.loadLedger);
+            hypercore_1.readFeed("ledger", this.ledger, this.loadLedger);
         });
     }
     hasBlock(block) {

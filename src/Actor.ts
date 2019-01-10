@@ -113,7 +113,7 @@ export class Actor {
     feed.on("download", this.handleDownload);
     feed.on("sync", this.sync);
 
-    readFeed(feed, this.init); // subscibe begins here
+    readFeed(this.id, feed, this.init); // subscibe begins here
 
     feed.on("close", this.close);
   };
