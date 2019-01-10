@@ -41,7 +41,8 @@ export interface Feed<T> {
     signature(index: number, cb: (err: any, sig: any) => void): void;
     verify(index: number, sig: Buffer, cb: (err: any, roots: any) => void): void;
     close(): void;
-    get(index: number, cb: (data: T) => void): void;
+    get(index: number, cb: (err: Error, data: T) => void): void;
+    get(index: number, config: any, cb: (err: Error, data: T) => void): void;
     getBatch(start: number, end: number, cb: (Err: any, data: T[]) => void): void;
     getBatch(start: number, end: number, config: any, cb: (Err: any, data: T[]) => void): void;
     discoveryKey: Buffer;

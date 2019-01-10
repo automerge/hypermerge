@@ -153,7 +153,6 @@ export class RepoBackend {
   }
 
   private loadDocument(doc: DocBackend) {
-    log("load document 1", doc.id)
     this.allReadyActors(doc.id, actors => {
       log(`load document 2 actors=${actors.map((a) => a.id)}`)
       const changes: Change[] = [];
@@ -161,10 +160,10 @@ export class RepoBackend {
         const max = this.meta.clock(doc.id)[actor.id] || 0;
         const slice = actor.changes.slice(0, max);
         doc.changes.set(actor.id,slice.length)
-        log(`change actor=${actor.id} max=${max} changes=${slice}`)
+        log(`change actor=${ID(actor.id)} changes=0..${slice.length}`)
         changes.push(...slice);
       });
-      log("loading doc", doc.id, `changes=${changes.length}`)
+      log(`loading doc=${ID(doc.id)} changes=${changes.length}`)
       doc.init(changes, this.meta.localActorId(doc.id));
     });
   }
@@ -272,20 +271,22 @@ export class RepoBackend {
     docIds.forEach(docId => {
       const doc = this.docs.get(docId);
       if (doc) {
-        const max = this.meta.clock(docId)[actorId] || 0
-        const min = doc.changes.get(actorId) || 0
-        const changes = []
-        let i = min;
-        for (; i < max && actor.changes.hasOwnProperty(i); i++) {
-          const change = actor.changes[i]
-          log(`change push xxx id=${ID(actor.id)} seq=${change.seq}`)
-          changes.push(change)
-        }
-        doc.changes.set(actorId,i)
-//        log(`changes found xxx doc=${ID(docId)} actor=${ID(actor.id)} n=[${min}+${changes.length}/${max}]`);
-        if (changes.length > 0) {
-          doc.applyRemoteChanges(changes);
-        }
+        doc.ready.push(() => {
+          const max = this.meta.clock(docId)[actorId] || 0
+          const min = doc.changes.get(actorId) || 0
+          const changes = []
+          let i = min;
+          for (; i < max && actor.changes.hasOwnProperty(i); i++) {
+            const change = actor.changes[i]
+            log(`change found xxx id=${ID(actor.id)} seq=${change.seq}`)
+            changes.push(change)
+          }
+          doc.changes.set(actorId,i)
+  //        log(`changes found xxx doc=${ID(docId)} actor=${ID(actor.id)} n=[${min}+${changes.length}/${max}]`);
+          if (changes.length > 0) {
+            doc.applyRemoteChanges(changes);
+          }
+        })
       }
     });
   };

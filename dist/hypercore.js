@@ -22,10 +22,20 @@ exports.hypercore = hypercore;
 function readFeedN(feed, index, cb) {
     const id = feed.id.toString('hex').slice(0, 4);
     log("readFeed.getBatch", 0, index);
+    if (index === 0) {
+        feed.get(0, { wait: false }, (err, data) => {
+            if (err)
+                log("readFeed error", err);
+            if (err)
+                throw err;
+            cb([data]);
+        });
+    }
     feed.getBatch(0, index, { wait: false }, (err, data) => {
         if (err)
+            log("readFeed error", err);
+        if (err)
             throw err;
-        log("readFeed.getBatch calling cb", data.length);
         cb(data);
     });
 }
@@ -39,8 +49,8 @@ function readFeed(feed, cb) {
         return readFeedN(feed, length, cb);
     for (let i = 0; i < length; i++) {
         if (!feed.has(i)) {
-            log("readFeed.clear", i, length);
             feed.clear(i, feed.length, () => {
+                log("post clear -- readFeedN", i - 1);
                 readFeedN(feed, i - 1, cb);
             });
             break;

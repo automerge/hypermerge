@@ -66,7 +66,8 @@ export interface Feed<T> {
   signature(index: number, cb:(err: any, sig: any) => void) : void;
   verify(index: number, sig: Buffer, cb:(err: any, roots: any) => void) : void;
   close(): void;
-  get(index: number, cb: (data: T) => void): void;
+  get(index: number, cb: (err: Error, data: T) => void): void;
+  get(index: number, config: any, cb: (err: Error, data: T) => void): void;
   getBatch(start: number, end: number, cb: (Err: any, data: T[]) => void): void;
   getBatch(start: number, end: number, config: any, cb: (Err: any, data: T[]) => void): void;
   discoveryKey: Buffer;
@@ -77,9 +78,18 @@ export interface Feed<T> {
 function readFeedN<T>(feed: Feed<T>, index: number, cb: (data: T[]) => void) {
   const id = feed.id.toString('hex').slice(0,4)
   log("readFeed.getBatch",0,index)
+
+  if (index === 0) {
+    feed.get(0, { wait: false }, (err, data) => {
+      if (err) log("readFeed error",err)
+      if (err) throw err;
+      cb([data])
+    })
+  }
+
   feed.getBatch(0, index, { wait: false }, (err, data) => {
+    if (err) log("readFeed error",err)
     if (err) throw err;
-    log("readFeed.getBatch calling cb",data.length)
     cb(data)
   })
 }
@@ -95,8 +105,8 @@ export function readFeed<T>(feed: Feed<T>, cb: (data: T[]) => void) {
 
   for (let i = 0; i < length; i++) {
     if (!feed.has(i)) {
-      log("readFeed.clear", i, length)
-      feed.clear(i, feed.length, () => {
+        feed.clear(i, feed.length, () => {
+        log("post clear -- readFeedN", i - 1 )
         readFeedN(feed, i - 1, cb)
       })
       break;

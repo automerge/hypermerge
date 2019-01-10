@@ -98,7 +98,6 @@ export class Actor {
   }
 
   feedReady = () => {
-    log("init feed xxx", ID(this.id));
     const feed = this.feed;
 
     this.meta.setWritable(this.id, feed.writable);
@@ -134,13 +133,14 @@ export class Actor {
   }
 
   init = (datas: Uint8Array[]) => {
-    log("loaded blocks", this.id, datas.length);
+    log("loaded blocks", ID(this.id), datas.length);
     datas.map((data, i) => { 
       if (i === 0) this.handleFeedHead(data) 
       else this.handleBlock(data, i)
     });
     if (datas.length > 0) {
       this.syncQ.subscribe(f => f());
+      this.sync()
     }
     this.q.subscribe(f => f(this));
   };

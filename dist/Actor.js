@@ -27,7 +27,6 @@ class Actor {
         this.data = [];
         this.pending = [];
         this.feedReady = () => {
-            log("init feed xxx", Misc_1.ID(this.id));
             const feed = this.feed;
             this.meta.setWritable(this.id, feed.writable);
             const meta = this.meta.forActor(this.id);
@@ -44,10 +43,16 @@ class Actor {
             feed.on("close", this.close);
         };
         this.init = (datas) => {
-            log("loaded blocks", this.id, datas.length);
-            datas.map((data, i) => this.handleBlock(data, i));
+            log("loaded blocks", Misc_1.ID(this.id), datas.length);
+            datas.map((data, i) => {
+                if (i === 0)
+                    this.handleFeedHead(data);
+                else
+                    this.handleBlock(data, i);
+            });
             if (datas.length > 0) {
                 this.syncQ.subscribe(f => f());
+                this.sync();
             }
             this.q.subscribe(f => f(this));
         };
