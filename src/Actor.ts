@@ -135,7 +135,10 @@ export class Actor {
 
   init = (datas: Uint8Array[]) => {
     log("loaded blocks", this.id, datas.length);
-    datas.map((data, i) => this.handleBlock(data, i));
+    datas.map((data, i) => { 
+      if (i === 0) this.handleFeedHead(data) 
+      else this.handleBlock(data, i)
+    });
     if (datas.length > 0) {
       this.syncQ.subscribe(f => f());
     }

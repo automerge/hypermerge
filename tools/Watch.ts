@@ -1,6 +1,7 @@
 
 import fs from "fs"
 import { Repo } from "../src"
+import Client from "discovery-cloud-client"
 const raf: Function = require("random-access-file")
 const ram: Function = require("random-access-memory")
 const DiscoverySwarm = require("discovery-swarm");
@@ -24,9 +25,12 @@ if (_path && !fs.existsSync(_path + "/ledger")) {
 const storage = _path ? raf : ram
 const repo = new Repo({ path, storage })
 
-const hyperswarmwrapper = new DiscoverySwarm(defaults({stream: repo.stream, id: repo.id }));
+const url = "wss://discovery-cloud.herokuapp.com" 
 
-repo.replicate(hyperswarmwrapper);
+const discovery = new Client({ url, id: repo.id, stream: repo.stream, })
+//const discovery = new DiscoverySwarm(defaults({stream: repo.stream, id: repo.id }));
+
+repo.replicate(discovery);
 
 repo.meta(id,(meta) => {
   console.log(meta)
