@@ -34,6 +34,7 @@ export function cleanMetadataInput(input: any): MetadataBlock | undefined {
   const follows = input.follows;
   const merge = input.merge;
   const mimeType = input.mimeType
+  const deleted = input.deleted
 
   if (actors !== undefined) {
     if (!(actors instanceof Array)) return undefined;
@@ -51,7 +52,7 @@ export function cleanMetadataInput(input: any): MetadataBlock | undefined {
     if (!Object.values(merge).every(isNumber)) return undefined;
   }
 
-  const meta = actors || follows || merge;
+  const meta = actors || follows || merge || deleted;
 
   if (meta === undefined && bytes === undefined) return undefined;
 
@@ -63,7 +64,8 @@ export function cleanMetadataInput(input: any): MetadataBlock | undefined {
     mimeType,
     actors,
     follows,
-    merge
+    merge,
+    deleted
   };
 }
 
@@ -89,6 +91,7 @@ export interface MetadataBlock {
   actors?: string[];
   follows?: string[];
   merge?: Clock;
+  deleted?: boolean;
 }
 
 // Can I use stuff like this to let ID's be a type other than string?
@@ -126,6 +129,8 @@ export class Metadata {
   readyQ: Queue<() => void> = new Queue(); // FIXME - need a better api for accessing metadata
   private clocks: Map<string, Clock> = new Map();
 
+  master: Clock = {}
+
   private writable: Map<string, boolean> = new Map();
 
   // whats up with this ready/replay thing
@@ -152,13 +157,12 @@ export class Metadata {
     this.id = this.ledger.id
     log("LEDGER READY (1)")
     this.ledger.ready(() => {
-      log("LEDGER READY (2)")
+      log("LEDGER READY (2)",this.ledger.length)
       readFeed("ledger", this.ledger, this.loadLedger);
     });
   }
 
   private loadLedger = (input: any[]) => {
-    log("readling ledger", input.length, "blocks")
     const data = filterMetadataInputs(input); // FIXME
     this.primaryActors = new MapSet();
     this.follows = new MapSet();
@@ -179,7 +183,7 @@ export class Metadata {
 
   private batchAdd(blocks: MetadataBlock[]) {
     log("Batch add", blocks.length)
-    blocks.forEach(block => this.addBlock(block));
+    blocks.forEach( (block,i) => this.addBlock(i, block));
   }
 
   // write through caching strategy
@@ -187,19 +191,23 @@ export class Metadata {
     log("writeThrough", block)
     if (!this.ready) this.replay.push(block);
 
-    const dirty = this.addBlock(block);
+    const dirty = this.addBlock(-1, block);
 
-    if (this.ready && dirty) this.ledger.append(block);
+    if (this.ready && dirty) this.append(block);
 
     this.genClocks();
   };
 
-  private addBlock(block: MetadataBlock): boolean {
-    log("add block", block)
+  private append = (block: MetadataBlock) => {
+    this.ledger.append(block);
+  }
+
+  private addBlock(idx: number, block: MetadataBlock): boolean {
     let changedActors = false;
     let changedFollow = false;
     let changedFiles = false;
     let changedMerge = false;
+    let changedDeleted = false;
     let id = block.id;
 
     if (block.actors !== undefined) {
@@ -227,7 +235,18 @@ export class Metadata {
       }
     }
 
-    return changedActors || changedFollow || changedMerge || changedFiles;
+    if (block.deleted === true) {
+      if (this.files.get(id) !== undefined || this.primaryActors.get(id) !== undefined) {
+        this.files.delete(id)
+        this.mimeTypes.delete(id)
+        this.merges.delete(id)
+        this.primaryActors.delete(id)
+        this.follows.delete(id)
+        changedDeleted = true
+      }
+    }
+
+    return changedActors || changedFollow || changedMerge || changedFiles || changedDeleted;
   }
 
   setWritable(actor: string, writable: boolean) {
@@ -283,11 +302,15 @@ export class Metadata {
 
   private genClocks() {
     // dont really need to regen them all (but follow...)
+    var master : Clock = {}
     const clocks: Map<string, Clock> = new Map();
     const docs = this.primaryActors.keys().forEach(id => {
-      clocks.set(id, this.genClock(id));
+      const clock = this.genClock(id)
+      clocks.set(id, clock)
+      master = union(clock,master)
     });
     this.clocks = clocks;
+    this.master = master
   }
 
   docsWith(actor: string, seq: number = 1): string[] {
@@ -318,6 +341,10 @@ export class Metadata {
 
   addFile(id: string, bytes: number, mimeType: string) {
     this.writeThrough({ id, bytes, mimeType });
+  }
+
+  delete(id: string) {
+    this.writeThrough({ id, deleted: true });
   }
 
   addActor(id: string, actorId: string) {

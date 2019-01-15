@@ -41,6 +41,7 @@ export declare class RepoBackend {
     private readFile;
     private create;
     private debug;
+    private destroy;
     private open;
     merge(id: string, clock: Clock): void;
     follow(id: string, target: string): void;

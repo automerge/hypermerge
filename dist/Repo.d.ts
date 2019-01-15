@@ -17,6 +17,7 @@ export declare class Repo {
     stream: (opts: any) => any;
     create: (init?: any) => string;
     open: <T>(id: string) => Handle<T>;
+    destroy: (id: string) => void;
     follow: (id: string, target: string) => void;
     replicate: (swarm: Swarm) => void;
     fork: (id: string) => string;

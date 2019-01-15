@@ -194,6 +194,17 @@ export class RepoFrontend {
     this.toBackend.subscribe(subscriber);
   };
 
+  destroy = (id: string) : void => {
+    validateID(id);
+    this.toBackend.push({ type: "DestroyMsg", id });
+    const doc = this.docs.get(id);
+    console.log("frontend - destroy", id)
+    if (doc) {
+      // doc.destroy()
+      this.docs.delete(id)
+    }
+  }
+
 /*
   handleReply = (id: number, reply: ToFrontendReplyMsg) => {
     const cb = this.cb.get(id)!

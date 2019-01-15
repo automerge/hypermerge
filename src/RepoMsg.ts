@@ -16,6 +16,7 @@ export type ToBackendRepoMsg =
   | MergeMsg
   | CreateMsg
   | OpenMsg
+  | DestroyMsg
   | DebugMsg
   | WriteFile
   | ReadFile
@@ -84,6 +85,11 @@ export interface DebugMsg {
 
 export interface OpenMsg {
   type: "OpenMsg";
+  id: string;
+}
+
+export interface DestroyMsg {
+  type: "DestroyMsg";
   id: string;
 }
 

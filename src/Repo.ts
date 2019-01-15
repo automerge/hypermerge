@@ -18,6 +18,7 @@ export class Repo {
   stream: (opts: any) => any;
   create: (init?: any) => string;
   open: <T>(id: string) => Handle<T>;
+  destroy: (id: string) => void;
   follow: (id: string, target: string) => void;
   replicate: (swarm: Swarm) => void;
 
@@ -43,6 +44,7 @@ export class Repo {
     this.stream = this.back.stream;
     this.create = this.front.create;
     this.open = this.front.open;
+    this.destroy = this.front.destroy;
     this.meta = this.front.meta;
     this.follow = this.front.follow;
     this.doc = this.front.doc;

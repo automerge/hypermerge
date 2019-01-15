@@ -112,6 +112,15 @@ export class RepoBackend {
     }
   }
 
+  private destroy(id: string) {
+    this.meta.delete(id)
+    const doc = this.docs.get(id)
+    if (doc) {
+      // doc.destroy()
+      this.docs.delete(id)
+    }
+  }
+
   // opening a file fucks it up
   private open(docId: string): DocBackend {
     log("open", docId, this.meta.forDoc(docId));
@@ -290,6 +299,7 @@ export class RepoBackend {
           doc.changes.set(actorId,i)
   //        log(`changes found xxx doc=${ID(docId)} actor=${ID(actor.id)} n=[${min}+${changes.length}/${max}]`);
           if (changes.length > 0) {
+            log(`applyremotechanges ${changes.length}`)
             doc.applyRemoteChanges(changes);
           }
         })
@@ -410,6 +420,10 @@ export class RepoBackend {
         }
         case "OpenMsg": {
           this.open(msg.id);
+          break;
+        }
+        case "DestroyMsg": {
+          this.destroy(msg.id);
           break;
         }
         case "DebugMsg": {

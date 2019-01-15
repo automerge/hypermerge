@@ -45,6 +45,7 @@ function cleanMetadataInput(input) {
     const follows = input.follows;
     const merge = input.merge;
     const mimeType = input.mimeType;
+    const deleted = input.deleted;
     if (actors !== undefined) {
         if (!(actors instanceof Array))
             return undefined;
@@ -65,7 +66,7 @@ function cleanMetadataInput(input) {
         if (!Object.values(merge).every(isNumber))
             return undefined;
     }
-    const meta = actors || follows || merge;
+    const meta = actors || follows || merge || deleted;
     if (meta === undefined && bytes === undefined)
         return undefined;
     if (meta !== undefined && bytes !== undefined)
@@ -76,7 +77,8 @@ function cleanMetadataInput(input) {
         mimeType,
         actors,
         follows,
-        merge
+        merge,
+        deleted
     };
 }
 exports.cleanMetadataInput = cleanMetadataInput;
@@ -129,6 +131,7 @@ class Metadata {
         this.merges = new Map();
         this.readyQ = new Queue_1.default(); // FIXME - need a better api for accessing metadata
         this.clocks = new Map();
+        this.master = {};
         this.writable = new Map();
         // whats up with this ready/replay thing
         // there is a situation where someone opens a new document before the ledger is done readying
@@ -143,7 +146,6 @@ class Metadata {
         this.ready = false;
         this.replay = [];
         this.loadLedger = (input) => {
-            log("readling ledger", input.length, "blocks");
             const data = filterMetadataInputs(input); // FIXME
             this.primaryActors = new MapSet_1.default();
             this.follows = new MapSet_1.default();
@@ -162,10 +164,13 @@ class Metadata {
             log("writeThrough", block);
             if (!this.ready)
                 this.replay.push(block);
-            const dirty = this.addBlock(block);
+            const dirty = this.addBlock(-1, block);
             if (this.ready && dirty)
-                this.ledger.append(block);
+                this.append(block);
             this.genClocks();
+        };
+        this.append = (block) => {
+            this.ledger.append(block);
         };
         this.ledger = hypercore_1.hypercore(storageFn("ledger"), {
             valueEncoding: "json"
@@ -173,7 +178,7 @@ class Metadata {
         this.id = this.ledger.id;
         log("LEDGER READY (1)");
         this.ledger.ready(() => {
-            log("LEDGER READY (2)");
+            log("LEDGER READY (2)", this.ledger.length);
             hypercore_1.readFeed("ledger", this.ledger, this.loadLedger);
         });
     }
@@ -182,14 +187,14 @@ class Metadata {
     }
     batchAdd(blocks) {
         log("Batch add", blocks.length);
-        blocks.forEach(block => this.addBlock(block));
+        blocks.forEach((block, i) => this.addBlock(i, block));
     }
-    addBlock(block) {
-        log("add block", block);
+    addBlock(idx, block) {
         let changedActors = false;
         let changedFollow = false;
         let changedFiles = false;
         let changedMerge = false;
+        let changedDeleted = false;
         let id = block.id;
         if (block.actors !== undefined) {
             changedActors = this.primaryActors.merge(id, block.actors);
@@ -212,7 +217,17 @@ class Metadata {
                 this.merges.set(id, newClock);
             }
         }
-        return changedActors || changedFollow || changedMerge || changedFiles;
+        if (block.deleted === true) {
+            if (this.files.get(id) !== undefined || this.primaryActors.get(id) !== undefined) {
+                this.files.delete(id);
+                this.mimeTypes.delete(id);
+                this.merges.delete(id);
+                this.primaryActors.delete(id);
+                this.follows.delete(id);
+                changedDeleted = true;
+            }
+        }
+        return changedActors || changedFollow || changedMerge || changedFiles || changedDeleted;
     }
     setWritable(actor, writable) {
         this.writable.set(actor, writable);
@@ -260,11 +275,15 @@ class Metadata {
     }
     genClocks() {
         // dont really need to regen them all (but follow...)
+        var master = {};
         const clocks = new Map();
         const docs = this.primaryActors.keys().forEach(id => {
-            clocks.set(id, this.genClock(id));
+            const clock = this.genClock(id);
+            clocks.set(id, clock);
+            master = Clock_1.union(clock, master);
         });
         this.clocks = clocks;
+        this.master = master;
     }
     docsWith(actor, seq = 1) {
         return this.docs().filter(id => this.has(id, actor, seq));
@@ -288,6 +307,9 @@ class Metadata {
     }
     addFile(id, bytes, mimeType) {
         this.writeThrough({ id, bytes, mimeType });
+    }
+    delete(id) {
+        this.writeThrough({ id, deleted: true });
     }
     addActor(id, actorId) {
         this.addActors(id, [actorId]);

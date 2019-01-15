@@ -24,6 +24,15 @@ class MapSet {
     remove(key, val) {
         this.get(key).delete(val);
     }
+    keysWith(val) {
+        const keys = new Set();
+        this.map.forEach((vals, key) => {
+            if (vals.has(val)) {
+                keys.add(key);
+            }
+        });
+        return keys;
+    }
     get(key) {
         return this.map.get(key) || new Set();
     }

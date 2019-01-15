@@ -11,6 +11,7 @@ export interface MetadataBlock {
     actors?: string[];
     follows?: string[];
     merge?: Clock;
+    deleted?: boolean;
 }
 export declare function isValidID(id: any): boolean;
 export declare function validateID(id: string): void;
@@ -22,6 +23,7 @@ export declare class Metadata {
     private merges;
     readyQ: Queue<() => void>;
     private clocks;
+    master: Clock;
     private writable;
     private ready;
     private replay;
@@ -32,6 +34,7 @@ export declare class Metadata {
     private hasBlock;
     private batchAdd;
     private writeThrough;
+    private append;
     private addBlock;
     setWritable(actor: string, writable: boolean): void;
     localActorId(id: string): string | undefined;
@@ -48,6 +51,7 @@ export declare class Metadata {
     merge(id: string, merge: Clock): void;
     follow(id: string, follow: string): void;
     addFile(id: string, bytes: number, mimeType: string): void;
+    delete(id: string): void;
     addActor(id: string, actorId: string): void;
     addBlocks(blocks: MetadataBlock[]): void;
     addActors(id: string, actors: string[]): void;

@@ -146,6 +146,16 @@ class RepoFrontend {
         this.subscribe = (subscriber) => {
             this.toBackend.subscribe(subscriber);
         };
+        this.destroy = (id) => {
+            Metadata_1.validateID(id);
+            this.toBackend.push({ type: "DestroyMsg", id });
+            const doc = this.docs.get(id);
+            console.log("frontend - destroy", id);
+            if (doc) {
+                // doc.destroy()
+                this.docs.delete(id);
+            }
+        };
         /*
           handleReply = (id: number, reply: ToFrontendReplyMsg) => {
             const cb = this.cb.get(id)!

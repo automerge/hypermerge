@@ -26,6 +26,16 @@ export default class MapSet<A, B> {
     this.get(key).delete(val);
   }
 
+  keysWith(val: B) : Set<A> {
+    const keys = new Set<A>()
+    this.map.forEach( (vals: Set<B>, key: A) => {
+      if (vals.has(val)) {
+        keys.add(key)
+      }
+    })
+    return keys
+  }
+
   get(key: A): Set<B> {
     return this.map.get(key) || new Set();
   }
