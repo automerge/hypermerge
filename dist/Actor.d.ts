@@ -50,6 +50,7 @@ export declare class Actor {
     peers: Set<Peer>;
     meta: Metadata;
     notify: (msg: ActorMsg) => void;
+    storage: any;
     type: FeedType;
     data: Uint8Array[];
     pending: Uint8Array[];
@@ -60,6 +61,7 @@ export declare class Actor {
     feedReady: () => void;
     handleFeedHead(data: Uint8Array): void;
     init: (datas: Uint8Array[]) => void;
+    destroy: () => void;
     peerRemove: (peer: Peer) => void;
     peerAdd: (peer: Peer) => void;
     close: () => void;

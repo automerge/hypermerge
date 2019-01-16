@@ -49,7 +49,7 @@ export declare class RepoBackend {
     private allReadyActors;
     private loadDocument;
     join: (actorId: string) => void;
-    private leave;
+    leave: (actorId: string) => void;
     private getReadyActor;
     storageFn: (path: string) => Function;
     initActorFeed(doc: DocBackend): string;

@@ -8,6 +8,8 @@ import * as JsonBuffer from "./JsonBuffer";
 import * as Base58 from "bs58";
 import Debug from "debug";
 
+const fs : any = require("fs")
+
 const log = Debug("repo:actor");
 
 const KB = 1024;
@@ -68,6 +70,7 @@ export class Actor {
   peers: Set<Peer> = new Set();
   meta: Metadata;
   notify: (msg: ActorMsg) => void;
+  storage: any;
   type: FeedType;
   data: Uint8Array[] = [];
   pending: Uint8Array[] = [];
@@ -81,11 +84,12 @@ export class Actor {
 
     this.type = "Unknown";
     this.id = id;
+    this.storage = config.storage(id)
     this.notify = config.notify;
     this.meta = config.meta;
     this.repo = config.repo;
     this.dkString = Base58.encode(dk);
-    this.feed = hypercore(config.storage(id), publicKey, { secretKey });
+    this.feed = hypercore(this.storage, publicKey, { secretKey });
     this.q = new Queue<(actor: Actor) => void>("actor:q-" + id.slice(0, 4));
     this.syncQ = new Queue<() => void>("actor:sync-" + id.slice(0, 4));
     this.feed.ready(this.feedReady);
@@ -142,8 +146,24 @@ export class Actor {
       this.syncQ.subscribe(f => f());
       this.sync()
     }
+    this.repo.join(this.id);
     this.q.subscribe(f => f(this));
   };
+
+  destroy = () => {
+    this.repo.leave(this.id);
+    this.feed.close((err: Error) => {
+      console.log("closeing feed",this.id)
+      const filename = this.storage("").filename
+      if (filename) {
+        const newName = filename.slice(0,-1) + `_${Date.now()}_DEL`
+        console.log("RENAME", filename, newName)
+        fs.rename(filename, newName, (err:Error) => {
+          console.log("DONE", err)
+        })
+      }
+    })
+  }
 
   peerRemove = (peer: Peer) => {
     this.peers.delete(peer);

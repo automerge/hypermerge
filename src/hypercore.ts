@@ -66,7 +66,7 @@ export interface Feed<T> {
   signature(cb:(err: any, sig: any) => void) : void;
   signature(index: number, cb:(err: any, sig: any) => void) : void;
   verify(index: number, sig: Buffer, cb:(err: any, roots: any) => void) : void;
-  close(): void;
+  close(cb: (err: Error) => void): void;
   get(index: number, cb: (err: Error, data: T) => void): void;
   get(index: number, config: any, cb: (err: Error, data: T) => void): void;
   getBatch(start: number, end: number, cb: (Err: any, data: T[]) => void): void;

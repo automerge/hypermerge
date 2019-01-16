@@ -16,6 +16,7 @@ const Queue_1 = __importDefault(require("./Queue"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Base58 = __importStar(require("bs58"));
 const debug_1 = __importDefault(require("debug"));
+const fs = require("fs");
 const log = debug_1.default("repo:actor");
 const KB = 1024;
 const MB = 1024 * KB;
@@ -54,7 +55,22 @@ class Actor {
                 this.syncQ.subscribe(f => f());
                 this.sync();
             }
+            this.repo.join(this.id);
             this.q.subscribe(f => f(this));
+        };
+        this.destroy = () => {
+            this.repo.leave(this.id);
+            this.feed.close((err) => {
+                console.log("closeing feed", this.id);
+                const filename = this.storage("").filename;
+                if (filename) {
+                    const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`;
+                    console.log("RENAME", filename, newName);
+                    fs.rename(filename, newName, (err) => {
+                        console.log("DONE", err);
+                    });
+                }
+            });
         };
         this.peerRemove = (peer) => {
             this.peers.delete(peer);
@@ -123,11 +139,12 @@ class Actor {
         const id = Base58.encode(publicKey);
         this.type = "Unknown";
         this.id = id;
+        this.storage = config.storage(id);
         this.notify = config.notify;
         this.meta = config.meta;
         this.repo = config.repo;
         this.dkString = Base58.encode(dk);
-        this.feed = hypercore_1.hypercore(config.storage(id), publicKey, { secretKey });
+        this.feed = hypercore_1.hypercore(this.storage, publicKey, { secretKey });
         this.q = new Queue_1.default("actor:q-" + id.slice(0, 4));
         this.syncQ = new Queue_1.default("actor:sync-" + id.slice(0, 4));
         this.feed.ready(this.feedReady);

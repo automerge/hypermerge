@@ -113,12 +113,20 @@ export class RepoBackend {
   }
 
   private destroy(id: string) {
+    console.log("DESTROY",id)
     this.meta.delete(id)
     const doc = this.docs.get(id)
     if (doc) {
-      // doc.destroy()
       this.docs.delete(id)
     }
+    const actors = Object.keys(this.meta.master)
+    this.actors.forEach((actor,id) => {
+      if (!actors.includes(id)) {
+        console.log("Orfaned actors - will purge", id)
+        this.actors.delete(id)
+        actor.destroy()
+      }
+    })
   }
 
   // opening a file fucks it up
@@ -193,7 +201,7 @@ export class RepoBackend {
     this.joined.add(dk);
   };
 
-  private leave = (actorId: string) => {
+  leave = (actorId: string) => {
     const dk = discoveryKey(Base58.decode(actorId));
     if (this.swarm && this.joined.has(dk)) {
       this.swarm.leave(dk);
@@ -274,9 +282,6 @@ export class RepoBackend {
     const actor = new Actor({ repo: this, keys, meta, notify, storage });
     this.actors.set(actor.id, actor);
     this.actorsDk.set(actor.dkString, actor);
-    actor.push(() => {
-      this.join(actor.id);
-    });
     return actor;
   }
 
