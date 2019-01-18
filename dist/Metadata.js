@@ -15,6 +15,7 @@ const MapSet_1 = __importDefault(require("./MapSet"));
 const Base58 = __importStar(require("bs58"));
 const hypercore_1 = require("./hypercore");
 const debug_1 = __importDefault(require("debug"));
+const URL = __importStar(require("url"));
 const log = debug_1.default("repo:metadata");
 const Clock_1 = require("./Clock");
 function validateMetadataMsg(input) {
@@ -120,8 +121,45 @@ function validateID(id) {
     if (buffer.length !== 32) {
         throw new Error(`invalid id ${id}`);
     }
+    return buffer;
 }
-exports.validateID = validateID;
+function validateURL(urlString) {
+    if (urlString.indexOf(":") === -1) {
+        console.log("WARNING: `${id}` is depricated - now use `hypermerge:/${id}`");
+        //    throw new Error("WARNING: open(id) is depricated - now use open(`hypermerge:/${id}`)")
+        const id = urlString;
+        const buffer = validateID(id);
+        return { type: "hypermerge", buffer, id };
+    }
+    const url = URL.parse(urlString);
+    if (!url.path || !url.protocol) {
+        throw new Error("invalid URL: " + urlString);
+    }
+    const id = url.path.slice(1);
+    const type = url.protocol.slice(0, -1);
+    const buffer = validateID(id);
+    if (type !== "hypermerge" && type != "hyperfile") {
+        throw new Error(`protocol must be hypermerge or hyperfile (${type}) (${urlString})`);
+    }
+    return { id, buffer, type };
+}
+exports.validateURL = validateURL;
+function validateFileURL(urlString) {
+    const info = validateURL(urlString);
+    if (info.type != "hyperfile") {
+        throw new Error("invalid URL - protocol must be hyperfile");
+    }
+    return info.id;
+}
+exports.validateFileURL = validateFileURL;
+function validateDocURL(urlString) {
+    const info = validateURL(urlString);
+    if (info.type != "hypermerge") {
+        throw new Error("invalid URL - protocol must be hypermerge");
+    }
+    return info.id;
+}
+exports.validateDocURL = validateDocURL;
 class Metadata {
     constructor(storageFn) {
         this.primaryActors = new MapSet_1.default();

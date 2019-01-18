@@ -4,6 +4,11 @@ import { Clock } from "./Clock";
 export declare function validateMetadataMsg(input: Uint8Array): MetadataBlock[];
 export declare function cleanMetadataInput(input: any): MetadataBlock | undefined;
 export declare function filterMetadataInputs(input: any[]): MetadataBlock[];
+export interface UrlInfo {
+    id: string;
+    buffer: Buffer;
+    type: string;
+}
 export interface MetadataBlock {
     id: string;
     bytes?: number;
@@ -14,7 +19,9 @@ export interface MetadataBlock {
     deleted?: boolean;
 }
 export declare function isValidID(id: any): boolean;
-export declare function validateID(id: string): void;
+export declare function validateURL(urlString: string): UrlInfo;
+export declare function validateFileURL(urlString: string): string;
+export declare function validateDocURL(urlString: string): string;
 export declare class Metadata {
     private primaryActors;
     private follows;

@@ -46,13 +46,13 @@ class RepoFrontend {
                     }
                 });
             }
-            return publicKey;
+            return `hypermerge:/${docId}`;
         };
         this.change = (id, fn) => {
             this.open(id).change(fn);
         };
-        this.meta = (id, cb) => {
-            Metadata_1.validateID(id);
+        this.meta = (url, cb) => {
+            const { id, type } = Metadata_1.validateURL(url);
             this.queryBackend({ type: "MetadataMsg", id }, (meta) => {
                 if (meta) {
                     const doc = this.docs.get(id);
@@ -65,8 +65,8 @@ class RepoFrontend {
                 cb(meta);
             });
         };
-        this.meta2 = (id) => {
-            Metadata_1.validateID(id);
+        this.meta2 = (url) => {
+            const { id, type } = Metadata_1.validateURL(url);
             const doc = this.docs.get(id);
             if (!doc)
                 return;
@@ -76,7 +76,9 @@ class RepoFrontend {
                 clock: doc.clock
             };
         };
-        this.merge = (id, target) => {
+        this.merge = (url, target) => {
+            const id = Metadata_1.validateDocURL(url);
+            Metadata_1.validateDocURL(target);
             this.doc(target, (doc, clock) => {
                 const actors = Clock_1.clock2strs(clock);
                 this.toBackend.push({ type: "MergeMsg", id, actors });
@@ -91,31 +93,33 @@ class RepoFrontend {
             }
             this.toBackend.push(data);
             this.toBackend.push({ type: "WriteFile", publicKey, secretKey, mimeType });
-            return publicKey;
+            return `hyperfile:/${publicKey}`;
         };
-        this.readFile = (id, cb) => {
-            Metadata_1.validateID(id);
+        this.readFile = (url, cb) => {
+            const id = Metadata_1.validateFileURL(url);
             this.readFiles.add(id, cb);
             this.toBackend.push({ type: "ReadFile", id });
         };
-        this.fork = (id) => {
+        this.fork = (url) => {
+            Metadata_1.validateDocURL(url);
             const fork = this.create();
-            this.merge(fork, id);
+            this.merge(fork, url);
             return fork;
         };
-        this.follow = (id, target) => {
-            Metadata_1.validateID(id);
+        this.follow = (url, target) => {
+            const id = Metadata_1.validateDocURL(url);
             this.toBackend.push({ type: "FollowMsg", id, target });
         };
-        this.watch = (id, cb) => {
-            const handle = this.open(id);
+        this.watch = (url, cb) => {
+            Metadata_1.validateDocURL(url);
+            const handle = this.open(url);
             handle.subscribe(cb);
             return handle;
         };
-        this.doc = (id, cb) => {
-            Metadata_1.validateID(id);
+        this.doc = (url, cb) => {
+            Metadata_1.validateDocURL(url);
             return new Promise(resolve => {
-                const handle = this.open(id);
+                const handle = this.open(url);
                 handle.subscribe((val, clock) => {
                     resolve(val);
                     if (cb)
@@ -124,8 +128,8 @@ class RepoFrontend {
                 });
             });
         };
-        this.materialize = (id, history, cb) => {
-            Metadata_1.validateID(id);
+        this.materialize = (url, history, cb) => {
+            const id = Metadata_1.validateDocURL(url);
             const doc = this.docs.get(id);
             if (doc === undefined) {
                 throw new Error(`No such document ${id}`);
@@ -138,19 +142,18 @@ class RepoFrontend {
                 cb(Frontend.applyPatch(doc, patch));
             });
         };
-        this.open = (id) => {
-            Metadata_1.validateID(id);
+        this.open = (url) => {
+            const id = Metadata_1.validateDocURL(url);
             const doc = this.docs.get(id) || this.openDocFrontend(id);
             return doc.handle();
         };
         this.subscribe = (subscriber) => {
             this.toBackend.subscribe(subscriber);
         };
-        this.destroy = (id) => {
-            Metadata_1.validateID(id);
+        this.destroy = (url) => {
+            const { id } = Metadata_1.validateURL(url);
             this.toBackend.push({ type: "DestroyMsg", id });
             const doc = this.docs.get(id);
-            console.log("frontend - destroy", id);
             if (doc) {
                 // doc.destroy()
                 this.docs.delete(id);
@@ -228,8 +231,8 @@ class RepoFrontend {
         this.cb.set(id, cb);
         this.toBackend.push({ type: "Query", id, query });
     }
-    debug(id) {
-        Metadata_1.validateID(id);
+    debug(url) {
+        const id = Metadata_1.validateDocURL(url);
         const doc = this.docs.get(id);
         const short = id.substr(0, 5);
         if (doc === undefined) {

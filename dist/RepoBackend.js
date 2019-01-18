@@ -295,7 +295,6 @@ class RepoBackend {
         }
     }
     destroy(id) {
-        console.log("DESTROY", id);
         this.meta.delete(id);
         const doc = this.docs.get(id);
         if (doc) {

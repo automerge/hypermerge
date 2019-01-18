@@ -5,9 +5,8 @@ const ram: Function = require("random-access-memory")
 
 test("Simple create doc and make a change", (t) => {
   const repo = new Repo({ storage: ram })
-  const id = repo.create()
-  const handle = repo.open(id)
-  handle.subscribe((state, _clock, index) => {
+  const url = repo.create()
+  const handle = repo.watch<any>(url, (state, _clock, index) => {
     switch (index) {
       case 0:
         t.equal(state.foo, undefined)
@@ -21,7 +20,7 @@ test("Simple create doc and make a change", (t) => {
         handle.close()
     }
   })
-  handle.change(state => {
+  repo.change(url, state => {
     state.foo = "bar"
   })
 });
@@ -32,8 +31,7 @@ test("Create a doc backend - then wire it up to a frontend - make a change", (t)
   back.subscribe(front.receive)
   front.subscribe(back.receive)
   const id = front.create()
-  const handle = front.open(id)
-  handle.subscribe((state, _clock, index) => {
+  const handle = front.watch<any>(id, (state, _clock, index) => {
     switch (index) {
       case 0:
         t.equal(state.foo, undefined)
@@ -55,24 +53,22 @@ test("Create a doc backend - then wire it up to a frontend - make a change", (t)
 test("Test document forking...", (t) => {
   const repo = new Repo({ storage: ram })
   const id = repo.create()
-  const handle = repo.open(id)
-  handle.subscribe((state, clock, index) => {
+  repo.watch<any>(id, (state, clock, index) => {
     switch (index) {
       case 0:
         t.equal(state.foo, undefined)
         break
     }
   })
-  handle.change(state => {
+  repo.change(id, state => {
     state.foo = "bar"
   })
-  const id2 = handle.fork()
-  const handle2 = repo.open(id2)
-  handle2.subscribe((state, clock, index) => {
+  const id2 = repo.fork(id)
+  repo.watch<any>(id2, (state, clock, index) => {
     switch (index) {
       case 1:
         t.equal(state.foo, "bar")
-        handle2.change(state => { state.bar = "foo" })
+        repo.change(id2, state => { state.bar = "foo" })
         break
       case 3:
         t.equal(state.bar, "foo")
@@ -90,7 +86,7 @@ test("Test materialize...", (t) => {
     if (index === 1) {
       t.equal(state.foo, "bar1")
     }
-    if (index === 5) {
+    if (index === 7) {
       t.equal(state.foo, "bar3")
       repo.materialize(id, 2, (state:any) => {
         t.equal(state.foo, "bar1")
@@ -118,12 +114,13 @@ test("Test meta...", (t) => {
         if (index === 1) {
           const actor = meta.actor!
           const seq = meta.clock[actor]
-          t.equal(seq, 2)
+          t.equal(seq, 3)
         }
         if (index === 3) {
           const actor = meta.actor!
           const seq = meta.clock[actor]
           t.equal(seq, 3)
+          handle.close()
           t.end();
         }
       }
@@ -137,7 +134,8 @@ test("Test meta...", (t) => {
   })
 })
 
-test("Test meta2...", (t) => {
+/*
+test("Test meta (2)...", (t) => {
   const repo = new Repo({ storage: ram })
   const id = repo.create({ foo: "bar0" })
   repo.change(id, state => {
@@ -151,3 +149,4 @@ test("Test meta2...", (t) => {
     t.end()
   })
 })
+*/

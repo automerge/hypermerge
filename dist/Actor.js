@@ -44,6 +44,7 @@ class Actor {
             feed.on("close", this.close);
         };
         this.init = (datas) => {
+            console.log("loaded blocks", Misc_1.ID(this.id), datas.length);
             log("loaded blocks", Misc_1.ID(this.id), datas.length);
             datas.map((data, i) => {
                 if (i === 0)
@@ -61,13 +62,13 @@ class Actor {
         this.destroy = () => {
             this.repo.leave(this.id);
             this.feed.close((err) => {
-                console.log("closeing feed", this.id);
+                console.log("closeing feed", Misc_1.ID(this.id));
                 const filename = this.storage("").filename;
                 if (filename) {
                     const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`;
-                    console.log("RENAME", filename, newName);
+                    //console.log("RENAME", filename, newName)
                     fs.rename(filename, newName, (err) => {
-                        console.log("DONE", err);
+                        //console.log("DONE", err)
                     });
                 }
             });
@@ -77,6 +78,7 @@ class Actor {
             this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
         };
         this.peerAdd = (peer) => {
+            console.log("peer-add feed", Misc_1.ID(this.id));
             log("peer-add feed", Misc_1.ID(this.id));
             peer.stream.on("extension", (ext, input) => {
                 if (ext === exports.EXT) {
@@ -91,11 +93,13 @@ class Actor {
             log("closing feed", this.id);
         };
         this.sync = () => {
+            console.log("sync feed", Misc_1.ID(this.id));
             log("sync feed", Misc_1.ID(this.id));
             this.syncQ.once(f => f());
             this.notify({ type: "ActorSync", actor: this });
         };
         this.handleDownload = (index, data) => {
+            console.log("DOWNLOAD", Misc_1.ID(this.id));
             if (this.type === "Unknown") {
                 if (index === 0) {
                     this.handleFeedHead(data);
@@ -137,6 +141,7 @@ class Actor {
         const { publicKey, secretKey } = config.keys;
         const dk = hypercore_1.discoveryKey(publicKey);
         const id = Base58.encode(publicKey);
+        console.log("INIT ACTOR", Misc_1.ID(id));
         this.type = "Unknown";
         this.id = id;
         this.storage = config.storage(id);

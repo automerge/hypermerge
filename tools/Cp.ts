@@ -29,10 +29,10 @@ const data = fs.readFileSync(file)
 const mimeType = mime.lookup(file) || 'application/octet-stream'
 
 const repo = new Repo({ path, storage: raf })
-const id = repo.writeFile(data,mimeType)
+const url = repo.writeFile(data,mimeType)
 
-repo.readFile(id,(data, mimeType) => {
-  console.log("hyperfile://" + id)
+repo.readFile(url,(data, mimeType) => {
+  console.log(url)
   console.log("File Size: ", data.length)
   console.log("File Type: ", mimeType)
   process.exit()

@@ -9,7 +9,7 @@ import * as Frontend from "automerge/frontend";
 import { DocFrontend } from "./DocFrontend";
 import { clock2strs, Clock, clockDebug } from "./Clock";
 import Debug from "debug";
-import { PublicMetadata, validateID } from "./Metadata";
+import { PublicMetadata, validateDocURL, validateFileURL, validateURL } from "./Metadata";
 import mime from "mime-types";
 
 Debug.formatters.b = Base58.encode;
@@ -55,15 +55,15 @@ export class RepoFrontend {
         }
       });
     }
-    return publicKey;
+    return `hypermerge:/${docId}`;
   };
 
   change = <T>(id: string, fn: ChangeFn<T>) => {
     this.open<T>(id).change(fn);
   };
 
-  meta = (id: string, cb:(meta: PublicMetadata | undefined) => void): void => {
-    validateID(id);
+  meta = (url: string, cb:(meta: PublicMetadata | undefined) => void): void => {
+    const {id , type} = validateURL(url);
     this.queryBackend({ type: "MetadataMsg", id }, (meta: PublicMetadata | undefined) => {
       if (meta) {
       const doc = this.docs.get(id);
@@ -77,8 +77,8 @@ export class RepoFrontend {
     })
   }
 
-  meta2 = (id: string): DocMetadata | undefined => {
-    validateID(id);
+  meta2 = (url: string): DocMetadata | undefined => {
+    const {id , type} = validateURL(url);
     const doc = this.docs.get(id);
     if (!doc) return;
     return {
@@ -88,7 +88,9 @@ export class RepoFrontend {
     };
   };
 
-  merge = (id: string, target: string) => {
+  merge = (url: string, target: string) => {
+    const id = validateDocURL(url);
+    validateDocURL(target);
     this.doc(target, (doc, clock) => {
       const actors = clock2strs(clock!);
       this.toBackend.push({ type: "MergeMsg", id, actors });
@@ -104,39 +106,38 @@ export class RepoFrontend {
     }
     this.toBackend.push(data);
     this.toBackend.push({ type: "WriteFile", publicKey, secretKey, mimeType });
-    return publicKey;
+    return `hyperfile:/${publicKey}`;
   };
 
-  readFile = <T>(id: string, cb: (data: Uint8Array, mimeType: string) => void): void => {
-    validateID(id);
+  readFile = <T>(url: string, cb: (data: Uint8Array, mimeType: string) => void): void => {
+    const id = validateFileURL(url);
     this.readFiles.add(id, cb);
     this.toBackend.push({ type: "ReadFile", id });
   };
 
-  fork = (id: string): string => {
+  fork = (url: string): string => {
+    validateDocURL(url);
     const fork = this.create();
-    this.merge(fork, id);
+    this.merge(fork, url);
     return fork;
   };
 
-  follow = (id: string, target: string) => {
-    validateID(id);
+  follow = (url: string, target: string) => {
+    const id = validateDocURL(url);
     this.toBackend.push({ type: "FollowMsg", id, target });
   };
 
-  watch = <T>(
-    id: string,
-    cb: (val: T, clock?: Clock, index?: number) => void
-  ): Handle<T> => {
-    const handle = this.open<T>(id);
+  watch = <T>( url: string, cb: (val: T, clock?: Clock, index?: number) => void): Handle<T> => {
+    validateDocURL(url);
+    const handle = this.open<T>(url);
     handle.subscribe(cb);
     return handle;
   };
 
-  doc = <T>(id: string, cb?: (val: T, clock?: Clock) => void): Promise<T> => {
-    validateID(id);
+  doc = <T>(url: string, cb?: (val: T, clock?: Clock) => void): Promise<T> => {
+    validateDocURL(url);
     return new Promise(resolve => {
-      const handle = this.open<T>(id);
+      const handle = this.open<T>(url);
       handle.subscribe((val, clock) => {
         resolve(val);
         if (cb) cb(val, clock);
@@ -145,8 +146,8 @@ export class RepoFrontend {
     });
   };
 
-  materialize = <T>(id: string, history: number, cb: (val: T) => void) => {
-    validateID(id);
+  materialize = <T>(url: string, history: number, cb: (val: T) => void) => {
+    const id = validateDocURL(url);
     const doc = this.docs.get(id);
     if (doc === undefined) { throw new Error(`No such document ${id}`) }
     if (history < 0 && history >= doc.history) { throw new Error(`Invalid history ${history} for id ${id}`) }
@@ -163,14 +164,14 @@ export class RepoFrontend {
     this.toBackend.push({type: "Query", id, query})
   }
 
-  open = <T>(id: string): Handle<T> => {
-    validateID(id);
+  open = <T>(url: string): Handle<T> => {
+    const id = validateDocURL(url);
     const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id);
     return doc.handle();
   }
 
-  debug(id: string) {
-    validateID(id);
+  debug(url: string) {
+    const id = validateDocURL(url);
     const doc = this.docs.get(id);
     const short = id.substr(0, 5);
     if (doc === undefined) {
@@ -194,11 +195,10 @@ export class RepoFrontend {
     this.toBackend.subscribe(subscriber);
   };
 
-  destroy = (id: string) : void => {
-    validateID(id);
+  destroy = (url: string) : void => {
+    const { id } = validateURL(url);
     this.toBackend.push({ type: "DestroyMsg", id });
     const doc = this.docs.get(id);
-    console.log("frontend - destroy", id)
     if (doc) {
       // doc.destroy()
       this.docs.delete(id)

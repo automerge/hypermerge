@@ -113,7 +113,6 @@ export class RepoBackend {
   }
 
   private destroy(id: string) {
-    console.log("DESTROY",id)
     this.meta.delete(id)
     const doc = this.docs.get(id)
     if (doc) {

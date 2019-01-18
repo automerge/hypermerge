@@ -3,6 +3,7 @@ import MapSet from "./MapSet";
 import * as Base58 from "bs58";
 import { hypercore, readFeed, Feed } from "./hypercore";
 import Debug from "debug";
+import * as URL from "url"
 const log = Debug("repo:metadata");
 
 import { Clock, equivalent, union, intersection } from "./Clock";
@@ -82,6 +83,12 @@ export function filterMetadataInputs(input: any[]): MetadataBlock[] {
   return metadata;
 }
 
+export interface UrlInfo {
+  id: string
+  buffer: Buffer
+  type: string
+}
+
 // this really should be FileMetadata | DocMetadata - cant easily add a type field
 // b/c of backward compat
 export interface MetadataBlock {
@@ -112,13 +119,52 @@ export function isValidID(id: any): boolean {
   }
 }
 
-export function validateID(id: string) {
+function validateID(id: string) : Buffer {
   log(`id '${id}'`)
   const buffer = Base58.decode(id);
   if (buffer.length !== 32) {
     throw new Error(`invalid id ${id}`);
   }
+  return buffer
 }
+
+export function validateURL(urlString: string) : UrlInfo {
+  if (urlString.indexOf(":") === -1) {
+    console.log("WARNING: `${id}` is depricated - now use `hypermerge:/${id}`")
+//    throw new Error("WARNING: open(id) is depricated - now use open(`hypermerge:/${id}`)")
+    const id = urlString
+    const buffer = validateID(id)
+    return { type: "hypermerge", buffer, id }
+  }
+  const url = URL.parse(urlString)
+  if (!url.path || !url.protocol) {
+    throw new Error("invalid URL: " + urlString)
+  }
+  const id = url.path.slice(1)
+  const type = url.protocol.slice(0,-1)
+  const buffer = validateID(id)
+  if (type !== "hypermerge" && type != "hyperfile") {
+    throw new Error(`protocol must be hypermerge or hyperfile (${type}) (${urlString})`)
+  }
+  return { id, buffer, type }
+}
+
+export function validateFileURL(urlString: string) : string {
+  const info = validateURL(urlString)
+  if (info.type != "hyperfile") {
+    throw new Error("invalid URL - protocol must be hyperfile")
+  }
+  return info.id
+}
+
+export function validateDocURL(urlString: string) : string {
+  const info = validateURL(urlString)
+  if (info.type != "hypermerge") {
+    throw new Error("invalid URL - protocol must be hypermerge")
+  }
+  return info.id
+}
+
 
 export class Metadata {
   private primaryActors: MapSet<string, string> = new MapSet();
