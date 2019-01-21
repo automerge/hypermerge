@@ -12,7 +12,8 @@
     "watch": "ts-node --files tools/Watch.ts $1 $2 $3",
     "meta": "ts-node --files tools/Meta.ts $1 $2 $3",
     "cat": "ts-node --files tools/Cat.ts $1 $2 $3",
-    "tape": "ts-node --files node_modules/tape/bin/tape tests/*.test.ts"
+    "tape": "ts-node --files node_modules/tape/bin/tape tests/*.test.ts",
+    "tape-inspect": "node --inspect -r ts-node/register/transpile-only node_modules/tape/bin/tape tests/*.test.ts"
   },
   "repository": {
     "type": "git",
