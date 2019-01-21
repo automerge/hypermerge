@@ -169,7 +169,6 @@ class Metadata {
         this.merges = new Map();
         this.readyQ = new Queue_1.default(); // FIXME - need a better api for accessing metadata
         this.clocks = new Map();
-        this.master = {};
         this.writable = new Map();
         // whats up with this ready/replay thing
         // there is a situation where someone opens a new document before the ledger is done readying
@@ -203,9 +202,10 @@ class Metadata {
             if (!this.ready)
                 this.replay.push(block);
             const dirty = this.addBlock(-1, block);
-            if (this.ready && dirty)
+            if (this.ready && dirty) {
                 this.append(block);
-            this.genClocks();
+                this.genClocks();
+            }
         };
         this.append = (block) => {
             this.ledger.append(block);
@@ -267,6 +267,13 @@ class Metadata {
         }
         return changedActors || changedFollow || changedMerge || changedFiles || changedDeleted;
     }
+    allActors() {
+        const actors = [];
+        this.clocks.forEach(clock => {
+            actors.push(...Object.keys(clock));
+        });
+        return new Set(actors);
+    }
     setWritable(actor, writable) {
         this.writable.set(actor, writable);
     }
@@ -313,15 +320,12 @@ class Metadata {
     }
     genClocks() {
         // dont really need to regen them all (but follow...)
-        var master = {};
         const clocks = new Map();
         const docs = this.primaryActors.keys().forEach(id => {
             const clock = this.genClock(id);
             clocks.set(id, clock);
-            master = Clock_1.union(clock, master);
         });
         this.clocks = clocks;
-        this.master = master;
     }
     docsWith(actor, seq = 1) {
         return this.docs().filter(id => this.has(id, actor, seq));

@@ -175,8 +175,6 @@ export class Metadata {
   readyQ: Queue<() => void> = new Queue(); // FIXME - need a better api for accessing metadata
   private clocks: Map<string, Clock> = new Map();
 
-  master: Clock = {}
-
   private writable: Map<string, boolean> = new Map();
 
   // whats up with this ready/replay thing
@@ -296,6 +294,14 @@ export class Metadata {
     return changedActors || changedFollow || changedMerge || changedFiles || changedDeleted;
   }
 
+  allActors() : Set<string> {
+    const actors : string[] = []
+    this.clocks.forEach(clock => {
+      actors.push(... Object.keys(clock))
+    })
+    return new Set(actors)
+  }
+
   setWritable(actor: string, writable: boolean) {
     this.writable.set(actor, writable);
   }
@@ -349,15 +355,12 @@ export class Metadata {
 
   private genClocks() {
     // dont really need to regen them all (but follow...)
-    var master : Clock = {}
     const clocks: Map<string, Clock> = new Map();
     const docs = this.primaryActors.keys().forEach(id => {
       const clock = this.genClock(id)
       clocks.set(id, clock)
-      master = union(clock,master)
     });
     this.clocks = clocks;
-    this.master = master
   }
 
   docsWith(actor: string, seq: number = 1): string[] {

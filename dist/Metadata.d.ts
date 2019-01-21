@@ -30,7 +30,6 @@ export declare class Metadata {
     private merges;
     readyQ: Queue<() => void>;
     private clocks;
-    master: Clock;
     private writable;
     private ready;
     private replay;
@@ -43,6 +42,7 @@ export declare class Metadata {
     private writeThrough;
     private append;
     private addBlock;
+    allActors(): Set<string>;
     setWritable(actor: string, writable: boolean): void;
     localActorId(id: string): string | undefined;
     actorsAsync(id: string, cb: (actors: string[]) => void): void;

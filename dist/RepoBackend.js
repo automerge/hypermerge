@@ -320,9 +320,9 @@ class RepoBackend {
         if (doc) {
             this.docs.delete(id);
         }
-        const actors = Object.keys(this.meta.master);
+        const actors = this.meta.allActors();
         this.actors.forEach((actor, id) => {
-            if (!actors.includes(id)) {
+            if (!actors.has(id)) {
                 console.log("Orfaned actors - will purge", id);
                 this.actors.delete(id);
                 actor.destroy();
