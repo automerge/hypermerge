@@ -239,9 +239,10 @@ export class Metadata {
 
     const dirty = this.addBlock(-1, block);
 
-    if (this.ready && dirty) this.append(block);
-
-    this.genClocks();
+    if (this.ready && dirty) {
+      this.append(block);
+      this.genClocks();
+    }
   };
 
   private append = (block: MetadataBlock) => {
