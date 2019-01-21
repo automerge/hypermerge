@@ -82,8 +82,6 @@ export class Actor {
     const dk = discoveryKey(publicKey);
     const id = Base58.encode(publicKey);
 
-    console.log("INIT ACTOR",ID(id))
-
     this.type = "Unknown";
     this.id = id;
     this.storage = config.storage(id)
@@ -139,7 +137,6 @@ export class Actor {
   }
 
   init = (datas: Uint8Array[]) => {
-    console.log("loaded blocks", ID(this.id), datas.length);
     log("loaded blocks", ID(this.id), datas.length);
     datas.map((data, i) => { 
       if (i === 0) this.handleFeedHead(data) 
@@ -156,7 +153,6 @@ export class Actor {
   destroy = () => {
     this.repo.leave(this.id);
     this.feed.close((err: Error) => {
-      console.log("closeing feed",ID(this.id))
       const filename = this.storage("").filename
       if (filename) {
         const newName = filename.slice(0,-1) + `_${Date.now()}_DEL`
@@ -174,7 +170,6 @@ export class Actor {
   };
 
   peerAdd = (peer: Peer) => {
-    console.log("peer-add feed", ID(this.id));
     log("peer-add feed", ID(this.id));
     peer.stream.on("extension", (ext: string, input: Uint8Array) => {
       if (ext === EXT) {
@@ -191,14 +186,12 @@ export class Actor {
   };
 
   sync = () => {
-    console.log("sync feed", ID(this.id));
     log("sync feed", ID(this.id));
     this.syncQ.once(f => f());
     this.notify({ type: "ActorSync", actor: this });
   };
 
   handleDownload = (index: number, data: Uint8Array) => {
-    console.log("DOWNLOAD",ID(this.id))
     if (this.type === "Unknown") {
       if (index === 0) {
         this.handleFeedHead(data);

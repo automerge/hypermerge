@@ -26,7 +26,7 @@ export interface Options {
 export declare class RepoBackend {
     path?: string;
     storage: Function;
-    joined: Set<Buffer>;
+    joined: Set<string>;
     actors: Map<string, Actor>;
     actorsDk: Map<string, Actor>;
     docs: Map<string, DocBackend>;

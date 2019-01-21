@@ -43,7 +43,7 @@ export interface Options {
 export class RepoBackend {
   path?: string;
   storage: Function;
-  joined: Set<Buffer> = new Set();
+  joined: Set<string> = new Set();
   actors: Map<string, Actor> = new Map();
   actorsDk: Map<string, Actor> = new Map();
   docs: Map<string, DocBackend> = new Map();
@@ -158,7 +158,7 @@ export class RepoBackend {
     this.swarm = swarm;
     for (let dk of this.joined) {
       log("swarm.join")
-      this.swarm.join(dk);
+      this.swarm.join(Base58.decode(dk));
     }
   };
 
@@ -191,19 +191,21 @@ export class RepoBackend {
   }
 
   join = (actorId: string) => {
-    const dk = discoveryKey(Base58.decode(actorId));
-    log("join",ID(actorId), ID(Base58.encode(dk)))
+    const dkBuffer = discoveryKey(Base58.decode(actorId))
+    const dk = Base58.encode(dkBuffer)
     if (this.swarm && !this.joined.has(dk)) {
-      log("swarm.join",actorId)
-      this.swarm.join(dk);
+      log("swarm.join",ID(actorId), ID(dk)) 
+      this.swarm.join(dkBuffer);
     }
     this.joined.add(dk);
   };
 
   leave = (actorId: string) => {
-    const dk = discoveryKey(Base58.decode(actorId));
+    const dkBuffer = discoveryKey(Base58.decode(actorId));
+    const dk = Base58.encode(dkBuffer);
     if (this.swarm && this.joined.has(dk)) {
-      this.swarm.leave(dk);
+      log("leave",ID(actorId), ID(dk))
+      this.swarm.leave(dkBuffer);
     }
     this.joined.delete(dk);
   };

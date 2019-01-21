@@ -38,22 +38,24 @@ class RepoBackend {
             this.swarm = swarm;
             for (let dk of this.joined) {
                 log("swarm.join");
-                this.swarm.join(dk);
+                this.swarm.join(Base58.decode(dk));
             }
         };
         this.join = (actorId) => {
-            const dk = hypercore_1.discoveryKey(Base58.decode(actorId));
-            log("join", Misc_1.ID(actorId), Misc_1.ID(Base58.encode(dk)));
+            const dkBuffer = hypercore_1.discoveryKey(Base58.decode(actorId));
+            const dk = Base58.encode(dkBuffer);
             if (this.swarm && !this.joined.has(dk)) {
-                log("swarm.join", actorId);
-                this.swarm.join(dk);
+                log("swarm.join", Misc_1.ID(actorId), Misc_1.ID(dk));
+                this.swarm.join(dkBuffer);
             }
             this.joined.add(dk);
         };
         this.leave = (actorId) => {
-            const dk = hypercore_1.discoveryKey(Base58.decode(actorId));
+            const dkBuffer = hypercore_1.discoveryKey(Base58.decode(actorId));
+            const dk = Base58.encode(dkBuffer);
             if (this.swarm && this.joined.has(dk)) {
-                this.swarm.leave(dk);
+                log("leave", Misc_1.ID(actorId), Misc_1.ID(dk));
+                this.swarm.leave(dkBuffer);
             }
             this.joined.delete(dk);
         };
