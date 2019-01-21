@@ -61,10 +61,10 @@ export declare class Actor {
     feedReady: () => void;
     handleFeedHead(data: Uint8Array): void;
     init: (datas: Uint8Array[]) => void;
+    close: () => void;
     destroy: () => void;
     peerRemove: (peer: Peer) => void;
     peerAdd: (peer: Peer) => void;
-    close: () => void;
     sync: () => void;
     handleDownload: (index: number, data: Uint8Array) => void;
     handleBlock: (data: Uint8Array, idx: number) => void;

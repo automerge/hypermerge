@@ -1,6 +1,7 @@
 import test from "tape"
 import { Repo } from "../src"
 import Client from "discovery-cloud-client"
+import { expectDocs } from "./misc"
 
 const ram: Function = require("random-access-memory")
 
@@ -33,40 +34,26 @@ test("Share a doc between two repos", t => {
     doc.b = 2
   })
 
-  const handleA = repoA
-    .open(id)
-    .subscribe(
-      expectDocs(t, [
-        [{ a: 1 }, "repoA should have create(doc)"],
-        [{ a: 1, b: 2 }, "repoA should have repoB's change"],
-      ]),
-    )
-
-  const handleB = repoB.open(id).subscribe(
+  repoA.watch<any>(id,
     expectDocs(t, [
-      [{}, "starts as an empty doc after open"], // not sure we want this
-      [{ b: 2 }, "repoB gets repoB's change"],
-      [{ b: 2 }, "repoB gets repoB's change again"], // probably shouldn't emit twice
-      [{ b: 2 }, "repoB gets repoB's change a thrid time"], // probably shouldn't emit three times
-      [{ a: 1, b: 2 }, "repoB gets repoA's change"],
-    ]),
-  )
+      [{ a: 1 }, "repoA should have create(doc)"],
+      [{ a: 1, b: 2 }, "repoA should have repoB's change"],
+    ]))
+
+  repoB.watch<any>(id,
+    expectDocs(t, [
+      [{ a: 1, b: 2 }, "repoB gets repoA's change and its local changes at once"],
+    ]))
 
   test.onFinish(() => {
     t.comment("Tests are finished")
-    handleA.close()
-    handleB.close()
 
-    // Attempting to close down the repos after we're done:
-    clientA.discovery.close()
-    clientB.discovery.close()
-    clientA.peers.forEach(p => p.connections.forEach(con => con.destroy()))
-    clientB.peers.forEach(p => p.connections.forEach(con => con.destroy()))
-    clientA.removeAllListeners()
-    clientB.removeAllListeners()
+    repoA.close()
+    repoB.close()
   })
 })
 
+/*
 function expectDocs(t: test.Test, docs: [any, string][]) {
   let i = 0
 
@@ -74,7 +61,13 @@ function expectDocs(t: test.Test, docs: [any, string][]) {
   t.plan((<any>t)._plan + docs.length)
 
   return (doc: any) => {
-    const [expected, msg] = docs[i++]
-    t.deepEqual(doc, expected, msg)
+    const tmp = docs[i++]
+    if (tmp === undefined) {
+      t.fail(`extrac doc emitted ${JSON.stringify(doc)}`)
+    } else {
+      const [expected, msg] = tmp
+      t.deepEqual(doc, expected, msg)
+    }
   }
 }
+*/

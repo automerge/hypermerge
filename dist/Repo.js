@@ -17,6 +17,7 @@ class Repo {
         this.follow = this.front.follow;
         this.doc = this.front.doc;
         this.fork = this.front.fork;
+        this.close = this.front.close;
         this.change = this.front.change;
         this.readFile = this.front.readFile;
         this.writeFile = this.front.writeFile;

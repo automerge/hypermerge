@@ -1,6 +1,6 @@
 {
   "name": "hypermerge",
-  "version": "1.0.26",
+  "version": "1.0.27",
   "description": "why merge when you can HYPERMERGE",
   "main": "dist/index.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "watch": "ts-node --files tools/Watch.ts $1 $2 $3",
     "meta": "ts-node --files tools/Meta.ts $1 $2 $3",
     "cat": "ts-node --files tools/Cat.ts $1 $2 $3",
-    "tape": "ts-node --files node_modules/tape/bin/tape tests/*.ts"
+    "tape": "ts-node --files node_modules/tape/bin/tape tests/*.test.ts"
   },
   "repository": {
     "type": "git",

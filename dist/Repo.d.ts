@@ -29,6 +29,7 @@ export declare class Repo {
     readFile: <T>(id: string, cb: (data: Uint8Array, mimeType: string) => void) => void;
     materialize: <T>(id: string, seq: number, cb: (val: T) => void) => void;
     meta: (id: string, cb: (meta: PublicMetadata | undefined) => void) => void;
+    close: () => void;
     constructor(opts: Options);
 }
 export {};

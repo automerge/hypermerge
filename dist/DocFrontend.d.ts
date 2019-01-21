@@ -9,6 +9,7 @@ interface Config {
 }
 export declare class DocFrontend<T> {
     private docId;
+    ready: boolean;
     actorId?: string;
     history: number;
     private changeQ;
@@ -31,5 +32,6 @@ export declare class DocFrontend<T> {
     private updateClockPatch;
     patch: (patch: Patch, history: number) => void;
     bench(msg: string, f: () => void): void;
+    close(): void;
 }
 export {};

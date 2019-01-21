@@ -22,6 +22,7 @@ interface Config {
 
 export class DocFrontend<T> {
   private docId: string;
+  ready: boolean = false;
   actorId?: string;
   history: number = 0;
   //  private toBackend: Queue<ToBackendRepoMsg>
@@ -46,6 +47,7 @@ export class DocFrontend<T> {
       this.front = Frontend.init(actorId) as Doc<T>;
       this.docId = docId;
       this.actorId = actorId;
+      this.ready = true
       this.enableWrites();
     } else {
       this.front = Frontend.init({ deferActorId: true }) as Doc<T>;
@@ -59,7 +61,7 @@ export class DocFrontend<T> {
     handle.cleanup = () => this.handles.delete(handle);
     handle.changeFn = this.change;
     handle.id = this.docId;
-    if (this.mode != "pending") {
+    if (this.ready) {
       handle.push(this.front, this.clock);
     }
 
@@ -67,9 +69,11 @@ export class DocFrontend<T> {
   }
 
   newState() {
-    this.handles.forEach(handle => {
-      handle.push(this.front, this.clock);
-    });
+    if (this.ready) {
+      this.handles.forEach(handle => {
+        handle.push(this.front, this.clock);
+      });
+    }
   }
 
   progress(progressEvent: ProgressEvent) {
@@ -115,8 +119,6 @@ export class DocFrontend<T> {
     if (actorId) this.setActorId(actorId); // must set before patch
 
     if (patch) this.patch(patch, history!); // first patch!
-
-    if (actorId) this.enableWrites(); // must enable after patch
   };
 
   private enableWrites() {
@@ -156,10 +158,14 @@ export class DocFrontend<T> {
       this.history = history;
       this.front = Frontend.applyPatch(this.front, patch);
       this.updateClockPatch(patch);
-      //      if (patch.diffs.length > 0) {
-      if (this.mode === "pending") this.mode = "read";
-      this.newState();
-      //      }
+      if (patch.diffs.length > 0) {
+        if (this.mode === "pending") {
+          this.mode = "read";
+          if (this.actorId) this.enableWrites()
+          this.ready = true
+        }
+        this.newState();
+      }
     });
   };
 
@@ -168,5 +174,10 @@ export class DocFrontend<T> {
     f();
     const duration = Date.now() - start;
     log(`docId=${this.docId} task=${msg} time=${duration}ms`);
+  }
+
+  close() {
+    this.handles.forEach( handle => handle.close())
+    this.handles.clear()
   }
 }

@@ -45,6 +45,7 @@ export declare class RepoBackend {
     private open;
     merge(id: string, clock: Clock): void;
     follow(id: string, target: string): void;
+    close: () => void;
     replicate: (swarm: Swarm) => void;
     private allReadyActors;
     private loadDocument;

@@ -31,6 +31,20 @@ class RepoBackend {
         this.actorsDk = new Map();
         this.docs = new Map();
         this.toFrontend = new Queue_1.default("repo:toFrontend");
+        this.close = () => {
+            this.actors.forEach(actor => actor.close());
+            this.actors.clear();
+            const swarm = this.swarm; // FIXME - any is bad
+            if (swarm) {
+                try {
+                    swarm.discovery.removeAllListeners();
+                    swarm.discovery.close();
+                    swarm.peers.forEach((p) => p.connections.forEach((con) => con.destroy()));
+                    swarm.removeAllListeners();
+                }
+                catch (error) { }
+            }
+        };
         this.replicate = (swarm) => {
             if (this.swarm) {
                 throw new Error("replicate called while already swarming");
@@ -243,6 +257,10 @@ class RepoBackend {
                     }
                     case "DebugMsg": {
                         this.debug(msg.id);
+                        break;
+                    }
+                    case "CloseMsg": {
+                        this.close();
                         break;
                     }
                 }

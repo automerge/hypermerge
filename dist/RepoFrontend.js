@@ -150,6 +150,11 @@ class RepoFrontend {
         this.subscribe = (subscriber) => {
             this.toBackend.subscribe(subscriber);
         };
+        this.close = () => {
+            this.toBackend.push({ type: "CloseMsg" });
+            this.docs.forEach(doc => doc.close());
+            this.docs.clear();
+        };
         this.destroy = (url) => {
             const { id } = Metadata_1.validateURL(url);
             this.toBackend.push({ type: "DestroyMsg", id });
@@ -186,7 +191,9 @@ class RepoFrontend {
                     }
                     case "PatchMsg": {
                         const doc = this.docs.get(msg.id);
-                        doc.patch(msg.patch, msg.history);
+                        if (doc) {
+                            doc.patch(msg.patch, msg.history);
+                        }
                         break;
                     }
                     case "Reply": {
@@ -200,12 +207,16 @@ class RepoFrontend {
                     }
                     case "ActorIdMsg": {
                         const doc = this.docs.get(msg.id);
-                        doc.setActorId(msg.actorId);
+                        if (doc) {
+                            doc.setActorId(msg.actorId);
+                        }
                         break;
                     }
                     case "ReadyMsg": {
                         const doc = this.docs.get(msg.id);
-                        doc.init(msg.actorId, msg.patch, msg.history);
+                        if (doc) {
+                            doc.init(msg.actorId, msg.patch, msg.history);
+                        }
                         break;
                     }
                     case "ActorBlockDownloadedMsg": {

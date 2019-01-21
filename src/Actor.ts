@@ -150,6 +150,13 @@ export class Actor {
     this.q.subscribe(f => f(this));
   };
 
+  close = () => {
+    log("closing feed", this.id);
+    try {
+      this.feed.close((err: Error) => {})
+    } catch (error) {}
+  }
+
   destroy = () => {
     this.repo.leave(this.id);
     this.feed.close((err: Error) => {
@@ -179,10 +186,6 @@ export class Actor {
     this.peers.add(peer);
     this.message(this.meta.forActor(this.id), peer);
     this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
-  };
-
-  close = () => {
-    log("closing feed", this.id);
   };
 
   sync = () => {

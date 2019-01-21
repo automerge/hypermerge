@@ -12,6 +12,7 @@ export type ToFrontendReplyMsg =
 export type ToBackendRepoMsg =
   | NeedsActorIdMsg
   | RequestMsg
+  | CloseMsg
   | FollowMsg
   | MergeMsg
   | CreateMsg
@@ -140,6 +141,10 @@ export interface ActorIdMsg {
   type: "ActorIdMsg";
   id: string;
   actorId: string;
+}
+
+export interface CloseMsg {
+  type: "CloseMsg";
 }
 
 export interface ReadyMsg {

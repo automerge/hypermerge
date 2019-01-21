@@ -151,6 +151,21 @@ export class RepoBackend {
     this.syncReadyActors(this.meta.actors(id));
   }
 
+  close = () => {
+    this.actors.forEach(actor => actor.close())
+    this.actors.clear()
+
+    const swarm : any = this.swarm // FIXME - any is bad
+    if (swarm) {
+      try {
+        swarm.discovery.removeAllListeners()
+        swarm.discovery.close()
+        swarm.peers.forEach((p : any) => p.connections.forEach((con:any) => con.destroy()))
+        swarm.removeAllListeners()
+      } catch (error) {}
+    }
+  }
+
   replicate = (swarm: Swarm) => {
     if (this.swarm) {
       throw new Error("replicate called while already swarming");
@@ -434,6 +449,10 @@ export class RepoBackend {
         }
         case "DebugMsg": {
           this.debug(msg.id);
+          break;
+        }
+        case "CloseMsg": {
+          this.close();
           break;
         }
       }

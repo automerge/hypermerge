@@ -21,6 +21,7 @@ const log = debug_1.default("hypermerge:front");
 class DocFrontend {
     constructor(repo, config) {
         //super()
+        this.ready = false;
         this.history = 0;
         //  private toBackend: Queue<ToBackendRepoMsg>
         this.changeQ = new Queue_1.default("frontend:change");
@@ -55,19 +56,21 @@ class DocFrontend {
                 this.setActorId(actorId); // must set before patch
             if (patch)
                 this.patch(patch, history); // first patch!
-            if (actorId)
-                this.enableWrites(); // must enable after patch
         };
         this.patch = (patch, history) => {
             this.bench("patch", () => {
                 this.history = history;
                 this.front = Frontend.applyPatch(this.front, patch);
                 this.updateClockPatch(patch);
-                //      if (patch.diffs.length > 0) {
-                if (this.mode === "pending")
-                    this.mode = "read";
-                this.newState();
-                //      }
+                if (patch.diffs.length > 0) {
+                    if (this.mode === "pending") {
+                        this.mode = "read";
+                        if (this.actorId)
+                            this.enableWrites();
+                        this.ready = true;
+                    }
+                    this.newState();
+                }
             });
         };
         const docId = config.docId;
@@ -79,6 +82,7 @@ class DocFrontend {
             this.front = Frontend.init(actorId);
             this.docId = docId;
             this.actorId = actorId;
+            this.ready = true;
             this.enableWrites();
         }
         else {
@@ -92,15 +96,17 @@ class DocFrontend {
         handle.cleanup = () => this.handles.delete(handle);
         handle.changeFn = this.change;
         handle.id = this.docId;
-        if (this.mode != "pending") {
+        if (this.ready) {
             handle.push(this.front, this.clock);
         }
         return handle;
     }
     newState() {
-        this.handles.forEach(handle => {
-            handle.push(this.front, this.clock);
-        });
+        if (this.ready) {
+            this.handles.forEach(handle => {
+                handle.push(this.front, this.clock);
+            });
+        }
     }
     progress(progressEvent) {
         this.handles.forEach(handle => {
@@ -137,6 +143,10 @@ class DocFrontend {
         f();
         const duration = Date.now() - start;
         log(`docId=${this.docId} task=${msg} time=${duration}ms`);
+    }
+    close() {
+        this.handles.forEach(handle => handle.close());
+        this.handles.clear();
     }
 }
 exports.DocFrontend = DocFrontend;

@@ -40,6 +40,7 @@ export declare class RepoFrontend {
     debug(url: string): void;
     private openDocFrontend;
     subscribe: (subscriber: (message: ToBackendRepoMsg) => void) => void;
+    close: () => void;
     destroy: (url: string) => void;
     receive: (msg: ToFrontendRepoMsg) => void;
 }
