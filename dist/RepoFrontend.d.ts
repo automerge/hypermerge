@@ -2,7 +2,7 @@ import Queue from "./Queue";
 import MapSet from "./MapSet";
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { Handle } from "./Handle";
-import { ChangeFn, Patch } from "automerge/frontend";
+import { Patch } from "automerge/frontend";
 import { DocFrontend } from "./DocFrontend";
 import { Clock } from "./Clock";
 export interface DocMetadata {
@@ -23,8 +23,8 @@ export declare class RepoFrontend {
     msgcb: Map<number, (patch: Patch) => void>;
     readFiles: MapSet<string, (data: Uint8Array, mimeType: string) => void>;
     file?: Uint8Array;
-    create: (init?: any) => string;
-    change: <T>(id: string, fn: ChangeFn<T>) => void;
+    create: <T>(init?: T | undefined) => string;
+    change: <T>(id: string, fn: (state: T) => void) => void;
     meta: (url: string, cb: (meta: import("./Metadata").PublicDocMetadata | import("./Metadata").PublicFileMetadata | undefined) => void) => void;
     meta2: (url: string) => DocMetadata | undefined;
     merge: (url: string, target: string) => void;

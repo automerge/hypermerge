@@ -39,7 +39,7 @@ export class RepoFrontend {
   readFiles: MapSet<string, (data: Uint8Array, mimeType: string) => void> = new MapSet();
   file?: Uint8Array;
 
-  create = (init?: any): string => {
+  create = <T>(init?: T): string => {
     const keys = crypto.keyPair();
     const publicKey = Base58.encode(keys.publicKey);
     const secretKey = Base58.encode(keys.secretKey);
@@ -58,7 +58,7 @@ export class RepoFrontend {
     return `hypermerge:/${docId}`;
   };
 
-  change = <T>(id: string, fn: ChangeFn<T>) => {
+  change = <T>(id: string, fn: (state: T) => void ) => {
     this.open<T>(id).change(fn);
   };
 

@@ -1,0 +1,17 @@
+{
+  "name": "hm-simple-example",
+  "version": "0.0.1",
+  "description": "Simple example of two repo's sharing data",
+  "main": "./simple.ts",
+  "license": "MIT",
+  "scripts": {
+    "test": "ts-node src/simple.ts"
+  },
+  "dependencies": {
+    "random-access-memory": "^2.4.0",
+    "dat-swarm-defaults": "^1.0.2",
+    "discovery-swarm": "^5.1.3",
+    "ts-node": "^7.0.1",
+    "hypermerge": "github:automerge/hypermerge#fork"
+  }
+}

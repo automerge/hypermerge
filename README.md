@@ -1,157 +1,109 @@
 # Hypermerge
 
-Hypermerge is a Node.js library for building p2p collaborative applications
-without any server infrastructure.  It combines Automerge, a CRDT,
-with hypercore, a distributed append-only log.
+Hypermerge a proof of concept library for using the hypercore / hyperprotocol
+tools from the DAT ecosystem to enable peer to peer communication between
+automerge data stores.
+
+If successful this project would provide a way to have apps data sets that are
+conflict free and offline first (thanks to CRDT's) and serverless (thanks to
+hypercore/DAT).
+
+While the DAT community has done a lot of work to secure their tool set, zero
+effort has been made with hypermerge itself to deal with security and privacy
+concerns.  Due to the secure nature of the tools its built upon a properly
+audited and secure version of this library would be possible in the future.
 
 ## Concepts
 
-### Repo API
+The base object you make with hypermerge is a Repo.  A repo is responsible for
+managing documents and replicating to peers.
+
+### Basic Setup (Serverless or with a Server)
 
 ```ts
-  const id = repo.create({ initial: "state" })
+import { Repo } from "hypermerge"
 
-  repo.doc( id, (doc) => { ... } )
-  // or
-  repo.doc( id ).then((doc) => { ... })
-  
-  // watch a doc change over time
-  const handle = repo.watch( id, (doc) => {
-    ...
-  })
-  handle.close()
+const storage = require("random-access-file")
+const path = ".data"
 
-  // change a doc
-  repo.change(id, (doc) => {
-    doc.foo = "bar"
-  })
+const repo = new Repo({ path, storage })
 
-  // fork a document
-  const id2 = repo.fork(id)
+// DAT's discovery swarm or truly serverless discovery
+const DiscoverySwarm = require("discovery-swarm");
+const defaults = require('dat-swarm-defaults')
+const discovery = new DiscoverySwarm(defaults({stream: repo.stream, id: repo.id }));
 
-  // manually fork a document
-  const id3 = repo.create()
-  repo.merge(id3,id2)
-
-
-  // tell a document to follow another document
-  const id4 = repo.create()
-  repo.follow(id4, id)
-
-  const file = fs.readSync("file.jpg")
-  const id5 = repo.writeFile(file)
-  repo.readFile(id5, (file) => { ... })
+repo.replicate(discovery)
 ```
 
-Repo's can be split in to frontend and backend if you dont want the documents
-and the database (network,io,compute) in the same thread.  The backend portion
-has a `replicate` for replicating data with peers
+### Create / Edit / View / Delete a document
 
-### Handle
+```ts
 
-A handle gives you access to the document.  It has 4 functions.  The functions
-`subscribe` and `once` can be used to access the documents changing state (or
-get it once and close the handle).  Note a handle can only have one subsciber -
-need more, open another handle.  The state provided by the handle is an `automerge`
-document.
+  const url = repo.create({ hello: "world" })
 
-The `change` function gives you access to an editable version of the state.
+  repo.doc<any>(url, (doc) => {
+    console.log(doc) // { hello: "world" }
+  })
 
-Lastly a close function to destroy the handle when you're done.
+  // this is an automerge change function - see automerge for more info
+  // basically you get to treat the state as a plain old javacript object
+  // operations you make will be added to an internal append only log and
+  // replicated to peers
 
-```
-  const handle = repo.open(id)
-  handle.subscribe( state => { ... } )
-  // or
-  handle.once( state => { ... } )
-  handle.change( state => {
+  repo.change(url, (state:any) => {
     state.foo = "bar"
   })
-  handle.close()
+
+  repo.doc<any>(url, (doc) => {
+    console.log(doc) // { hello: "world", foo: "bar" }
+  })
+
+  // to watch a document that changes over time ...
+  const handle = repo.watch(url, (doc:any) => {
+    console.log(doc)
+    if (doc.foo === "bar") {
+      handle.close()
+    }
+  })
 ```
 
-## Simple Example
-
-In this exaple you open a document repo (backed by random access memory - but
-you can use any storage type here)
-
-A document is created.  A handle to the document is opened and used to
-subscribe to state updates and make changes.
+### Two repos on different machines
 
 ```ts
-  import { Repo } from "hypermerge"
 
-  const ram: Function = require("random-access-memory")
+const docUrl = repoA.create({ numbers: [ 2,3,4 ]})
 
-  const repo = new Repo({ storage: ram })
-  const id = repo.create()
-  const handle = repo.open(id)
-  handle.subscribe((state) => {
-    console.log("document state is", state)
-  })
-  handle.change(state => {
-    state.foo = "bar"
-  })
-  handle.change(state => {
-    state.bar = "baz"
-  })
+// this will block until the state has replicated to machine B
+
+repoA.watch<MyDoc>(docUrl, state => {
+  console.log("RepoA", state)
+  // { numbers: [2,3,4] } 
+  // { numbers: [2,3,4,5], foo: "bar" }
+  // { numbers: [2,3,4,5], foo: "bar" } // (local changes repeat)
+  // { numbers: [1,2,3,4,5], foo: "bar", bar: "foo" }
+})
+
+repoB.watch<MyDoc>(docUrl, state => {
+  console.log("RepoB", state)
+  // { numbers: [1,2,3,4,5], foo: "bar", bar: "foo" }
+})
+
+
+repoA.change<MyDoc>(docUrl, (state) => {
+  state.numbers.push(5)
+  state.foo = "bar"
+})
+
+repoB.change<MyDoc>(docUrl, (state) => {
+  state.numbers.unshift(1)
+  state.bar = "foo"
+})
+
 ```
 
-## Back Front Split Example
-
-  Often times you wont want your database running in your render thread so it
-is possible to have the database, io and networking all in one thread and the
-change and update api in another.  To wire this up do the following.  In a real
-scenario you might have a socket or pipe in between the two halves.
+### Accessing Files
 
 ```ts
-  import { RepoFrontend, RepoBackend } from "hypermerge"
-
-  const ram: Function = require("random-access-memory")
-
-  const repo = new RepoFrontend()
-  const back = new RepoBackend({ storage: ram })
-
-  repo.subscribe(back.receive)
-  back.subscribe(repo.receive)
-
-  const handle = repo.open(id)
-  handle.subscribe((state) => {
-    console.log("document state is", state)
-  })
-  handle.change(state => {
-    state.foo = "bar"
-  })
-  handle.change(state => {
-    state.bar = "baz"
-  })
 ```
-
-## Networking
-
-  To replicate a hypermerge documents with peers plug in a discovery swarm
-interface to the replicate() function on the Repo (or the RepoBackend)
-
-See:
-[Discovery Swarm](https://github.com/mafintosh/discovery-swarm)
-[Discovery Cloud](https://github.com/orionz/discovery-cloud-client)
-
-```ts
-  import { Repo } from "hypermerge"
-
-  import { Client } from "discovery-cloud-client"
-
-  const ram: Function = require("random-access-memory")
-
-  const repo = new Repo({ storage: ram })
-
-  const discovery = new Client({
-    url: "wss://discovery-cloud.herokuapp.com",
-    id: repo.id,
-    stream: repo.stream,
-  })
-
-  repo.replicate(discovery)
-```
-
 
