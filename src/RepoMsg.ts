@@ -13,7 +13,7 @@ export type ToBackendRepoMsg =
   | NeedsActorIdMsg
   | RequestMsg
   | CloseMsg
-  | FollowMsg
+//  | FollowMsg
   | MergeMsg
   | CreateMsg
   | OpenMsg
@@ -73,11 +73,13 @@ export interface MergeMsg {
   actors: string[];
 }
 
+/*
 export interface FollowMsg {
   type: "FollowMsg";
   id: string;
   target: string;
 }
+*/
 
 export interface DebugMsg {
   type: "DebugMsg";

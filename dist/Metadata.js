@@ -43,7 +43,7 @@ function cleanMetadataInput(input) {
     if (typeof bytes !== "undefined" && typeof bytes !== "number")
         return undefined;
     const actors = input.actors || input.actorIds;
-    const follows = input.follows;
+    //  const follows = input.follows;
     const merge = input.merge;
     const mimeType = input.mimeType;
     const deleted = input.deleted;
@@ -53,12 +53,10 @@ function cleanMetadataInput(input) {
         if (!actors.every(isValidID))
             return undefined;
     }
-    if (follows !== undefined) {
-        if (!(follows instanceof Array))
-            return undefined;
-        if (!follows.every(isValidID))
-            return undefined;
-    }
+    //  if (follows !== undefined) {
+    //    if (!(follows instanceof Array)) return undefined;
+    //    if (!follows.every(isValidID)) return undefined;
+    //  }
     if (merge !== undefined) {
         if (typeof merge !== "object")
             return undefined;
@@ -67,7 +65,7 @@ function cleanMetadataInput(input) {
         if (!Object.values(merge).every(isNumber))
             return undefined;
     }
-    const meta = actors || follows || merge || deleted;
+    const meta = actors || deleted || merge; // || follows;
     if (meta === undefined && bytes === undefined)
         return undefined;
     if (meta !== undefined && bytes !== undefined)
@@ -77,7 +75,7 @@ function cleanMetadataInput(input) {
         bytes,
         mimeType,
         actors,
-        follows,
+        //    follows,
         merge,
         deleted
     };
@@ -160,15 +158,17 @@ function validateDocURL(urlString) {
     return info.id;
 }
 exports.validateDocURL = validateDocURL;
+var _benchTotal = {};
 class Metadata {
     constructor(storageFn) {
+        this.docs = new Set();
         this.primaryActors = new MapSet_1.default();
-        this.follows = new MapSet_1.default();
+        //  private follows: MapSet<string, string> = new MapSet();
         this.files = new Map();
         this.mimeTypes = new Map();
         this.merges = new Map();
         this.readyQ = new Queue_1.default(); // FIXME - need a better api for accessing metadata
-        this.clocks = new Map();
+        this._clocks = {};
         this.writable = new Map();
         // whats up with this ready/replay thing
         // there is a situation where someone opens a new document before the ledger is done readying
@@ -185,7 +185,7 @@ class Metadata {
         this.loadLedger = (input) => {
             const data = filterMetadataInputs(input); // FIXME
             this.primaryActors = new MapSet_1.default();
-            this.follows = new MapSet_1.default();
+            //    this.follows = new MapSet();
             this.files = new Map();
             this.mimeTypes = new Map();
             this.merges = new Map();
@@ -193,7 +193,7 @@ class Metadata {
             this.batchAdd(data);
             this.replay.map(this.writeThrough);
             this.replay = [];
-            this.genClocks();
+            this._clocks = {};
             this.readyQ.subscribe(f => f());
         };
         // write through caching strategy
@@ -204,7 +204,7 @@ class Metadata {
             const dirty = this.addBlock(-1, block);
             if (this.ready && dirty) {
                 this.append(block);
-                this.genClocks();
+                this._clocks = {};
             }
         };
         this.append = (block) => {
@@ -228,18 +228,18 @@ class Metadata {
         blocks.forEach((block, i) => this.addBlock(i, block));
     }
     addBlock(idx, block) {
+        let changedDocs = false;
         let changedActors = false;
-        let changedFollow = false;
+        //    let changedFollow = false;
         let changedFiles = false;
         let changedMerge = false;
-        let changedDeleted = false;
         let id = block.id;
         if (block.actors !== undefined) {
             changedActors = this.primaryActors.merge(id, block.actors);
         }
-        if (block.follows !== undefined) {
-            changedFollow = this.follows.merge(id, block.follows);
-        }
+        //    if (block.follows !== undefined) {
+        //      changedFollow = this.follows.merge(id, block.follows);
+        //    }
         if (block.bytes !== undefined && block.mimeType !== undefined) {
             if (this.files.get(id) !== block.bytes || this.mimeTypes.get(id) !== block.mimeType) {
                 changedFiles = true;
@@ -255,24 +255,24 @@ class Metadata {
                 this.merges.set(id, newClock);
             }
         }
+        // shit - bug - rethink the whole remote people deleted something 
+        // i dont care of they deleted it
         if (block.deleted === true) {
-            if (this.files.get(id) !== undefined || this.primaryActors.get(id) !== undefined) {
-                this.files.delete(id);
-                this.mimeTypes.delete(id);
-                this.merges.delete(id);
-                this.primaryActors.delete(id);
-                this.follows.delete(id);
-                changedDeleted = true;
+            if (this.docs.has(id)) {
+                this.docs.delete(id);
+                changedDocs = true;
             }
         }
-        return changedActors || changedFollow || changedMerge || changedFiles || changedDeleted;
+        else {
+            if (!this.docs.has(id)) {
+                this.docs.add(id);
+                changedDocs = true;
+            }
+        }
+        return changedActors || changedMerge || changedFiles || changedDocs; // || changedFollow;
     }
     allActors() {
-        const actors = [];
-        this.clocks.forEach(clock => {
-            actors.push(...Object.keys(clock));
-        });
-        return new Set(actors);
+        return this.primaryActors.union();
     }
     setWritable(actor, writable) {
         this.writable.set(actor, writable);
@@ -291,61 +291,49 @@ class Metadata {
         });
     }
     actors(id) {
-        return this.actorsSeen(id, [], new Set());
+        return Object.keys(this.clock(id));
     }
-    // FIXME - i really need a hell scenario test for this
-    // prevent cyclical dependancies from causing an infinite search
-    actorsSeen(id, acc, seen) {
-        const primaryActors = this.primaryActors.get(id);
+    /*
+      private actorsSeen(id: string, acc: string[], seen: Set<string>): string[] {
+        const primaryActors = this.primaryActors.get(id)!;
         const mergeActors = Object.keys(this.merges.get(id) || {});
         acc.push(...primaryActors);
         acc.push(...mergeActors);
         seen.add(id);
         this.follows.get(id).forEach(follow => {
-            if (!seen.has(follow)) {
-                this.actorsSeen(follow, acc, seen);
-            }
+          if (!seen.has(follow)) {
+            this.actorsSeen(follow, acc, seen);
+          }
         });
         return acc;
+      }
+    */
+    clockAt(id, actor) {
+        return this.clock(id)[actor] || 0;
     }
     clock(id) {
-        return this.clocks.get(id);
-    }
-    genClock(id) {
-        const infinityClock = {};
-        this.actors(id).forEach(actor => {
-            infinityClock[actor] = Infinity;
-        });
-        return Clock_1.union(this.merges.get(id) || {}, infinityClock);
-    }
-    genClocks() {
-        // dont really need to regen them all (but follow...)
-        const clocks = new Map();
-        const docs = this.primaryActors.keys().forEach(id => {
-            const clock = this.genClock(id);
-            clocks.set(id, clock);
-        });
-        this.clocks = clocks;
+        if (this._clocks[id])
+            return this._clocks[id];
+        const clock = {};
+        const actors = this.primaryActors.get(id);
+        const merges = this.merges.get(id);
+        if (actors)
+            actors.forEach(actor => clock[actor] = Infinity);
+        if (merges)
+            Clock_1.addTo(clock, merges);
+        this._clocks[id] = clock;
+        return clock;
     }
     docsWith(actor, seq = 1) {
-        return this.docs().filter(id => this.has(id, actor, seq));
-    }
-    covered(id, clock) {
-        return Clock_1.intersection(this.clock(id), clock);
-    }
-    docs() {
-        return [...this.clocks.keys()];
+        return [...this.docs].filter(id => this.has(id, actor, seq));
     }
     has(id, actor, seq) {
         if (!(seq >= 1))
             throw new Error("seq number must be 1 or greater");
-        return (this.clock(id)[actor] || -1) >= seq;
+        return this.clockAt(id, actor) >= seq;
     }
     merge(id, merge) {
         this.writeThrough({ id, merge });
-    }
-    follow(id, follow) {
-        this.writeThrough({ id, follows: [follow] });
     }
     addFile(id, bytes, mimeType) {
         this.writeThrough({ id, bytes, mimeType });
@@ -373,6 +361,14 @@ class Metadata {
     isDoc(id) {
         return this.primaryActors.get(id).size > 0;
     }
+    bench(msg, f) {
+        const start = Date.now();
+        f();
+        const duration = Date.now() - start;
+        const total = (_benchTotal[msg] || 0) + duration;
+        _benchTotal[msg] = total;
+        console.log(`metadata task=${msg} time=${duration}ms total=${total}ms`);
+    }
     publicMetadata(id, cb) {
         this.readyQ.push(() => {
             if (this.isDoc(id)) {
@@ -382,7 +378,6 @@ class Metadata {
                     history: 0,
                     actor: this.localActorId(id),
                     actors: this.actors(id),
-                    follows: [...this.follows.get(id)]
                 });
             }
             else if (this.isFile(id)) {
@@ -403,7 +398,7 @@ class Metadata {
         return {
             id,
             actors: [...this.primaryActors.get(id)],
-            follows: [...this.follows.get(id)],
+            //      follows: [...this.follows.get(id)],
             merge: this.merges.get(id) || {}
         };
     }

@@ -14,7 +14,7 @@ test("Simple create doc and make a change", (t) => {
       [{ foo: "bar" }, "change final" ],
     ])
   )
-  repo.change(url, state => {
+  repo.change<any>(url, state => {
     state.foo = "bar"
   })
 });
@@ -32,7 +32,7 @@ test("Create a doc backend - then wire it up to a frontend - make a change", (t)
       [{ foo: "bar" }, "change final"],
     ])
   )
-  front.change(url, state => {
+  front.change<any>(url, state => {
     state.foo = "bar"
   })
   test.onFinish(() => front.close())
@@ -51,7 +51,7 @@ test("Test document forking...", (t) => {
   repo.watch<any>(id2, 
     expectDocs(t, [
       [{ }, "hmm"],
-      [{ foo: "bar" }, "init val", () => { repo.change(id2, state => { state.bar = "foo" }) }],
+      [{ foo: "bar" }, "init val", () => { repo.change<any>(id2, state => { state.bar = "foo" }) }],
       [{ foo: "bar", "bar": "foo" }, "changed val" ],
       [{ foo: "bar", "bar": "foo" }, "changed val echo" ],
     ])
@@ -78,13 +78,13 @@ test("Test materialize...", (t) => {
       }],
     ])
   )
-  repo.change(url, state => {
+  repo.change<any>(url, state => {
     state.foo = "bar1"
   })
-  repo.change(url, state => {
+  repo.change<any>(url, state => {
     state.foo = "bar2"
   })
-  repo.change(url, state => {
+  repo.change<any>(url, state => {
     state.foo = "bar3"
   })
   test.onFinish(() => repo.close())
@@ -112,11 +112,11 @@ test("Test meta...", (t) => {
     })
   })
 
-  repo.change(id, state => {
+  repo.change<any>(id, state => {
     state.foo = "bar1"
   })
 
-  repo.change(id, state => {
+  repo.change<any>(id, state => {
     state.foo = "bar2"
   })
 

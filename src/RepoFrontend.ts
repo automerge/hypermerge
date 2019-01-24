@@ -122,10 +122,12 @@ export class RepoFrontend {
     return fork;
   };
 
+/*
   follow = (url: string, target: string) => {
     const id = validateDocURL(url);
     this.toBackend.push({ type: "FollowMsg", id, target });
   };
+*/
 
   watch = <T>( url: string, cb: (val: T, clock?: Clock, index?: number) => void): Handle<T> => {
     validateDocURL(url);

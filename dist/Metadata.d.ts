@@ -14,7 +14,6 @@ export interface MetadataBlock {
     bytes?: number;
     mimeType?: string;
     actors?: string[];
-    follows?: string[];
     merge?: Clock;
     deleted?: boolean;
 }
@@ -23,13 +22,13 @@ export declare function validateURL(urlString: string): UrlInfo;
 export declare function validateFileURL(urlString: string): string;
 export declare function validateDocURL(urlString: string): string;
 export declare class Metadata {
+    docs: Set<string>;
     private primaryActors;
-    private follows;
     private files;
     private mimeTypes;
     private merges;
     readyQ: Queue<() => void>;
-    private clocks;
+    private _clocks;
     private writable;
     private ready;
     private replay;
@@ -47,16 +46,11 @@ export declare class Metadata {
     localActorId(id: string): string | undefined;
     actorsAsync(id: string, cb: (actors: string[]) => void): void;
     actors(id: string): string[];
-    private actorsSeen;
+    clockAt(id: string, actor: string): number;
     clock(id: string): Clock;
-    private genClock;
-    private genClocks;
     docsWith(actor: string, seq?: number): string[];
-    covered(id: string, clock: Clock): Clock;
-    docs(): string[];
     has(id: string, actor: string, seq: number): boolean;
     merge(id: string, merge: Clock): void;
-    follow(id: string, follow: string): void;
     addFile(id: string, bytes: number, mimeType: string): void;
     delete(id: string): void;
     addActor(id: string, actorId: string): void;
@@ -65,6 +59,7 @@ export declare class Metadata {
     isFile(id: string): boolean;
     isKnown(id: string): boolean;
     isDoc(id: string): boolean;
+    bench(msg: string, f: () => void): void;
     publicMetadata(id: string, cb: (meta: PublicMetadata | null) => void): void;
     forDoc(id: string): MetadataBlock;
     forActor(actor: string): MetadataBlock[];
@@ -76,7 +71,6 @@ export declare type PublicDocMetadata = {
     history: number;
     actor: string | undefined;
     actors: string[];
-    follows: string[];
 };
 export declare type PublicFileMetadata = {
     type: "File";

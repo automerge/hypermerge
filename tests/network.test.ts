@@ -30,7 +30,7 @@ test("Share a doc between two repos", t => {
 
   const id = repoA.create({ a: 1 })
 
-  repoB.change(id, doc => {
+  repoB.change<any>(id, doc => {
     doc.b = 2
   })
 

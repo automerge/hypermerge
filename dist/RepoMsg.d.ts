@@ -2,7 +2,7 @@ import { Patch, Change } from "automerge/frontend";
 import { PublicMetadata } from "./Metadata";
 export declare type ToBackendQueryMsg = MaterializeMsg | MetadataMsg;
 export declare type ToFrontendReplyMsg = MaterializeReplyMsg | MetadataReplyMsg;
-export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CloseMsg | FollowMsg | MergeMsg | CreateMsg | OpenMsg | DestroyMsg | DebugMsg | WriteFile | ReadFile | QueryMsg | Uint8Array;
+export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DestroyMsg | DebugMsg | WriteFile | ReadFile | QueryMsg | Uint8Array;
 export interface QueryMsg {
     type: "Query";
     id: number;
@@ -41,11 +41,6 @@ export interface MergeMsg {
     type: "MergeMsg";
     id: string;
     actors: string[];
-}
-export interface FollowMsg {
-    type: "FollowMsg";
-    id: string;
-    target: string;
 }
 export interface DebugMsg {
     type: "DebugMsg";

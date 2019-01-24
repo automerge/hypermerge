@@ -106,10 +106,12 @@ class RepoFrontend {
             this.merge(fork, url);
             return fork;
         };
-        this.follow = (url, target) => {
-            const id = Metadata_1.validateDocURL(url);
+        /*
+          follow = (url: string, target: string) => {
+            const id = validateDocURL(url);
             this.toBackend.push({ type: "FollowMsg", id, target });
-        };
+          };
+        */
         this.watch = (url, cb) => {
             Metadata_1.validateDocURL(url);
             const handle = this.open(url);

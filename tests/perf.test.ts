@@ -23,16 +23,16 @@ test("Create 1000 docs and share one", t => {
     url: "wss://discovery-cloud.herokuapp.com",
   })
 
+
   repoA.replicate(clientA)
   repoB.replicate(clientB)
 
   // connect the repos
 
-  Array.from({ length: 1000 }, () => 0).forEach(() => {
+  Array.from({ length: 100 }, () => 0).forEach(() => {
     repoA.create({ test: "a" })
     repoB.create({ test: "b" })
   })
-
   const url = repoA.create({ a: 1 })
 
   repoB.change(url, doc => {

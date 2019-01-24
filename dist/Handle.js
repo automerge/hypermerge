@@ -58,11 +58,13 @@ class Handle {
     fork() {
         return this.repo.fork(this.id);
     }
-    follow() {
+    /*
+      follow() {
         const id = this.repo.create();
         this.repo.follow(id, this.id);
         return id;
-    }
+      }
+    */
     merge(other) {
         this.repo.merge(this.id, other.id);
         return this;

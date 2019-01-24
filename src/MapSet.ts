@@ -5,6 +5,18 @@ export default class MapSet<A, B> {
     return this.merge(key, [val]);
   }
 
+  values(): Set<B>[] {
+    return [...this.map.values()];
+  }
+
+  union() : Set<B> {
+    const acc : B[] = []
+    this.map.forEach( (val,key) => {
+      acc.push( ... [ ... val ])
+    })
+    return new Set(acc)
+  }
+
   keys(): A[] {
     return [...this.map.keys()];
   }

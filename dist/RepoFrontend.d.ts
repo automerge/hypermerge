@@ -31,7 +31,6 @@ export declare class RepoFrontend {
     writeFile: <T>(data: Uint8Array, mimeType: string) => string;
     readFile: <T>(url: string, cb: (data: Uint8Array, mimeType: string) => void) => void;
     fork: (url: string) => string;
-    follow: (url: string, target: string) => void;
     watch: <T>(url: string, cb: (val: T, clock?: Clock | undefined, index?: number | undefined) => void) => Handle<T>;
     doc: <T>(url: string, cb?: ((val: T, clock?: Clock | undefined) => void) | undefined) => Promise<T>;
     materialize: <T>(url: string, history: number, cb: (val: T) => void) => void;

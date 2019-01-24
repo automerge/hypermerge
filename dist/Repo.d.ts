@@ -17,7 +17,6 @@ export declare class Repo {
     create: <T>(init?: T) => string;
     open: <T>(id: string) => Handle<T>;
     destroy: (id: string) => void;
-    follow: (id: string, target: string) => void;
     replicate: (swarm: Swarm) => void;
     fork: (id: string) => string;
     watch: <T>(id: string, cb: (val: T, clock?: Clock, index?: number) => void) => Handle<T>;

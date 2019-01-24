@@ -58,6 +58,12 @@ function union(c1, c2) {
     return tmp;
 }
 exports.union = union;
+function addTo(acc, clock) {
+    for (let actor in clock) {
+        acc[actor] = Math.max(acc[actor] || 0, clock[actor]);
+    }
+}
+exports.addTo = addTo;
 function intersection(c1, c2) {
     const actors = new Set([...Object.keys(c1), ...Object.keys(c2)]);
     let tmp = {};

@@ -1,6 +1,8 @@
 export default class MapSet<A, B> {
     private map;
     add(key: A, val: B): boolean;
+    values(): Set<B>[];
+    union(): Set<B>;
     keys(): A[];
     merge(key: A, vals: B[]): boolean;
     delete(key: A): void;

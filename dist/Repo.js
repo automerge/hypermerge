@@ -14,7 +14,7 @@ class Repo {
         this.open = this.front.open;
         this.destroy = this.front.destroy;
         this.meta = this.front.meta;
-        this.follow = this.front.follow;
+        //    this.follow = this.front.follow;
         this.doc = this.front.doc;
         this.fork = this.front.fork;
         this.close = this.front.close;

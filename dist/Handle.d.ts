@@ -10,7 +10,6 @@ export declare class Handle<T> {
     private repo;
     constructor(repo: RepoFrontend);
     fork(): string;
-    follow(): string;
     merge(other: Handle<T>): this;
     push: (item: Doc<T>, clock: Clock) => void;
     pushProgress: (progress: ProgressEvent) => void;

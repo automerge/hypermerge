@@ -31,6 +31,12 @@ class RepoBackend {
         this.actorsDk = new Map();
         this.docs = new Map();
         this.toFrontend = new Queue_1.default("repo:toFrontend");
+        /*
+          follow(id: string, target: string) {
+            this.meta.follow(id, target);
+            this.syncReadyActors(this.meta.actors(id));
+          }
+        */
         this.close = () => {
             this.actors.forEach(actor => actor.close());
             this.actors.clear();
@@ -97,8 +103,7 @@ class RepoBackend {
                             this.syncReadyActors(block.actors);
                         if (block.merge)
                             this.syncReadyActors(Object.keys(block.merge));
-                        if (block.follows)
-                            block.follows.forEach(id => this.open(id));
+                        //          if (block.follows) block.follows.forEach(id => this.open(id))
                     });
                     break;
                 case "ActorSync":
@@ -126,7 +131,7 @@ class RepoBackend {
                 const doc = this.docs.get(docId);
                 if (doc) {
                     doc.ready.push(() => {
-                        const max = this.meta.clock(docId)[actorId] || 0;
+                        const max = this.meta.clockAt(docId, actorId);
                         const min = doc.changes.get(actorId) || 0;
                         const changes = [];
                         let i = min;
@@ -243,10 +248,12 @@ class RepoBackend {
                         this.merge(msg.id, Clock_1.strs2clock(msg.actors));
                         break;
                     }
-                    case "FollowMsg": {
-                        this.follow(msg.id, msg.target);
-                        break;
-                    }
+                    /*
+                            case "FollowMsg": {
+                              this.follow(msg.id, msg.target);
+                              break;
+                            }
+                    */
                     case "OpenMsg": {
                         this.open(msg.id);
                         break;
@@ -279,7 +286,7 @@ class RepoBackend {
         actor.writeFile(data, mimeType);
     }
     readFile(id, cb) {
-        log("readFile", id, this.meta.forDoc(id));
+        //    log("readFile",id, this.meta.forDoc(id))
         if (this.meta.isDoc(id)) {
             throw new Error("trying to open a document like a file");
         }
@@ -331,7 +338,7 @@ class RepoBackend {
     }
     // opening a file fucks it up
     open(docId) {
-        log("open", docId, this.meta.forDoc(docId));
+        //    log("open", docId, this.meta.forDoc(docId));
         if (this.meta.isFile(docId)) {
             throw new Error("trying to open a file like a document");
         }
@@ -346,10 +353,6 @@ class RepoBackend {
     merge(id, clock) {
         this.meta.merge(id, clock);
         this.syncReadyActors(Object.keys(clock));
-    }
-    follow(id, target) {
-        this.meta.follow(id, target);
-        this.syncReadyActors(this.meta.actors(id));
     }
     allReadyActors(docId, cb) {
         const a2p = (id) => new Promise((resolve, reject) => {
@@ -367,7 +370,7 @@ class RepoBackend {
             log(`load document 2 actors=${actors.map((a) => a.id)}`);
             const changes = [];
             actors.forEach(actor => {
-                const max = this.meta.clock(doc.id)[actor.id] || 0;
+                const max = this.meta.clockAt(doc.id, actor.id);
                 const slice = actor.changes.slice(0, max);
                 doc.changes.set(actor.id, slice.length);
                 log(`change actor=${Misc_1.ID(actor.id)} changes=0..${slice.length}`);

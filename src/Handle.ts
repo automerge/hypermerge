@@ -18,11 +18,13 @@ export class Handle<T> {
     return this.repo.fork(this.id);
   }
 
+/*
   follow() {
     const id = this.repo.create();
     this.repo.follow(id, this.id);
     return id;
   }
+*/
 
   merge(other: Handle<T>): this {
     this.repo.merge(this.id, other.id);

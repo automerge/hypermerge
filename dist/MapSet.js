@@ -7,6 +7,16 @@ class MapSet {
     add(key, val) {
         return this.merge(key, [val]);
     }
+    values() {
+        return [...this.map.values()];
+    }
+    union() {
+        const acc = [];
+        this.map.forEach((val, key) => {
+            acc.push(...[...val]);
+        });
+        return new Set(acc);
+    }
     keys() {
         return [...this.map.keys()];
     }
