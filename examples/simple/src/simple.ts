@@ -40,12 +40,12 @@ repoB.watch<MyDoc>(docUrl, state => {
   }
 })
 
-repoA.change<MyDoc>(docUrl, (state:MyDoc) => {
+repoA.change<MyDoc>(docUrl, state => {
   state.numbers.push(5)
   state.foo = "bar"
 })
 
-repoB.change<MyDoc>(docUrl, (state:MyDoc) => {
+repoB.change<MyDoc>(docUrl, state => {
   state.numbers.unshift(1)
   state.bar = "foo"
 })
