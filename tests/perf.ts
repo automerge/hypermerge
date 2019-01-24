@@ -5,7 +5,9 @@ import { expectDocs } from "./misc"
 
 const ram: Function = require("random-access-memory")
 
-test("Create 1000 docs and share one", t => {
+const cycles = 100
+
+test(`Create ${cycles} docs and share one`, t => {
   t.plan(0)
 
   const repoA = new Repo({ storage: ram })
@@ -29,13 +31,13 @@ test("Create 1000 docs and share one", t => {
 
   // connect the repos
 
-  Array.from({ length: 100 }, () => 0).forEach(() => {
+  Array.from({ length: cycles }, () => 0).forEach(() => {
     repoA.create({ test: "a" })
     repoB.create({ test: "b" })
   })
   const url = repoA.create({ a: 1 })
 
-  repoB.change(url, doc => {
+  repoB.change<any>(url, doc => {
     doc.b = 2
   })
 
