@@ -15,6 +15,7 @@ const MapSet_1 = __importDefault(require("./MapSet"));
 const Base58 = __importStar(require("bs58"));
 const hypercore_1 = require("./hypercore");
 const debug_1 = __importDefault(require("debug"));
+const JsonBuffer = __importStar(require("./JsonBuffer"));
 const URL = __importStar(require("url"));
 const log = debug_1.default("repo:metadata");
 const Clock_1 = require("./Clock");
@@ -77,7 +78,7 @@ function cleanMetadataInput(input) {
         actors,
         //    follows,
         merge,
-        deleted
+        deleted,
     };
 }
 exports.cleanMetadataInput = cleanMetadataInput;
@@ -182,7 +183,8 @@ class Metadata {
         // but this would cause the ledger to have potientially massive amounts of redundant data in it
         this.ready = false;
         this.replay = [];
-        this.loadLedger = (input) => {
+        this.loadLedger = (buffers) => {
+            const input = JsonBuffer.parseAllValid(buffers);
             const data = filterMetadataInputs(input); // FIXME
             this.primaryActors = new MapSet_1.default();
             //    this.follows = new MapSet();
@@ -208,11 +210,9 @@ class Metadata {
             }
         };
         this.append = (block) => {
-            this.ledger.append(block);
+            this.ledger.append(JsonBuffer.bufferify(block));
         };
-        this.ledger = hypercore_1.hypercore(storageFn("ledger"), {
-            valueEncoding: "json"
-        });
+        this.ledger = hypercore_1.hypercore(storageFn("ledger"), {});
         this.id = this.ledger.id;
         log("LEDGER READY (1)");
         this.ledger.ready(() => {
@@ -241,7 +241,8 @@ class Metadata {
         //      changedFollow = this.follows.merge(id, block.follows);
         //    }
         if (block.bytes !== undefined && block.mimeType !== undefined) {
-            if (this.files.get(id) !== block.bytes || this.mimeTypes.get(id) !== block.mimeType) {
+            if (this.files.get(id) !== block.bytes ||
+                this.mimeTypes.get(id) !== block.mimeType) {
                 changedFiles = true;
                 this.files.set(id, block.bytes);
                 this.mimeTypes.set(id, block.mimeType);
@@ -255,7 +256,7 @@ class Metadata {
                 this.merges.set(id, newClock);
             }
         }
-        // shit - bug - rethink the whole remote people deleted something 
+        // shit - bug - rethink the whole remote people deleted something
         // i dont care of they deleted it
         if (block.deleted === true) {
             if (this.docs.has(id)) {
@@ -294,20 +295,20 @@ class Metadata {
         return Object.keys(this.clock(id));
     }
     /*
-      private actorsSeen(id: string, acc: string[], seen: Set<string>): string[] {
-        const primaryActors = this.primaryActors.get(id)!;
-        const mergeActors = Object.keys(this.merges.get(id) || {});
-        acc.push(...primaryActors);
-        acc.push(...mergeActors);
-        seen.add(id);
-        this.follows.get(id).forEach(follow => {
-          if (!seen.has(follow)) {
-            this.actorsSeen(follow, acc, seen);
-          }
-        });
-        return acc;
-      }
-    */
+    private actorsSeen(id: string, acc: string[], seen: Set<string>): string[] {
+      const primaryActors = this.primaryActors.get(id)!;
+      const mergeActors = Object.keys(this.merges.get(id) || {});
+      acc.push(...primaryActors);
+      acc.push(...mergeActors);
+      seen.add(id);
+      this.follows.get(id).forEach(follow => {
+        if (!seen.has(follow)) {
+          this.actorsSeen(follow, acc, seen);
+        }
+      });
+      return acc;
+    }
+  */
     clockAt(id, actor) {
         return this.clock(id)[actor] || 0;
     }
@@ -318,7 +319,7 @@ class Metadata {
         const actors = this.primaryActors.get(id);
         const merges = this.merges.get(id);
         if (actors)
-            actors.forEach(actor => clock[actor] = Infinity);
+            actors.forEach(actor => (clock[actor] = Infinity));
         if (merges)
             Clock_1.addTo(clock, merges);
         this._clocks[id] = clock;
@@ -386,7 +387,7 @@ class Metadata {
                 cb({
                     type: "File",
                     bytes,
-                    mimeType
+                    mimeType,
                 });
             }
             else {
@@ -399,7 +400,7 @@ class Metadata {
             id,
             actors: [...this.primaryActors.get(id)],
             //      follows: [...this.follows.get(id)],
-            merge: this.merges.get(id) || {}
+            merge: this.merges.get(id) || {},
         };
     }
     forActor(actor) {
