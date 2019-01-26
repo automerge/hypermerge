@@ -3,6 +3,7 @@ import MapSet from "./MapSet";
 import * as Base58 from "bs58";
 import { hypercore, readFeed, Feed } from "./hypercore";
 import Debug from "debug";
+import * as JsonBuffer from "./JsonBuffer"
 import * as URL from "url"
 const log = Debug("repo:metadata");
 
@@ -194,13 +195,11 @@ export class Metadata {
   private ready: boolean = false;
   private replay: MetadataBlock[] = [];
 
-  private ledger: Feed<any>;
+  private ledger: Feed<Uint8Array>;
   public id: Buffer // for the RepoBackend... used in examples (unwisely!) as a Peer ID
 
   constructor(storageFn: Function) {
-    this.ledger = hypercore(storageFn("ledger"), {
-      valueEncoding: "json"
-    });
+    this.ledger = hypercore(storageFn("ledger"), {});
     this.id = this.ledger.id
     log("LEDGER READY (1)")
     this.ledger.ready(() => {
@@ -209,7 +208,8 @@ export class Metadata {
     });
   }
 
-  private loadLedger = (input: any[]) => {
+  private loadLedger = (buffers: Uint8Array[]) => {
+    const input = JsonBuffer.parseAllValid(buffers)
     const data = filterMetadataInputs(input); // FIXME
     this.primaryActors = new MapSet();
 //    this.follows = new MapSet();
@@ -247,7 +247,7 @@ export class Metadata {
   };
 
   private append = (block: MetadataBlock) => {
-    this.ledger.append(block);
+    this.ledger.append(JsonBuffer.bufferify(block));
   }
 
   private addBlock(idx: number, block: MetadataBlock): boolean {
@@ -283,7 +283,7 @@ export class Metadata {
       }
     }
 
-    // shit - bug - rethink the whole remote people deleted something 
+    // shit - bug - rethink the whole remote people deleted something
     // i dont care of they deleted it
     if (block.deleted === true) {
       if (this.docs.has(id)) {
