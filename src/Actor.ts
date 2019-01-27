@@ -138,12 +138,11 @@ export class Actor {
 
   init = (datas: Uint8Array[]) => {
     log("loaded blocks", ID(this.id), datas.length);
-    datas.map((data, i) => { 
-      if (i === 0) this.handleFeedHead(data) 
+    datas.map((data, i) => {
+      if (i === 0) this.handleFeedHead(data)
       else this.handleBlock(data, i)
     });
     if (datas.length > 0) {
-      this.syncQ.subscribe(f => f());
       this.sync()
     }
     this.repo.join(this.id);
@@ -266,8 +265,8 @@ export class Actor {
       // could ditch .data and re-read blocks here
       log(`Rebuilding file from ${this.data.length} blocks`);
       const file = Buffer.concat(this.data);
-      const bytes = this.fileMetadata!.bytes;
-      const mimeType = this.fileMetadata!.mimeType;
+      const { bytes, mimeType } = this.fileMetadata!
+
       if (file.length !== bytes) {
         throw new Error(
           `File metadata error - file=${file.length} meta=${bytes}`
