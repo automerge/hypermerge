@@ -78,7 +78,7 @@ function cleanMetadataInput(input) {
         actors,
         //    follows,
         merge,
-        deleted,
+        deleted
     };
 }
 exports.cleanMetadataInput = cleanMetadataInput;
@@ -241,8 +241,7 @@ class Metadata {
         //      changedFollow = this.follows.merge(id, block.follows);
         //    }
         if (block.bytes !== undefined && block.mimeType !== undefined) {
-            if (this.files.get(id) !== block.bytes ||
-                this.mimeTypes.get(id) !== block.mimeType) {
+            if (this.files.get(id) !== block.bytes || this.mimeTypes.get(id) !== block.mimeType) {
                 changedFiles = true;
                 this.files.set(id, block.bytes);
                 this.mimeTypes.set(id, block.mimeType);
@@ -295,20 +294,20 @@ class Metadata {
         return Object.keys(this.clock(id));
     }
     /*
-    private actorsSeen(id: string, acc: string[], seen: Set<string>): string[] {
-      const primaryActors = this.primaryActors.get(id)!;
-      const mergeActors = Object.keys(this.merges.get(id) || {});
-      acc.push(...primaryActors);
-      acc.push(...mergeActors);
-      seen.add(id);
-      this.follows.get(id).forEach(follow => {
-        if (!seen.has(follow)) {
-          this.actorsSeen(follow, acc, seen);
-        }
-      });
-      return acc;
-    }
-  */
+      private actorsSeen(id: string, acc: string[], seen: Set<string>): string[] {
+        const primaryActors = this.primaryActors.get(id)!;
+        const mergeActors = Object.keys(this.merges.get(id) || {});
+        acc.push(...primaryActors);
+        acc.push(...mergeActors);
+        seen.add(id);
+        this.follows.get(id).forEach(follow => {
+          if (!seen.has(follow)) {
+            this.actorsSeen(follow, acc, seen);
+          }
+        });
+        return acc;
+      }
+    */
     clockAt(id, actor) {
         return this.clock(id)[actor] || 0;
     }
@@ -319,7 +318,7 @@ class Metadata {
         const actors = this.primaryActors.get(id);
         const merges = this.merges.get(id);
         if (actors)
-            actors.forEach(actor => (clock[actor] = Infinity));
+            actors.forEach(actor => clock[actor] = Infinity);
         if (merges)
             Clock_1.addTo(clock, merges);
         this._clocks[id] = clock;
@@ -387,7 +386,7 @@ class Metadata {
                 cb({
                     type: "File",
                     bytes,
-                    mimeType,
+                    mimeType
                 });
             }
             else {
@@ -400,7 +399,7 @@ class Metadata {
             id,
             actors: [...this.primaryActors.get(id)],
             //      follows: [...this.follows.get(id)],
-            merge: this.merges.get(id) || {},
+            merge: this.merges.get(id) || {}
         };
     }
     forActor(actor) {
