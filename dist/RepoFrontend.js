@@ -185,7 +185,6 @@ class RepoFrontend {
             else {
                 switch (msg.type) {
                     case "ReadFileReply": {
-                        console.log("ReadFileReply", this.readFiles.get(msg.id).size);
                         const cbs = this.readFiles.delete(msg.id);
                         cbs.forEach(cb => cb(this.file, msg.mimeType));
                         delete this.file;

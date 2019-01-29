@@ -98,7 +98,6 @@ class Actor {
             this.notify({ type: "ActorSync", actor: this });
         };
         this.handleDownload = (index, data) => {
-            console.log("Handle download", data.length, index);
             if (this.type === "Unknown") {
                 if (index === 0) {
                     this.handleFeedHead(data);
@@ -200,7 +199,6 @@ class Actor {
             cb(this.fileMetadata);
         }
         else {
-            console.log("getting file HEAD with wait...");
             this.feed.get(0, { wait: true }, (err, data) => {
                 if (err)
                     throw new Error(`error reading feed head ${this.id}`);
@@ -218,7 +216,6 @@ class Actor {
             cb(file);
         }
         else {
-            console.log("getting file BODY with wait...");
             if (blocks === 1) {
                 this.feed.get(1, { wait: true }, (err, file) => {
                     if (err)
@@ -239,7 +236,7 @@ class Actor {
         }
     }
     readFile(cb) {
-        console.log("reading file...");
+        log("reading file...");
         this.fileHead((head) => {
             const { bytes, mimeType } = head;
             this.fileBody(head, (body) => {

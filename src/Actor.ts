@@ -195,7 +195,6 @@ export class Actor {
   };
 
   handleDownload = (index: number, data: Uint8Array) => {
-    console.log("Handle download",data.length, index)
     if (this.type === "Unknown") {
       if (index === 0) {
         this.handleFeedHead(data);
@@ -265,7 +264,6 @@ export class Actor {
     if (this.fileMetadata) {
       cb(this.fileMetadata)
     } else {
-      console.log("getting file HEAD with wait...")
       this.feed.get(0, { wait: true }, (err, data) => {
         if (err) throw new Error(`error reading feed head ${this.id}`)
         const head : any = JsonBuffer.parse(data);
@@ -282,7 +280,6 @@ export class Actor {
     if (file.length === head.bytes) {
       cb(file)
     } else {
-      console.log("getting file BODY with wait...")
       if (blocks === 1) {
         this.feed.get(1, { wait: true }, (err, file) => {
           if (err) throw new Error(`error reading feed body ${this.id}`)
@@ -301,7 +298,7 @@ export class Actor {
   }
 
   readFile(cb: (data: Uint8Array, mimeType: string) => void) {
-    console.log("reading file...")
+    log("reading file...")
     this.fileHead( (head) => {
       const { bytes, mimeType } = head
       this.fileBody(head, (body) => {

@@ -370,7 +370,7 @@ class Metadata {
         const duration = Date.now() - start;
         const total = (_benchTotal[msg] || 0) + duration;
         _benchTotal[msg] = total;
-        console.log(`metadata task=${msg} time=${duration}ms total=${total}ms`);
+        log(`metadata task=${msg} time=${duration}ms total=${total}ms`);
     }
     publicMetadata(id, cb) {
         this.readyQ.push(() => {
