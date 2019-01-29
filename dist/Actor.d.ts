@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import { RepoBackend, KeyBuffer } from "./RepoBackend";
 import { Feed, Peer } from "./hypercore";
 import { Change } from "automerge/backend";
@@ -11,6 +10,7 @@ interface FeedHeadMetadata {
     type: "File";
     bytes: number;
     mimeType: string;
+    blockSize: number;
 }
 interface NewMetadata {
     type: "NewMetadata";
@@ -70,7 +70,9 @@ export declare class Actor {
     handleBlock: (data: Uint8Array, idx: number) => void;
     push: (cb: (actor: Actor) => void) => void;
     writeFile(data: Uint8Array, mimeType: string): void;
-    readFile(cb: (data: Buffer, mimeType: string) => void): void;
+    fileHead(cb: (head: FeedHeadMetadata) => void): void;
+    fileBody(head: FeedHeadMetadata, cb: (body: Uint8Array) => void): void;
+    readFile(cb: (data: Uint8Array, mimeType: string) => void): void;
     append(block: Uint8Array, cb?: () => void): void;
     writeChange(change: Change): void;
 }

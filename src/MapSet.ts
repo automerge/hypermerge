@@ -30,8 +30,10 @@ export default class MapSet<A, B> {
     return change;
   }
 
-  delete(key: A) {
+  delete(key: A) : Set<B> {
+    const old = this.get(key)
     this.map.delete(key);
+    return old;
   }
 
   remove(key: A, val: B) {

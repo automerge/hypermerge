@@ -32,17 +32,16 @@ const discovery = new Client({ url, id: repo.id, stream: repo.stream, })
 
 repo.replicate(discovery);
 
-repo.meta(id,(meta) => {
-  console.log(meta)
-  if (meta && meta.type === "File") {
+if (id.startsWith("hyperfile:")) {
+  repo.readFile(id, (file,mimeType) => {
+    console.log("FILE",file.length,mimeType)
     repo.readFile(id, (file,mimeType) => {
-      console.log("FILE",file.length,mimeType)
+      console.log("FILE 222",file.length,mimeType)
     })
-  } else {
-    repo.watch(id, (val,c) => {
-      console.log("CLOCK",c)
-      console.log(val)
-    })
-  }
-})
-
+  })
+} else {
+  repo.watch(id, (val,c) => {
+    console.log("CLOCK",c)
+    console.log(val)
+  })
+}

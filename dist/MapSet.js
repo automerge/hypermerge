@@ -29,7 +29,9 @@ class MapSet {
         return change;
     }
     delete(key) {
+        const old = this.get(key);
         this.map.delete(key);
+        return old;
     }
     remove(key, val) {
         this.get(key).delete(val);

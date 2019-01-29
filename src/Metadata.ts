@@ -247,7 +247,9 @@ export class Metadata {
   };
 
   private append = (block: MetadataBlock) => {
-    this.ledger.append(JsonBuffer.bufferify(block));
+    this.ledger.append(JsonBuffer.bufferify(block), (err) => {
+      if (err) console.log("APPEND ERROR",err)
+    });
   }
 
   private addBlock(idx: number, block: MetadataBlock): boolean {

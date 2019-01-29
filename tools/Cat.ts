@@ -21,7 +21,7 @@ setTimeout(() => {}, 50000)
 const repo = new Repo({ path, storage: raf })
 
 repo.meta(id,(meta) => {
-  console.log(meta)
+  console.log("META",meta)
   if (!meta) {
     console.log("No such doc or file in repo")
     process.exit()
@@ -33,7 +33,7 @@ repo.meta(id,(meta) => {
     })
   } else if (meta.type === "File") {
     repo.readFile(id, (data,mimeType) => {
-      console.log("hyperfile://" + id)
+      console.log(id)
       console.log("File Size: ", data.length)
       console.log("File Type: ", mimeType)
       process.exit()

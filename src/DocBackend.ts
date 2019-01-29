@@ -86,6 +86,8 @@ export class DocBackend {
 
   init = (changes: Change[], actorId?: string) => {
     this.bench("init", () => {
+      //console.log("CHANGES MAX",changes[changes.length - 1])
+      //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
       const [back, patch] = Backend.applyChanges(Backend.init(), changes);
       this.actorId = actorId;
       if (this.wantsActor && !actorId) {

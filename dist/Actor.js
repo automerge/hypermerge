@@ -98,6 +98,7 @@ class Actor {
             this.notify({ type: "ActorSync", actor: this });
         };
         this.handleDownload = (index, data) => {
+            console.log("Handle download", data.length, index);
             if (this.type === "Unknown") {
                 if (index === 0) {
                     this.handleFeedHead(data);
@@ -176,9 +177,9 @@ class Actor {
             log("writing file", data.length, "bytes", mimeType);
             if (this.data.length > 0 || this.changes.length > 0)
                 throw new Error("writeFile called on existing feed");
-            this.fileMetadata = { type: "File", bytes: data.length, mimeType };
-            this.append(Buffer.from(JSON.stringify(this.fileMetadata)));
             const blockSize = 1 * MB;
+            this.fileMetadata = { type: "File", bytes: data.length, mimeType, blockSize };
+            this.append(Buffer.from(JSON.stringify(this.fileMetadata)));
             for (let i = 0; i < data.length; i += blockSize) {
                 const block = data.slice(i, i + blockSize);
                 this.data.push(block);
@@ -194,17 +195,56 @@ class Actor {
             }
         });
     }
-    readFile(cb) {
-        log("reading file...");
-        this.syncQ.push(() => {
-            // could ditch .data and re-read blocks here
-            log(`Rebuilding file from ${this.data.length} blocks`);
-            const file = Buffer.concat(this.data);
-            const { bytes, mimeType } = this.fileMetadata;
-            if (file.length !== bytes) {
-                throw new Error(`File metadata error - file=${file.length} meta=${bytes}`);
+    fileHead(cb) {
+        if (this.fileMetadata) {
+            cb(this.fileMetadata);
+        }
+        else {
+            console.log("getting file HEAD with wait...");
+            this.feed.get(0, { wait: true }, (err, data) => {
+                if (err)
+                    throw new Error(`error reading feed head ${this.id}`);
+                const head = JsonBuffer.parse(data);
+                this.fileMetadata = head;
+                cb(head);
+            });
+        }
+    }
+    fileBody(head, cb) {
+        const blockSize = head.blockSize || (1 * MB); // old feeds dont have this
+        const blocks = Math.ceil(head.bytes / blockSize);
+        const file = Buffer.concat(this.data);
+        if (file.length === head.bytes) {
+            cb(file);
+        }
+        else {
+            console.log("getting file BODY with wait...");
+            if (blocks === 1) {
+                this.feed.get(1, { wait: true }, (err, file) => {
+                    if (err)
+                        throw new Error(`error reading feed body ${this.id}`);
+                    this.data = [file];
+                    cb(file);
+                });
             }
-            cb(file, mimeType);
+            else {
+                this.feed.getBatch(1, blocks, { wait: true }, (err, data) => {
+                    if (err)
+                        throw new Error(`error reading feed body ${this.id}`);
+                    this.data = data;
+                    const file = Buffer.concat(this.data);
+                    cb(file);
+                });
+            }
+        }
+    }
+    readFile(cb) {
+        console.log("reading file...");
+        this.fileHead((head) => {
+            const { bytes, mimeType } = head;
+            this.fileBody(head, (body) => {
+                cb(body, head.mimeType);
+            });
         });
     }
     append(block, cb) {

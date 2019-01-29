@@ -210,7 +210,10 @@ class Metadata {
             }
         };
         this.append = (block) => {
-            this.ledger.append(JsonBuffer.bufferify(block));
+            this.ledger.append(JsonBuffer.bufferify(block), (err) => {
+                if (err)
+                    console.log("APPEND ERROR", err);
+            });
         };
         this.ledger = hypercore_1.hypercore(storageFn("ledger"), {});
         this.id = this.ledger.id;

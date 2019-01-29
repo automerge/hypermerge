@@ -35,6 +35,11 @@ repo.readFile(url,(data, mimeType) => {
   console.log(url)
   console.log("File Size: ", data.length)
   console.log("File Type: ", mimeType)
-  process.exit()
+  //repo.close()
+  setTimeout(() => {
+    process.exit()
+    // I need this to make sure the ledger finishes its append
+    // get repo.close() to work and flush correctly?
+  },1000)
 })
 

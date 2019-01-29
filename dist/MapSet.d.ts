@@ -5,7 +5,7 @@ export default class MapSet<A, B> {
     union(): Set<B>;
     keys(): A[];
     merge(key: A, vals: B[]): boolean;
-    delete(key: A): void;
+    delete(key: A): Set<B>;
     remove(key: A, val: B): void;
     keysWith(val: B): Set<A>;
     get(key: A): Set<B>;
