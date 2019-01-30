@@ -13,18 +13,42 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Backend = __importStar(require("automerge/backend"));
 const Queue_1 = __importDefault(require("./Queue"));
 const debug_1 = __importDefault(require("debug"));
+const Clock_1 = require("./Clock");
 const log = debug_1.default("repo:doc:back");
 function _id(id) {
     return id.slice(0, 4);
 }
+//export interface Clock {
+//  [actorId: string]: number;
+//}
 class DocBackend {
     constructor(core, id, back) {
         this.clock = {};
         this.changes = new Map();
         this.ready = new Queue_1.default("backend:ready");
+        this.remoteClock = undefined;
+        this.synced = false;
         this.localChangeQ = new Queue_1.default("backend:localChangeQ");
         this.remoteChangesQ = new Queue_1.default("backend:remoteChangesQ");
         this.wantsActor = false;
+        this.testForSync = () => {
+            if (this.remoteClock) {
+                const test = Clock_1.cmp(this.clock, this.remoteClock);
+                this.synced = (test === "GT" || test === "EQ");
+                //      console.log("TARGET CLOCK", this.id, this.synced)
+                //      console.log("this.clock",this.clock)
+                //      console.log("this.remoteClock",this.remoteClock)
+                //    } else {
+                //      console.log("TARGET CLOCK NOT SET", this.id, this.synced)
+            }
+        };
+        this.target = (clock) => {
+            //    console.log("Target", clock)
+            if (this.synced)
+                return;
+            this.remoteClock = Clock_1.union(clock, this.remoteClock || {});
+            this.testForSync();
+        };
         this.applyRemoteChanges = (changes) => {
             this.remoteChangesQ.push(changes);
         };
@@ -63,6 +87,8 @@ class DocBackend {
                 }
                 this.back = back;
                 this.updateClock(changes);
+                this.synced = changes.length > 0; // override updateClock
+                //console.log("INIT SYNCED", this.synced, changes.length)
                 this.ready.subscribe(f => f());
                 this.subscribeToLocalChanges();
                 this.subscribeToRemoteChanges();
@@ -70,6 +96,7 @@ class DocBackend {
                 this.repo.toFrontend.push({
                     type: "ReadyMsg",
                     id: this.id,
+                    synced: this.synced,
                     actorId: this.actorId,
                     patch,
                     history
@@ -82,12 +109,14 @@ class DocBackend {
             this.back = back;
             this.actorId = id;
             this.ready.subscribe(f => f());
+            this.synced = true;
             this.subscribeToRemoteChanges();
             this.subscribeToLocalChanges();
             const history = this.back.getIn(["opSet", "history"]).size;
             this.repo.toFrontend.push({
                 type: "ReadyMsg",
                 id: this.id,
+                synced: this.synced,
                 actorId: id,
                 history
             });
@@ -99,6 +128,8 @@ class DocBackend {
             const oldSeq = this.clock[actor] || 0;
             this.clock[actor] = Math.max(oldSeq, change.seq);
         });
+        if (!this.synced)
+            this.testForSync();
     }
     subscribeToRemoteChanges() {
         this.remoteChangesQ.subscribe(changes => {
@@ -110,6 +141,7 @@ class DocBackend {
                 this.repo.toFrontend.push({
                     type: "PatchMsg",
                     id: this.id,
+                    synced: this.synced,
                     patch,
                     history
                 });
@@ -126,6 +158,7 @@ class DocBackend {
                 this.repo.toFrontend.push({
                     type: "PatchMsg",
                     id: this.id,
+                    synced: this.synced,
                     patch,
                     history
                 });

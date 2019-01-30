@@ -22,7 +22,7 @@ interface Config {
 
 export class DocFrontend<T> {
   private docId: string;
-  ready: boolean = false;
+  ready: boolean = false; // do I need ready? -- covered my state !== pending?
   actorId?: string;
   history: number = 0;
   //  private toBackend: Queue<ToBackendRepoMsg>
@@ -48,6 +48,7 @@ export class DocFrontend<T> {
       this.docId = docId;
       this.actorId = actorId;
       this.ready = true
+      this.mode = "write";
       this.enableWrites();
     } else {
       this.front = Frontend.init({ deferActorId: true }) as Doc<T>;
@@ -107,7 +108,7 @@ export class DocFrontend<T> {
     if (this.mode === "read") this.enableWrites(); // has to be after the queue
   };
 
-  init = (actorId?: string, patch?: Patch, history?: number) => {
+  init = (synced: boolean, actorId?: string, patch?: Patch, history?: number) => {
     log(
       `init docid=${this.docId} actorId=${actorId} patch=${!!patch} history=${history} mode=${
         this.mode
@@ -118,11 +119,10 @@ export class DocFrontend<T> {
 
     if (actorId) this.setActorId(actorId); // must set before patch
 
-    if (patch) this.patch(patch, history!); // first patch!
+    if (patch) this.patch(patch, synced, history!); // first patch!
   };
 
   private enableWrites() {
-    this.mode = "write";
     this.changeQ.subscribe(fn => {
       const [doc, request] = Frontend.change(this.front, fn);
       this.front = doc;
@@ -153,15 +153,18 @@ export class DocFrontend<T> {
     this.clock = union(this.clock, patch.deps);
   }
 
-  patch = (patch: Patch, history: number) => {
+  patch = (patch: Patch, synced: boolean, history: number) => {
     this.bench("patch", () => {
       this.history = history;
       this.front = Frontend.applyPatch(this.front, patch);
       this.updateClockPatch(patch);
-      if (patch.diffs.length > 0) {
+      if (patch.diffs.length > 0 && synced) {
         if (this.mode === "pending") {
           this.mode = "read";
-          if (this.actorId) this.enableWrites()
+          if (this.actorId) {
+            this.mode = "write";
+            this.enableWrites()
+          }
           this.ready = true
         }
         this.newState();

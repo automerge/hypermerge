@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import Queue from "./Queue";
 import { Clock } from "./Clock";
+export declare function validateMetadataMsg2(input: Uint8Array): RemoteMetadata;
 export declare function validateMetadataMsg(input: Uint8Array): MetadataBlock[];
 export declare function cleanMetadataInput(input: any): MetadataBlock | undefined;
 export declare function filterMetadataInputs(input: any[]): MetadataBlock[];
@@ -21,6 +22,13 @@ export declare function isValidID(id: any): boolean;
 export declare function validateURL(urlString: string): UrlInfo;
 export declare function validateFileURL(urlString: string): string;
 export declare function validateDocURL(urlString: string): string;
+export interface RemoteMetadata {
+    type: "RemoteMetadata";
+    clocks: {
+        [id: string]: Clock;
+    };
+    blocks: MetadataBlock[];
+}
 export declare class Metadata {
     docs: Set<string>;
     private primaryActors;

@@ -11,6 +11,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const hypercore_1 = require("./hypercore");
+const Metadata_1 = require("./Metadata");
 const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
@@ -21,6 +22,7 @@ const log = debug_1.default("repo:actor");
 const KB = 1024;
 const MB = 1024 * KB;
 exports.EXT = "hypermerge.2";
+exports.EXT2 = "hypermerge.3";
 class Actor {
     constructor(config) {
         this.changes = [];
@@ -33,8 +35,11 @@ class Actor {
             const meta = this.meta.forActor(this.id);
             this.meta.docsWith(this.id).forEach(docId => {
                 const actor = this.repo.actor(docId);
-                if (actor)
-                    actor.message(meta);
+                const clocks = this.allClocks();
+                if (actor) {
+                    actor.message2(meta, clocks);
+                    //        actor.message(meta);
+                }
             });
             feed.on("peer-remove", this.peerRemove);
             feed.on("peer-add", this.peerAdd);
@@ -87,9 +92,18 @@ class Actor {
                 if (ext === exports.EXT) {
                     this.notify({ type: "NewMetadata", input });
                 }
+                if (ext === exports.EXT2) {
+                    //        const clocks = JSON.parse(input.toString()); // FIXME - validate
+                    const msg = Metadata_1.validateMetadataMsg2(input);
+                    //        this.notify({ type: "RemoteMetadata", clocks });
+                    this.notify(msg);
+                }
             });
             this.peers.add(peer);
-            this.message(this.meta.forActor(this.id), peer);
+            const metadata = this.meta.forActor(this.id);
+            const clocks = this.allClocks();
+            this.message2(metadata, clocks, peer);
+            //    this.message(metadata, peer);
             this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
         };
         this.sync = () => {
@@ -151,10 +165,19 @@ class Actor {
         this.syncQ = new Queue_1.default("actor:sync-" + id.slice(0, 4));
         this.feed.ready(this.feedReady);
     }
-    message(message, target) {
+    /*
+      message(message: any, target?: Peer) {
         const peers = target ? [target] : [...this.peers];
         const payload = Buffer.from(JSON.stringify(message));
-        peers.forEach(peer => peer.stream.extension(exports.EXT, payload));
+        peers.forEach(peer => peer.stream.extension(EXT, payload));
+      }
+    */
+    message2(blocks, clocks, target) {
+        const peers = target ? [target] : [...this.peers];
+        const message = { type: "RemoteMetadata", clocks, blocks };
+        const payload = Buffer.from(JSON.stringify(message));
+        //    target.stream.extension(EXT2, payload)
+        peers.forEach(peer => peer.stream.extension(exports.EXT2, payload));
     }
     handleFeedHead(data) {
         const head = JsonBuffer.parse(data);
@@ -169,6 +192,16 @@ class Actor {
             this.pending.map(this.handleBlock);
             this.pending = [];
         }
+    }
+    allClocks() {
+        const clocks = {};
+        this.meta.docsWith(this.id).forEach(id => {
+            const doc = this.repo.docs.get(id);
+            if (doc) {
+                clocks[id] = doc.clock;
+            }
+        });
+        return clocks;
     }
     writeFile(data, mimeType) {
         log("writing file");

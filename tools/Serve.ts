@@ -22,7 +22,8 @@ if (_path && !fs.existsSync(_path + "/ledger")) {
 }
 */
 
-const storage = _path ? raf : ram
+//const storage = _path ? raf : ram
+const storage = raf
 const repo = new Repo({ path, storage })
 
 const url = "wss://discovery-cloud.herokuapp.com" 
@@ -32,13 +33,17 @@ const discovery = new Client({ url, id: repo.id, stream: repo.stream, })
 
 repo.replicate(discovery);
 
-if (id.startsWith("hyperfile:")) {
-  repo.readFile(id, (file,mimeType) => {
-    console.log("FILE",file.length,mimeType)
-  })
-} else {
-  repo.watch(id, (val,c) => {
-    console.log("CLOCK",c)
-//    console.log(val.length)
-  })
-}
+repo.meta(id,(meta) => {
+  console.log("META", meta)
+  if (meta && meta.type === "File") {
+    repo.readFile(id, (file,mimeType) => {
+      console.log("FILE",file.length,mimeType)
+    })
+  } else {
+    repo.watch(id, (val,c) => {
+      console.log("CLOCK",c)
+      console.log(val)
+    })
+  }
+})
+

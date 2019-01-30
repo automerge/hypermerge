@@ -13,6 +13,8 @@ effort has been made with hypermerge itself to deal with security and privacy
 concerns.  Due to the secure nature of the tools its built upon a properly
 audited and secure version of this library would be possible in the future.
 
+## How it works
+
 ## Concepts
 
 The base object you make with hypermerge is a Repo.  A repo is responsible for

@@ -3,6 +3,7 @@ import { Change, BackDoc } from "automerge/backend";
 import Queue from "./Queue";
 import { RepoBackend } from "./RepoBackend";
 import Debug from "debug";
+import { Clock, cmp, union } from "./Clock";
 
 const log = Debug("repo:doc:back");
 
@@ -10,9 +11,9 @@ function _id(id: string) : string {
   return id.slice(0,4)
 }
 
-export interface Clock {
-  [actorId: string]: number;
-}
+//export interface Clock {
+//  [actorId: string]: number;
+//}
 
 export class DocBackend {
   id: string;
@@ -20,8 +21,10 @@ export class DocBackend {
   clock: Clock = {};
   back?: BackDoc; // can we make this private?
   changes: Map<string, number> = new Map()
-  private repo: RepoBackend;
   ready = new Queue<Function>("backend:ready");
+  private repo: RepoBackend;
+  private remoteClock?: Clock = undefined;
+  private synced : boolean = false
   private localChangeQ = new Queue<Change>("backend:localChangeQ");
   private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ");
   private wantsActor: boolean = false;
@@ -34,16 +37,37 @@ export class DocBackend {
       this.back = back;
       this.actorId = id;
       this.ready.subscribe(f => f());
+      this.synced = true
       this.subscribeToRemoteChanges();
       this.subscribeToLocalChanges();
       const history = (this.back as any).getIn(["opSet", "history"]).size;
       this.repo.toFrontend.push({
         type: "ReadyMsg",
         id: this.id,
+        synced: this.synced,
         actorId: id,
         history
       });
     }
+  }
+
+  testForSync = () : void => {
+    if (this.remoteClock) {
+      const test = cmp(this.clock, this.remoteClock)
+      this.synced = (test === "GT" || test === "EQ")
+//      console.log("TARGET CLOCK", this.id, this.synced)
+//      console.log("this.clock",this.clock)
+//      console.log("this.remoteClock",this.remoteClock)
+//    } else {
+//      console.log("TARGET CLOCK NOT SET", this.id, this.synced)
+    }
+  }
+
+  target = (clock: Clock): void => {
+//    console.log("Target", clock)
+    if (this.synced) return
+    this.remoteClock = union(clock, this.remoteClock || {})
+    this.testForSync()
   }
 
   applyRemoteChanges = (changes: Change[]): void => {
@@ -82,6 +106,7 @@ export class DocBackend {
       const oldSeq = this.clock[actor] || 0;
       this.clock[actor] = Math.max(oldSeq, change.seq);
     });
+    if (!this.synced) this.testForSync();
   }
 
   init = (changes: Change[], actorId?: string) => {
@@ -95,6 +120,8 @@ export class DocBackend {
       }
       this.back = back;
       this.updateClock(changes);
+      this.synced = changes.length > 0 // override updateClock
+      //console.log("INIT SYNCED", this.synced, changes.length)
       this.ready.subscribe(f => f());
       this.subscribeToLocalChanges();
       this.subscribeToRemoteChanges();
@@ -102,6 +129,7 @@ export class DocBackend {
       this.repo.toFrontend.push({
         type: "ReadyMsg",
         id: this.id,
+        synced: this.synced,
         actorId: this.actorId,
         patch,
         history
@@ -119,6 +147,7 @@ export class DocBackend {
         this.repo.toFrontend.push({
           type: "PatchMsg",
           id: this.id,
+          synced: this.synced,
           patch,
           history
         });
@@ -136,6 +165,7 @@ export class DocBackend {
         this.repo.toFrontend.push({
           type: "PatchMsg",
           id: this.id,
+          synced: this.synced,
           patch,
           history
         });

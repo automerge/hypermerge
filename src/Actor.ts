@@ -1,8 +1,9 @@
 import { RepoBackend, KeyBuffer } from "./RepoBackend";
 import { readFeed, hypercore, Feed, Peer, discoveryKey } from "./hypercore";
 import { Change } from "automerge/backend";
-import { Metadata } from "./Metadata";
+import { Metadata, MetadataBlock, RemoteMetadata,validateMetadataMsg2 } from "./Metadata";
 import { ID } from "./Misc";
+import { Clock } from "./Clock";
 import Queue from "./Queue";
 import * as JsonBuffer from "./JsonBuffer";
 import * as Base58 from "bs58";
@@ -15,7 +16,7 @@ const log = Debug("repo:actor");
 const KB = 1024;
 const MB = 1024 * KB;
 
-export type ActorMsg = NewMetadata | ActorSync | PeerUpdate | Download;
+export type ActorMsg = RemoteMetadata | NewMetadata | ActorSync | PeerUpdate | Download;
 export type FeedHead = FeedHeadMetadata | Change;
 
 export type FeedType = "Unknown" | "Automerge" | "File";
@@ -31,6 +32,14 @@ interface NewMetadata {
   type: "NewMetadata";
   input: Uint8Array;
 }
+
+/*
+interface RemoteMetadata {
+  type: "RemoteMetadata";
+  clocks: { [id:string] : Clock };
+  blocks: MetadataBlock[];
+}
+*/
 
 interface ActorSync {
   type: "ActorSync";
@@ -52,6 +61,7 @@ interface Download {
 }
 
 export const EXT = "hypermerge.2";
+export const EXT2 = "hypermerge.3";
 
 interface ActorConfig {
   keys: KeyBuffer;
@@ -96,10 +106,20 @@ export class Actor {
     this.feed.ready(this.feedReady);
   }
 
+/*
   message(message: any, target?: Peer) {
     const peers = target ? [target] : [...this.peers];
     const payload = Buffer.from(JSON.stringify(message));
     peers.forEach(peer => peer.stream.extension(EXT, payload));
+  }
+*/
+
+  message2(blocks: MetadataBlock[], clocks: { [id:string]: Clock }, target?: Peer) {
+    const peers = target ? [target] : [...this.peers];
+    const message = { type: "RemoteMetadata", clocks, blocks }
+    const payload = Buffer.from(JSON.stringify(message));
+//    target.stream.extension(EXT2, payload)
+    peers.forEach(peer => peer.stream.extension(EXT2, payload));
   }
 
   feedReady = () => {
@@ -110,7 +130,11 @@ export class Actor {
     const meta = this.meta.forActor(this.id);
     this.meta.docsWith(this.id).forEach(docId => {
       const actor = this.repo.actor(docId);
-      if (actor) actor.message(meta);
+      const clocks = this.allClocks()
+      if (actor) {
+        actor.message2(meta, clocks);
+//        actor.message(meta);
+      }
     })
 
     feed.on("peer-remove", this.peerRemove);
@@ -182,11 +206,31 @@ export class Actor {
       if (ext === EXT) {
         this.notify({ type: "NewMetadata", input });
       }
+      if (ext === EXT2) {
+//        const clocks = JSON.parse(input.toString()); // FIXME - validate
+        const msg = validateMetadataMsg2(input)
+//        this.notify({ type: "RemoteMetadata", clocks });
+        this.notify(msg)
+      }
     });
     this.peers.add(peer);
-    this.message(this.meta.forActor(this.id), peer);
+    const metadata = this.meta.forActor(this.id)
+    const clocks = this.allClocks()
+    this.message2(metadata, clocks, peer);
+//    this.message(metadata, peer);
     this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
   };
+
+  allClocks() : { [id: string] : Clock } {
+    const clocks : { [id: string] : Clock } = {}
+    this.meta.docsWith(this.id).forEach(id => {
+      const doc = this.repo.docs.get(id)
+      if (doc) {
+        clocks[id] = doc.clock
+      }
+    })
+    return clocks
+  }
 
   sync = () => {
     log("sync feed", ID(this.id));

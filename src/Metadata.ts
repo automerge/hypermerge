@@ -9,6 +9,25 @@ const log = Debug("repo:metadata");
 
 import { Clock, equivalent, addTo, union, intersection } from "./Clock";
 
+export function validateMetadataMsg2(input: Uint8Array): RemoteMetadata {
+  const result : RemoteMetadata = { type: "RemoteMetadata", clocks: {}, blocks: [] }
+  try {
+    const message : any = JSON.parse(input.toString());
+    if (message instanceof Object && message.blocks instanceof Array && message.clocks instanceof Object) {
+      result.blocks = filterMetadataInputs(message.blocks);
+      result.clocks = message.clocks
+      return result
+    } else {
+      console.log("WARNING: Metadata Msg is not a well formed object", message);
+      return result;
+    }
+  } catch (e) {
+    console.log(input.toString())
+    console.log("WARNING: Metadata Msg is invalid JSON", e);
+    return result;
+  }
+}
+
 export function validateMetadataMsg(input: Uint8Array): MetadataBlock[] {
   try {
     const result = JSON.parse(input.toString());
@@ -167,6 +186,12 @@ export function validateDocURL(urlString: string) : string {
 }
 
 var _benchTotal : { [type:string]:number } =  {}
+
+export interface RemoteMetadata {
+  type: "RemoteMetadata";
+  clocks: { [id:string] : Clock };
+  blocks: MetadataBlock[];
+}
 
 export class Metadata {
   docs: Set<string> = new Set();

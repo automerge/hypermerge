@@ -1,6 +1,6 @@
 import Queue from "./Queue";
 import { Metadata, validateMetadataMsg } from "./Metadata";
-import { Actor, ActorMsg, EXT } from "./Actor";
+import { Actor, ActorMsg, EXT, EXT2 } from "./Actor";
 import { strs2clock, clockDebug } from "./Clock";
 import * as Base58 from "bs58";
 import * as crypto from "hypercore/lib/crypto";
@@ -264,15 +264,36 @@ export class RepoBackend {
 
   private actorNotify = (msg: ActorMsg) => {
     switch (msg.type) {
-      case "NewMetadata":
-        const blocks = validateMetadataMsg(msg.input);
-        log("NewMetadata", blocks)
-        this.meta.addBlocks(blocks);
-        blocks.map(block => {
+      case "RemoteMetadata":
+        for (let id in msg.clocks) {
+          const clock = msg.clocks[id]
+          const doc = this.docs.get(id)
+          if (clock && doc) {
+            doc.target(clock)
+          }
+        }
+        const _blocks = msg.blocks;
+        this.meta.addBlocks(_blocks);
+        _blocks.map(block => {
           if (block.actors) this.syncReadyActors(block.actors)
           if (block.merge) this.syncReadyActors(Object.keys(block.merge))
 //          if (block.follows) block.follows.forEach(id => this.open(id))
         });
+        break
+      case "NewMetadata":
+        console.log("Legacy Metadata message received - better upgrade")
+/*
+        const blocks = validateMetadataMsg(msg.input);
+        log("NewMetadata", blocks)
+        this.meta.addBlocks(blocks);
+        blocks.map(block => {
+          const doc = this.docs.get(block.id)
+          if (doc) doc.target({})
+          if (block.actors) this.syncReadyActors(block.actors)
+          if (block.merge) this.syncReadyActors(Object.keys(block.merge))
+//          if (block.follows) block.follows.forEach(id => this.open(id))
+        });
+*/
         break;
       case "ActorSync":
         log("ActorSync", msg.actor.id)
@@ -336,7 +357,7 @@ export class RepoBackend {
       id: this.id,
       encrypt: false,
       timeout: 10000,
-      extensions: [EXT]
+      extensions: [EXT, EXT2]
     });
 
     let add = (dk: Buffer) => {

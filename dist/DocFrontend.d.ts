@@ -26,11 +26,11 @@ export declare class DocFrontend<T> {
     change: (fn: ChangeFn<T>) => void;
     release: () => void;
     setActorId: (actorId: string) => void;
-    init: (actorId?: string | undefined, patch?: Patch | undefined, history?: number | undefined) => void;
+    init: (synced: boolean, actorId?: string | undefined, patch?: Patch | undefined, history?: number | undefined) => void;
     private enableWrites;
     private updateClockChange;
     private updateClockPatch;
-    patch: (patch: Patch, history: number) => void;
+    patch: (patch: Patch, synced: boolean, history: number) => void;
     bench(msg: string, f: () => void): void;
     close(): void;
 }

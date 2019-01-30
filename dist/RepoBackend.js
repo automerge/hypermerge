@@ -94,17 +94,38 @@ class RepoBackend {
         };
         this.actorNotify = (msg) => {
             switch (msg.type) {
-                case "NewMetadata":
-                    const blocks = Metadata_1.validateMetadataMsg(msg.input);
-                    log("NewMetadata", blocks);
-                    this.meta.addBlocks(blocks);
-                    blocks.map(block => {
+                case "RemoteMetadata":
+                    for (let id in msg.clocks) {
+                        const clock = msg.clocks[id];
+                        const doc = this.docs.get(id);
+                        if (clock && doc) {
+                            doc.target(clock);
+                        }
+                    }
+                    const _blocks = msg.blocks;
+                    this.meta.addBlocks(_blocks);
+                    _blocks.map(block => {
                         if (block.actors)
                             this.syncReadyActors(block.actors);
                         if (block.merge)
                             this.syncReadyActors(Object.keys(block.merge));
                         //          if (block.follows) block.follows.forEach(id => this.open(id))
                     });
+                    break;
+                case "NewMetadata":
+                    console.log("Legacy Metadata message received - better upgrade");
+                    /*
+                            const blocks = validateMetadataMsg(msg.input);
+                            log("NewMetadata", blocks)
+                            this.meta.addBlocks(blocks);
+                            blocks.map(block => {
+                              const doc = this.docs.get(block.id)
+                              if (doc) doc.target({})
+                              if (block.actors) this.syncReadyActors(block.actors)
+                              if (block.merge) this.syncReadyActors(Object.keys(block.merge))
+                    //          if (block.follows) block.follows.forEach(id => this.open(id))
+                            });
+                    */
                     break;
                 case "ActorSync":
                     log("ActorSync", msg.actor.id);
@@ -156,7 +177,7 @@ class RepoBackend {
                 id: this.id,
                 encrypt: false,
                 timeout: 10000,
-                extensions: [Actor_1.EXT]
+                extensions: [Actor_1.EXT, Actor_1.EXT2]
             });
             let add = (dk) => {
                 const actor = this.actorsDk.get(Base58.encode(dk));

@@ -67,6 +67,7 @@ export declare type ToFrontendRepoMsg = PatchMsg | ActorBlockDownloadedMsg | Act
 export interface PatchMsg {
     type: "PatchMsg";
     id: string;
+    synced: boolean;
     patch: Patch;
     history: number;
 }
@@ -94,6 +95,7 @@ export interface CloseMsg {
 export interface ReadyMsg {
     type: "ReadyMsg";
     id: string;
+    synced: boolean;
     actorId?: string;
     patch?: Patch;
     history?: number;

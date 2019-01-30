@@ -21,7 +21,7 @@ const log = debug_1.default("hypermerge:front");
 class DocFrontend {
     constructor(repo, config) {
         //super()
-        this.ready = false;
+        this.ready = false; // do I need ready? -- covered my state !== pending?
         this.history = 0;
         //  private toBackend: Queue<ToBackendRepoMsg>
         this.changeQ = new Queue_1.default("frontend:change");
@@ -48,25 +48,27 @@ class DocFrontend {
             if (this.mode === "read")
                 this.enableWrites(); // has to be after the queue
         };
-        this.init = (actorId, patch, history) => {
+        this.init = (synced, actorId, patch, history) => {
             log(`init docid=${this.docId} actorId=${actorId} patch=${!!patch} history=${history} mode=${this.mode}`);
             if (this.mode !== "pending")
                 return;
             if (actorId)
                 this.setActorId(actorId); // must set before patch
             if (patch)
-                this.patch(patch, history); // first patch!
+                this.patch(patch, synced, history); // first patch!
         };
-        this.patch = (patch, history) => {
+        this.patch = (patch, synced, history) => {
             this.bench("patch", () => {
                 this.history = history;
                 this.front = Frontend.applyPatch(this.front, patch);
                 this.updateClockPatch(patch);
-                if (patch.diffs.length > 0) {
+                if (patch.diffs.length > 0 && synced) {
                     if (this.mode === "pending") {
                         this.mode = "read";
-                        if (this.actorId)
+                        if (this.actorId) {
+                            this.mode = "write";
                             this.enableWrites();
+                        }
                         this.ready = true;
                     }
                     this.newState();
@@ -83,6 +85,7 @@ class DocFrontend {
             this.docId = docId;
             this.actorId = actorId;
             this.ready = true;
+            this.mode = "write";
             this.enableWrites();
         }
         else {
@@ -114,7 +117,6 @@ class DocFrontend {
         });
     }
     enableWrites() {
-        this.mode = "write";
         this.changeQ.subscribe(fn => {
             const [doc, request] = Frontend.change(this.front, fn);
             this.front = doc;

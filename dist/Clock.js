@@ -1,5 +1,32 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+function gte(a, b) {
+    for (let id in a) {
+        if (a[id] < (b[id] || 0))
+            return false;
+    }
+    for (let id in b) {
+        if (b[id] > (a[id] || 0))
+            return false;
+    }
+    return true;
+}
+exports.gte = gte;
+function cmp(a, b) {
+    const aGTE = gte(a, b);
+    const bGTE = gte(b, a);
+    if (aGTE && bGTE) {
+        return "EQ";
+    }
+    else if (aGTE && !bGTE) {
+        return "GT";
+    }
+    else if (!aGTE && bGTE) {
+        return "LT";
+    }
+    return "CONCUR";
+}
+exports.cmp = cmp;
 function strs2clock(input) {
     if (typeof input === "string") {
         return { [input]: Infinity };
@@ -50,12 +77,11 @@ function equivalent(c1, c2) {
 }
 exports.equivalent = equivalent;
 function union(c1, c2) {
-    const actors = new Set([...Object.keys(c1), ...Object.keys(c2)]);
-    let tmp = {};
-    actors.forEach(actor => {
-        tmp[actor] = Math.max(c1[actor] || 0, c2[actor] || 0);
-    });
-    return tmp;
+    let acc = Object.assign({}, c1);
+    for (let id in c2) {
+        acc[id] = Math.max(acc[id] || 0, c2[id]);
+    }
+    return acc;
 }
 exports.union = union;
 function addTo(acc, clock) {

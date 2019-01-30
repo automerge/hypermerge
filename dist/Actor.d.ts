@@ -1,9 +1,10 @@
 import { RepoBackend, KeyBuffer } from "./RepoBackend";
 import { Feed, Peer } from "./hypercore";
 import { Change } from "automerge/backend";
-import { Metadata } from "./Metadata";
+import { Metadata, MetadataBlock, RemoteMetadata } from "./Metadata";
+import { Clock } from "./Clock";
 import Queue from "./Queue";
-export declare type ActorMsg = NewMetadata | ActorSync | PeerUpdate | Download;
+export declare type ActorMsg = RemoteMetadata | NewMetadata | ActorSync | PeerUpdate | Download;
 export declare type FeedHead = FeedHeadMetadata | Change;
 export declare type FeedType = "Unknown" | "Automerge" | "File";
 interface FeedHeadMetadata {
@@ -33,6 +34,7 @@ interface Download {
     index: number;
 }
 export declare const EXT = "hypermerge.2";
+export declare const EXT2 = "hypermerge.3";
 interface ActorConfig {
     keys: KeyBuffer;
     meta: Metadata;
@@ -57,7 +59,9 @@ export declare class Actor {
     fileMetadata?: FeedHeadMetadata;
     repo: RepoBackend;
     constructor(config: ActorConfig);
-    message(message: any, target?: Peer): void;
+    message2(blocks: MetadataBlock[], clocks: {
+        [id: string]: Clock;
+    }, target?: Peer): void;
     feedReady: () => void;
     handleFeedHead(data: Uint8Array): void;
     init: (datas: Uint8Array[]) => void;
@@ -65,6 +69,9 @@ export declare class Actor {
     destroy: () => void;
     peerRemove: (peer: Peer) => void;
     peerAdd: (peer: Peer) => void;
+    allClocks(): {
+        [id: string]: Clock;
+    };
     sync: () => void;
     handleDownload: (index: number, data: Uint8Array) => void;
     handleBlock: (data: Uint8Array, idx: number) => void;

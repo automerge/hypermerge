@@ -2,6 +2,33 @@ export interface Clock {
   [actorId: string]: number;
 }
 
+export type CMP = "GT" | "LT" | "CONCUR" | "EQ"
+
+export function gte(a: Clock, b: Clock) : boolean {
+  for (let id in a) {
+    if ( a[id] < (b[id] || 0) )
+      return false
+  }
+  for (let id in b) {
+    if ( b[id] > (a[id] || 0) )
+      return false
+  }
+  return true
+}
+
+export function cmp(a: Clock, b: Clock) : CMP {
+  const aGTE = gte(a,b)
+  const bGTE = gte(b,a)
+  if (aGTE && bGTE) {
+    return "EQ"
+  } else if (aGTE && !bGTE) {
+    return "GT"
+  } else if (!aGTE && bGTE) {
+    return "LT"
+  }
+  return "CONCUR"
+}
+
 export function strs2clock(input: string | string[]): Clock {
   if (typeof input === "string") {
     return { [input]: Infinity };
@@ -50,12 +77,13 @@ export function equivalent(c1: Clock, c2: Clock): boolean {
 }
 
 export function union(c1: Clock, c2: Clock): Clock {
-  const actors = new Set([...Object.keys(c1), ...Object.keys(c2)]);
-  let tmp: Clock = {};
-  actors.forEach(actor => {
-    tmp[actor] = Math.max(c1[actor] || 0, c2[actor] || 0);
-  });
-  return tmp;
+  let acc: Clock = Object.assign({}, c1)
+
+  for (let id in c2) {
+    acc[id] = Math.max(acc[id] || 0,c2[id])
+  }
+
+  return acc
 }
 
 export function addTo(acc: Clock, clock: Clock) {
