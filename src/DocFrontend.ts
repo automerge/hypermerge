@@ -105,7 +105,10 @@ export class DocFrontend<T> {
     this.actorId = actorId;
     this.front = Frontend.setActorId(this.front, actorId);
 
-    if (this.mode === "read") this.enableWrites(); // has to be after the queue
+    if (this.mode === "read") {
+      this.mode = "write";
+      this.enableWrites(); // has to be after the queue
+    }
   };
 
   init = (synced: boolean, actorId?: string, patch?: Patch, history?: number) => {

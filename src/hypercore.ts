@@ -118,4 +118,5 @@ export interface Peer {
   feed: any;
   stream: any;
   onextension: any;
+  remoteId: Buffer
 }

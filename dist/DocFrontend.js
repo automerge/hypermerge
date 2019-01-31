@@ -45,8 +45,10 @@ class DocFrontend {
             log("setActorId", this.docId, actorId, this.mode);
             this.actorId = actorId;
             this.front = Frontend.setActorId(this.front, actorId);
-            if (this.mode === "read")
+            if (this.mode === "read") {
+                this.mode = "write";
                 this.enableWrites(); // has to be after the queue
+            }
         };
         this.init = (synced, actorId, patch, history) => {
             log(`init docid=${this.docId} actorId=${actorId} patch=${!!patch} history=${history} mode=${this.mode}`);
