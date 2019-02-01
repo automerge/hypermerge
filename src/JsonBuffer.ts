@@ -3,7 +3,7 @@ export function parse(buffer: ArrayBuffer | ArrayBufferView): any {
   return JSON.parse(buffer.toString())
 }
 
-export function bufferify(value: any): Uint8Array {
+export function bufferify(value: any): Buffer {
   // const encoder = new TextEncoder()
   return Buffer.from(JSON.stringify(value))
 }
