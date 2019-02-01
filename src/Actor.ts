@@ -71,12 +71,13 @@ interface ActorConfig {
   repo: RepoBackend;
 }
 
-const brotli = require('brotli')
+const brotli = require('iltorb')
 const BROTLI = "BR"
+const BROTLI_MODE_TEXT = 1
 
 function packBlock(obj: Object) : Buffer {
   const blockHeader = Buffer.from(BROTLI)
-  const blockBody = Buffer.from(brotli.compress(JsonBuffer.bufferify(obj), true))
+  const blockBody = Buffer.from(brotli.compressSync(JsonBuffer.bufferify(obj), {mode: BROTLI_MODE_TEXT}))
   return Buffer.concat([ blockHeader, blockBody ])
 }
 
@@ -87,7 +88,7 @@ function unpackBlock(data: Uint8Array) : any {
     case '{"':
       return JsonBuffer.parse(data);
     case BROTLI:
-      return JsonBuffer.parse(Buffer.from(brotli.decompress(data.slice(2))))
+      return JsonBuffer.parse(Buffer.from(brotli.decompressSync(data.slice(2))))
     default:
       throw new Error(`fail to unpack blocks - head is '${header}'`)
   }
