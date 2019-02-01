@@ -23,6 +23,22 @@ const KB = 1024;
 const MB = 1024 * KB;
 exports.EXT = "hypermerge.2";
 exports.EXT2 = "hypermerge.3";
+const brotli = require('brotli');
+const BROTLI = "BR";
+function packBlock(obj) {
+    const blockHeader = Buffer.from(BROTLI);
+    const blockBody = Buffer.from(brotli.compress(JsonBuffer.bufferify(obj), true));
+    return Buffer.concat([blockHeader, blockBody]);
+}
+function unpackBlock(data) {
+    //if (data.slice(0,2).toString() === '{"') { // an old block before we added compression
+    switch (data.slice(0, 2).toString()) {
+        case '{"': return JsonBuffer.parse(data);
+        case BROTLI: return JsonBuffer.parse(Buffer.from(brotli.decompress(data.slice(2))));
+        default:
+            throw new Error(`fail to unpack blocks - head is ${data.slice(0, 2)}`);
+    }
+}
 class Actor {
     constructor(config) {
         this.changes = [];
@@ -135,7 +151,7 @@ class Actor {
         this.handleBlock = (data, idx) => {
             switch (this.type) {
                 case "Automerge":
-                    const change = JsonBuffer.parse(data);
+                    const change = unpackBlock(data); // no validation of Change
                     this.changes[idx] = change;
                     log(`block xxx idx=${idx} actor=${Misc_1.ID(change.actor)} seq=${change.seq}`);
                     break;
@@ -180,8 +196,7 @@ class Actor {
         peers.forEach(peer => peer.stream.extension(exports.EXT2, payload));
     }
     handleFeedHead(data) {
-        const head = JsonBuffer.parse(data);
-        // type is FeedHead
+        const head = unpackBlock(data); // no validation of head
         if (head.hasOwnProperty("type")) {
             this.type = "File";
             this.fileMetadata = head;
@@ -293,7 +308,7 @@ class Actor {
         log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`);
         this.changes.push(change);
         this.sync();
-        this.append(JsonBuffer.bufferify(change));
+        this.append(packBlock(change));
     }
 }
 exports.Actor = Actor;

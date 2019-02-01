@@ -71,6 +71,28 @@ interface ActorConfig {
   repo: RepoBackend;
 }
 
+const brotli = require('brotli')
+const BROTLI = "BR"
+
+function packBlock(obj: Object) : Buffer {
+  const blockHeader = Buffer.from(BROTLI)
+  const blockBody = Buffer.from(brotli.compress(JsonBuffer.bufferify(obj), true))
+  return Buffer.concat([ blockHeader, blockBody ])
+}
+
+function unpackBlock(data: Uint8Array) : any {
+  //if (data.slice(0,2).toString() === '{"') { // an old block before we added compression
+  const header = data.slice(0,2)
+  switch (header.toString()) {
+    case '{"':
+      return JsonBuffer.parse(data);
+    case BROTLI:
+      return JsonBuffer.parse(Buffer.from(brotli.decompress(data.slice(2))))
+    default:
+      throw new Error(`fail to unpack blocks - head is '${header}'`)
+  }
+}
+
 export class Actor {
   id: string;
   dkString: string;
@@ -148,8 +170,7 @@ export class Actor {
   };
 
   handleFeedHead(data: Uint8Array) {
-    const head : any = JsonBuffer.parse(data);
-    // type is FeedHead
+    const head = unpackBlock(data) // no validation of head
     if (head.hasOwnProperty("type")) {
       this.type = "File";
       this.fileMetadata = head;
@@ -262,7 +283,7 @@ export class Actor {
   handleBlock = (data: Uint8Array, idx: number) => {
     switch (this.type) {
       case "Automerge":
-        const change = JsonBuffer.parse(data);
+        const change : Change = unpackBlock(data) // no validation of Change
         this.changes[idx] = change
         log(`block xxx idx=${idx} actor=${ID(change.actor)} seq=${change.seq}`)
         break;
@@ -367,6 +388,6 @@ export class Actor {
     log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`);
     this.changes.push(change);
     this.sync();
-    this.append(JsonBuffer.bufferify(change));
+    this.append(packBlock(change));
   }
 }
