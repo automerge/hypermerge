@@ -23,20 +23,24 @@ const KB = 1024;
 const MB = 1024 * KB;
 exports.EXT = "hypermerge.2";
 exports.EXT2 = "hypermerge.3";
-const brotli = require('brotli');
+const brotli = require('iltorb');
 const BROTLI = "BR";
+const BROTLI_MODE_TEXT = 1;
 function packBlock(obj) {
     const blockHeader = Buffer.from(BROTLI);
-    const blockBody = Buffer.from(brotli.compress(JsonBuffer.bufferify(obj), true));
+    const blockBody = Buffer.from(brotli.compressSync(JsonBuffer.bufferify(obj), { mode: BROTLI_MODE_TEXT }));
     return Buffer.concat([blockHeader, blockBody]);
 }
 function unpackBlock(data) {
     //if (data.slice(0,2).toString() === '{"') { // an old block before we added compression
-    switch (data.slice(0, 2).toString()) {
-        case '{"': return JsonBuffer.parse(data);
-        case BROTLI: return JsonBuffer.parse(Buffer.from(brotli.decompress(data.slice(2))));
+    const header = data.slice(0, 2);
+    switch (header.toString()) {
+        case '{"':
+            return JsonBuffer.parse(data);
+        case BROTLI:
+            return JsonBuffer.parse(Buffer.from(brotli.decompressSync(data.slice(2))));
         default:
-            throw new Error(`fail to unpack blocks - head is ${data.slice(0, 2)}`);
+            throw new Error(`fail to unpack blocks - head is '${header}'`);
     }
 }
 class Actor {
