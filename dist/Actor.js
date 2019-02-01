@@ -16,6 +16,7 @@ const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Base58 = __importStar(require("bs58"));
+const Block = __importStar(require("./Block"));
 const debug_1 = __importDefault(require("debug"));
 const fs = require("fs");
 const log = debug_1.default("repo:actor");
@@ -23,26 +24,6 @@ const KB = 1024;
 const MB = 1024 * KB;
 exports.EXT = "hypermerge.2";
 exports.EXT2 = "hypermerge.3";
-const brotli = require('iltorb');
-const BROTLI = "BR";
-const BROTLI_MODE_TEXT = 1;
-function packBlock(obj) {
-    const blockHeader = Buffer.from(BROTLI);
-    const blockBody = Buffer.from(brotli.compressSync(JsonBuffer.bufferify(obj), { mode: BROTLI_MODE_TEXT }));
-    return Buffer.concat([blockHeader, blockBody]);
-}
-function unpackBlock(data) {
-    //if (data.slice(0,2).toString() === '{"') { // an old block before we added compression
-    const header = data.slice(0, 2);
-    switch (header.toString()) {
-        case '{"':
-            return JsonBuffer.parse(data);
-        case BROTLI:
-            return JsonBuffer.parse(Buffer.from(brotli.decompressSync(data.slice(2))));
-        default:
-            throw new Error(`fail to unpack blocks - head is '${header}'`);
-    }
-}
 class Actor {
     constructor(config) {
         this.changes = [];
@@ -145,17 +126,13 @@ class Actor {
             }
             const time = Date.now();
             const size = data.byteLength;
-            this.notify({ type: "Download",
-                actor: this,
-                index,
-                size,
-                time });
+            this.notify({ type: "Download", actor: this, index, size, time });
             //    this.sync();
         };
         this.handleBlock = (data, idx) => {
             switch (this.type) {
                 case "Automerge":
-                    const change = unpackBlock(data); // no validation of Change
+                    const change = Block.unpack(data); // no validation of Change
                     this.changes[idx] = change;
                     log(`block xxx idx=${idx} actor=${Misc_1.ID(change.actor)} seq=${change.seq}`);
                     break;
@@ -186,12 +163,12 @@ class Actor {
         this.feed.ready(this.feedReady);
     }
     /*
-      message(message: any, target?: Peer) {
-        const peers = target ? [target] : [...this.peers];
-        const payload = Buffer.from(JSON.stringify(message));
-        peers.forEach(peer => peer.stream.extension(EXT, payload));
-      }
-    */
+    message(message: any, target?: Peer) {
+      const peers = target ? [target] : [...this.peers];
+      const payload = Buffer.from(JSON.stringify(message));
+      peers.forEach(peer => peer.stream.extension(EXT, payload));
+    }
+  */
     message2(blocks, clocks, target) {
         const peers = target ? [target] : [...this.peers];
         const message = { type: "RemoteMetadata", clocks, blocks };
@@ -200,7 +177,7 @@ class Actor {
         peers.forEach(peer => peer.stream.extension(exports.EXT2, payload));
     }
     handleFeedHead(data) {
-        const head = unpackBlock(data); // no validation of head
+        const head = Block.unpack(data); // no validation of head
         if (head.hasOwnProperty("type")) {
             this.type = "File";
             this.fileMetadata = head;
@@ -229,7 +206,12 @@ class Actor {
             if (this.data.length > 0 || this.changes.length > 0)
                 throw new Error("writeFile called on existing feed");
             const blockSize = 1 * MB;
-            this.fileMetadata = { type: "File", bytes: data.length, mimeType, blockSize };
+            this.fileMetadata = {
+                type: "File",
+                bytes: data.length,
+                mimeType,
+                blockSize,
+            };
             this.append(Buffer.from(JSON.stringify(this.fileMetadata)));
             for (let i = 0; i < data.length; i += blockSize) {
                 const block = data.slice(i, i + blockSize);
@@ -261,7 +243,7 @@ class Actor {
         }
     }
     fileBody(head, cb) {
-        const blockSize = head.blockSize || (1 * MB); // old feeds dont have this
+        const blockSize = head.blockSize || 1 * MB; // old feeds dont have this
         const blocks = Math.ceil(head.bytes / blockSize);
         const file = Buffer.concat(this.data);
         if (file.length === head.bytes) {
@@ -289,9 +271,9 @@ class Actor {
     }
     readFile(cb) {
         log("reading file...");
-        this.fileHead((head) => {
+        this.fileHead(head => {
             const { bytes, mimeType } = head;
-            this.fileBody(head, (body) => {
+            this.fileBody(head, body => {
                 cb(body, head.mimeType);
             });
         });
@@ -312,7 +294,7 @@ class Actor {
         log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`);
         this.changes.push(change);
         this.sync();
-        this.append(packBlock(change));
+        this.append(Block.pack(change));
     }
 }
 exports.Actor = Actor;
