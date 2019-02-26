@@ -1,10 +1,9 @@
-
 import Queue from "./Queue"
 import * as Base58 from "bs58"
-import * as crypto from "hypercore/lib/crypto"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import Handle from "./Handle"
 import { DocFrontend } from "./DocFrontend"
+import { keyPair } from "./hypercore"
 import Debug from "debug"
 
 Debug.formatters.b = Base58.encode
@@ -16,7 +15,7 @@ export class RepoFrontend {
   docs: Map<string, DocFrontend<any>> = new Map()
 
   create(): string {
-    const keys = crypto.keyPair()
+    const keys = keyPair()
     const publicKey = Base58.encode(keys.publicKey)
     const secretKey = Base58.encode(keys.secretKey)
     const docId = publicKey

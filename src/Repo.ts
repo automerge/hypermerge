@@ -1,4 +1,3 @@
-
 import { Options, RepoBackend } from "./RepoBackend"
 import { RepoFrontend } from "./RepoFrontend"
 import Handle from "./Handle"
@@ -13,8 +12,7 @@ export class Repo {
   front: RepoFrontend
   back: RepoBackend
   id: Buffer
-  stream: (opts: any) => any
-
+  // stream: (opts: any) => any
 
   constructor(opts: Options) {
     this.front = new RepoFrontend()
@@ -22,14 +20,14 @@ export class Repo {
     this.front.subscribe(this.back.receive)
     this.back.subscribe(this.front.receive)
     this.id = this.back.id
-    this.stream = this.back.stream
+    // this.stream = this.back.stream
   }
 
-  create() : string {
+  create(): string {
     return this.front.create()
   }
 
-  open<T>(id: string) : Handle<T> {
+  open<T>(id: string): Handle<T> {
     return this.front.open(id)
   }
 

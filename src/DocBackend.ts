@@ -3,9 +3,8 @@ import * as Backend from "automerge/backend"
 import { Change, BackDoc } from "automerge/backend"
 import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
 import Queue from "./Queue"
-import { EXT, RepoBackend } from "./RepoBackend"
+import { RepoBackend } from "./RepoBackend"
 import { Feed, Peer } from "./hypercore"
-
 
 const log = Debug("hypermerge:back")
 
@@ -27,7 +26,11 @@ export class DocBackend {
       this.actorId = docId
       this.subscribeToRemoteChanges()
       this.subscribeToLocalChanges()
-      this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: docId })
+      this.repo.toFrontend.push({
+        type: "ReadyMsg",
+        id: this.docId,
+        actorId: docId
+      })
     }
   }
 
@@ -54,7 +57,11 @@ export class DocBackend {
       if (!this.actorId) {
         this.actorId = this.repo.initActorFeed(this)
       }
-      this.repo.toFrontend.push({ type: "ActorIdMsg", id: this.docId, actorId: this.actorId})
+      this.repo.toFrontend.push({
+        type: "ActorIdMsg",
+        id: this.docId,
+        actorId: this.actorId
+      })
     } else {
       // remember we want one for when init happens
       this.wantsActor = true
@@ -71,7 +78,12 @@ export class DocBackend {
       this.back = back
       this.subscribeToLocalChanges()
       this.subscribeToRemoteChanges()
-      this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: this.actorId, patch})
+      this.repo.toFrontend.push({
+        type: "ReadyMsg",
+        id: this.docId,
+        actorId: this.actorId,
+        patch
+      })
     })
   }
 
@@ -109,7 +121,7 @@ export class DocBackend {
   }
 
   message(peer: Peer, message: any) {
-    peer.stream.extension(EXT, Buffer.from(JSON.stringify(message)))
+    peer.send(Buffer.from(JSON.stringify(message)))
   }
 
   messageMetadata(peer: Peer) {
