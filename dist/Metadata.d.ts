@@ -42,7 +42,9 @@ export declare class Metadata {
     private replay;
     private ledger;
     id: Buffer;
-    constructor(storageFn: Function);
+    private join;
+    private leave;
+    constructor(storageFn: Function, joinFn: (id: string) => void, leaveFn: (id: string) => void);
     private loadLedger;
     private hasBlock;
     private batchAdd;

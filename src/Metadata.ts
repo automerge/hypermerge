@@ -222,9 +222,13 @@ export class Metadata {
 
   private ledger: Feed<Uint8Array>;
   public id: Buffer // for the RepoBackend... used in examples (unwisely!) as a Peer ID
+  private join: (id:string) => void;
+  private leave: (id:string) => void;
 
-  constructor(storageFn: Function) {
+  constructor(storageFn: Function, joinFn: (id:string) => void, leaveFn: (id:string) => void) {
     this.ledger = hypercore(storageFn("ledger"), {});
+    this.join = joinFn
+    this.leave = leaveFn
     this.id = this.ledger.id
     log("LEDGER READY (1)")
     this.ledger.ready(() => {
@@ -246,6 +250,7 @@ export class Metadata {
     this.replay.map(this.writeThrough);
     this.replay = [];
     this._clocks = {}
+    this.allActors().forEach(this.join)
     this.readyQ.subscribe(f => f());
   };
 
@@ -268,6 +273,7 @@ export class Metadata {
     if (this.ready && dirty) {
       this.append(block);
       this._clocks = {}
+      this.actors(block.id).map(!!block.deleted ? this.leave : this.join)
     }
   };
 
@@ -328,7 +334,7 @@ export class Metadata {
   }
 
   allActors() : Set<string> {
-    return this.primaryActors.union()
+    return new Set([ ... this.primaryActors.union(), ... this.files.keys() ])
   }
 
   setWritable(actor: string, writable: boolean) {
@@ -377,7 +383,7 @@ export class Metadata {
   clock(id: string) : Clock {
     if (this._clocks[id]) return this._clocks[id]
 
-    const clock: Clock = {};
+    const clock: Clock = { [id]: Infinity }; // this also covers the clock for files
     const actors = this.primaryActors.get(id)
     const merges = this.merges.get(id)
 

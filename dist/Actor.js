@@ -60,7 +60,6 @@ class Actor {
             if (datas.length > 0) {
                 this.sync();
             }
-            this.repo.join(this.id);
             this.q.subscribe(f => f(this));
         };
         this.close = () => {
@@ -71,7 +70,6 @@ class Actor {
             catch (error) { }
         };
         this.destroy = () => {
-            this.repo.leave(this.id);
             this.feed.close((err) => {
                 const filename = this.storage("").filename;
                 if (filename) {

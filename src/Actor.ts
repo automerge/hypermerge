@@ -184,7 +184,6 @@ export class Actor {
     if (datas.length > 0) {
       this.sync()
     }
-    this.repo.join(this.id)
     this.q.subscribe(f => f(this))
   }
 
@@ -196,7 +195,6 @@ export class Actor {
   }
 
   destroy = () => {
-    this.repo.leave(this.id)
     this.feed.close((err: Error) => {
       const filename = this.storage("").filename
       if (filename) {

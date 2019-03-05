@@ -59,7 +59,7 @@ export class RepoBackend {
     this.path = opts.path || "default";
     this.storage = opts.storage;
 
-    this.meta = new Metadata(this.storageFn);
+    this.meta = new Metadata(this.storageFn, this.join, this.leave);
     this.id = this.meta.id
   }
 

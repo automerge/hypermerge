@@ -182,7 +182,7 @@ function validateDocURL(urlString) {
 exports.validateDocURL = validateDocURL;
 var _benchTotal = {};
 class Metadata {
-    constructor(storageFn) {
+    constructor(storageFn, joinFn, leaveFn) {
         this.docs = new Set();
         this.primaryActors = new MapSet_1.default();
         //  private follows: MapSet<string, string> = new MapSet();
@@ -217,6 +217,7 @@ class Metadata {
             this.replay.map(this.writeThrough);
             this.replay = [];
             this._clocks = {};
+            this.allActors().forEach(this.join);
             this.readyQ.subscribe(f => f());
         };
         // write through caching strategy
@@ -227,6 +228,7 @@ class Metadata {
             const dirty = this.addBlock(-1, block);
             if (this.ready && dirty) {
                 this.append(block);
+                this.actors(block.id).map(!!block.deleted ? this.leave : this.join);
                 this._clocks = {};
             }
         };
@@ -237,6 +239,8 @@ class Metadata {
             });
         };
         this.ledger = hypercore_1.hypercore(storageFn("ledger"), {});
+        this.join = joinFn;
+        this.leave = leaveFn;
         this.id = this.ledger.id;
         log("LEDGER READY (1)");
         this.ledger.ready(() => {
@@ -283,6 +287,7 @@ class Metadata {
         // i dont care of they deleted it
         if (block.deleted === true) {
             if (this.docs.has(id)) {
+                this.actors(id).map(this.leave);
                 this.docs.delete(id);
                 changedDocs = true;
             }
@@ -296,7 +301,7 @@ class Metadata {
         return changedActors || changedMerge || changedFiles || changedDocs; // || changedFollow;
     }
     allActors() {
-        return this.primaryActors.union();
+        return new Set([...this.primaryActors.union(), ...this.files.keys()]);
     }
     setWritable(actor, writable) {
         this.writable.set(actor, writable);
@@ -338,7 +343,7 @@ class Metadata {
     clock(id) {
         if (this._clocks[id])
             return this._clocks[id];
-        const clock = {};
+        const clock = { [id]: Infinity }; // this also covers the clock for files
         const actors = this.primaryActors.get(id);
         const merges = this.merges.get(id);
         if (actors)

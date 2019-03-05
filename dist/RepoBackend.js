@@ -62,6 +62,7 @@ class RepoBackend {
             }
         };
         this.join = (actorId) => {
+            console.log("JOIN", actorId);
             const dkBuffer = hypercore_1.discoveryKey(Base58.decode(actorId));
             const dk = Base58.encode(dkBuffer);
             if (this.swarm && !this.joined.has(dk)) {
@@ -297,7 +298,7 @@ class RepoBackend {
         this.opts = opts;
         this.path = opts.path || "default";
         this.storage = opts.storage;
-        this.meta = new Metadata_1.Metadata(this.storageFn);
+        this.meta = new Metadata_1.Metadata(this.storageFn, this.join, this.leave);
         this.id = this.meta.id;
     }
     writeFile(keys, data, mimeType) {
