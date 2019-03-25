@@ -202,6 +202,7 @@ export class Metadata {
   private merges: Map<string, Clock> = new Map();
   readyQ: Queue<() => void> = new Queue(); // FIXME - need a better api for accessing metadata
   private _clocks: { [id:string]: Clock } = {}
+  private _docsWith: Map<string, string[]> = new Map()
 
   private writable: Map<string, boolean> = new Map();
 
@@ -250,7 +251,7 @@ export class Metadata {
     this.replay.map(this.writeThrough);
     this.replay = [];
     this._clocks = {}
-    this.allActors().forEach(this.join)
+    this._docsWith = new Map()
     this.readyQ.subscribe(f => f());
   };
 
@@ -273,7 +274,7 @@ export class Metadata {
     if (this.ready && dirty) {
       this.append(block);
       this._clocks = {}
-      this.actors(block.id).map(!!block.deleted ? this.leave : this.join)
+      this._docsWith.clear()
     }
   };
 
@@ -397,7 +398,13 @@ export class Metadata {
   }
 
   docsWith(actor: string, seq: number = 1): string[] {
-    return [ ... this.docs ].filter(id => this.has(id, actor, seq));
+    // this is probably unnecessary
+    const key = `${actor}-${seq}`
+    if (!this._docsWith.has(key)) {
+      const docs = [ ... this.docs ].filter(id => this.has(id, actor, seq));
+      this._docsWith.set(key, docs)
+    }
+    return this._docsWith.get(key)!
   }
 
   has(id: string, actor: string, seq: number): boolean {
