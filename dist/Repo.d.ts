@@ -4,6 +4,7 @@ import { RepoFrontend } from "./RepoFrontend";
 import { Handle } from "./Handle";
 import { PublicMetadata } from "./Metadata";
 import { Clock } from "./Clock";
+declare type StreamOptions = unknown;
 interface Swarm {
     join(dk: Buffer): void;
     leave(dk: Buffer): void;
@@ -13,7 +14,7 @@ export declare class Repo {
     front: RepoFrontend;
     back: RepoBackend;
     id: Buffer;
-    stream: (opts: any) => any;
+    stream: (opts: StreamOptions) => unknown;
     create: <T>(init?: T) => string;
     open: <T>(id: string) => Handle<T>;
     destroy: (id: string) => void;

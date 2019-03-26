@@ -12,10 +12,9 @@ import { Clock } from "./Clock"
 import Queue from "./Queue"
 import * as JsonBuffer from "./JsonBuffer"
 import * as Base58 from "bs58"
+import * as fs from 'fs'
 import * as Block from "./Block"
 import Debug from "debug"
-
-const fs: any = require("fs")
 
 const log = Debug("repo:actor")
 
