@@ -58,7 +58,7 @@ export function clock2strs(clock: Clock): string[] {
 }
 
 export function clockDebug(c: Clock): string {
-  const d: any = {};
+  const d: { [key:string]: number } = {};
   Object.keys(c).forEach(actor => {
     const short = actor.substr(0, 5);
     d[short] = c[actor];
