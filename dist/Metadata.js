@@ -321,21 +321,6 @@ class Metadata {
     actors(id) {
         return Object.keys(this.clock(id));
     }
-    /*
-      private actorsSeen(id: string, acc: string[], seen: Set<string>): string[] {
-        const primaryActors = this.primaryActors.get(id)!;
-        const mergeActors = Object.keys(this.merges.get(id) || {});
-        acc.push(...primaryActors);
-        acc.push(...mergeActors);
-        seen.add(id);
-        this.follows.get(id).forEach(follow => {
-          if (!seen.has(follow)) {
-            this.actorsSeen(follow, acc, seen);
-          }
-        });
-        return acc;
-      }
-    */
     clockAt(id, actor) {
         return this.clock(id)[actor] || 0;
     }

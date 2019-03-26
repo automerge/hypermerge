@@ -18,9 +18,6 @@ const log = debug_1.default("repo:doc:back");
 function _id(id) {
     return id.slice(0, 4);
 }
-//export interface Clock {
-//  [actorId: string]: number;
-//}
 class DocBackend {
     constructor(core, id, back) {
         this.clock = {};
@@ -31,19 +28,16 @@ class DocBackend {
         this.localChangeQ = new Queue_1.default("backend:localChangeQ");
         this.remoteChangesQ = new Queue_1.default("backend:remoteChangesQ");
         this.wantsActor = false;
+        this.history = () => {
+            return this.back.getIn(["opSet", "history"]);
+        };
         this.testForSync = () => {
             if (this.remoteClock) {
                 const test = Clock_1.cmp(this.clock, this.remoteClock);
                 this.synced = (test === "GT" || test === "EQ");
-                //      console.log("TARGET CLOCK", this.id, this.synced)
-                //      console.log("this.clock",this.clock)
-                //      console.log("this.remoteClock",this.remoteClock)
-                //    } else {
-                //      console.log("TARGET CLOCK NOT SET", this.id, this.synced)
             }
         };
         this.target = (clock) => {
-            //    console.log("Target", clock)
             if (this.synced)
                 return;
             this.remoteClock = Clock_1.union(clock, this.remoteClock || {});
@@ -78,8 +72,6 @@ class DocBackend {
         };
         this.init = (changes, actorId) => {
             this.bench("init", () => {
-                //console.log("CHANGES MAX",changes[changes.length - 1])
-                //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
                 const [back, patch] = Backend.applyChanges(Backend.init(), changes);
                 this.actorId = actorId;
                 if (this.wantsActor && !actorId) {
@@ -88,11 +80,10 @@ class DocBackend {
                 this.back = back;
                 this.updateClock(changes);
                 this.synced = changes.length > 0; // override updateClock
-                //console.log("INIT SYNCED", this.synced, changes.length)
                 this.ready.subscribe(f => f());
                 this.subscribeToLocalChanges();
                 this.subscribeToRemoteChanges();
-                const history = this.back.getIn(["opSet", "history"]).size;
+                const history = this.history().size;
                 this.repo.toFrontend.push({
                     type: "ReadyMsg",
                     id: this.id,
@@ -112,7 +103,7 @@ class DocBackend {
             this.synced = true;
             this.subscribeToRemoteChanges();
             this.subscribeToLocalChanges();
-            const history = this.back.getIn(["opSet", "history"]).size;
+            const history = this.history().size;
             this.repo.toFrontend.push({
                 type: "ReadyMsg",
                 id: this.id,
@@ -137,7 +128,7 @@ class DocBackend {
                 const [back, patch] = Backend.applyChanges(this.back, changes);
                 this.back = back;
                 this.updateClock(changes);
-                const history = this.back.getIn(["opSet", "history"]).size;
+                const history = this.history().size;
                 this.repo.toFrontend.push({
                     type: "PatchMsg",
                     id: this.id,
@@ -154,7 +145,7 @@ class DocBackend {
                 const [back, patch] = Backend.applyLocalChange(this.back, change);
                 this.back = back;
                 this.updateClock([change]);
-                const history = this.back.getIn(["opSet", "history"]).size;
+                const history = this.history().size;
                 this.repo.toFrontend.push({
                     type: "PatchMsg",
                     id: this.id,

@@ -3,13 +3,14 @@ import { Change, BackDoc } from "automerge/backend";
 import Queue from "./Queue";
 import { RepoBackend } from "./RepoBackend";
 import { Clock } from "./Clock";
+import { List } from 'immutable';
 export declare class DocBackend {
     id: string;
     actorId?: string;
     clock: Clock;
-    back?: BackDoc;
     changes: Map<string, number>;
     ready: Queue<Function>;
+    private back?;
     private repo;
     private remoteClock?;
     private synced;
@@ -17,6 +18,7 @@ export declare class DocBackend {
     private remoteChangesQ;
     private wantsActor;
     constructor(core: RepoBackend, id: string, back?: BackDoc);
+    history: () => List<Backend.Change>;
     testForSync: () => void;
     target: (clock: Clock) => void;
     applyRemoteChanges: (changes: Backend.Change[]) => void;

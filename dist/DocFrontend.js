@@ -20,10 +20,8 @@ const debug_1 = __importDefault(require("debug"));
 const log = debug_1.default("hypermerge:front");
 class DocFrontend {
     constructor(repo, config) {
-        //super()
         this.ready = false; // do I need ready? -- covered my state !== pending?
         this.history = 0;
-        //  private toBackend: Queue<ToBackendRepoMsg>
         this.changeQ = new Queue_1.default("frontend:change");
         this.mode = "pending";
         this.handles = new Set();
@@ -81,7 +79,6 @@ class DocFrontend {
         const actorId = config.actorId;
         this.repo = repo;
         this.clock = {};
-        //    this.toBackend = toBackend
         if (actorId) {
             this.front = Frontend.init(actorId);
             this.docId = docId;

@@ -4,6 +4,7 @@ import Queue from "./Queue";
 import { RepoBackend } from "./RepoBackend";
 import Debug from "debug";
 import { Clock, cmp, union } from "./Clock";
+import { List } from 'immutable'
 
 const log = Debug("repo:doc:back");
 
@@ -15,9 +16,10 @@ export class DocBackend {
   id: string;
   actorId?: string; // this might be easier to have as the actor object - FIXME
   clock: Clock = {};
-  back?: BackDoc; // can we make this private?
   changes: Map<string, number> = new Map()
   ready = new Queue<Function>("backend:ready");
+
+  private back?: BackDoc; // can we make this private?
   private repo: RepoBackend;
   private remoteClock?: Clock = undefined;
   private synced : boolean = false
@@ -36,7 +38,7 @@ export class DocBackend {
       this.synced = true
       this.subscribeToRemoteChanges();
       this.subscribeToLocalChanges();
-      const history = (this.back as any).getIn(["opSet", "history"]).size;
+      const history = this.history().size;
       this.repo.toFrontend.push({
         type: "ReadyMsg",
         id: this.id,
@@ -45,6 +47,10 @@ export class DocBackend {
         history
       });
     }
+  }
+
+  history = () : List<Change> => {
+    return (this.back as any).getIn(["opSet", "history"])
   }
 
   testForSync = () : void => {
@@ -112,7 +118,7 @@ export class DocBackend {
       this.ready.subscribe(f => f());
       this.subscribeToLocalChanges();
       this.subscribeToRemoteChanges();
-      const history = (this.back as any).getIn(["opSet", "history"]).size;
+      const history = this.history().size;
       this.repo.toFrontend.push({
         type: "ReadyMsg",
         id: this.id,
@@ -130,7 +136,7 @@ export class DocBackend {
         const [back, patch] = Backend.applyChanges(this.back!, changes);
         this.back = back;
         this.updateClock(changes);
-        const history = (this.back as any).getIn(["opSet", "history"]).size;
+        const history = this.history().size;
         this.repo.toFrontend.push({
           type: "PatchMsg",
           id: this.id,
@@ -148,7 +154,7 @@ export class DocBackend {
         const [back, patch] = Backend.applyLocalChange(this.back!, change);
         this.back = back;
         this.updateClock([change]);
-        const history = (this.back as any).getIn(["opSet", "history"]).size;
+        const history = this.history().size;
         this.repo.toFrontend.push({
           type: "PatchMsg",
           id: this.id,

@@ -31,12 +31,6 @@ class RepoBackend {
         this.actorsDk = new Map();
         this.docs = new Map();
         this.toFrontend = new Queue_1.default("repo:toFrontend");
-        /*
-          follow(id: string, target: string) {
-            this.meta.follow(id, target);
-            this.syncReadyActors(this.meta.actors(id));
-          }
-        */
         this.close = () => {
             this.actors.forEach(actor => actor.close());
             this.actors.clear();
@@ -109,23 +103,10 @@ class RepoBackend {
                             this.syncReadyActors(block.actors);
                         if (block.merge)
                             this.syncReadyActors(Object.keys(block.merge));
-                        //          if (block.follows) block.follows.forEach(id => this.open(id))
                     });
                     break;
                 case "NewMetadata":
                     console.log("Legacy Metadata message received - better upgrade");
-                    /*
-                            const blocks = validateMetadataMsg(msg.input);
-                            log("NewMetadata", blocks)
-                            this.meta.addBlocks(blocks);
-                            blocks.map(block => {
-                              const doc = this.docs.get(block.id)
-                              if (doc) doc.target({})
-                              if (block.actors) this.syncReadyActors(block.actors)
-                              if (block.merge) this.syncReadyActors(Object.keys(block.merge))
-                    //          if (block.follows) block.follows.forEach(id => this.open(id))
-                            });
-                    */
                     break;
                 case "ActorSync":
                     log("ActorSync", msg.actor.id);
@@ -208,7 +189,7 @@ class RepoBackend {
                 }
                 case "MaterializeMsg": {
                     const doc = this.docs.get(query.id);
-                    const changes = doc.back.getIn(['opSet', 'history']).slice(0, query.history).toArray();
+                    const changes = doc.history().slice(0, query.history).toArray();
                     const [_, patch] = Backend.applyChanges(Backend.init(), changes);
                     this.toFrontend.push({ type: "Reply", id, payload: patch });
                     break;
@@ -269,12 +250,6 @@ class RepoBackend {
                         this.merge(msg.id, Clock_1.strs2clock(msg.actors));
                         break;
                     }
-                    /*
-                            case "FollowMsg": {
-                              this.follow(msg.id, msg.target);
-                              break;
-                            }
-                    */
                     case "OpenMsg": {
                         this.open(msg.id);
                         break;
@@ -307,7 +282,6 @@ class RepoBackend {
         actor.writeFile(data, mimeType);
     }
     readFile(id, cb) {
-        //    log("readFile",id, this.meta.forDoc(id))
         if (this.meta.isDoc(id)) {
             throw new Error("trying to open a document like a file");
         }
@@ -359,7 +333,6 @@ class RepoBackend {
     }
     // opening a file fucks it up
     open(docId) {
-        //    log("open", docId, this.meta.forDoc(docId));
         if (this.meta.isFile(docId)) {
             throw new Error("trying to open a file like a document");
         }

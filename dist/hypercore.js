@@ -42,7 +42,6 @@ function readFeedN(id, feed, index, cb) {
     }
 }
 function readFeed(id, feed, cb) {
-    //  const id = feed.id.toString('hex').slice(0,4)
     const length = feed.downloaded();
     log(`readFeed ${Misc_1.ID(id)} downloaded=${length} feed.length=${feed.length}`);
     if (length === 0)

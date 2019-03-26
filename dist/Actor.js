@@ -89,9 +89,7 @@ class Actor {
                     this.notify({ type: "NewMetadata", input });
                 }
                 if (ext === exports.EXT2) {
-                    //        const clocks = JSON.parse(input.toString()); // FIXME - validate
                     const msg = Metadata_1.validateMetadataMsg2(input);
-                    //        this.notify({ type: "RemoteMetadata", clocks });
                     this.notify(msg);
                 }
             });
@@ -121,7 +119,6 @@ class Actor {
             const time = Date.now();
             const size = data.byteLength;
             this.notify({ type: "Download", actor: this, index, size, time });
-            //    this.sync();
         };
         this.handleBlock = (data, idx) => {
             switch (this.type) {

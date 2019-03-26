@@ -106,12 +106,6 @@ class RepoFrontend {
             this.merge(fork, url);
             return fork;
         };
-        /*
-          follow = (url: string, target: string) => {
-            const id = validateDocURL(url);
-            this.toBackend.push({ type: "FollowMsg", id, target });
-          };
-        */
         this.watch = (url, cb) => {
             Metadata_1.validateDocURL(url);
             const handle = this.open(url);
@@ -162,22 +156,9 @@ class RepoFrontend {
             this.toBackend.push({ type: "DestroyMsg", id });
             const doc = this.docs.get(id);
             if (doc) {
-                // doc.destroy()
                 this.docs.delete(id);
             }
         };
-        /*
-          handleReply = (id: number, reply: ToFrontendReplyMsg) => {
-            const cb = this.cb.get(id)!
-            switch (reply.type) {
-              case "MaterializeReplyMsg": {
-                cb(reply.patch);
-                break;
-              }
-            }
-            this.cb.delete(id)
-          }
-        */
         this.receive = (msg) => {
             if (msg instanceof Uint8Array) {
                 this.file = msg;
@@ -199,8 +180,6 @@ class RepoFrontend {
                     }
                     case "Reply": {
                         const id = msg.id;
-                        //          const reply = msg.reply
-                        // this.handleReply(id,reply)
                         const cb = this.cb.get(id);
                         cb(msg.payload);
                         this.cb.delete(id);
