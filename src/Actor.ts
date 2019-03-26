@@ -44,14 +44,6 @@ interface NewMetadata {
   input: Uint8Array
 }
 
-/*
-interface RemoteMetadata {
-  type: "RemoteMetadata";
-  clocks: { [id:string] : Clock };
-  blocks: MetadataBlock[];
-}
-*/
-
 interface ActorSync {
   type: "ActorSync"
   actor: Actor
@@ -82,6 +74,8 @@ interface ActorConfig {
   repo: RepoBackend
 }
 
+type Storage = Function;
+
 export class Actor {
   id: string
   dkString: string
@@ -92,7 +86,7 @@ export class Actor {
   peers: Set<Peer> = new Set()
   meta: Metadata
   notify: (msg: ActorMsg) => void
-  storage: any
+  storage: Storage
   type: FeedType
   data: Uint8Array[] = []
   pending: Uint8Array[] = []
@@ -117,15 +111,7 @@ export class Actor {
     this.feed.ready(this.feedReady)
   }
 
-  /*
-  message(message: any, target?: Peer) {
-    const peers = target ? [target] : [...this.peers];
-    const payload = Buffer.from(JSON.stringify(message));
-    peers.forEach(peer => peer.stream.extension(EXT, payload));
-  }
-*/
-
-  message2(
+  message(
     blocks: MetadataBlock[],
     clocks: { [id: string]: Clock },
     target?: Peer,
@@ -133,7 +119,6 @@ export class Actor {
     const peers = target ? [target] : [...this.peers]
     const message = { type: "RemoteMetadata", clocks, blocks }
     const payload = Buffer.from(JSON.stringify(message))
-    //    target.stream.extension(EXT2, payload)
     peers.forEach(peer => peer.stream.extension(EXT2, payload))
   }
 
@@ -147,8 +132,7 @@ export class Actor {
       const actor = this.repo.actor(docId)
       const clocks = this.allClocks()
       if (actor) {
-        actor.message2(meta, clocks)
-        //        actor.message(meta);
+        actor.message(meta, clocks)
       }
     })
 
@@ -199,9 +183,7 @@ export class Actor {
       const filename = this.storage("").filename
       if (filename) {
         const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`
-        //console.log("RENAME", filename, newName)
         fs.rename(filename, newName, (err: Error) => {
-          //console.log("DONE", err)
         })
       }
     })
@@ -219,17 +201,14 @@ export class Actor {
         this.notify({ type: "NewMetadata", input })
       }
       if (ext === EXT2) {
-        //        const clocks = JSON.parse(input.toString()); // FIXME - validate
         const msg = validateMetadataMsg2(input)
-        //        this.notify({ type: "RemoteMetadata", clocks });
         this.notify(msg)
       }
     })
     this.peers.add(peer)
     const metadata = this.meta.forActor(this.id)
     const clocks = this.allClocks()
-    this.message2(metadata, clocks, peer)
-    //    this.message(metadata, peer);
+    this.message(metadata, clocks, peer)
     this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }
 
@@ -264,7 +243,6 @@ export class Actor {
     const size = data.byteLength
 
     this.notify({ type: "Download", actor: this, index, size, time })
-    //    this.sync();
   }
 
   handleBlock = (data: Uint8Array, idx: number) => {

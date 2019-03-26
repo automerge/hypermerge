@@ -18,7 +18,6 @@ export function pack(obj: Object): Buffer {
 }
 
 export function unpack(data: Uint8Array): any {
-  //if (data.slice(0,2).toString() === '{"') { // an old block before we added compression
   const header = data.slice(0, 2)
   switch (header.toString()) {
     case '{"':

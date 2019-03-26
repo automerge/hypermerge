@@ -95,7 +95,6 @@ function readFeedN<T>(id: string, feed: Feed<T>, index: number, cb: (data: T[]) 
 }
 
 export function readFeed<T>(id: string, feed: Feed<T>, cb: (data: T[]) => void) {
-//  const id = feed.id.toString('hex').slice(0,4)
   const length = feed.downloaded()
 
   log(`readFeed ${ID(id)} downloaded=${length} feed.length=${feed.length}`)

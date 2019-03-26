@@ -122,13 +122,6 @@ export class RepoFrontend {
     return fork;
   };
 
-/*
-  follow = (url: string, target: string) => {
-    const id = validateDocURL(url);
-    this.toBackend.push({ type: "FollowMsg", id, target });
-  };
-*/
-
   watch = <T>( url: string, cb: (val: T, clock?: Clock, index?: number) => void): Handle<T> => {
     validateDocURL(url);
     const handle = this.open<T>(url);
@@ -208,23 +201,9 @@ export class RepoFrontend {
     this.toBackend.push({ type: "DestroyMsg", id });
     const doc = this.docs.get(id);
     if (doc) {
-      // doc.destroy()
       this.docs.delete(id)
     }
   }
-
-/*
-  handleReply = (id: number, reply: ToFrontendReplyMsg) => {
-    const cb = this.cb.get(id)!
-    switch (reply.type) {
-      case "MaterializeReplyMsg": {
-        cb(reply.patch);
-        break;
-      }
-    }
-    this.cb.delete(id)
-  }
-*/
 
   receive = (msg: ToFrontendRepoMsg) => {
     if (msg instanceof Uint8Array) {
@@ -246,8 +225,6 @@ export class RepoFrontend {
         }
         case "Reply": {
           const id = msg.id
-//          const reply = msg.reply
-         // this.handleReply(id,reply)
           const cb = this.cb.get(id)!
           cb(msg.payload)
           this.cb.delete(id)!

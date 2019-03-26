@@ -25,7 +25,6 @@ export class DocFrontend<T> {
   ready: boolean = false; // do I need ready? -- covered my state !== pending?
   actorId?: string;
   history: number = 0;
-  //  private toBackend: Queue<ToBackendRepoMsg>
   private changeQ = new Queue<ChangeFn<T>>("frontend:change");
   private front: Doc<T>;
   private mode: Mode = "pending";
@@ -35,13 +34,10 @@ export class DocFrontend<T> {
   clock: Clock;
 
   constructor(repo: RepoFrontend, config: Config) {
-    //super()
-
     const docId = config.docId;
     const actorId = config.actorId;
     this.repo = repo;
     this.clock = {};
-    //    this.toBackend = toBackend
 
     if (actorId) {
       this.front = Frontend.init(actorId) as Doc<T>;

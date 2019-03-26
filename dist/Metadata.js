@@ -228,8 +228,8 @@ class Metadata {
             const dirty = this.addBlock(-1, block);
             if (this.ready && dirty) {
                 this.append(block);
-                this.actors(block.id).map(!!block.deleted ? this.leave : this.join);
                 this._clocks = {};
+                this.actors(block.id).map(!!block.deleted ? this.leave : this.join);
             }
         };
         this.append = (block) => {
@@ -287,7 +287,6 @@ class Metadata {
         // i dont care of they deleted it
         if (block.deleted === true) {
             if (this.docs.has(id)) {
-                this.actors(id).map(this.leave);
                 this.docs.delete(id);
                 changedDocs = true;
             }

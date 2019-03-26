@@ -13,7 +13,6 @@ export type ToBackendRepoMsg =
   | NeedsActorIdMsg
   | RequestMsg
   | CloseMsg
-//  | FollowMsg
   | MergeMsg
   | CreateMsg
   | OpenMsg
@@ -22,7 +21,6 @@ export type ToBackendRepoMsg =
   | WriteFile
   | ReadFile
   | QueryMsg
-//  | MaterializeMsg
   | Uint8Array;
 
 export interface QueryMsg {
@@ -35,7 +33,6 @@ export interface ReplyMsg {
   type: "Reply";
   id: number;
   payload: any // PublicMetadata | Patch
-//  reply: ToFrontendReplyMsg;
 }
 
 export interface MaterializeMsg {
@@ -72,14 +69,6 @@ export interface MergeMsg {
   id: string;
   actors: string[];
 }
-
-/*
-export interface FollowMsg {
-  type: "FollowMsg";
-  id: string;
-  target: string;
-}
-*/
 
 export interface DebugMsg {
   type: "DebugMsg";

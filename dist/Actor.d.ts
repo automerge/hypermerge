@@ -42,6 +42,7 @@ interface ActorConfig {
     storage: (path: string) => Function;
     repo: RepoBackend;
 }
+declare type Storage = Function;
 export declare class Actor {
     id: string;
     dkString: string;
@@ -52,14 +53,14 @@ export declare class Actor {
     peers: Set<Peer>;
     meta: Metadata;
     notify: (msg: ActorMsg) => void;
-    storage: any;
+    storage: Storage;
     type: FeedType;
     data: Uint8Array[];
     pending: Uint8Array[];
     fileMetadata?: FeedHeadMetadata;
     repo: RepoBackend;
     constructor(config: ActorConfig);
-    message2(blocks: MetadataBlock[], clocks: {
+    message(blocks: MetadataBlock[], clocks: {
         [id: string]: Clock;
     }, target?: Peer): void;
     feedReady: () => void;

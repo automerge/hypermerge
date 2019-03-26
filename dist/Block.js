@@ -25,7 +25,6 @@ function pack(obj) {
 }
 exports.pack = pack;
 function unpack(data) {
-    //if (data.slice(0,2).toString() === '{"') { // an old block before we added compression
     const header = data.slice(0, 2);
     switch (header.toString()) {
         case '{"':

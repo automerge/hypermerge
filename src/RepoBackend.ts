@@ -73,7 +73,6 @@ export class RepoBackend {
   }
 
   private readFile(id: string, cb: (data: Uint8Array, mimeType: string) => void) {
-//    log("readFile",id, this.meta.forDoc(id))
     if (this.meta.isDoc(id)) { throw new Error("trying to open a document like a file") }
     this.getReadyActor(id, actor => actor.readFile(cb));
   }
@@ -130,7 +129,6 @@ export class RepoBackend {
 
   // opening a file fucks it up
   private open(docId: string): DocBackend {
-//    log("open", docId, this.meta.forDoc(docId));
     if (this.meta.isFile(docId)) { throw new Error("trying to open a file like a document") }
     let doc = this.docs.get(docId) || new DocBackend(this, docId);
     if (!this.docs.has(docId)) {
@@ -145,13 +143,6 @@ export class RepoBackend {
     this.meta.merge(id, clock);
     this.syncReadyActors(Object.keys(clock));
   }
-
-/*
-  follow(id: string, target: string) {
-    this.meta.follow(id, target);
-    this.syncReadyActors(this.meta.actors(id));
-  }
-*/
 
   close = () => {
     this.actors.forEach(actor => actor.close())
@@ -277,23 +268,10 @@ export class RepoBackend {
         _blocks.map(block => {
           if (block.actors) this.syncReadyActors(block.actors)
           if (block.merge) this.syncReadyActors(Object.keys(block.merge))
-//          if (block.follows) block.follows.forEach(id => this.open(id))
         });
         break
       case "NewMetadata":
         console.log("Legacy Metadata message received - better upgrade")
-/*
-        const blocks = validateMetadataMsg(msg.input);
-        log("NewMetadata", blocks)
-        this.meta.addBlocks(blocks);
-        blocks.map(block => {
-          const doc = this.docs.get(block.id)
-          if (doc) doc.target({})
-          if (block.actors) this.syncReadyActors(block.actors)
-          if (block.merge) this.syncReadyActors(Object.keys(block.merge))
-//          if (block.follows) block.follows.forEach(id => this.open(id))
-        });
-*/
         break;
       case "ActorSync":
         log("ActorSync", msg.actor.id)
@@ -458,12 +436,6 @@ export class RepoBackend {
           this.merge(msg.id, strs2clock(msg.actors));
           break;
         }
-/*
-        case "FollowMsg": {
-          this.follow(msg.id, msg.target);
-          break;
-        }
-*/
         case "OpenMsg": {
           this.open(msg.id);
           break;

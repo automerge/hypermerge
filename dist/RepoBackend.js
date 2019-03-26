@@ -62,7 +62,6 @@ class RepoBackend {
             }
         };
         this.join = (actorId) => {
-            console.log("JOIN", actorId);
             const dkBuffer = hypercore_1.discoveryKey(Base58.decode(actorId));
             const dk = Base58.encode(dkBuffer);
             if (this.swarm && !this.joined.has(dk)) {

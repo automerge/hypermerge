@@ -11,10 +11,6 @@ function _id(id: string) : string {
   return id.slice(0,4)
 }
 
-//export interface Clock {
-//  [actorId: string]: number;
-//}
-
 export class DocBackend {
   id: string;
   actorId?: string; // this might be easier to have as the actor object - FIXME
@@ -55,16 +51,10 @@ export class DocBackend {
     if (this.remoteClock) {
       const test = cmp(this.clock, this.remoteClock)
       this.synced = (test === "GT" || test === "EQ")
-//      console.log("TARGET CLOCK", this.id, this.synced)
-//      console.log("this.clock",this.clock)
-//      console.log("this.remoteClock",this.remoteClock)
-//    } else {
-//      console.log("TARGET CLOCK NOT SET", this.id, this.synced)
     }
   }
 
   target = (clock: Clock): void => {
-//    console.log("Target", clock)
     if (this.synced) return
     this.remoteClock = union(clock, this.remoteClock || {})
     this.testForSync()
@@ -111,8 +101,6 @@ export class DocBackend {
 
   init = (changes: Change[], actorId?: string) => {
     this.bench("init", () => {
-      //console.log("CHANGES MAX",changes[changes.length - 1])
-      //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
       const [back, patch] = Backend.applyChanges(Backend.init(), changes);
       this.actorId = actorId;
       if (this.wantsActor && !actorId) {
@@ -121,7 +109,6 @@ export class DocBackend {
       this.back = back;
       this.updateClock(changes);
       this.synced = changes.length > 0 // override updateClock
-      //console.log("INIT SYNCED", this.synced, changes.length)
       this.ready.subscribe(f => f());
       this.subscribeToLocalChanges();
       this.subscribeToRemoteChanges();

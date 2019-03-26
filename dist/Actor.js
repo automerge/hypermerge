@@ -38,8 +38,7 @@ class Actor {
                 const actor = this.repo.actor(docId);
                 const clocks = this.allClocks();
                 if (actor) {
-                    actor.message2(meta, clocks);
-                    //        actor.message(meta);
+                    actor.message(meta, clocks);
                 }
             });
             feed.on("peer-remove", this.peerRemove);
@@ -74,9 +73,7 @@ class Actor {
                 const filename = this.storage("").filename;
                 if (filename) {
                     const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`;
-                    //console.log("RENAME", filename, newName)
                     fs.rename(filename, newName, (err) => {
-                        //console.log("DONE", err)
                     });
                 }
             });
@@ -101,8 +98,7 @@ class Actor {
             this.peers.add(peer);
             const metadata = this.meta.forActor(this.id);
             const clocks = this.allClocks();
-            this.message2(metadata, clocks, peer);
-            //    this.message(metadata, peer);
+            this.message(metadata, clocks, peer);
             this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
         };
         this.sync = () => {
@@ -160,18 +156,10 @@ class Actor {
         this.syncQ = new Queue_1.default("actor:sync-" + id.slice(0, 4));
         this.feed.ready(this.feedReady);
     }
-    /*
-    message(message: any, target?: Peer) {
-      const peers = target ? [target] : [...this.peers];
-      const payload = Buffer.from(JSON.stringify(message));
-      peers.forEach(peer => peer.stream.extension(EXT, payload));
-    }
-  */
-    message2(blocks, clocks, target) {
+    message(blocks, clocks, target) {
         const peers = target ? [target] : [...this.peers];
         const message = { type: "RemoteMetadata", clocks, blocks };
         const payload = Buffer.from(JSON.stringify(message));
-        //    target.stream.extension(EXT2, payload)
         peers.forEach(peer => peer.stream.extension(exports.EXT2, payload));
     }
     handleFeedHead(data) {
