@@ -9,7 +9,12 @@ const log = Debug("repo:metadata");
 
 import { Clock, equivalent, addTo, union, intersection } from "./Clock";
 
-export function validateMetadataMsg2(input: Uint8Array): RemoteMetadata {
+export interface NewMetadata {
+  type: "NewMetadata"
+  input: Uint8Array
+}
+
+export function validateRemoteMetadata(input: Uint8Array): RemoteMetadata {
   const result : RemoteMetadata = { type: "RemoteMetadata", clocks: {}, blocks: [] }
   try {
     const message : any = JSON.parse(input.toString());
@@ -25,21 +30,6 @@ export function validateMetadataMsg2(input: Uint8Array): RemoteMetadata {
     console.log(input.toString())
     console.log("WARNING: Metadata Msg is invalid JSON", e);
     return result;
-  }
-}
-
-export function validateMetadataMsg(input: Uint8Array): MetadataBlock[] {
-  try {
-    const result = JSON.parse(input.toString());
-    if (result instanceof Array) {
-      return filterMetadataInputs(result);
-    } else {
-      log("WARNING: Metadata Msg is not an array");
-      return [];
-    }
-  } catch (e) {
-    log("WARNING: Metadata Msg is invalid JSON");
-    return [];
   }
 }
 
