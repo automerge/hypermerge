@@ -86,7 +86,6 @@ export class Actor {
   id: string
   dkString: string
   q: Queue<(actor: Actor) => void>
-  private syncQ: Queue<() => void>
   changes: Change[] = []
   feed: Feed<Uint8Array>
   peers: Set<Peer> = new Set()
@@ -113,7 +112,6 @@ export class Actor {
     this.dkString = Base58.encode(dk)
     this.feed = hypercore(this.storage, publicKey, { secretKey })
     this.q = new Queue<(actor: Actor) => void>("actor:q-" + id.slice(0, 4))
-    this.syncQ = new Queue<() => void>("actor:sync-" + id.slice(0, 4))
     this.feed.ready(this.feedReady)
   }
 
@@ -248,7 +246,6 @@ export class Actor {
 
   sync = () => {
     log("sync feed", ID(this.id))
-    this.syncQ.once(f => f())
     this.notify({ type: "ActorSync", actor: this })
   }
 
@@ -306,15 +303,7 @@ export class Actor {
       for (let i = 0; i < data.length; i += blockSize) {
         const block = data.slice(i, i + blockSize)
         this.data.push(block)
-        const last = i + blockSize >= data.length
-        this.append(block, () => {
-          if (last) {
-            // I dont want read's to work until its synced to disk - could speed this up
-            // by returning sooner but was having issues where command line tools would
-            // exit before disk syncing was done
-            this.syncQ.subscribe(f => f())
-          }
-        })
+        this.append(block, () => {})
       }
     })
   }
