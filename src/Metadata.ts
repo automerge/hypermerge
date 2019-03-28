@@ -341,10 +341,12 @@ export class Metadata {
     return undefined;
   }
 
-  actorsAsync(id: string, cb: (actors: string[]) => void) {
-    this.readyQ.push(() => {
-      cb(this.actors(id));
-    });
+  async actorsAsync(id: string): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      this.readyQ.push(() => {
+        resolve(this.actors(id))
+      });
+    })
   }
 
   actors(id: string): string[] {

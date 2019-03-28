@@ -69,10 +69,11 @@ export class RepoBackend {
     actor.writeFile(data, mimeType);
   }
 
-  private readFile(id: string, cb: (data: Uint8Array, mimeType: string) => void) {
+  private async readFile(id: string): Promise<{body: Uint8Array, mimeType: string}> {
 //    log("readFile",id, this.meta.forDoc(id))
     if (this.meta.isDoc(id)) { throw new Error("trying to open a document like a file") }
-    this.getReadyActor(id, actor => actor.readFile(cb));
+    const actor = await this.getReadyActor(id)
+    return actor.readFile()
   }
 
   private create(keys: Keys.KeyBuffer): DocBackend {
@@ -177,32 +178,24 @@ export class RepoBackend {
     }
   };
 
-  private allReadyActors(docId: string, cb: (actors: Actor[]) => void) {
-    const a2p = (id: string): Promise<Actor> =>
-      new Promise((resolve, reject) => {
-        try {
-          this.getReadyActor(id, resolve)
-        } catch (e) {
-          reject(e)
-        }
-      });
-    this.meta.actorsAsync(docId, ids => Promise.all(ids.map(a2p)).then(cb));
+  private async allReadyActors(docId: string): Promise<Actor[]> {
+    const actorIds = await this.meta.actorsAsync(docId)
+    return Promise.all(actorIds.map(this.getReadyActor))
   }
 
-  private loadDocument(doc: DocBackend) {
-    this.allReadyActors(doc.id, actors => {
-      log(`load document 2 actors=${actors.map((a) => a.id)}`)
-      const changes: Change[] = [];
-      actors.forEach(actor => {
-        const max = this.meta.clockAt(doc.id,actor.id);
-        const slice = actor.changes.slice(0, max);
-        doc.changes.set(actor.id,slice.length)
-        log(`change actor=${ID(actor.id)} changes=0..${slice.length}`)
-        changes.push(...slice);
-      });
-      log(`loading doc=${ID(doc.id)} changes=${changes.length}`)
-      doc.init(changes, this.meta.localActorId(doc.id));
+  private async loadDocument(doc: DocBackend) {
+    const actors = await this.allReadyActors(doc.id)
+    log(`load document 2 actors=${actors.map((a) => a.id)}`)
+    const changes: Change[] = [];
+    actors.forEach(actor => {
+      const max = this.meta.clockAt(doc.id,actor.id);
+      const slice = actor.changes.slice(0, max);
+      doc.changes.set(actor.id,slice.length)
+      log(`change actor=${ID(actor.id)} changes=0..${slice.length}`)
+      changes.push(...slice);
     });
+    log(`loading doc=${ID(doc.id)} changes=${changes.length}`)
+    doc.init(changes, this.meta.localActorId(doc.id));
   }
 
   join = (actorId: string) => {
@@ -225,10 +218,17 @@ export class RepoBackend {
     this.joined.delete(dk);
   };
 
-  private getReadyActor = (actorId: string, cb: (actor: Actor) => void) => {
+  private getReadyActor = (actorId: string): Promise<Actor> => {
     const publicKey = Base58.decode(actorId);
     const actor = this.actors.get(actorId) || this.initActor({ publicKey });
-    actor.push(cb);
+    const actorPromise = new Promise<Actor>((resolve, reject) => {
+      try {
+      actor.push(resolve)
+      } catch (e) {
+        reject(e)
+      }
+    })
+    return actorPromise
   };
 
   storageFn = (path: string): Function => {
@@ -257,7 +257,10 @@ export class RepoBackend {
   }
 
   syncReadyActors = (ids: string[]) => {
-    ids.map(id => this.getReadyActor(id, this.syncChanges));
+    ids.forEach(async id => {
+      const actor = await this.getReadyActor(id)
+      this.syncChanges(actor)
+    })
   };
 
   allClocks(actorId: string): { [id: string]: Clock } {
@@ -476,11 +479,10 @@ export class RepoBackend {
         case "ReadFile": {
           const id = msg.id;
           log("read file", id)
-          this.readFile(id, (file, mimeType) => {
-            log("read file done", file.length, "bytes", mimeType)
-            this.toFrontend.push(file);
-            this.toFrontend.push({ type: "ReadFileReply", id, mimeType });
-          });
+          this.readFile(id).then(file => {
+            this.toFrontend.push(file.body)
+            this.toFrontend.push({ type: "ReadFileReply", id, mimeType: file.mimeType })
+          })
           break;
         }
         case "CreateMsg": {

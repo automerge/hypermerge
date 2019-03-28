@@ -242,65 +242,69 @@ export class Actor {
       for (let i = 0; i < data.length; i += blockSize) {
         const block = data.slice(i, i + blockSize)
         this.data.push(block)
-        this.append(block, () => {})
+        this.append(block)
       }
     })
   }
 
-  fileHead(cb: (head: FeedHeadMetadata) => void) {
-    if (this.fileMetadata) {
-      cb(this.fileMetadata)
-    } else {
-      this.feed.get(0, { wait: true }, (err, data) => {
-        if (err) throw new Error(`error reading feed head ${this.id}`)
-        const head: any = JsonBuffer.parse(data)
-        this.fileMetadata = head
-        cb(head)
-      })
-    }
-  }
-
-  fileBody(head: FeedHeadMetadata, cb: (body: Uint8Array) => void) {
-    const blockSize = head.blockSize || 1 * MB // old feeds dont have this
-    const blocks = Math.ceil(head.bytes / blockSize)
-    const file = Buffer.concat(this.data)
-    if (file.length === head.bytes) {
-      cb(file)
-    } else {
-      if (blocks === 1) {
-        this.feed.get(1, { wait: true }, (err, file) => {
-          if (err) throw new Error(`error reading feed body ${this.id}`)
-          this.data = [file]
-          cb(file)
-        })
-      } else {
-        this.feed.getBatch(1, blocks, { wait: true }, (err, data) => {
-          if (err) throw new Error(`error reading feed body ${this.id}`)
-          this.data = data
-          const file = Buffer.concat(this.data)
-          cb(file)
-        })
-      }
-    }
-  }
-
-  readFile(cb: (data: Uint8Array, mimeType: string) => void) {
+  async readFile(): Promise<{body: Uint8Array, mimeType: string}> {
     log("reading file...")
-    this.fileHead(head => {
-      const { bytes, mimeType } = head
-      this.fileBody(head, body => {
-        cb(body, head.mimeType)
-      })
+    const head = await this.fileHead()
+    const body = await this.fileBody(head)
+    return {
+      body,
+      mimeType: head.mimeType
+    }
+  }
+
+  fileHead(): Promise<FeedHeadMetadata> {
+    return new Promise((resolve, reject) => {
+      if (this.fileMetadata) {
+        resolve(this.fileMetadata)
+      } else {
+        this.feed.get(0, { wait: true }, (err, data) => {
+          if (err) reject(new Error(`error reading feed head ${this.id}`))
+          const head: FeedHeadMetadata = JsonBuffer.parse(data)
+          this.fileMetadata = head //Yikes
+          resolve(head)
+        })
+      }
     })
   }
 
-  append(block: Uint8Array, cb?: () => void) {
+  fileBody(head: FeedHeadMetadata): Promise<Uint8Array> {
+    return new Promise((resolve, reject) => {
+      const blockSize = head.blockSize || 1 * MB // old feeds dont have this
+      const blocks = Math.ceil(head.bytes / blockSize)
+      const file = Buffer.concat(this.data)
+      if (file.length === head.bytes) {
+        resolve(file)
+      } else {
+        if (blocks === 1) {
+          this.feed.get(1, { wait: true }, (err, file) => {
+            if (err) reject(new Error(`error reading feed body ${this.id}`))
+            this.data = [file]
+            resolve(file)
+          })
+        } else {
+          this.feed.getBatch(1, blocks, { wait: true }, (err, data) => {
+            if (err) reject(new Error(`error reading feed body ${this.id}`))
+            this.data = data
+            const file = Buffer.concat(this.data)
+            resolve(file)
+          })
+        }
+      }
+    })
+  }
+
+
+  append(block: Uint8Array) {
     this.feed.append(block, err => {
       log("Feed.append", block.length, "bytes")
       if (err) {
         throw new Error("failed to append to feed")
       }
-      if (cb) cb()
     })
   }
 
