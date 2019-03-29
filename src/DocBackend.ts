@@ -2,7 +2,6 @@ import * as Backend from "automerge/backend";
 import { Change, BackDoc } from "automerge/backend";
 import * as Frontend from "automerge/frontend"
 import Queue from "./Queue";
-import { RepoBackend } from "./RepoBackend";
 import Debug from "debug";
 import { Clock, cmp, union } from "./Clock";
 
@@ -15,7 +14,8 @@ function _id(id: string) : string {
 export type DocBackendMessage
   = ReadyMsg
   | ActorIdMsg
-  | PatchMsg
+  | RemotePatchMsg
+  | LocalPatchMsg
 
 interface ReadyMsg {
   type: "ReadyMsg"
@@ -32,11 +32,23 @@ interface ActorIdMsg {
   actorId: string
 }
 
-interface PatchMsg {
-  type: "PatchMsg"
+interface RemotePatchMsg {
+  type: "RemotePatchMsg"
   id: string
+  actorId?: string,
   synced: boolean
   patch: Frontend.Patch
+  change?: Change,
+  history: number
+}
+
+interface LocalPatchMsg {
+  type: "LocalPatchMsg"
+  id: string
+  actorId: string,
+  synced: boolean
+  patch: Frontend.Patch
+  change: Change,
   history: number
 }
 
@@ -52,21 +64,18 @@ export class DocBackend {
   changes: Map<string, number> = new Map()
   ready = new Queue<Function>("backend:ready");
   private notify: (msg: DocBackendMessage) => void
-  private repo: RepoBackend;
   private remoteClock?: Clock = undefined;
   private synced : boolean = false
   private localChangeQ = new Queue<Change>("backend:localChangeQ");
   private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ");
-  private wantsActor: boolean = false;
 
-  constructor(core: RepoBackend, id: string, notify: (msg: DocBackendMessage) => void, back?: BackDoc) {
-    this.repo = core;
-    this.id = id;
+  constructor(documentId: string, notify: (msg: DocBackendMessage) => void, back?: BackDoc) {
+    this.id = documentId;
     this.notify = notify
 
     if (back) {
       this.back = back;
-      this.actorId = id;
+      this.actorId = documentId;
       this.ready.subscribe(f => f());
       this.synced = true
       this.subscribeToRemoteChanges();
@@ -76,7 +85,7 @@ export class DocBackend {
         type: "ReadyMsg",
         id: this.id,
         synced: this.synced,
-        actorId: id,
+        actorId: documentId,
         history
       });
     }
@@ -109,22 +118,16 @@ export class DocBackend {
     this.localChangeQ.push(change);
   };
 
-  initActor = () => {
+  initActor = (actorId: string) => {
     log("initActor");
     if (this.back) {
-      // if we're all setup and dont have an actor - request one
-      if (!this.actorId) {
-        this.actorId = this.repo.initActorFeed(this);
-      }
+      this.actorId = this.actorId || actorId
       this.notify({
         type: "ActorIdMsg",
         id: this.id,
         actorId: this.actorId
       });
-    } else {
-      // remember we want one for when init happens
-      this.wantsActor = true;
-    }
+    } 
   };
 
   updateClock(changes: Change[]) {
@@ -141,10 +144,7 @@ export class DocBackend {
       //console.log("CHANGES MAX",changes[changes.length - 1])
       //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
       const [back, patch] = Backend.applyChanges(Backend.init(), changes);
-      this.actorId = actorId;
-      if (this.wantsActor && !actorId) {
-        this.actorId = this.repo.initActorFeed(this);
-      }
+      this.actorId = this.actorId || actorId;
       this.back = back;
       this.updateClock(changes);
       this.synced = changes.length > 0 // override updateClock
@@ -172,7 +172,7 @@ export class DocBackend {
         this.updateClock(changes);
         const history = (this.back as any).getIn(["opSet", "history"]).size;
         this.notify({
-          type: "PatchMsg",
+          type: "RemotePatchMsg",
           id: this.id,
           synced: this.synced,
           patch,
@@ -190,13 +190,14 @@ export class DocBackend {
         this.updateClock([change]);
         const history = (this.back as any).getIn(["opSet", "history"]).size;
         this.notify({
-          type: "PatchMsg",
+          type: "LocalPatchMsg",
           id: this.id,
+          actorId: this.actorId!,
           synced: this.synced,
+          change: change,
           patch,
           history
         });
-        this.repo.actor(this.actorId!)!.writeChange(change);
       });
     });
   }

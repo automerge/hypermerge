@@ -79,7 +79,7 @@ export class RepoBackend {
   private create(keys: Keys.KeyBuffer): DocBackend.DocBackend {
     const docId = Keys.encode(keys.publicKey);
     log("create", docId);
-    const doc = new DocBackend.DocBackend(this, docId, this.documentNotify, Backend.init());
+    const doc = new DocBackend.DocBackend(docId, this.documentNotify, Backend.init());
 
     this.docs.set(docId, doc);
 
@@ -131,7 +131,7 @@ export class RepoBackend {
   private open(docId: string): DocBackend.DocBackend {
 //    log("open", docId, this.meta.forDoc(docId));
     if (this.meta.isFile(docId)) { throw new Error("trying to open a file like a document") }
-    let doc = this.docs.get(docId) || new DocBackend.DocBackend(this, docId, this.documentNotify);
+    let doc = this.docs.get(docId) || new DocBackend.DocBackend(docId, this.documentNotify);
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc);
       this.meta.addActor(docId, docId);
@@ -195,7 +195,10 @@ export class RepoBackend {
       changes.push(...slice);
     });
     log(`loading doc=${ID(doc.id)} changes=${changes.length}`)
-    doc.init(changes, this.meta.localActorId(doc.id));
+    // Check to see if we already have a local actor id. If so, re-use it.
+    const localActorId = this.meta.localActorId(doc.id)
+    const actorId = localActorId ? (await this.getReadyActor(localActorId)).id : this.initActorFeed(doc)
+    doc.init(changes, actorId);
   }
 
   join = (actorId: string) => {
@@ -295,14 +298,25 @@ export class RepoBackend {
         })
         break
       }
-      case "PatchMsg": {
+      case "RemotePatchMsg": {
         this.toFrontend.push({
           type: "PatchMsg",
           id: msg.id,
           synced: msg.synced,
           patch: msg.patch,
           history: msg.history
-        });
+        })
+        break
+      }
+      case "LocalPatchMsg": {
+        this.toFrontend.push({
+          type: "PatchMsg",
+          id: msg.id,
+          synced: msg.synced,
+          patch: msg.patch,
+          history: msg.history
+        })
+        this.actor(msg.actorId)!.writeChange(msg.change);
         break
       }
       default: {
@@ -485,7 +499,8 @@ export class RepoBackend {
       switch (msg.type) {
         case "NeedsActorIdMsg": {
           const doc = this.docs.get(msg.id)!;
-          doc.initActor();
+          const actorId = this.initActorFeed(doc)
+          doc.initActor(actorId);
           break;
         }
         case "RequestMsg": {
