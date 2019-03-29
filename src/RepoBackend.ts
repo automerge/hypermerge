@@ -8,7 +8,7 @@ import { discoveryKey } from "./hypercore";
 import * as Backend from "automerge/backend";
 import { Clock, Change } from "automerge/backend";
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendReplyMsg, ToFrontendRepoMsg } from "./RepoMsg";
-import { DocBackend, DocBackendMessage } from "./DocBackend";
+import * as DocBackend from "./DocBackend"
 import { notEmpty, ID } from "./Misc";
 import Debug from "debug";
 import * as DocumentBroadcast from "./DocumentBroadcast"
@@ -43,7 +43,7 @@ export class RepoBackend {
   joined: Set<string> = new Set();
   actors: Map<string, Actor> = new Map();
   actorsDk: Map<string, Actor> = new Map();
-  docs: Map<string, DocBackend> = new Map();
+  docs: Map<string, DocBackend.DocBackend> = new Map();
   meta: Metadata;
   opts: Options;
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue("repo:toFrontend");
@@ -76,10 +76,10 @@ export class RepoBackend {
     return actor.readFile()
   }
 
-  private create(keys: Keys.KeyBuffer): DocBackend {
+  private create(keys: Keys.KeyBuffer): DocBackend.DocBackend {
     const docId = Keys.encode(keys.publicKey);
     log("create", docId);
-    const doc = new DocBackend(this, docId, this.documentNotify, Backend.init());
+    const doc = new DocBackend.DocBackend(this, docId, this.documentNotify, Backend.init());
 
     this.docs.set(docId, doc);
 
@@ -128,10 +128,10 @@ export class RepoBackend {
   }
 
   // opening a file fucks it up
-  private open(docId: string): DocBackend {
+  private open(docId: string): DocBackend.DocBackend {
 //    log("open", docId, this.meta.forDoc(docId));
     if (this.meta.isFile(docId)) { throw new Error("trying to open a file like a document") }
-    let doc = this.docs.get(docId) || new DocBackend(this, docId, this.documentNotify);
+    let doc = this.docs.get(docId) || new DocBackend.DocBackend(this, docId, this.documentNotify);
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc);
       this.meta.addActor(docId, docId);
@@ -183,7 +183,7 @@ export class RepoBackend {
     return Promise.all(actorIds.map(this.getReadyActor))
   }
 
-  private async loadDocument(doc: DocBackend) {
+  private async loadDocument(doc: DocBackend.DocBackend) {
     const actors = await this.allReadyActors(doc.id)
     log(`load document 2 actors=${actors.map((a) => a.id)}`)
     const changes: Change[] = [];
@@ -237,7 +237,7 @@ export class RepoBackend {
     };
   };
 
-  initActorFeed(doc: DocBackend): string {
+  initActorFeed(doc: DocBackend.DocBackend): string {
     log("initActorFeed", doc.id);
     const keys = crypto.keyPair();
     const actorId = Keys.encode(keys.publicKey);
@@ -246,11 +246,11 @@ export class RepoBackend {
     return actorId;
   }
 
-  actorIds(doc: DocBackend): string[] {
+  actorIds(doc: DocBackend.DocBackend): string[] {
     return this.meta.actors(doc.id);
   }
 
-  docActors(doc: DocBackend): Actor[] {
+  docActors(doc: DocBackend.DocBackend): Actor[] {
     return this.actorIds(doc)
       .map(id => this.actors.get(id))
       .filter(notEmpty);
@@ -274,7 +274,7 @@ export class RepoBackend {
     return clocks
   }
 
-  private documentNotify = (msg: DocBackendMessage) => {
+  private documentNotify = (msg: DocBackend.DocBackendMessage) => {
     switch (msg.type) {
       case "ReadyMsg": {
         this.toFrontend.push({
@@ -455,10 +455,6 @@ export class RepoBackend {
 
     return stream;
   };
-
-  releaseManager(doc: DocBackend) {
-    // FIXME - need reference count with many feeds <-> docs
-  }
 
   subscribe = (subscriber: (message: ToFrontendRepoMsg) => void) => {
     this.toFrontend.subscribe(subscriber);
