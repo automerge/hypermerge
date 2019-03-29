@@ -223,7 +223,7 @@ export class RepoBackend {
     const actor = this.actors.get(actorId) || this.initActor({ publicKey });
     const actorPromise = new Promise<Actor>((resolve, reject) => {
       try {
-      actor.push(resolve)
+      actor.onReady(resolve)
       } catch (e) {
         reject(e)
       }
@@ -303,7 +303,7 @@ export class RepoBackend {
 
   private actorNotify = (msg: ActorMsg) => {
     switch (msg.type) {
-      case "ActorInit": {
+      case "ActorFeedReady": {
         const actor = msg.actor
         // Record whether or not this actor is writable.
         this.meta.setWritable(actor.id, msg.writable)
@@ -320,7 +320,7 @@ export class RepoBackend {
         this.join(actor.id)
         break
       }
-      case "ActorFeedRead": {
+      case "ActorInitialized": {
         // Swarm on the actor's feed.
         this.join(msg.actor.id)
         break
@@ -355,7 +355,6 @@ export class RepoBackend {
   };
 
   private initActor(keys: Keys.KeyBuffer): Actor {
-    const meta = this.meta;
     const notify = this.actorNotify;
     const storage = this.storageFn;
     const actor = new Actor({ keys, notify, storage });

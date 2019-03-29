@@ -342,7 +342,7 @@ export class Metadata {
   }
 
   async actorsAsync(id: string): Promise<string[]> {
-    return new Promise((resolve, reject) => {
+    return new Promise<string[]>((resolve, reject) => {
       this.readyQ.push(() => {
         resolve(this.actors(id))
       });

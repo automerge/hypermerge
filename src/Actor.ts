@@ -12,6 +12,7 @@ import * as Block from "./Block"
 import * as Keys from "./Keys"
 import Debug from "debug"
 
+
 const fs: any = require("fs")
 
 const log = Debug("repo:actor")
@@ -24,8 +25,8 @@ export type FeedHead = FeedHeadMetadata | Change
 export type FeedType = "Unknown" | "Automerge" | "File"
 
 export type ActorMsg =
-  | ActorInit
-  | ActorFeedRead
+  | ActorFeedReady
+  | ActorInitialized
   | ActorSync
   | PeerUpdate
   | PeerAdd
@@ -43,14 +44,14 @@ interface ActorSync {
   actor: Actor
 }
 
-interface ActorInit {
-  type: "ActorInit"
+interface ActorFeedReady {
+  type: "ActorFeedReady"
   actor: Actor
   writable: boolean
 }
 
-interface ActorFeedRead {
-  type: "ActorFeedRead"
+interface ActorInitialized {
+  type: "ActorInitialized"
   actor: Actor
 }
 
@@ -83,16 +84,16 @@ interface ActorConfig {
 export class Actor {
   id: string
   dkString: string
-  q: Queue<(actor: Actor) => void>
   changes: Change[] = []
   feed: Feed<Uint8Array>
   peers: Set<Peer> = new Set()
-  notify: (msg: ActorMsg) => void
-  storage: any
   type: FeedType
-  data: Uint8Array[] = []
-  pending: Uint8Array[] = []
-  fileMetadata?: FeedHeadMetadata
+  private q: Queue<(actor: Actor) => void>
+  private notify: (msg: ActorMsg) => void
+  private storage: any
+  private data: Uint8Array[] = []
+  private pending: Uint8Array[] = []
+  private fileMetadata?: FeedHeadMetadata
 
   constructor(config: ActorConfig) {
     const { publicKey, secretKey } = config.keys
@@ -106,114 +107,104 @@ export class Actor {
     this.dkString = Base58.encode(dk)
     this.feed = hypercore(this.storage, publicKey, { secretKey })
     this.q = new Queue<(actor: Actor) => void>("actor:q-" + id.slice(0, 4))
-    this.feed.ready(this.feedReady)
+    this.feed.ready(this.onFeedReady)
   }
 
-  feedReady = () => {
+  onFeedReady = () => {
     const feed = this.feed
 
-    this.notify({ type: "ActorInit", actor: this, writable: feed.writable })
+    this.notify({ type: "ActorFeedReady", actor: this, writable: feed.writable })
 
-    feed.on("peer-remove", this.peerRemove)
-    feed.on("peer-add", this.peerAdd)
-    feed.on("download", this.handleDownload)
-    feed.on("sync", this.sync)
+    feed.on("peer-remove", this.onPeerRemove)
+    feed.on("peer-add", this.onPeerAdd)
+    feed.on("download", this.onDownload)
+    feed.on("sync", this.onSync)
 
-    readFeed(this.id, feed, this.init) // subscibe begins here
+    readFeed(this.id, feed, this.init) // onReady subscribe begins here
 
     feed.on("close", this.close)
   }
 
-  init = (datas: Uint8Array[]) => {
-    log("loaded blocks", ID(this.id), datas.length)
-    datas.map((data, i) => {
-      if (i === 0) this.handleFeedHead(data)
-      else this.handleBlock(data, i)
-    })
-    if (datas.length > 0) {
-      this.sync()
+  init = (rawBlocks: Uint8Array[]) => {
+    log("loaded blocks", ID(this.id), rawBlocks.length)
+    rawBlocks.map(this.parseBlock)
+
+    if (rawBlocks.length > 0) {
+      this.onSync()
     }
-    this.notify({ type: "ActorFeedRead", actor: this })
+
+    this.notify({ type: "ActorInitialized", actor: this })
     this.q.subscribe(f => f(this))
   }
 
-  handleFeedHead(data: Uint8Array) {
-    const head = Block.unpack(data) // no validation of head
-    if (head.hasOwnProperty("type")) {
-      this.type = "File"
-      this.fileMetadata = head
-    } else {
-      this.type = "Automerge"
-      this.handleBlock(data, 0)
-      this.pending.map(this.handleBlock)
-      this.pending = []
-    }
+  // Note: on Actor ready, not Feed!
+  onReady = (cb: (actor: Actor) => void) => {
+    this.q.push(cb)
   }
 
-
-  close = () => {
-    log("closing feed", this.id)
-    try {
-      this.feed.close((err: Error) => {})
-    } catch (error) {}
-  }
-
-  destroy = () => {
-    this.feed.close((err: Error) => {
-      const filename = this.storage("").filename
-      if (filename) {
-        const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`
-        //console.log("RENAME", filename, newName)
-        fs.rename(filename, newName, (err: Error) => {
-          //console.log("DONE", err)
-        })
-      }
-    })
-  }
-
-  peerRemove = (peer: Peer) => {
-    this.peers.delete(peer)
-    this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
-  }
-
-  peerAdd = (peer: Peer) => {
+  onPeerAdd = (peer: Peer) => {
     log("peer-add feed", ID(this.id))
     this.peers.add(peer)
     this.notify({ type: "PeerAdd", actor: this, peer: peer})
     this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }
 
-  sync = () => {
-    log("sync feed", ID(this.id))
-    this.notify({ type: "ActorSync", actor: this })
+  onPeerRemove = (peer: Peer) => {
+    this.peers.delete(peer)
+    this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }
 
-  handleDownload = (index: number, data: Uint8Array) => {
-    if (this.type === "Unknown") {
-      if (index === 0) {
-        this.handleFeedHead(data)
-      } else {
-        this.pending[index] = data
-      }
-    } else {
-      this.handleBlock(data, index)
-    }
+  onDownload = (index: number, data: Uint8Array) => {
+    this.parseBlock(data, index)
     const time = Date.now()
     const size = data.byteLength
 
     this.notify({ type: "Download", actor: this, index, size, time })
-    //    this.sync();
   }
 
-  handleBlock = (data: Uint8Array, idx: number) => {
+  onSync = () => {
+    log("sync feed", ID(this.id))
+    this.notify({ type: "ActorSync", actor: this })
+  }
+
+  onClose = () => {
+    this.close()
+  }
+
+  parseBlock = (data: Uint8Array, index: number) => {
+    if (this.type === "Unknown") {
+      if (index === 0) {
+        this.parseHeaderBlock(data)
+      } else {
+        this.pending[index] = data
+      }
+    } else {
+      this.parseDataBlock(data, index)
+    }
+  }
+
+  parseHeaderBlock(data: Uint8Array) {
+    const header = Block.unpack(data) // no validation of head
+    if (header.hasOwnProperty("type")) {
+      this.type = "File"
+      this.fileMetadata = header
+    } else {
+      this.type = "Automerge"
+      this.parseBlock(data, 0)
+      this.pending.map(this.parseBlock)
+      this.pending = []
+    }
+  }
+
+  parseDataBlock(data: Uint8Array, index: number) {
     switch (this.type) {
       case "Automerge":
         const change: Change = Block.unpack(data) // no validation of Change
-        this.changes[idx] = change
-        log(`block xxx idx=${idx} actor=${ID(change.actor)} seq=${change.seq}`)
+        this.changes[index] = change
+        log(`block xxx idx=${index} actor=${ID(change.actor)} seq=${change.seq}`)
         break
       case "File":
-        this.data[idx - 1] = data
+        this.data[index - 1] = data
         break
       default:
         throw new Error("cant handle block if we don't know the type")
@@ -221,13 +212,18 @@ export class Actor {
     }
   }
 
-  push = (cb: (actor: Actor) => void) => {
-    this.q.push(cb)
+  writeChange(change: Change) {
+    const feedLength = this.changes.length
+    const ok = feedLength + 1 === change.seq
+    log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`)
+    this.changes.push(change)
+    this.onSync()
+    this.append(Block.pack(change))
   }
 
   writeFile(data: Uint8Array, mimeType: string) {
     log("writing file")
-    this.q.push(() => {
+    this.onReady(() => {
       log("writing file", data.length, "bytes", mimeType)
       if (this.data.length > 0 || this.changes.length > 0)
         throw new Error("writeFile called on existing feed")
@@ -298,8 +294,7 @@ export class Actor {
     })
   }
 
-
-  append(block: Uint8Array) {
+  private append(block: Uint8Array) {
     this.feed.append(block, err => {
       log("Feed.append", block.length, "bytes")
       if (err) {
@@ -308,12 +303,22 @@ export class Actor {
     })
   }
 
-  writeChange(change: Change) {
-    const feedLength = this.changes.length
-    const ok = feedLength + 1 === change.seq
-    log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`)
-    this.changes.push(change)
-    this.sync()
-    this.append(Block.pack(change))
+  close = () => {
+    log("closing feed", this.id)
+    try {
+      this.feed.close((err: Error) => {})
+    } catch (error) {}
   }
+
+  destroy = () => {
+    this.feed.close((err: Error) => {
+      const filename = this.storage("").filename
+      if (filename) {
+        const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`
+        fs.rename(filename, newName, (err: Error) => {
+        })
+      }
+    })
+  }
+
 }
