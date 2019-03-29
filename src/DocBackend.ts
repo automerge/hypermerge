@@ -1,9 +1,14 @@
+/**
+ * TODO: Confirm behavior change in `initActor` and `init` for the `wantsActor` behavior
+ * doesn't have any bugs/issues.
+ */
 import * as Backend from "automerge/backend";
 import { Change, BackDoc } from "automerge/backend";
+import * as Frontend from "automerge/frontend"
 import Queue from "./Queue";
-import { RepoBackend } from "./RepoBackend";
 import Debug from "debug";
 import { Clock, cmp, union } from "./Clock";
+import * as Actor from "./Actor"
 
 const log = Debug("repo:doc:back");
 
@@ -15,56 +20,81 @@ function _id(id: string) : string {
 //  [actorId: string]: number;
 //}
 
+export type Message
+  = Ready
+  | ActorId
+  | Patch
+
+interface Ready {
+  type: "Ready"
+  id: string
+  synced: boolean
+  actorId?: string
+  history?: number
+  patch?: Frontend.Patch
+}
+
+interface ActorId {
+  type: "ActorId"
+  id: string
+  actorId: string
+}
+
+interface Patch {
+  type: "Patch"
+  id: string
+  synced: boolean
+  patch: Frontend.Patch
+  history: number
+}
+
+
 export class DocBackend {
   id: string;
-  actorId?: string; // this might be easier to have as the actor object - FIXME
+  actor?: Actor.Actor;
   clock: Clock = {};
   back?: BackDoc; // can we make this private?
   changes: Map<string, number> = new Map()
   ready = new Queue<Function>("backend:ready");
-  private repo: RepoBackend;
+  private notify: (message: Message) => void
   private remoteClock?: Clock = undefined;
   private synced : boolean = false
   private localChangeQ = new Queue<Change>("backend:localChangeQ");
   private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ");
-  private wantsActor: boolean = false;
 
-  constructor(core: RepoBackend, id: string, back?: BackDoc) {
-    this.repo = core;
+  constructor(id: string, notify: (message: Message) => void, back?: BackDoc, actor?: Actor.Actor) {
     this.id = id;
+    this.notify = notify
 
     if (back) {
       this.back = back;
-      this.actorId = id;
+      this.actor = actor
       this.ready.subscribe(f => f());
       this.synced = true
       this.subscribeToRemoteChanges();
       this.subscribeToLocalChanges();
-      const history = (this.back as any).getIn(["opSet", "history"]).size;
-      this.repo.toFrontend.push({
-        type: "ReadyMsg",
+      this.notify({
+        type: "Ready",
         id: this.id,
         synced: this.synced,
-        actorId: id,
-        history
-      });
+        actorId: this.actor ? this.actor.id : undefined,
+        history: this.history
+      })
     }
+  }
+
+  get history(): number {
+    return (this.back as any).getIn(["opSet", "history"]).size;
   }
 
   testForSync = () : void => {
     if (this.remoteClock) {
       const test = cmp(this.clock, this.remoteClock)
       this.synced = (test === "GT" || test === "EQ")
-//      console.log("TARGET CLOCK", this.id, this.synced)
-//      console.log("this.clock",this.clock)
-//      console.log("this.remoteClock",this.remoteClock)
-//    } else {
-//      console.log("TARGET CLOCK NOT SET", this.id, this.synced)
     }
   }
 
   target = (clock: Clock): void => {
-//    console.log("Target", clock)
     if (this.synced) return
     this.remoteClock = union(clock, this.remoteClock || {})
     this.testForSync()
@@ -78,25 +108,16 @@ export class DocBackend {
     this.localChangeQ.push(change);
   };
 
-  release = () => {
-    this.repo.releaseManager(this);
-  };
-
-  initActor = () => {
-    log("initActor");
+  initActor = (actor: Actor.Actor) => {
+    if (!this.actor) {
+      this.actor = actor
+    }
     if (this.back) {
-      // if we're all setup and dont have an actor - request one
-      if (!this.actorId) {
-        this.actorId = this.repo.initActorFeed(this);
-      }
-      this.repo.toFrontend.push({
-        type: "ActorIdMsg",
+      this.notify({
+        type: "ActorId",
         id: this.id,
-        actorId: this.actorId
-      });
-    } else {
-      // remember we want one for when init happens
-      this.wantsActor = true;
+        actorId: this.actor.id
+      })
     }
   };
 
@@ -109,30 +130,23 @@ export class DocBackend {
     if (!this.synced) this.testForSync();
   }
 
-  init = (changes: Change[], actorId?: string) => {
+  init = (changes: Change[], actor?: Actor.Actor) => {
     this.bench("init", () => {
-      //console.log("CHANGES MAX",changes[changes.length - 1])
-      //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
       const [back, patch] = Backend.applyChanges(Backend.init(), changes);
-      this.actorId = actorId;
-      if (this.wantsActor && !actorId) {
-        this.actorId = this.repo.initActorFeed(this);
-      }
+      this.actor = this.actor || actor;
       this.back = back;
       this.updateClock(changes);
       this.synced = changes.length > 0 // override updateClock
-      //console.log("INIT SYNCED", this.synced, changes.length)
       this.ready.subscribe(f => f());
       this.subscribeToLocalChanges();
       this.subscribeToRemoteChanges();
-      const history = (this.back as any).getIn(["opSet", "history"]).size;
-      this.repo.toFrontend.push({
-        type: "ReadyMsg",
+      this.notify({
+        type: "Ready",
         id: this.id,
         synced: this.synced,
-        actorId: this.actorId,
+        actorId: this.actor ? this.actor.id : undefined,
         patch,
-        history
+        history: this.history
       });
     });
   };
@@ -143,13 +157,12 @@ export class DocBackend {
         const [back, patch] = Backend.applyChanges(this.back!, changes);
         this.back = back;
         this.updateClock(changes);
-        const history = (this.back as any).getIn(["opSet", "history"]).size;
-        this.repo.toFrontend.push({
-          type: "PatchMsg",
+        this.notify({
+          type: "Patch",
           id: this.id,
           synced: this.synced,
           patch,
-          history
+          history: this.history
         });
       });
     });
@@ -161,15 +174,15 @@ export class DocBackend {
         const [back, patch] = Backend.applyLocalChange(this.back!, change);
         this.back = back;
         this.updateClock([change]);
-        const history = (this.back as any).getIn(["opSet", "history"]).size;
-        this.repo.toFrontend.push({
-          type: "PatchMsg",
+        this.notify({
+          type: "Patch",
           id: this.id,
           synced: this.synced,
           patch,
-          history
+          history: this.history
         });
-        this.repo.actor(this.actorId!)!.writeChange(change);
+        // TODO: move this write out of DocBackend
+        this.actor!.writeChange(change)
       });
     });
   }

@@ -171,7 +171,7 @@ export class Actor {
     this.close()
   }
 
-  parseBlock(data: Uint8Array, index: number) {
+  parseBlock = (data: Uint8Array, index: number) => {
     if (this.type === "Unknown") {
       if (index === 0) {
         this.parseHeaderBlock(data)
@@ -293,7 +293,6 @@ export class Actor {
       }
     })
   }
-
 
   private append(block: Uint8Array) {
     this.feed.append(block, err => {
