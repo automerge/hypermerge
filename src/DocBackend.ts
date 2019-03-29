@@ -1,5 +1,6 @@
 import * as Backend from "automerge/backend";
 import { Change, BackDoc } from "automerge/backend";
+import * as Frontend from "automerge/frontend"
 import Queue from "./Queue";
 import { RepoBackend } from "./RepoBackend";
 import Debug from "debug";
@@ -9,6 +10,34 @@ const log = Debug("repo:doc:back");
 
 function _id(id: string) : string {
   return id.slice(0,4)
+}
+
+export type DocBackendMessage
+  = ReadyMsg
+  | ActorIdMsg
+  | PatchMsg
+
+interface ReadyMsg {
+  type: "ReadyMsg"
+  id: string
+  synced: boolean
+  actorId?: string
+  history?: number
+  patch?: Frontend.Patch
+}
+
+interface ActorIdMsg {
+  type: "ActorIdMsg"
+  id: string
+  actorId: string
+}
+
+interface PatchMsg {
+  type: "PatchMsg"
+  id: string
+  synced: boolean
+  patch: Frontend.Patch
+  history: number
 }
 
 //export interface Clock {
@@ -22,6 +51,7 @@ export class DocBackend {
   back?: BackDoc; // can we make this private?
   changes: Map<string, number> = new Map()
   ready = new Queue<Function>("backend:ready");
+  private notify: (msg: DocBackendMessage) => void
   private repo: RepoBackend;
   private remoteClock?: Clock = undefined;
   private synced : boolean = false
@@ -29,9 +59,10 @@ export class DocBackend {
   private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ");
   private wantsActor: boolean = false;
 
-  constructor(core: RepoBackend, id: string, back?: BackDoc) {
+  constructor(core: RepoBackend, id: string, notify: (msg: DocBackendMessage) => void, back?: BackDoc) {
     this.repo = core;
     this.id = id;
+    this.notify = notify
 
     if (back) {
       this.back = back;
@@ -41,7 +72,7 @@ export class DocBackend {
       this.subscribeToRemoteChanges();
       this.subscribeToLocalChanges();
       const history = (this.back as any).getIn(["opSet", "history"]).size;
-      this.repo.toFrontend.push({
+      this.notify({
         type: "ReadyMsg",
         id: this.id,
         synced: this.synced,
@@ -78,10 +109,6 @@ export class DocBackend {
     this.localChangeQ.push(change);
   };
 
-  release = () => {
-    this.repo.releaseManager(this);
-  };
-
   initActor = () => {
     log("initActor");
     if (this.back) {
@@ -89,7 +116,7 @@ export class DocBackend {
       if (!this.actorId) {
         this.actorId = this.repo.initActorFeed(this);
       }
-      this.repo.toFrontend.push({
+      this.notify({
         type: "ActorIdMsg",
         id: this.id,
         actorId: this.actorId
@@ -126,7 +153,7 @@ export class DocBackend {
       this.subscribeToLocalChanges();
       this.subscribeToRemoteChanges();
       const history = (this.back as any).getIn(["opSet", "history"]).size;
-      this.repo.toFrontend.push({
+      this.notify({
         type: "ReadyMsg",
         id: this.id,
         synced: this.synced,
@@ -144,7 +171,7 @@ export class DocBackend {
         this.back = back;
         this.updateClock(changes);
         const history = (this.back as any).getIn(["opSet", "history"]).size;
-        this.repo.toFrontend.push({
+        this.notify({
           type: "PatchMsg",
           id: this.id,
           synced: this.synced,
@@ -162,7 +189,7 @@ export class DocBackend {
         this.back = back;
         this.updateClock([change]);
         const history = (this.back as any).getIn(["opSet", "history"]).size;
-        this.repo.toFrontend.push({
+        this.notify({
           type: "PatchMsg",
           id: this.id,
           synced: this.synced,

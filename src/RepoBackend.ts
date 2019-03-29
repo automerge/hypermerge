@@ -8,7 +8,7 @@ import { discoveryKey } from "./hypercore";
 import * as Backend from "automerge/backend";
 import { Clock, Change } from "automerge/backend";
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendReplyMsg, ToFrontendRepoMsg } from "./RepoMsg";
-import { DocBackend } from "./DocBackend";
+import { DocBackend, DocBackendMessage } from "./DocBackend";
 import { notEmpty, ID } from "./Misc";
 import Debug from "debug";
 import * as DocumentBroadcast from "./DocumentBroadcast"
@@ -79,7 +79,7 @@ export class RepoBackend {
   private create(keys: Keys.KeyBuffer): DocBackend {
     const docId = Keys.encode(keys.publicKey);
     log("create", docId);
-    const doc = new DocBackend(this, docId, Backend.init());
+    const doc = new DocBackend(this, docId, this.documentNotify, Backend.init());
 
     this.docs.set(docId, doc);
 
@@ -131,7 +131,7 @@ export class RepoBackend {
   private open(docId: string): DocBackend {
 //    log("open", docId, this.meta.forDoc(docId));
     if (this.meta.isFile(docId)) { throw new Error("trying to open a file like a document") }
-    let doc = this.docs.get(docId) || new DocBackend(this, docId);
+    let doc = this.docs.get(docId) || new DocBackend(this, docId, this.documentNotify);
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc);
       this.meta.addActor(docId, docId);
@@ -272,6 +272,44 @@ export class RepoBackend {
       }
     })
     return clocks
+  }
+
+  private documentNotify = (msg: DocBackendMessage) => {
+    switch (msg.type) {
+      case "ReadyMsg": {
+        this.toFrontend.push({
+          type: "ReadyMsg",
+          id: msg.id,
+          synced: msg.synced,
+          actorId: msg.actorId,
+          history: msg.history,
+          patch: msg.patch
+        });
+        break
+      }
+      case "ActorIdMsg": {
+        this.toFrontend.push({
+          type: "ActorIdMsg",
+          id: msg.id,
+          actorId: msg.actorId
+        })
+        break
+      }
+      case "PatchMsg": {
+        this.toFrontend.push({
+          type: "PatchMsg",
+          id: msg.id,
+          synced: msg.synced,
+          patch: msg.patch,
+          history: msg.history
+        });
+        break
+      }
+      default: {
+        console.log("Unknown message type", msg)
+      }
+    }
+
   }
 
   private broadcastNotify = (msg: DocumentBroadcast.BroadcastMessage) => {
