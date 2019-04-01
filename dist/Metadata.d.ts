@@ -1,8 +1,11 @@
 /// <reference types="node" />
 import Queue from "./Queue";
 import { Clock } from "./Clock";
-export declare function validateMetadataMsg2(input: Uint8Array): RemoteMetadata;
-export declare function validateMetadataMsg(input: Uint8Array): MetadataBlock[];
+export interface NewMetadata {
+    type: "NewMetadata";
+    input: Uint8Array;
+}
+export declare function validateRemoteMetadata(input: Uint8Array): RemoteMetadata;
 export declare function cleanMetadataInput(input: any): MetadataBlock | undefined;
 export declare function filterMetadataInputs(input: any[]): MetadataBlock[];
 export interface UrlInfo {
@@ -37,6 +40,7 @@ export declare class Metadata {
     private merges;
     readyQ: Queue<() => void>;
     private _clocks;
+    private _docsWith;
     private writable;
     private ready;
     private replay;
@@ -54,7 +58,7 @@ export declare class Metadata {
     allActors(): Set<string>;
     setWritable(actor: string, writable: boolean): void;
     localActorId(id: string): string | undefined;
-    actorsAsync(id: string, cb: (actors: string[]) => void): void;
+    actorsAsync(id: string): Promise<string[]>;
     actors(id: string): string[];
     clockAt(id: string, actor: string): number;
     clock(id: string): Clock;

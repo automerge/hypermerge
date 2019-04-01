@@ -1,4 +1,12 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -19,7 +27,7 @@ const JsonBuffer = __importStar(require("./JsonBuffer"));
 const URL = __importStar(require("url"));
 const log = debug_1.default("repo:metadata");
 const Clock_1 = require("./Clock");
-function validateMetadataMsg2(input) {
+function validateRemoteMetadata(input) {
     const result = { type: "RemoteMetadata", clocks: {}, blocks: [] };
     try {
         const message = JSON.parse(input.toString());
@@ -39,24 +47,7 @@ function validateMetadataMsg2(input) {
         return result;
     }
 }
-exports.validateMetadataMsg2 = validateMetadataMsg2;
-function validateMetadataMsg(input) {
-    try {
-        const result = JSON.parse(input.toString());
-        if (result instanceof Array) {
-            return filterMetadataInputs(result);
-        }
-        else {
-            log("WARNING: Metadata Msg is not an array");
-            return [];
-        }
-    }
-    catch (e) {
-        log("WARNING: Metadata Msg is invalid JSON");
-        return [];
-    }
-}
-exports.validateMetadataMsg = validateMetadataMsg;
+exports.validateRemoteMetadata = validateRemoteMetadata;
 function cleanMetadataInput(input) {
     const id = input.id || input.docId;
     if (typeof id !== "string")
@@ -191,6 +182,7 @@ class Metadata {
         this.merges = new Map();
         this.readyQ = new Queue_1.default(); // FIXME - need a better api for accessing metadata
         this._clocks = {};
+        this._docsWith = new Map();
         this.writable = new Map();
         // whats up with this ready/replay thing
         // there is a situation where someone opens a new document before the ledger is done readying
@@ -217,7 +209,7 @@ class Metadata {
             this.replay.map(this.writeThrough);
             this.replay = [];
             this._clocks = {};
-            this.allActors().forEach(this.join);
+            this._docsWith = new Map();
             this.readyQ.subscribe(f => f());
         };
         // write through caching strategy
@@ -228,8 +220,8 @@ class Metadata {
             const dirty = this.addBlock(-1, block);
             if (this.ready && dirty) {
                 this.append(block);
-                this.actors(block.id).map(!!block.deleted ? this.leave : this.join);
                 this._clocks = {};
+                this._docsWith.clear();
             }
         };
         this.append = (block) => {
@@ -287,7 +279,6 @@ class Metadata {
         // i dont care of they deleted it
         if (block.deleted === true) {
             if (this.docs.has(id)) {
-                this.actors(id).map(this.leave);
                 this.docs.delete(id);
                 changedDocs = true;
             }
@@ -314,9 +305,13 @@ class Metadata {
         }
         return undefined;
     }
-    actorsAsync(id, cb) {
-        this.readyQ.push(() => {
-            cb(this.actors(id));
+    actorsAsync(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                this.readyQ.push(() => {
+                    resolve(this.actors(id));
+                });
+            });
         });
     }
     actors(id) {
@@ -354,7 +349,13 @@ class Metadata {
         return clock;
     }
     docsWith(actor, seq = 1) {
-        return [...this.docs].filter(id => this.has(id, actor, seq));
+        // this is probably unnecessary
+        const key = `${actor}-${seq}`;
+        if (!this._docsWith.has(key)) {
+            const docs = [...this.docs].filter(id => this.has(id, actor, seq));
+            this._docsWith.set(key, docs);
+        }
+        return this._docsWith.get(key);
     }
     has(id, actor, seq) {
         if (!(seq >= 1))

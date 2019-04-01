@@ -4,15 +4,11 @@ import { Metadata } from "./Metadata";
 import { Actor } from "./Actor";
 import { Clock, Change } from "automerge/backend";
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
-import { DocBackend } from "./DocBackend";
+import * as DocBackend from "./DocBackend";
 interface Swarm {
     join(dk: Buffer): void;
     leave(dk: Buffer): void;
     on: Function;
-}
-export interface KeyBuffer {
-    publicKey: Buffer;
-    secretKey?: Buffer;
 }
 export interface FeedData {
     actorId: string;
@@ -29,7 +25,7 @@ export declare class RepoBackend {
     joined: Set<string>;
     actors: Map<string, Actor>;
     actorsDk: Map<string, Actor>;
-    docs: Map<string, DocBackend>;
+    docs: Map<string, DocBackend.DocBackend>;
     meta: Metadata;
     opts: Options;
     toFrontend: Queue<ToFrontendRepoMsg>;
@@ -52,15 +48,19 @@ export declare class RepoBackend {
     leave: (actorId: string) => void;
     private getReadyActor;
     storageFn: (path: string) => Function;
-    initActorFeed(doc: DocBackend): string;
-    actorIds(doc: DocBackend): string[];
-    docActors(doc: DocBackend): Actor[];
+    initActorFeed(doc: DocBackend.DocBackend): string;
+    actorIds(doc: DocBackend.DocBackend): string[];
+    docActors(doc: DocBackend.DocBackend): Actor[];
     syncReadyActors: (ids: string[]) => void;
+    allClocks(actorId: string): {
+        [id: string]: Clock;
+    };
+    private documentNotify;
+    private broadcastNotify;
     private actorNotify;
     private initActor;
     syncChanges: (actor: Actor) => void;
     stream: (opts: any) => any;
-    releaseManager(doc: DocBackend): void;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;
     handleQuery: (id: number, query: ToBackendQueryMsg) => void;
     receive: (msg: ToBackendRepoMsg) => void;
