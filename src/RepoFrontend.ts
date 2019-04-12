@@ -186,6 +186,11 @@ export class RepoFrontend {
     this.toBackend.push({ type: "DebugMsg", id });
   }
 
+  inspect(url: string) {
+    const id = validateDocURL(url)
+    this.toBackend.push({ type: "InspectMsg", id })
+  }
+
   private openDocFrontend<T>(id: string): DocFrontend<T> {
     const doc: DocFrontend<T> = new DocFrontend(this, { docId: id });
     this.toBackend.push({ type: "OpenMsg", id });

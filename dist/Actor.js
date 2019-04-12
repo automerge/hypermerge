@@ -7,9 +7,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -17,17 +14,21 @@ var __importStar = (this && this.__importStar) || function (mod) {
     result["default"] = mod;
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
  * Actors provide an interface over the data replication scheme.
  * For dat, this means the actor abstracts over the hypercore and its peers.
  */
-const hypercore_1 = require("./hypercore");
+const hypercore = __importStar(require("./hypercore"));
 const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Base58 = __importStar(require("bs58"));
 const Block = __importStar(require("./Block"));
+const Peer = __importStar(require("./Peer"));
 const debug_1 = __importDefault(require("debug"));
 const fs = require("fs");
 const log = debug_1.default("repo:actor");
@@ -37,16 +38,18 @@ class Actor {
     constructor(config) {
         this.changes = [];
         this.peers = new Set();
+        this.writable = false;
         this.data = [];
         this.pending = [];
         this.onFeedReady = () => {
             const feed = this.feed;
-            this.notify({ type: "ActorFeedReady", actor: this, writable: feed.writable });
+            this.writable = feed.writable;
+            this.notify({ type: "ActorFeedReady", actor: this });
             feed.on("peer-remove", this.onPeerRemove);
             feed.on("peer-add", this.onPeerAdd);
             feed.on("download", this.onDownload);
             feed.on("sync", this.onSync);
-            hypercore_1.readFeed(this.id, feed, this.init); // onReady subscribe begins here
+            hypercore.readFeed(this.id, feed, this.init); // onReady subscribe begins here
             feed.on("close", this.close);
         };
         this.init = (rawBlocks) => {
@@ -58,17 +61,19 @@ class Actor {
             this.notify({ type: "ActorInitialized", actor: this });
             this.q.subscribe(f => f(this));
         };
-        // Note: on Actor ready, not Feed!
+        // Note: on Actor ready/init, not Feed ready! Actor ready will be after feed ready.
         this.onReady = (cb) => {
             this.q.push(cb);
         };
-        this.onPeerAdd = (peer) => {
+        this.onPeerAdd = (hypercorePeer) => {
             log("peer-add feed", Misc_1.ID(this.id));
+            const peer = new Peer.HypercorePeer(hypercorePeer);
             this.peers.add(peer);
             this.notify({ type: "PeerAdd", actor: this, peer: peer });
             this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
         };
-        this.onPeerRemove = (peer) => {
+        this.onPeerRemove = (hypercorePeer) => {
+            const peer = new Peer.HypercorePeer(hypercorePeer);
             this.peers.delete(peer);
             this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
         };
@@ -116,14 +121,14 @@ class Actor {
             });
         };
         const { publicKey, secretKey } = config.keys;
-        const dk = hypercore_1.discoveryKey(publicKey);
+        const dk = hypercore.discoveryKey(publicKey);
         const id = Base58.encode(publicKey);
         this.type = "Unknown";
         this.id = id;
         this.storage = config.storage(id);
         this.notify = config.notify;
         this.dkString = Base58.encode(dk);
-        this.feed = hypercore_1.hypercore(this.storage, publicKey, { secretKey });
+        this.feed = hypercore.hypercore(this.storage, publicKey, { secretKey });
         this.q = new Queue_1.default("actor:q-" + id.slice(0, 4));
         this.feed.ready(this.onFeedReady);
     }

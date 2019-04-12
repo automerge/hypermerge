@@ -2,7 +2,7 @@
  * Actors provide an interface over the data replication scheme.
  * For dat, this means the actor abstracts over the hypercore and its peers.
  */
-import { readFeed, hypercore, Feed, Peer, discoveryKey } from "./hypercore"
+import * as hypercore from "./hypercore"
 import { Change } from "automerge/backend"
 import { ID } from "./Misc"
 import Queue from "./Queue"
@@ -10,6 +10,7 @@ import * as JsonBuffer from "./JsonBuffer"
 import * as Base58 from "bs58"
 import * as Block from "./Block"
 import * as Keys from "./Keys"
+import * as Peer from "./Peer"
 import Debug from "debug"
 
 
@@ -47,7 +48,6 @@ interface ActorSync {
 interface ActorFeedReady {
   type: "ActorFeedReady"
   actor: Actor
-  writable: boolean
 }
 
 interface ActorInitialized {
@@ -64,7 +64,7 @@ interface PeerUpdate {
 interface PeerAdd {
   type: "PeerAdd"
   actor: Actor
-  peer: Peer
+  peer: Peer.Peer
 }
 
 interface Download {
@@ -85,9 +85,10 @@ export class Actor {
   id: string
   dkString: string
   changes: Change[] = []
-  feed: Feed<Uint8Array>
-  peers: Set<Peer> = new Set()
+  feed: hypercore.Feed<Uint8Array>
+  peers: Set<Peer.Peer> = new Set()
   type: FeedType
+  writable: boolean = false
   private q: Queue<(actor: Actor) => void>
   private notify: (msg: ActorMsg) => void
   private storage: any
@@ -97,7 +98,7 @@ export class Actor {
 
   constructor(config: ActorConfig) {
     const { publicKey, secretKey } = config.keys
-    const dk = discoveryKey(publicKey)
+    const dk = hypercore.discoveryKey(publicKey)
     const id = Base58.encode(publicKey)
 
     this.type = "Unknown"
@@ -105,22 +106,23 @@ export class Actor {
     this.storage = config.storage(id)
     this.notify = config.notify
     this.dkString = Base58.encode(dk)
-    this.feed = hypercore(this.storage, publicKey, { secretKey })
+    this.feed = hypercore.hypercore(this.storage, publicKey, { secretKey })
     this.q = new Queue<(actor: Actor) => void>("actor:q-" + id.slice(0, 4))
     this.feed.ready(this.onFeedReady)
   }
 
   onFeedReady = () => {
     const feed = this.feed
+    this.writable = feed.writable
 
-    this.notify({ type: "ActorFeedReady", actor: this, writable: feed.writable })
+    this.notify({ type: "ActorFeedReady", actor: this })
 
     feed.on("peer-remove", this.onPeerRemove)
     feed.on("peer-add", this.onPeerAdd)
     feed.on("download", this.onDownload)
     feed.on("sync", this.onSync)
 
-    readFeed(this.id, feed, this.init) // onReady subscribe begins here
+    hypercore.readFeed(this.id, feed, this.init) // onReady subscribe begins here
 
     feed.on("close", this.close)
   }
@@ -137,19 +139,21 @@ export class Actor {
     this.q.subscribe(f => f(this))
   }
 
-  // Note: on Actor ready, not Feed!
+  // Note: on Actor ready/init, not Feed ready! Actor ready will be after feed ready.
   onReady = (cb: (actor: Actor) => void) => {
     this.q.push(cb)
   }
 
-  onPeerAdd = (peer: Peer) => {
+  onPeerAdd = (hypercorePeer: hypercore.Peer) => {
     log("peer-add feed", ID(this.id))
+    const peer = new Peer.HypercorePeer(hypercorePeer)
     this.peers.add(peer)
     this.notify({ type: "PeerAdd", actor: this, peer: peer})
     this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }
 
-  onPeerRemove = (peer: Peer) => {
+  onPeerRemove = (hypercorePeer: hypercore.Peer) => {
+    const peer = new Peer.HypercorePeer(hypercorePeer)
     this.peers.delete(peer)
     this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }

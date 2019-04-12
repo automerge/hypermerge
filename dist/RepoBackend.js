@@ -193,7 +193,7 @@ class RepoBackend {
                 case "ActorFeedReady": {
                     const actor = msg.actor;
                     // Record whether or not this actor is writable.
-                    this.meta.setWritable(actor.id, msg.writable);
+                    this.meta.setWritable(actor.id, actor.writable);
                     // Broadcast latest document information to peers.
                     const metadata = this.meta.forActor(actor.id);
                     const clocks = this.allClocks(actor.id);
@@ -265,6 +265,7 @@ class RepoBackend {
             });
         };
         this.stream = (opts) => {
+            console.log("STREAM", opts, this);
             const stream = HypercoreProtocol({
                 live: true,
                 id: this.id,
@@ -380,6 +381,10 @@ class RepoBackend {
                         this.debug(msg.id);
                         break;
                     }
+                    case "InspectMsg": {
+                        this.inspect(msg.id);
+                        break;
+                    }
                     case "CloseMsg": {
                         this.close();
                         break;
@@ -437,6 +442,17 @@ class RepoBackend {
                 .sort();
             console.log(`doc:backend actors=${info.join(",")}`);
         }
+    }
+    inspect(id) {
+        const doc = this.docs.get(id);
+        const short = id.substr(0, 5);
+        if (doc === undefined) {
+            console.log(`dock:backend:inspect not found id=${short}`);
+            return;
+        }
+        const actorIds = this.meta.actors(id);
+        const actors = actorIds.map(actorId => this.actors.get(actorId));
+        console.log(actors);
     }
     destroy(id) {
         this.meta.delete(id);

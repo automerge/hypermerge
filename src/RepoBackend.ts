@@ -7,7 +7,7 @@ import * as crypto from "hypercore/lib/crypto";
 import { discoveryKey } from "./hypercore";
 import * as Backend from "automerge/backend";
 import { Clock, Change } from "automerge/backend";
-import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendReplyMsg, ToFrontendRepoMsg } from "./RepoMsg";
+import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import * as DocBackend from "./DocBackend"
 import { notEmpty, ID } from "./Misc";
 import Debug from "debug";
@@ -108,6 +108,20 @@ export class RepoBackend {
         .sort();
       console.log(`doc:backend actors=${info.join(",")}`);
     }
+  }
+
+  private inspect(id: string) {
+    const doc = this.docs.get(id)
+    const short = id.substr(0, 5)
+
+    if (doc === undefined) {
+      console.log(`dock:backend:inspect not found id=${short}`)
+      return
+    }
+
+    const actorIds = this.meta.actors(id)
+    const actors = actorIds.map(actorId => this.actors.get(actorId))
+    console.log(actors)
   }
 
   private destroy(id: string) {
@@ -358,7 +372,7 @@ export class RepoBackend {
       case "ActorFeedReady": {
         const actor = msg.actor
         // Record whether or not this actor is writable.
-        this.meta.setWritable(actor.id, msg.writable)
+        this.meta.setWritable(actor.id, actor.writable)
         // Broadcast latest document information to peers.
         const metadata = this.meta.forActor(actor.id)
         const clocks = this.allClocks(actor.id)
@@ -562,6 +576,10 @@ export class RepoBackend {
         case "DebugMsg": {
           this.debug(msg.id);
           break;
+        }
+        case "InspectMsg": {
+          this.inspect(msg.id)
+          break
         }
         case "CloseMsg": {
           this.close();

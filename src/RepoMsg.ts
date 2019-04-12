@@ -1,5 +1,6 @@
 import { Patch, Change } from "automerge/frontend";
 import { PublicMetadata } from "./Metadata"
+import * as Actor from "./Actor"
 
 export type ToBackendQueryMsg =
   | MaterializeMsg
@@ -19,6 +20,7 @@ export type ToBackendRepoMsg =
   | OpenMsg
   | DestroyMsg
   | DebugMsg
+  | InspectMsg
   | WriteFile
   | ReadFile
   | QueryMsg
@@ -86,6 +88,11 @@ export interface DebugMsg {
   id: string;
 }
 
+export interface InspectMsg {
+  type: "InspectMsg"
+  id: string
+}
+
 export interface OpenMsg {
   type: "OpenMsg";
   id: string;
@@ -114,6 +121,7 @@ export type ToFrontendRepoMsg =
   | ReadyMsg
   | ReadFileReply
   | ReplyMsg
+  | InspectReplyMsg
   | Uint8Array;
 
 export interface PatchMsg {
@@ -138,6 +146,12 @@ export interface ReadFileReply {
   type: "ReadFileReply";
   id: string;
   mimeType: string;
+}
+
+export interface InspectReplyMsg {
+  type: "InspectReplyMsg"
+  id: string
+  actors: Actor.Actor[]
 }
 
 export interface ActorIdMsg {

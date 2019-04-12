@@ -2,9 +2,10 @@
  * Actors provide an interface over the data replication scheme.
  * For dat, this means the actor abstracts over the hypercore and its peers.
  */
-import { Feed, Peer } from "./hypercore";
+import * as hypercore from "./hypercore";
 import { Change } from "automerge/backend";
 import * as Keys from "./Keys";
+import * as Peer from "./Peer";
 export declare type FeedHead = FeedHeadMetadata | Change;
 export declare type FeedType = "Unknown" | "Automerge" | "File";
 export declare type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | PeerUpdate | PeerAdd | Download;
@@ -21,7 +22,6 @@ interface ActorSync {
 interface ActorFeedReady {
     type: "ActorFeedReady";
     actor: Actor;
-    writable: boolean;
 }
 interface ActorInitialized {
     type: "ActorInitialized";
@@ -35,7 +35,7 @@ interface PeerUpdate {
 interface PeerAdd {
     type: "PeerAdd";
     actor: Actor;
-    peer: Peer;
+    peer: Peer.Peer;
 }
 interface Download {
     type: "Download";
@@ -53,9 +53,10 @@ export declare class Actor {
     id: string;
     dkString: string;
     changes: Change[];
-    feed: Feed<Uint8Array>;
-    peers: Set<Peer>;
+    feed: hypercore.Feed<Uint8Array>;
+    peers: Set<Peer.Peer>;
     type: FeedType;
+    writable: boolean;
     private q;
     private notify;
     private storage;
@@ -66,8 +67,8 @@ export declare class Actor {
     onFeedReady: () => void;
     init: (rawBlocks: Uint8Array[]) => void;
     onReady: (cb: (actor: Actor) => void) => void;
-    onPeerAdd: (peer: Peer) => void;
-    onPeerRemove: (peer: Peer) => void;
+    onPeerAdd: (hypercorePeer: hypercore.Peer) => void;
+    onPeerRemove: (hypercorePeer: hypercore.Peer) => void;
     onDownload: (index: number, data: Uint8Array) => void;
     onSync: () => void;
     onClose: () => void;

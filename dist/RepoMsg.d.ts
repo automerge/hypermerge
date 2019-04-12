@@ -1,8 +1,9 @@
 import { Patch, Change } from "automerge/frontend";
 import { PublicMetadata } from "./Metadata";
+import * as Actor from "./Actor";
 export declare type ToBackendQueryMsg = MaterializeMsg | MetadataMsg;
 export declare type ToFrontendReplyMsg = MaterializeReplyMsg | MetadataReplyMsg;
-export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DestroyMsg | DebugMsg | WriteFile | ReadFile | QueryMsg | Uint8Array;
+export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DestroyMsg | DebugMsg | InspectMsg | WriteFile | ReadFile | QueryMsg | Uint8Array;
 export interface QueryMsg {
     type: "Query";
     id: number;
@@ -46,6 +47,10 @@ export interface DebugMsg {
     type: "DebugMsg";
     id: string;
 }
+export interface InspectMsg {
+    type: "InspectMsg";
+    id: string;
+}
 export interface OpenMsg {
     type: "OpenMsg";
     id: string;
@@ -63,7 +68,7 @@ export interface RequestMsg {
     id: string;
     request: Change;
 }
-export declare type ToFrontendRepoMsg = PatchMsg | ActorBlockDownloadedMsg | ActorIdMsg | ReadyMsg | ReadFileReply | ReplyMsg | Uint8Array;
+export declare type ToFrontendRepoMsg = PatchMsg | ActorBlockDownloadedMsg | ActorIdMsg | ReadyMsg | ReadFileReply | ReplyMsg | InspectReplyMsg | Uint8Array;
 export interface PatchMsg {
     type: "PatchMsg";
     id: string;
@@ -83,6 +88,11 @@ export interface ReadFileReply {
     type: "ReadFileReply";
     id: string;
     mimeType: string;
+}
+export interface InspectReplyMsg {
+    type: "InspectReplyMsg";
+    id: string;
+    actors: Actor.Actor[];
 }
 export interface ActorIdMsg {
     type: "ActorIdMsg";

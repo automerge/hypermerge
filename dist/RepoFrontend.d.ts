@@ -37,6 +37,7 @@ export declare class RepoFrontend {
     queryBackend(query: ToBackendQueryMsg, cb: (arg: any) => void): void;
     open: <T>(url: string) => Handle<T>;
     debug(url: string): void;
+    inspect(url: string): void;
     private openDocFrontend;
     subscribe: (subscriber: (message: ToBackendRepoMsg) => void) => void;
     close: () => void;

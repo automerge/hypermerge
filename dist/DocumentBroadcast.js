@@ -26,12 +26,12 @@ function broadcast(blocks, clocks, peers) {
     const message = { type: "RemoteMetadata", clocks, blocks };
     const payload = Buffer.from(JSON.stringify(message));
     for (let peer of peers) {
-        peer.stream.extension(exports.EXTENSION_V3, payload);
+        peer.sendMessage(exports.EXTENSION_V3, payload);
     }
 }
 exports.broadcast = broadcast;
 function listen(peer, notify) {
-    peer.stream.on("extension", (extension, input) => notify(parseMessage(extension, input)));
+    peer.onMessage("extension", (extension, input) => notify(parseMessage(extension, input)));
 }
 exports.listen = listen;
 function parseMessage(extension, input) {

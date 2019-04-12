@@ -11,7 +11,7 @@
  */
 import * as Metadata from "./Metadata"
 import * as Clock from "./Clock"
-import { Peer } from "./hypercore"
+import * as Peer from "./Peer"
 
 
 export const EXTENSION_V2 = "hypermerge.2"
@@ -26,17 +26,17 @@ export type BroadcastMessage =
 export function broadcast(
     blocks: Metadata.MetadataBlock[],
     clocks: { [id: string]: Clock.Clock },
-    peers: Iterable<Peer>
+    peers: Iterable<Peer.Peer>
   ) {
     const message: Metadata.RemoteMetadata = { type: "RemoteMetadata", clocks, blocks }
     const payload = Buffer.from(JSON.stringify(message))
     for (let peer of peers) {
-        peer.stream.extension(EXTENSION_V3, payload)
+        peer.sendMessage(EXTENSION_V3, payload)
     }
 }
 
-export function listen(peer: Peer, notify: Function) {
-    peer.stream.on(
+export function listen(peer: Peer.Peer, notify: Function) {
+    peer.onMessage(
         "extension",
         (extension: string, input: Uint8Array) => notify(parseMessage(extension, input))
     )

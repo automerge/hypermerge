@@ -256,6 +256,10 @@ class RepoFrontend {
         }
         this.toBackend.push({ type: "DebugMsg", id });
     }
+    inspect(url) {
+        const id = Metadata_1.validateDocURL(url);
+        this.toBackend.push({ type: "InspectMsg", id });
+    }
     openDocFrontend(id) {
         const doc = new DocFrontend_1.DocFrontend(this, { docId: id });
         this.toBackend.push({ type: "OpenMsg", id });
