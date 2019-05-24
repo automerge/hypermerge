@@ -1,6 +1,6 @@
 {
   "name": "hypermerge",
-  "version": "1.0.39",
+  "version": "1.0.40",
   "description": "why merge when you can HYPERMERGE",
   "main": "dist/index.js",
   "scripts": {
