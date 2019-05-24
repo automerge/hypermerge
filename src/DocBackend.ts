@@ -1,133 +1,183 @@
-import Debug from "debug"
-import * as Backend from "automerge/backend"
-import { Change, BackDoc } from "automerge/backend"
-import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
-import Queue from "./Queue"
-import { EXT, RepoBackend } from "./RepoBackend"
-import { Feed, Peer } from "./hypercore"
+import * as Backend from "automerge/backend";
+import { Change, BackDoc } from "automerge/backend";
+import Queue from "./Queue";
+import { RepoBackend } from "./RepoBackend";
+import Debug from "debug";
+import { Clock, cmp, union } from "./Clock";
 
+const log = Debug("repo:doc:back");
 
-const log = Debug("hypermerge:back")
+function _id(id: string) : string {
+  return id.slice(0,4)
+}
+
+//export interface Clock {
+//  [actorId: string]: number;
+//}
 
 export class DocBackend {
-  docId: string
-  actorId?: string
-  private repo: RepoBackend
-  private back?: BackDoc
-  private localChangeQ = new Queue<Change>("backend:localChangeQ")
-  private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ")
-  private wantsActor: boolean = false
+  id: string;
+  actorId?: string; // this might be easier to have as the actor object - FIXME
+  clock: Clock = {};
+  back?: BackDoc; // can we make this private?
+  changes: Map<string, number> = new Map()
+  ready = new Queue<Function>("backend:ready");
+  private repo: RepoBackend;
+  private remoteClock?: Clock = undefined;
+  private synced : boolean = false
+  private localChangeQ = new Queue<Change>("backend:localChangeQ");
+  private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ");
+  private wantsActor: boolean = false;
 
-  constructor(core: RepoBackend, docId: string, back?: BackDoc) {
-    this.repo = core
-    this.docId = docId
+  constructor(core: RepoBackend, id: string, back?: BackDoc) {
+    this.repo = core;
+    this.id = id;
 
     if (back) {
-      this.back = back
-      this.actorId = docId
-      this.subscribeToRemoteChanges()
-      this.subscribeToLocalChanges()
-      this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: docId })
+      this.back = back;
+      this.actorId = id;
+      this.ready.subscribe(f => f());
+      this.synced = true
+      this.subscribeToRemoteChanges();
+      this.subscribeToLocalChanges();
+      const history = (this.back as any).getIn(["opSet", "history"]).size;
+      this.repo.toFrontend.push({
+        type: "ReadyMsg",
+        id: this.id,
+        synced: this.synced,
+        actorId: id,
+        history
+      });
     }
+  }
+
+  testForSync = () : void => {
+    if (this.remoteClock) {
+      const test = cmp(this.clock, this.remoteClock)
+      this.synced = (test === "GT" || test === "EQ")
+//      console.log("TARGET CLOCK", this.id, this.synced)
+//      console.log("this.clock",this.clock)
+//      console.log("this.remoteClock",this.remoteClock)
+//    } else {
+//      console.log("TARGET CLOCK NOT SET", this.id, this.synced)
+    }
+  }
+
+  target = (clock: Clock): void => {
+//    console.log("Target", clock)
+    if (this.synced) return
+    this.remoteClock = union(clock, this.remoteClock || {})
+    this.testForSync()
   }
 
   applyRemoteChanges = (changes: Change[]): void => {
-    this.remoteChangesQ.push(changes)
-  }
+    this.remoteChangesQ.push(changes);
+  };
 
   applyLocalChange = (change: Change): void => {
-    this.localChangeQ.push(change)
-  }
-
-  actorIds = (): string[] => {
-    return this.repo.actorIds(this)
-  }
+    this.localChangeQ.push(change);
+  };
 
   release = () => {
-    this.repo.releaseManager(this)
-  }
+    this.repo.releaseManager(this);
+  };
 
   initActor = () => {
-    log("initActor")
+    log("initActor");
     if (this.back) {
       // if we're all setup and dont have an actor - request one
       if (!this.actorId) {
-        this.actorId = this.repo.initActorFeed(this)
+        this.actorId = this.repo.initActorFeed(this);
       }
-      this.repo.toFrontend.push({ type: "ActorIdMsg", id: this.docId, actorId: this.actorId})
+      this.repo.toFrontend.push({
+        type: "ActorIdMsg",
+        id: this.id,
+        actorId: this.actorId
+      });
     } else {
       // remember we want one for when init happens
-      this.wantsActor = true
+      this.wantsActor = true;
     }
+  };
+
+  updateClock(changes: Change[]) {
+    changes.forEach(change => {
+      const actor = change.actor;
+      const oldSeq = this.clock[actor] || 0;
+      this.clock[actor] = Math.max(oldSeq, change.seq);
+    });
+    if (!this.synced) this.testForSync();
   }
 
   init = (changes: Change[], actorId?: string) => {
     this.bench("init", () => {
-      const [back, patch] = Backend.applyChanges(Backend.init(), changes)
-      this.actorId = actorId
+      //console.log("CHANGES MAX",changes[changes.length - 1])
+      //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
+      const [back, patch] = Backend.applyChanges(Backend.init(), changes);
+      this.actorId = actorId;
       if (this.wantsActor && !actorId) {
-        this.actorId = this.repo.initActorFeed(this)
+        this.actorId = this.repo.initActorFeed(this);
       }
-      this.back = back
-      this.subscribeToLocalChanges()
-      this.subscribeToRemoteChanges()
-      this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: this.actorId, patch})
-    })
-  }
+      this.back = back;
+      this.updateClock(changes);
+      this.synced = changes.length > 0 // override updateClock
+      //console.log("INIT SYNCED", this.synced, changes.length)
+      this.ready.subscribe(f => f());
+      this.subscribeToLocalChanges();
+      this.subscribeToRemoteChanges();
+      const history = (this.back as any).getIn(["opSet", "history"]).size;
+      this.repo.toFrontend.push({
+        type: "ReadyMsg",
+        id: this.id,
+        synced: this.synced,
+        actorId: this.actorId,
+        patch,
+        history
+      });
+    });
+  };
 
   subscribeToRemoteChanges() {
     this.remoteChangesQ.subscribe(changes => {
       this.bench("applyRemoteChanges", () => {
-        const [back, patch] = Backend.applyChanges(this.back!, changes)
-        this.back = back
-        this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch })
-      })
-    })
+        const [back, patch] = Backend.applyChanges(this.back!, changes);
+        this.back = back;
+        this.updateClock(changes);
+        const history = (this.back as any).getIn(["opSet", "history"]).size;
+        this.repo.toFrontend.push({
+          type: "PatchMsg",
+          id: this.id,
+          synced: this.synced,
+          patch,
+          history
+        });
+      });
+    });
   }
 
   subscribeToLocalChanges() {
     this.localChangeQ.subscribe(change => {
       this.bench(`applyLocalChange seq=${change.seq}`, () => {
-        const [back, patch] = Backend.applyLocalChange(this.back!, change)
-        this.back = back
-        this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch })
-        this.repo.writeChange(this, this.actorId!, change)
-      })
-    })
-  }
-
-  peers(): Peer[] {
-    return this.repo.peers(this)
-  }
-
-  feeds(): Feed<Uint8Array>[] {
-    return this.actorIds().map(actorId => this.repo.feed(actorId))
-  }
-
-  broadcast(message: any) {
-    this.peers().forEach(peer => this.message(peer, message))
-  }
-
-  message(peer: Peer, message: any) {
-    peer.stream.extension(EXT, Buffer.from(JSON.stringify(message)))
-  }
-
-  messageMetadata(peer: Peer) {
-    this.message(peer, this.metadata())
-  }
-
-  broadcastMetadata() {
-    this.broadcast(this.actorIds())
-  }
-
-  metadata(): string[] {
-    return this.actorIds()
+        const [back, patch] = Backend.applyLocalChange(this.back!, change);
+        this.back = back;
+        this.updateClock([change]);
+        const history = (this.back as any).getIn(["opSet", "history"]).size;
+        this.repo.toFrontend.push({
+          type: "PatchMsg",
+          id: this.id,
+          synced: this.synced,
+          patch,
+          history
+        });
+        this.repo.actor(this.actorId!)!.writeChange(change);
+      });
+    });
   }
 
   private bench(msg: string, f: () => void): void {
-    const start = Date.now()
-    f()
-    const duration = Date.now() - start
-    log(`docId=${this.docId} task=${msg} time=${duration}ms`)
+    const start = Date.now();
+    f();
+    const duration = Date.now() - start;
+    log(`id=${this.id} task=${msg} time=${duration}ms`);
   }
 }

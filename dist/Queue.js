@@ -14,6 +14,11 @@ class Queue {
         this.log = debug_1.default(`queue:${name}`);
         this.push = this.enqueue;
     }
+    once(subscriber) {
+        if (this.subscription === undefined) {
+            this.subscribe(subscriber);
+        }
+    }
     subscribe(subscriber) {
         if (this.subscription) {
             throw new Error("only one subscriber at a time to a queue");

@@ -1,381 +1,490 @@
-
-import Queue from "./Queue"
-import MapSet from "./MapSet"
-import * as JsonBuffer from "./JsonBuffer"
-import * as Base58 from "bs58"
-import * as crypto from "hypercore/lib/crypto"
-import { hypercore, Feed, Peer, discoveryKey } from "./hypercore"
-import * as Backend from "automerge/backend"
-import { Change } from "automerge/backend"
-import { ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg"
-import { DocBackend } from "./DocBackend"
-import Debug from "debug"
-
-export const EXT = "hypermerge"
-
-type FeedFn = (f: Feed<Uint8Array>) => void
+import Queue from "./Queue";
+import { Metadata, validateMetadataMsg } from "./Metadata";
+import { Actor, ActorMsg, EXT, EXT2 } from "./Actor";
+import { strs2clock, clockDebug } from "./Clock";
+import * as Base58 from "bs58";
+import * as crypto from "hypercore/lib/crypto";
+import { discoveryKey } from "./hypercore";
+import * as Backend from "automerge/backend";
+import { Clock, Change } from "automerge/backend";
+import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendReplyMsg, ToFrontendRepoMsg } from "./RepoMsg";
+import { DocBackend } from "./DocBackend";
+import { notEmpty, ID } from "./Misc";
+import Debug from "debug";
 
 interface Swarm {
-  join(dk: Buffer): void
-  leave(dk: Buffer): void
-  on: Function
+  join(dk: Buffer): void;
+  leave(dk: Buffer): void;
+  on: Function;
 }
 
-Debug.formatters.b = Base58.encode
+Debug.formatters.b = Base58.encode;
 
-const HypercoreProtocol: Function = require("hypercore-protocol")
+const HypercoreProtocol: Function = require("hypercore-protocol");
 
-const log = Debug("repo:backend")
+const log = Debug("repo:backend");
 
 export interface KeyBuffer {
-  publicKey: Buffer
-  secretKey?: Buffer
+  publicKey: Buffer;
+  secretKey?: Buffer;
 }
 
 export interface FeedData {
-  actorId: string
-  writable: Boolean
-  changes: Change[]
+  actorId: string;
+  writable: Boolean;
+  changes: Change[];
 }
 
 export interface Options {
-  path?: string
-  storage: Function
-}
-
-export interface LedgerData {
-  docId: string
-  actorIds: string[]
+  path?: string;
+  storage: Function;
 }
 
 export class RepoBackend {
-  path?: string
-  storage: Function
-  ready: Promise<undefined>
-  joined: Set<Buffer> = new Set()
-  feeds: Map<string, Feed<Uint8Array>> = new Map()
-  feedQs: Map<string, Queue<FeedFn>> = new Map()
-  feedPeers: Map<string, Set<Peer>> = new Map()
-  docs: Map<string, DocBackend> = new Map()
-  feedSeq: Map<string, number> = new Map()
-  ledger: Feed<LedgerData>
-  private ledgerMetadata: MapSet<string, string> = new MapSet()
-  private docMetadata: MapSet<string, string> = new MapSet()
-  private opts: Options
-  toFrontend: Queue<ToFrontendRepoMsg> = new Queue("repo:toFrontend")
-  swarm?: Swarm
-  id: Buffer
+  path?: string;
+  storage: Function;
+  joined: Set<string> = new Set();
+  actors: Map<string, Actor> = new Map();
+  actorsDk: Map<string, Actor> = new Map();
+  docs: Map<string, DocBackend> = new Map();
+  meta: Metadata;
+  opts: Options;
+  toFrontend: Queue<ToFrontendRepoMsg> = new Queue("repo:toFrontend");
+  swarm?: Swarm;
+  id: Buffer;
+  file?: Uint8Array;
 
   constructor(opts: Options) {
-    this.opts = opts
-    this.path = opts.path || "default"
-    this.storage = opts.storage
-    this.ledger = hypercore(this.storageFn("ledger"), { valueEncoding: "json" })
-    this.id = this.ledger.id
-    this.ready = new Promise((resolve, reject) => {
-      this.ledger.ready(() => {
-        log("Ledger ready: size", this.ledger.length)
-        if (this.ledger.length > 0) {
-          this.ledger.getBatch(0, this.ledger.length, (err, data) => {
-            data.forEach(d => {
-              this.docMetadata.merge(d.docId, d.actorIds)
-              this.ledgerMetadata.merge(d.docId, d.actorIds)
-            })
-            resolve()
-          })
-        } else {
-          resolve()
-        }
-      })
-    })
+    this.opts = opts;
+    this.path = opts.path || "default";
+    this.storage = opts.storage;
+
+    this.meta = new Metadata(this.storageFn, this.join, this.leave);
+    this.id = this.meta.id
   }
 
-  private createDocBackend(keys: KeyBuffer): DocBackend {
-    const docId = Base58.encode(keys.publicKey)
-    log("Create", docId)
-    const doc = new DocBackend(this, docId, Backend.init())
+  private writeFile(keys: KeyBuffer, data: Uint8Array, mimeType: string) {
+    const fileId = Base58.encode(keys.publicKey);
 
-    this.docs.set(docId, doc)
+    this.meta.addFile(fileId, data.length, mimeType);
 
-    this.initFeed(doc, keys)
-
-    return doc
+    const actor = this.initActor(keys);
+    actor.writeFile(data, mimeType);
   }
 
-  private addMetadata(docId: string, actorId: string) {
-    this.docMetadata.add(docId, actorId)
-    this.ready.then(() => {
-      if (!this.ledgerMetadata.has(docId, actorId)) {
-        this.ledgerMetadata.add(docId, actorId)
-        this.ledger.append({ docId: docId, actorIds: [actorId] })
+  private readFile(id: string, cb: (data: Uint8Array, mimeType: string) => void) {
+//    log("readFile",id, this.meta.forDoc(id))
+    if (this.meta.isDoc(id)) { throw new Error("trying to open a document like a file") }
+    this.getReadyActor(id, actor => actor.readFile(cb));
+  }
+
+  private create(keys: KeyBuffer): DocBackend {
+    const docId = Base58.encode(keys.publicKey);
+    log("create", docId);
+    const doc = new DocBackend(this, docId, Backend.init());
+
+    this.docs.set(docId, doc);
+
+    this.meta.addActor(doc.id, doc.id);
+
+    this.initActor(keys);
+
+    return doc;
+  }
+
+  private debug(id: string) {
+    const doc = this.docs.get(id);
+    const short = id.substr(0, 5);
+    if (doc === undefined) {
+      console.log(`doc:backend NOT FOUND id=${short}`);
+    } else {
+      console.log(`doc:backend id=${short}`);
+      console.log(`doc:backend clock=${clockDebug(doc.clock)}`);
+      const local = this.meta.localActorId(id);
+      const actors = this.meta.actors(id);
+      const info = actors
+        .map(actor => {
+          const nm = actor.substr(0, 5);
+          return local === actor ? `*${nm}` : nm;
+        })
+        .sort();
+      console.log(`doc:backend actors=${info.join(",")}`);
+    }
+  }
+
+  private destroy(id: string) {
+    this.meta.delete(id)
+    const doc = this.docs.get(id)
+    if (doc) {
+      this.docs.delete(id)
+    }
+    const actors = this.meta.allActors()
+    this.actors.forEach((actor,id) => {
+      if (!actors.has(id)) {
+        console.log("Orfaned actors - will purge", id)
+        this.actors.delete(id)
+        actor.destroy()
       }
     })
   }
 
-  private openDocBackend(docId: string): DocBackend {
-    let doc = this.docs.get(docId) || new DocBackend(this, docId)
+  // opening a file fucks it up
+  private open(docId: string): DocBackend {
+//    log("open", docId, this.meta.forDoc(docId));
+    if (this.meta.isFile(docId)) { throw new Error("trying to open a file like a document") }
+    let doc = this.docs.get(docId) || new DocBackend(this, docId);
     if (!this.docs.has(docId)) {
-      this.docs.set(docId, doc)
-      this.addMetadata(docId, docId)
-      this.loadDocument(doc)
-      this.join(docId)
+      this.docs.set(docId, doc);
+      this.meta.addActor(docId, docId);
+      this.loadDocument(doc);
     }
-    return doc
+    return doc;
   }
 
-  replicate(swarm: Swarm) {
+  merge(id: string, clock: Clock) {
+    this.meta.merge(id, clock);
+    this.syncReadyActors(Object.keys(clock));
+  }
+
+/*
+  follow(id: string, target: string) {
+    this.meta.follow(id, target);
+    this.syncReadyActors(this.meta.actors(id));
+  }
+*/
+
+  close = () => {
+    this.actors.forEach(actor => actor.close())
+    this.actors.clear()
+
+    const swarm : any = this.swarm // FIXME - any is bad
+    if (swarm) {
+      try {
+        swarm.discovery.removeAllListeners()
+        swarm.discovery.close()
+        swarm.peers.forEach((p : any) => p.connections.forEach((con:any) => con.destroy()))
+        swarm.removeAllListeners()
+      } catch (error) {}
+    }
+  }
+
+  replicate = (swarm: Swarm) => {
     if (this.swarm) {
-      throw new Error("replicate called while already swarming")
+      throw new Error("replicate called while already swarming");
     }
-    this.swarm = swarm
+    this.swarm = swarm;
     for (let dk of this.joined) {
-      this.swarm.join(dk)
+      log("swarm.join")
+      this.swarm.join(Base58.decode(dk));
     }
-  }
+  };
 
-  private feedData(doc: DocBackend, actorId: string): Promise<FeedData> {
-    return new Promise((resolve, reject) => {
-      this.getFeed(doc, actorId, feed => {
-        const writable = feed.writable
-        if (feed.length > 0) {
-          feed.getBatch(0, feed.length, (err, datas) => {
-            const changes = datas.map(JsonBuffer.parse)
-
-            if (err) {
-              reject(err)
-            }
-
-            this.feedSeq.set(actorId, datas.length)
-
-            resolve({ actorId, writable, changes })
-          })
-        } else {
-          resolve({ actorId, writable, changes: [] })
+  private allReadyActors(docId: string, cb: (actors: Actor[]) => void) {
+    const a2p = (id: string): Promise<Actor> =>
+      new Promise((resolve, reject) => {
+        try {
+          this.getReadyActor(id, resolve)
+        } catch (e) {
+          reject(e)
         }
-      })
-    })
-  }
-
-  private allFeedData(doc: DocBackend): Promise<FeedData[]> {
-    return Promise.all(doc.actorIds().map(key => this.feedData(doc, key)))
-  }
-
-  writeChange(doc: DocBackend, actorId: string, change: Change) {
-    const feedLength = this.feedSeq.get(actorId) || 0
-    const ok = feedLength + 1 === change.seq
-    log(`write actor=${actorId} seq=${change.seq} feed=${feedLength} ok=${ok}`)
-    this.feedSeq.set(actorId, feedLength + 1)
-    this.getFeed(doc, actorId, feed => {
-      feed.append(JsonBuffer.bufferify(change), err => {
-        if (err) {
-          throw new Error("failed to append to feed")
-        }
-      })
-    })
+      });
+    this.meta.actorsAsync(docId, ids => Promise.all(ids.map(a2p)).then(cb));
   }
 
   private loadDocument(doc: DocBackend) {
-    return this.ready.then(() =>
-      this.allFeedData(doc).then(feedData => {
-        const writer = feedData
-          .filter(f => f.writable)
-          .map(f => f.actorId)
-          .shift()
-        const changes = ([] as Change[]).concat(...feedData.map(f => f.changes))
-        doc.init(changes, writer)
-      }),
-    )
+    this.allReadyActors(doc.id, actors => {
+      log(`load document 2 actors=${actors.map((a) => a.id)}`)
+      const changes: Change[] = [];
+      actors.forEach(actor => {
+        const max = this.meta.clockAt(doc.id,actor.id);
+        const slice = actor.changes.slice(0, max);
+        doc.changes.set(actor.id,slice.length)
+        log(`change actor=${ID(actor.id)} changes=0..${slice.length}`)
+        changes.push(...slice);
+      });
+      log(`loading doc=${ID(doc.id)} changes=${changes.length}`)
+      doc.init(changes, this.meta.localActorId(doc.id));
+    });
   }
 
-  private join = (actorId: string) => {
-    const dk = discoveryKey(Base58.decode(actorId))
+  join = (actorId: string) => {
+    const dkBuffer = discoveryKey(Base58.decode(actorId))
+    const dk = Base58.encode(dkBuffer)
     if (this.swarm && !this.joined.has(dk)) {
-      this.swarm.join(dk)
+      log("swarm.join",ID(actorId), ID(dk)) 
+      this.swarm.join(dkBuffer);
     }
-    this.joined.add(dk)
-  }
+    this.joined.add(dk);
+  };
 
-  private leave = (actorId: string) => {
-    const dk = discoveryKey(Base58.decode(actorId))
+  leave = (actorId: string) => {
+    const dkBuffer = discoveryKey(Base58.decode(actorId));
+    const dk = Base58.encode(dkBuffer);
     if (this.swarm && this.joined.has(dk)) {
-      this.swarm.leave(dk)
+      log("leave",ID(actorId), ID(dk))
+      this.swarm.leave(dkBuffer);
     }
-    this.joined.delete(dk)
-  }
+    this.joined.delete(dk);
+  };
 
-  private getFeed = (doc: DocBackend, actorId: string, cb: FeedFn) => {
-    const publicKey = Base58.decode(actorId)
-    const dk = discoveryKey(publicKey)
-    const dkString = Base58.encode(dk)
-    const q = this.feedQs.get(dkString) || this.initFeed(doc, { publicKey })
-    q.push(cb)
-  }
+  private getReadyActor = (actorId: string, cb: (actor: Actor) => void) => {
+    const publicKey = Base58.decode(actorId);
+    const actor = this.actors.get(actorId) || this.initActor({ publicKey });
+    actor.push(cb);
+  };
 
-  private storageFn(path: string): Function {
+  storageFn = (path: string): Function => {
     return (name: string) => {
-      return this.storage(this.path + "/" + path + "/" + name)
-    }
-  }
+      return this.storage(this.path + "/" + path + "/" + name);
+    };
+  };
 
   initActorFeed(doc: DocBackend): string {
-    log("initActorFeed", doc.docId)
-    const keys = crypto.keyPair()
-    const actorId = Base58.encode(keys.publicKey)
-    this.initFeed(doc, keys)
-    return actorId
-  }
-
-  sendToPeer(peer: Peer, data: any) {
-    peer.stream.extension(EXT, Buffer.from(JSON.stringify(data)))
+    log("initActorFeed", doc.id);
+    const keys = crypto.keyPair();
+    const actorId = Base58.encode(keys.publicKey);
+    this.meta.addActor(doc.id, actorId);
+    this.initActor(keys);
+    return actorId;
   }
 
   actorIds(doc: DocBackend): string[] {
-    return [... this.docMetadata.get(doc.docId)]
+    return this.meta.actors(doc.id);
   }
 
-  feed(actorId: string): Feed<Uint8Array> {
-    const publicKey = Base58.decode(actorId)
-    const dk = discoveryKey(publicKey)
-    const dkString = Base58.encode(dk)
-    return this.feeds.get(dkString)!
+  docActors(doc: DocBackend): Actor[] {
+    return this.actorIds(doc)
+      .map(id => this.actors.get(id))
+      .filter(notEmpty);
   }
 
-  peers(doc: DocBackend): Peer[] {
-    return ([] as Peer[]).concat(
-      ...this.actorIds(doc).map(actorId => [
-        ...(this.feedPeers.get(actorId) || []),
-      ]),
-    )
+  syncReadyActors = (ids: string[]) => {
+    ids.map(id => this.getReadyActor(id, this.syncChanges));
+  };
+
+  private actorNotify = (msg: ActorMsg) => {
+    switch (msg.type) {
+      case "RemoteMetadata":
+        for (let id in msg.clocks) {
+          const clock = msg.clocks[id]
+          const doc = this.docs.get(id)
+          if (clock && doc) {
+            doc.target(clock)
+          }
+        }
+        const _blocks = msg.blocks;
+        this.meta.addBlocks(_blocks);
+        _blocks.map(block => {
+          if (block.actors) this.syncReadyActors(block.actors)
+          if (block.merge) this.syncReadyActors(Object.keys(block.merge))
+//          if (block.follows) block.follows.forEach(id => this.open(id))
+        });
+        break
+      case "NewMetadata":
+        console.log("Legacy Metadata message received - better upgrade")
+/*
+        const blocks = validateMetadataMsg(msg.input);
+        log("NewMetadata", blocks)
+        this.meta.addBlocks(blocks);
+        blocks.map(block => {
+          const doc = this.docs.get(block.id)
+          if (doc) doc.target({})
+          if (block.actors) this.syncReadyActors(block.actors)
+          if (block.merge) this.syncReadyActors(Object.keys(block.merge))
+//          if (block.follows) block.follows.forEach(id => this.open(id))
+        });
+*/
+        break;
+      case "ActorSync":
+        log("ActorSync", msg.actor.id)
+        this.syncChanges(msg.actor);
+        break;
+      case "Download":
+        this.meta.docsWith(msg.actor.id).forEach( (doc: string) => {
+          this.toFrontend.push({
+            type: "ActorBlockDownloadedMsg",
+            id: doc,
+            actorId: msg.actor.id,
+            index: msg.index,
+            size: msg.size,
+            time: msg.time
+          })
+        })
+        break;
+    }
+  };
+
+  private initActor(keys: KeyBuffer): Actor {
+    const meta = this.meta;
+    const notify = this.actorNotify;
+    const storage = this.storageFn;
+    const actor = new Actor({ repo: this, keys, meta, notify, storage });
+    this.actors.set(actor.id, actor);
+    this.actorsDk.set(actor.dkString, actor);
+    return actor;
   }
 
-  private closeFeed = (actorId: string) => {
-    this.feed(actorId).close()
-  }
-
-  private initFeed(doc: DocBackend, keys: KeyBuffer): Queue<FeedFn> {
-    const { publicKey, secretKey } = keys
-    const actorId = Base58.encode(publicKey)
-    const storage = this.storageFn(actorId)
-    const dk = discoveryKey(publicKey)
-    const dkString = Base58.encode(dk)
-    const feed: Feed<Uint8Array> = hypercore(storage, publicKey, {
-      secretKey,
-    })
-    const q = new Queue<FeedFn>()
-    const peers = new Set()
-    this.feeds.set(dkString, feed)
-    this.feedQs.set(dkString, q)
-    this.feedPeers.set(actorId, peers)
-    this.addMetadata(doc.docId, actorId)
-    log("init feed", actorId)
-    feed.ready(() => {
-      this.feedSeq.set(actorId, 0)
-      doc.broadcastMetadata()
-      this.join(actorId)
-      feed.on("peer-remove", (peer: Peer) => {
-        peers.delete(peer)
-      })
-      feed.on("peer-add", (peer: Peer) => {
-        peer.stream.on("extension", (ext: string, buf: Buffer) => {
-          if (ext === EXT) {
-            const msg: string[] = JSON.parse(buf.toString())
-            log("EXT", msg)
-            // getFeed -> initFeed -> join()
-            msg.forEach(actorId => this.getFeed(doc, actorId, _ => { }))
+  syncChanges = (actor: Actor) => {
+    const actorId = actor.id;
+    const docIds = this.meta.docsWith(actorId);
+    docIds.forEach(docId => {
+      const doc = this.docs.get(docId);
+      if (doc) {
+        doc.ready.push(() => {
+          const max = this.meta.clockAt(docId,actorId)
+          const min = doc.changes.get(actorId) || 0
+          const changes = []
+          let i = min;
+          for (; i < max && actor.changes.hasOwnProperty(i); i++) {
+            const change = actor.changes[i]
+            log(`change found xxx id=${ID(actor.id)} seq=${change.seq}`)
+            changes.push(change)
+          }
+          doc.changes.set(actorId,i)
+  //        log(`changes found xxx doc=${ID(docId)} actor=${ID(actor.id)} n=[${min}+${changes.length}/${max}]`);
+          if (changes.length > 0) {
+            log(`applyremotechanges ${changes.length}`)
+            doc.applyRemoteChanges(changes);
           }
         })
-        peers.add(peer)
-        doc.messageMetadata(peer)
-      })
-
-      let remoteChanges: Change[] = []
-      feed.on("download", (idx, data) => {
-        remoteChanges.push(JsonBuffer.parse(data))
-      })
-      feed.on("sync", () => {
-        doc.applyRemoteChanges(remoteChanges)
-        remoteChanges = []
-      })
-
-      this.feedQs.get(dkString)!.subscribe(f => f(feed))
-
-      feed.on("close", () => {
-        log("closing feed", actorId)
-        this.feeds.delete(dkString)
-        this.feedQs.delete(dkString)
-        this.feedPeers.delete(actorId)
-        this.feedSeq.delete(actorId)
-      })
-    })
-    return q
-  }
+      }
+    });
+  };
 
   stream = (opts: any): any => {
     const stream = HypercoreProtocol({
       live: true,
-      id: this.ledger.id,
+      id: this.id,
       encrypt: false,
       timeout: 10000,
-      extensions: [EXT],
-    })
+      extensions: [EXT, EXT2]
+    });
 
     let add = (dk: Buffer) => {
-      const feed = this.feeds.get(Base58.encode(dk))
-      if (feed) {
-        log("replicate feed!", Base58.encode(dk))
-        feed.replicate({
+      const actor = this.actorsDk.get(Base58.encode(dk));
+      if (actor) {
+        log("replicate feed!", ID(Base58.encode(dk)));
+        actor.feed.replicate({
           stream,
-          live: true,
+          live: true
         })
       }
-    }
+    };
 
+    stream.on("feed", (dk: Buffer) => add(dk));
 
-    stream.on("feed", (dk: Buffer) => add(dk))
+    const dk = opts.channel || opts.discoveryKey;
+    if (dk) add(dk);
 
-    const dk = opts.channel || opts.discoveryKey
-    if (dk) add(dk)
-
-    return stream
-  }
+    return stream;
+  };
 
   releaseManager(doc: DocBackend) {
-    const actorIds = doc.actorIds()
-    this.docs.delete(doc.docId)
-    actorIds.map(this.leave)
-    actorIds.map(this.closeFeed)
+    // FIXME - need reference count with many feeds <-> docs
   }
 
   subscribe = (subscriber: (message: ToFrontendRepoMsg) => void) => {
-    this.toFrontend.subscribe(subscriber)
+    this.toFrontend.subscribe(subscriber);
+  };
+
+  handleQuery = (id: number, query: ToBackendQueryMsg) => {
+    switch (query.type) {
+      case "MetadataMsg": {
+        this.meta.publicMetadata(query.id, (payload) => {
+          this.toFrontend.push({ type: "Reply", id, payload })
+        })
+        break;
+      }
+      case "MaterializeMsg": {
+        const doc = this.docs.get(query.id)!
+        const changes = (doc.back as any).getIn(['opSet', 'history']).slice(0, query.history).toArray()
+        const [_, patch] = Backend.applyChanges(Backend.init(), changes);
+        this.toFrontend.push({ type: "Reply", id, payload: patch})
+        break;
+      }
+    }
   }
 
   receive = (msg: ToBackendRepoMsg) => {
-    switch (msg.type) {
-      case "NeedsActorIdMsg": {
-        const doc = this.docs.get(msg.id)!
-        doc.initActor()
-        break
-      }
-      case "RequestMsg": {
-        const doc = this.docs.get(msg.id)!
-        doc.applyLocalChange(msg.request)
-        break
-      }
-      case "CreateMsg": {
-        const keys = {
-          publicKey: Base58.decode(msg.publicKey),
-          secretKey: Base58.decode(msg.secretKey)
+    if (msg instanceof Uint8Array) {
+      this.file = msg;
+    } else {
+      switch (msg.type) {
+        case "NeedsActorIdMsg": {
+          const doc = this.docs.get(msg.id)!;
+          doc.initActor();
+          break;
         }
-        this.createDocBackend(keys)
-        break;
+        case "RequestMsg": {
+          const doc = this.docs.get(msg.id)!;
+          doc.applyLocalChange(msg.request);
+          break;
+        }
+        case "WriteFile": {
+          const keys = {
+            publicKey: Base58.decode(msg.publicKey),
+            secretKey: Base58.decode(msg.secretKey)
+          };
+          log("write file", msg.mimeType)
+          this.writeFile(keys, this.file!, msg.mimeType);
+          delete this.file;
+          break;
+        }
+        case "Query": {
+          const query = msg.query
+          const id = msg.id
+          this.handleQuery(id, query)
+          break
+        }
+        case "ReadFile": {
+          const id = msg.id;
+          log("read file", id)
+          this.readFile(id, (file, mimeType) => {
+            log("read file done", file.length, "bytes", mimeType)
+            this.toFrontend.push(file);
+            this.toFrontend.push({ type: "ReadFileReply", id, mimeType });
+          });
+          break;
+        }
+        case "CreateMsg": {
+          const keys = {
+            publicKey: Base58.decode(msg.publicKey),
+            secretKey: Base58.decode(msg.secretKey)
+          };
+          this.create(keys);
+          break;
+        }
+        case "MergeMsg": {
+          this.merge(msg.id, strs2clock(msg.actors));
+          break;
+        }
+/*
+        case "FollowMsg": {
+          this.follow(msg.id, msg.target);
+          break;
+        }
+*/
+        case "OpenMsg": {
+          this.open(msg.id);
+          break;
+        }
+        case "DestroyMsg": {
+          this.destroy(msg.id);
+          break;
+        }
+        case "DebugMsg": {
+          this.debug(msg.id);
+          break;
+        }
+        case "CloseMsg": {
+          this.close();
+          break;
+        }
       }
-      case "OpenMsg": {
-        this.openDocBackend(msg.id)
-        break
-      }
-
     }
-    //export type ToBackendMsg = NeedsActorIdMsg | RequestMsg | CreateMsg | OpenMsg
+  };
+
+  actor(id: string): Actor | undefined {
+    return this.actors.get(id);
   }
 }

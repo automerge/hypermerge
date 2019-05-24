@@ -10,15 +10,21 @@ class Repo {
         this.back.subscribe(this.front.receive);
         this.id = this.back.id;
         this.stream = this.back.stream;
-    }
-    create() {
-        return this.front.create();
-    }
-    open(id) {
-        return this.front.open(id);
-    }
-    replicate(swarm) {
-        return this.back.replicate(swarm);
+        this.create = this.front.create;
+        this.open = this.front.open;
+        this.destroy = this.front.destroy;
+        this.meta = this.front.meta;
+        //    this.follow = this.front.follow;
+        this.doc = this.front.doc;
+        this.fork = this.front.fork;
+        this.close = this.front.close;
+        this.change = this.front.change;
+        this.readFile = this.front.readFile;
+        this.writeFile = this.front.writeFile;
+        this.watch = this.front.watch;
+        this.merge = this.front.merge;
+        this.replicate = this.back.replicate;
+        this.materialize = this.front.materialize;
     }
 }
 exports.Repo = Repo;

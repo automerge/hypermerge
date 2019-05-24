@@ -1,49 +1,55 @@
-import Debug from "debug"
+import Debug from "debug";
 
 export default class Queue<T> {
-  push: (item: T) => void
-  private queue: T[] = []
-  private log: Debug.IDebugger
-  private subscription?: (item: T) => void
+  push: (item: T) => void;
+  private queue: T[] = [];
+  private log: Debug.IDebugger;
+  private subscription?: (item: T) => void;
 
   constructor(name: string = "unknown") {
-    this.log = Debug(`queue:${name}`)
-    this.push = this.enqueue
+    this.log = Debug(`queue:${name}`);
+    this.push = this.enqueue;
+  }
+
+  once(subscriber: (item: T) => void) {
+    if (this.subscription === undefined) {
+      this.subscribe(subscriber);
+    }
   }
 
   subscribe(subscriber: (item: T) => void) {
     if (this.subscription) {
-      throw new Error("only one subscriber at a time to a queue")
+      throw new Error("only one subscriber at a time to a queue");
     }
 
-    this.log("subscribe")
+    this.log("subscribe");
 
-    this.subscription = subscriber
+    this.subscription = subscriber;
 
     // this is so push(), unsubscribe(), re-subscribe() will processing the backlog
 
     while (this.subscription === subscriber) {
-      const item = this.queue.shift()
+      const item = this.queue.shift();
       if (item === undefined) {
-        this.push = subscriber
-        break
+        this.push = subscriber;
+        break;
       }
-      subscriber(item)
+      subscriber(item);
     }
   }
 
   unsubscribe() {
-    this.log("unsubscribe")
-    this.subscription = undefined
-    this.push = this.enqueue
+    this.log("unsubscribe");
+    this.subscription = undefined;
+    this.push = this.enqueue;
   }
 
   get length() {
-    return this.queue.length
+    return this.queue.length;
   }
 
   private enqueue = (item: T) => {
-    this.log("queued", item)
-    this.queue.push(item)
-  }
+    this.log("queued", item);
+    this.queue.push(item);
+  };
 }

@@ -1,13 +1,20 @@
 {
   "name": "hypermerge",
-  "version": "1.0.1",
+  "version": "1.0.39",
   "description": "why merge when you can HYPERMERGE",
   "main": "dist/index.js",
   "scripts": {
     "doc-serve": "documentation serve --watch index.js",
     "doc-build": "documentation build index.js -f html -o docs",
     "build": "tsc",
-    "tape": "ts-node --files node_modules/tape/bin/tape tests/*.ts"
+    "peek": "ts-node --files tools/Peek.ts $1 $2 $3",
+    "cp": "ts-node --files tools/Cp.ts $1 $2 $3",
+    "watch": "ts-node --files tools/Watch.ts $1 $2 $3",
+    "serve": "ts-node --files tools/Serve.ts $1 $2 $3",
+    "meta": "ts-node --files tools/Meta.ts $1 $2 $3",
+    "cat": "ts-node --files tools/Cat.ts $1 $2 $3",
+    "tape": "ts-node --files node_modules/tape/bin/tape tests/*.test.ts",
+    "tape-inspect": "node --inspect -r ts-node/register/transpile-only node_modules/tape/bin/tape tests/perf.test.ts"
   },
   "repository": {
     "type": "git",
@@ -20,26 +27,34 @@
   },
   "homepage": "https://github.com/inkandswitch/hypermerge#readme",
   "dependencies": {
-    "automerge": "0.9.1",
+    "automerge": "0.9.2",
     "bs58": "^4.0.1",
     "debug": "^4.1.0",
-    "hypercore": "^6.20.2",
-    "hypercore-protocol": "^6.7.1"
+    "hypercore": "^6.24.0",
+    "hypercore-protocol": "^6.9.0",
+    "iltorb": "^2.4.1",
+    "js-sha1": "^0.6.0"
   },
   "devDependencies": {
     "@types/debug": "^0.0.31",
+    "@types/mime-types": "^2.1.0",
     "@types/node": "^10.12.2",
     "@types/tape": "^4.2.32",
+    "@types/ws": "^6.0.1",
+    "dat-swarm-defaults": "^1.0.2",
+    "discovery-cloud-client": "https://github.com/orionz/discovery-cloud-client",
+    "discovery-swarm": "^5.1.3",
     "documentation": "^5.3.5",
     "husky": "^0.14.3",
+    "mime-types": "^2.1.21",
     "nyc": "^11.4.1",
     "opn-cli": "^3.1.0",
     "pump": "^3.0.0",
     "random-access-memory": "^2.4.0",
     "standard": "^10.0.3",
     "tap-nyc": "^1.0.3",
-    "tmp": "^0.0.33",
     "tape": "^4.9.1",
+    "tmp": "^0.0.33",
     "ts-node": "^7.0.1",
     "typescript": "^3.1.6"
   },

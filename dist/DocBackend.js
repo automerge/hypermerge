@@ -1,7 +1,4 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -9,25 +6,54 @@ var __importStar = (this && this.__importStar) || function (mod) {
     result["default"] = mod;
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const debug_1 = __importDefault(require("debug"));
 const Backend = __importStar(require("automerge/backend"));
 const Queue_1 = __importDefault(require("./Queue"));
-const RepoBackend_1 = require("./RepoBackend");
-const log = debug_1.default("hypermerge:back");
+const debug_1 = __importDefault(require("debug"));
+const Clock_1 = require("./Clock");
+const log = debug_1.default("repo:doc:back");
+function _id(id) {
+    return id.slice(0, 4);
+}
+//export interface Clock {
+//  [actorId: string]: number;
+//}
 class DocBackend {
-    constructor(core, docId, back) {
+    constructor(core, id, back) {
+        this.clock = {};
+        this.changes = new Map();
+        this.ready = new Queue_1.default("backend:ready");
+        this.remoteClock = undefined;
+        this.synced = false;
         this.localChangeQ = new Queue_1.default("backend:localChangeQ");
         this.remoteChangesQ = new Queue_1.default("backend:remoteChangesQ");
         this.wantsActor = false;
+        this.testForSync = () => {
+            if (this.remoteClock) {
+                const test = Clock_1.cmp(this.clock, this.remoteClock);
+                this.synced = (test === "GT" || test === "EQ");
+                //      console.log("TARGET CLOCK", this.id, this.synced)
+                //      console.log("this.clock",this.clock)
+                //      console.log("this.remoteClock",this.remoteClock)
+                //    } else {
+                //      console.log("TARGET CLOCK NOT SET", this.id, this.synced)
+            }
+        };
+        this.target = (clock) => {
+            //    console.log("Target", clock)
+            if (this.synced)
+                return;
+            this.remoteClock = Clock_1.union(clock, this.remoteClock || {});
+            this.testForSync();
+        };
         this.applyRemoteChanges = (changes) => {
             this.remoteChangesQ.push(changes);
         };
         this.applyLocalChange = (change) => {
             this.localChangeQ.push(change);
-        };
-        this.actorIds = () => {
-            return this.repo.actorIds(this);
         };
         this.release = () => {
             this.repo.releaseManager(this);
@@ -39,7 +65,11 @@ class DocBackend {
                 if (!this.actorId) {
                     this.actorId = this.repo.initActorFeed(this);
                 }
-                this.repo.toFrontend.push({ type: "ActorIdMsg", id: this.docId, actorId: this.actorId });
+                this.repo.toFrontend.push({
+                    type: "ActorIdMsg",
+                    id: this.id,
+                    actorId: this.actorId
+                });
             }
             else {
                 // remember we want one for when init happens
@@ -48,33 +78,73 @@ class DocBackend {
         };
         this.init = (changes, actorId) => {
             this.bench("init", () => {
+                //console.log("CHANGES MAX",changes[changes.length - 1])
+                //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
                 const [back, patch] = Backend.applyChanges(Backend.init(), changes);
                 this.actorId = actorId;
                 if (this.wantsActor && !actorId) {
                     this.actorId = this.repo.initActorFeed(this);
                 }
                 this.back = back;
+                this.updateClock(changes);
+                this.synced = changes.length > 0; // override updateClock
+                //console.log("INIT SYNCED", this.synced, changes.length)
+                this.ready.subscribe(f => f());
                 this.subscribeToLocalChanges();
                 this.subscribeToRemoteChanges();
-                this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: this.actorId, patch });
+                const history = this.back.getIn(["opSet", "history"]).size;
+                this.repo.toFrontend.push({
+                    type: "ReadyMsg",
+                    id: this.id,
+                    synced: this.synced,
+                    actorId: this.actorId,
+                    patch,
+                    history
+                });
             });
         };
         this.repo = core;
-        this.docId = docId;
+        this.id = id;
         if (back) {
             this.back = back;
-            this.actorId = docId;
+            this.actorId = id;
+            this.ready.subscribe(f => f());
+            this.synced = true;
             this.subscribeToRemoteChanges();
             this.subscribeToLocalChanges();
-            this.repo.toFrontend.push({ type: "ReadyMsg", id: this.docId, actorId: docId });
+            const history = this.back.getIn(["opSet", "history"]).size;
+            this.repo.toFrontend.push({
+                type: "ReadyMsg",
+                id: this.id,
+                synced: this.synced,
+                actorId: id,
+                history
+            });
         }
+    }
+    updateClock(changes) {
+        changes.forEach(change => {
+            const actor = change.actor;
+            const oldSeq = this.clock[actor] || 0;
+            this.clock[actor] = Math.max(oldSeq, change.seq);
+        });
+        if (!this.synced)
+            this.testForSync();
     }
     subscribeToRemoteChanges() {
         this.remoteChangesQ.subscribe(changes => {
             this.bench("applyRemoteChanges", () => {
                 const [back, patch] = Backend.applyChanges(this.back, changes);
                 this.back = back;
-                this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch });
+                this.updateClock(changes);
+                const history = this.back.getIn(["opSet", "history"]).size;
+                this.repo.toFrontend.push({
+                    type: "PatchMsg",
+                    id: this.id,
+                    synced: this.synced,
+                    patch,
+                    history
+                });
             });
         });
     }
@@ -83,37 +153,24 @@ class DocBackend {
             this.bench(`applyLocalChange seq=${change.seq}`, () => {
                 const [back, patch] = Backend.applyLocalChange(this.back, change);
                 this.back = back;
-                this.repo.toFrontend.push({ type: "PatchMsg", id: this.docId, patch });
-                this.repo.writeChange(this, this.actorId, change);
+                this.updateClock([change]);
+                const history = this.back.getIn(["opSet", "history"]).size;
+                this.repo.toFrontend.push({
+                    type: "PatchMsg",
+                    id: this.id,
+                    synced: this.synced,
+                    patch,
+                    history
+                });
+                this.repo.actor(this.actorId).writeChange(change);
             });
         });
-    }
-    peers() {
-        return this.repo.peers(this);
-    }
-    feeds() {
-        return this.actorIds().map(actorId => this.repo.feed(actorId));
-    }
-    broadcast(message) {
-        this.peers().forEach(peer => this.message(peer, message));
-    }
-    message(peer, message) {
-        peer.stream.extension(RepoBackend_1.EXT, Buffer.from(JSON.stringify(message)));
-    }
-    messageMetadata(peer) {
-        this.message(peer, this.metadata());
-    }
-    broadcastMetadata() {
-        this.broadcast(this.actorIds());
-    }
-    metadata() {
-        return this.actorIds();
     }
     bench(msg, f) {
         const start = Date.now();
         f();
         const duration = Date.now() - start;
-        log(`docId=${this.docId} task=${msg} time=${duration}ms`);
+        log(`id=${this.id} task=${msg} time=${duration}ms`);
     }
 }
 exports.DocBackend = DocBackend;

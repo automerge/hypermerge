@@ -1,7 +1,7 @@
 import { Patch, ChangeFn } from "automerge/frontend";
-import { ToBackendRepoMsg } from "./RepoMsg";
-import Queue from "./Queue";
-import Handle from "./Handle";
+import { RepoFrontend, ProgressEvent } from "./RepoFrontend";
+import { Clock } from "./Clock";
+import { Handle } from "./Handle";
 export declare type Patch = Patch;
 interface Config {
     docId: string;
@@ -9,21 +9,29 @@ interface Config {
 }
 export declare class DocFrontend<T> {
     private docId;
-    private actorId?;
-    private toBackend;
+    ready: boolean;
+    actorId?: string;
+    history: number;
     private changeQ;
     private front;
     private mode;
     private handles;
-    constructor(toBackend: Queue<ToBackendRepoMsg>, config: Config);
+    private repo;
+    clock: Clock;
+    constructor(repo: RepoFrontend, config: Config);
     handle(): Handle<T>;
     newState(): void;
+    progress(progressEvent: ProgressEvent): void;
+    fork: () => string;
     change: (fn: ChangeFn<T>) => void;
     release: () => void;
     setActorId: (actorId: string) => void;
-    init: (actorId?: string | undefined, patch?: Patch | undefined) => void;
+    init: (synced: boolean, actorId?: string | undefined, patch?: Patch | undefined, history?: number | undefined) => void;
     private enableWrites;
-    patch: (patch: Patch) => void;
+    private updateClockChange;
+    private updateClockPatch;
+    patch: (patch: Patch, synced: boolean, history: number) => void;
     bench(msg: string, f: () => void): void;
+    close(): void;
 }
 export {};
