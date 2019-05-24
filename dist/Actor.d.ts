@@ -1,30 +1,41 @@
-import { RepoBackend, KeyBuffer } from "./RepoBackend";
+/**
+ * Actors provide an interface over the data replication scheme.
+ * For dat, this means the actor abstracts over the hypercore and its peers.
+ */
 import { Feed, Peer } from "./hypercore";
 import { Change } from "automerge/backend";
-import { Metadata, MetadataBlock, RemoteMetadata } from "./Metadata";
-import { Clock } from "./Clock";
-import Queue from "./Queue";
-export declare type ActorMsg = RemoteMetadata | NewMetadata | ActorSync | PeerUpdate | Download;
+import * as Keys from "./Keys";
 export declare type FeedHead = FeedHeadMetadata | Change;
 export declare type FeedType = "Unknown" | "Automerge" | "File";
+export declare type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | PeerUpdate | PeerAdd | Download;
 interface FeedHeadMetadata {
     type: "File";
     bytes: number;
     mimeType: string;
     blockSize: number;
 }
-interface NewMetadata {
-    type: "NewMetadata";
-    input: Uint8Array;
-}
 interface ActorSync {
     type: "ActorSync";
+    actor: Actor;
+}
+interface ActorFeedReady {
+    type: "ActorFeedReady";
+    actor: Actor;
+    writable: boolean;
+}
+interface ActorInitialized {
+    type: "ActorInitialized";
     actor: Actor;
 }
 interface PeerUpdate {
     type: "PeerUpdate";
     actor: Actor;
     peers: number;
+}
+interface PeerAdd {
+    type: "PeerAdd";
+    actor: Actor;
+    peer: Peer;
 }
 interface Download {
     type: "Download";
@@ -33,54 +44,46 @@ interface Download {
     size: number;
     index: number;
 }
-export declare const EXT = "hypermerge.2";
-export declare const EXT2 = "hypermerge.3";
 interface ActorConfig {
-    keys: KeyBuffer;
-    meta: Metadata;
+    keys: Keys.KeyBuffer;
     notify: (msg: ActorMsg) => void;
     storage: (path: string) => Function;
-    repo: RepoBackend;
 }
 export declare class Actor {
     id: string;
     dkString: string;
-    q: Queue<(actor: Actor) => void>;
-    private syncQ;
     changes: Change[];
     feed: Feed<Uint8Array>;
     peers: Set<Peer>;
-    meta: Metadata;
-    notify: (msg: ActorMsg) => void;
-    storage: any;
     type: FeedType;
-    data: Uint8Array[];
-    pending: Uint8Array[];
-    fileMetadata?: FeedHeadMetadata;
-    repo: RepoBackend;
+    private q;
+    private notify;
+    private storage;
+    private data;
+    private pending;
+    private fileMetadata?;
     constructor(config: ActorConfig);
-    message2(blocks: MetadataBlock[], clocks: {
-        [id: string]: Clock;
-    }, target?: Peer): void;
-    feedReady: () => void;
-    handleFeedHead(data: Uint8Array): void;
-    init: (datas: Uint8Array[]) => void;
+    onFeedReady: () => void;
+    init: (rawBlocks: Uint8Array[]) => void;
+    onReady: (cb: (actor: Actor) => void) => void;
+    onPeerAdd: (peer: Peer) => void;
+    onPeerRemove: (peer: Peer) => void;
+    onDownload: (index: number, data: Uint8Array) => void;
+    onSync: () => void;
+    onClose: () => void;
+    parseBlock: (data: Uint8Array, index: number) => void;
+    parseHeaderBlock(data: Uint8Array): void;
+    parseDataBlock(data: Uint8Array, index: number): void;
+    writeChange(change: Change): void;
+    writeFile(data: Uint8Array, mimeType: string): void;
+    readFile(): Promise<{
+        body: Uint8Array;
+        mimeType: string;
+    }>;
+    fileHead(): Promise<FeedHeadMetadata>;
+    fileBody(head: FeedHeadMetadata): Promise<Uint8Array>;
+    private append;
     close: () => void;
     destroy: () => void;
-    peerRemove: (peer: Peer) => void;
-    peerAdd: (peer: Peer) => void;
-    allClocks(): {
-        [id: string]: Clock;
-    };
-    sync: () => void;
-    handleDownload: (index: number, data: Uint8Array) => void;
-    handleBlock: (data: Uint8Array, idx: number) => void;
-    push: (cb: (actor: Actor) => void) => void;
-    writeFile(data: Uint8Array, mimeType: string): void;
-    fileHead(cb: (head: FeedHeadMetadata) => void): void;
-    fileBody(head: FeedHeadMetadata, cb: (body: Uint8Array) => void): void;
-    readFile(cb: (data: Uint8Array, mimeType: string) => void): void;
-    append(block: Uint8Array, cb?: () => void): void;
-    writeChange(change: Change): void;
 }
 export {};

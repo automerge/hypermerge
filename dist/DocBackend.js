@@ -22,7 +22,7 @@ function _id(id) {
 //  [actorId: string]: number;
 //}
 class DocBackend {
-    constructor(core, id, back) {
+    constructor(documentId, notify, back) {
         this.clock = {};
         this.changes = new Map();
         this.ready = new Queue_1.default("backend:ready");
@@ -30,7 +30,6 @@ class DocBackend {
         this.synced = false;
         this.localChangeQ = new Queue_1.default("backend:localChangeQ");
         this.remoteChangesQ = new Queue_1.default("backend:remoteChangesQ");
-        this.wantsActor = false;
         this.testForSync = () => {
             if (this.remoteClock) {
                 const test = Clock_1.cmp(this.clock, this.remoteClock);
@@ -55,25 +54,15 @@ class DocBackend {
         this.applyLocalChange = (change) => {
             this.localChangeQ.push(change);
         };
-        this.release = () => {
-            this.repo.releaseManager(this);
-        };
-        this.initActor = () => {
+        this.initActor = (actorId) => {
             log("initActor");
             if (this.back) {
-                // if we're all setup and dont have an actor - request one
-                if (!this.actorId) {
-                    this.actorId = this.repo.initActorFeed(this);
-                }
-                this.repo.toFrontend.push({
+                this.actorId = this.actorId || actorId;
+                this.notify({
                     type: "ActorIdMsg",
                     id: this.id,
                     actorId: this.actorId
                 });
-            }
-            else {
-                // remember we want one for when init happens
-                this.wantsActor = true;
             }
         };
         this.init = (changes, actorId) => {
@@ -81,10 +70,7 @@ class DocBackend {
                 //console.log("CHANGES MAX",changes[changes.length - 1])
                 //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
                 const [back, patch] = Backend.applyChanges(Backend.init(), changes);
-                this.actorId = actorId;
-                if (this.wantsActor && !actorId) {
-                    this.actorId = this.repo.initActorFeed(this);
-                }
+                this.actorId = this.actorId || actorId;
                 this.back = back;
                 this.updateClock(changes);
                 this.synced = changes.length > 0; // override updateClock
@@ -93,7 +79,7 @@ class DocBackend {
                 this.subscribeToLocalChanges();
                 this.subscribeToRemoteChanges();
                 const history = this.back.getIn(["opSet", "history"]).size;
-                this.repo.toFrontend.push({
+                this.notify({
                     type: "ReadyMsg",
                     id: this.id,
                     synced: this.synced,
@@ -103,21 +89,21 @@ class DocBackend {
                 });
             });
         };
-        this.repo = core;
-        this.id = id;
+        this.id = documentId;
+        this.notify = notify;
         if (back) {
             this.back = back;
-            this.actorId = id;
+            this.actorId = documentId;
             this.ready.subscribe(f => f());
             this.synced = true;
             this.subscribeToRemoteChanges();
             this.subscribeToLocalChanges();
             const history = this.back.getIn(["opSet", "history"]).size;
-            this.repo.toFrontend.push({
+            this.notify({
                 type: "ReadyMsg",
                 id: this.id,
                 synced: this.synced,
-                actorId: id,
+                actorId: documentId,
                 history
             });
         }
@@ -138,8 +124,8 @@ class DocBackend {
                 this.back = back;
                 this.updateClock(changes);
                 const history = this.back.getIn(["opSet", "history"]).size;
-                this.repo.toFrontend.push({
-                    type: "PatchMsg",
+                this.notify({
+                    type: "RemotePatchMsg",
                     id: this.id,
                     synced: this.synced,
                     patch,
@@ -155,14 +141,15 @@ class DocBackend {
                 this.back = back;
                 this.updateClock([change]);
                 const history = this.back.getIn(["opSet", "history"]).size;
-                this.repo.toFrontend.push({
-                    type: "PatchMsg",
+                this.notify({
+                    type: "LocalPatchMsg",
                     id: this.id,
+                    actorId: this.actorId,
                     synced: this.synced,
+                    change: change,
                     patch,
                     history
                 });
-                this.repo.actor(this.actorId).writeChange(change);
             });
         });
     }

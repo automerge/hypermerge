@@ -9,7 +9,12 @@ const log = Debug("repo:metadata");
 
 import { Clock, equivalent, addTo, union, intersection } from "./Clock";
 
-export function validateMetadataMsg2(input: Uint8Array): RemoteMetadata {
+export interface NewMetadata {
+  type: "NewMetadata"
+  input: Uint8Array
+}
+
+export function validateRemoteMetadata(input: Uint8Array): RemoteMetadata {
   const result : RemoteMetadata = { type: "RemoteMetadata", clocks: {}, blocks: [] }
   try {
     const message : any = JSON.parse(input.toString());
@@ -25,21 +30,6 @@ export function validateMetadataMsg2(input: Uint8Array): RemoteMetadata {
     console.log(input.toString())
     console.log("WARNING: Metadata Msg is invalid JSON", e);
     return result;
-  }
-}
-
-export function validateMetadataMsg(input: Uint8Array): MetadataBlock[] {
-  try {
-    const result = JSON.parse(input.toString());
-    if (result instanceof Array) {
-      return filterMetadataInputs(result);
-    } else {
-      log("WARNING: Metadata Msg is not an array");
-      return [];
-    }
-  } catch (e) {
-    log("WARNING: Metadata Msg is invalid JSON");
-    return [];
   }
 }
 
@@ -202,6 +192,7 @@ export class Metadata {
   private merges: Map<string, Clock> = new Map();
   readyQ: Queue<() => void> = new Queue(); // FIXME - need a better api for accessing metadata
   private _clocks: { [id:string]: Clock } = {}
+  private _docsWith: Map<string, string[]> = new Map()
 
   private writable: Map<string, boolean> = new Map();
 
@@ -250,7 +241,7 @@ export class Metadata {
     this.replay.map(this.writeThrough);
     this.replay = [];
     this._clocks = {}
-    this.allActors().forEach(this.join)
+    this._docsWith = new Map()
     this.readyQ.subscribe(f => f());
   };
 
@@ -273,7 +264,7 @@ export class Metadata {
     if (this.ready && dirty) {
       this.append(block);
       this._clocks = {}
-      this.actors(block.id).map(!!block.deleted ? this.leave : this.join)
+      this._docsWith.clear()
     }
   };
 
@@ -350,10 +341,12 @@ export class Metadata {
     return undefined;
   }
 
-  actorsAsync(id: string, cb: (actors: string[]) => void) {
-    this.readyQ.push(() => {
-      cb(this.actors(id));
-    });
+  async actorsAsync(id: string): Promise<string[]> {
+    return new Promise<string[]>((resolve, reject) => {
+      this.readyQ.push(() => {
+        resolve(this.actors(id))
+      });
+    })
   }
 
   actors(id: string): string[] {
@@ -397,7 +390,13 @@ export class Metadata {
   }
 
   docsWith(actor: string, seq: number = 1): string[] {
-    return [ ... this.docs ].filter(id => this.has(id, actor, seq));
+    // this is probably unnecessary
+    const key = `${actor}-${seq}`
+    if (!this._docsWith.has(key)) {
+      const docs = [ ... this.docs ].filter(id => this.has(id, actor, seq));
+      this._docsWith.set(key, docs)
+    }
+    return this._docsWith.get(key)!
   }
 
   has(id: string, actor: string, seq: number): boolean {

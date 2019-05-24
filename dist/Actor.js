@@ -1,4 +1,12 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -10,8 +18,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * Actors provide an interface over the data replication scheme.
+ * For dat, this means the actor abstracts over the hypercore and its peers.
+ */
 const hypercore_1 = require("./hypercore");
-const Metadata_1 = require("./Metadata");
 const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
@@ -22,45 +33,70 @@ const fs = require("fs");
 const log = debug_1.default("repo:actor");
 const KB = 1024;
 const MB = 1024 * KB;
-exports.EXT = "hypermerge.2";
-exports.EXT2 = "hypermerge.3";
 class Actor {
     constructor(config) {
         this.changes = [];
         this.peers = new Set();
         this.data = [];
         this.pending = [];
-        this.feedReady = () => {
+        this.onFeedReady = () => {
             const feed = this.feed;
-            this.meta.setWritable(this.id, feed.writable);
-            const meta = this.meta.forActor(this.id);
-            this.meta.docsWith(this.id).forEach(docId => {
-                const actor = this.repo.actor(docId);
-                const clocks = this.allClocks();
-                if (actor) {
-                    actor.message2(meta, clocks);
-                    //        actor.message(meta);
-                }
-            });
-            feed.on("peer-remove", this.peerRemove);
-            feed.on("peer-add", this.peerAdd);
-            feed.on("download", this.handleDownload);
-            feed.on("sync", this.sync);
-            hypercore_1.readFeed(this.id, feed, this.init); // subscibe begins here
+            this.notify({ type: "ActorFeedReady", actor: this, writable: feed.writable });
+            feed.on("peer-remove", this.onPeerRemove);
+            feed.on("peer-add", this.onPeerAdd);
+            feed.on("download", this.onDownload);
+            feed.on("sync", this.onSync);
+            hypercore_1.readFeed(this.id, feed, this.init); // onReady subscribe begins here
             feed.on("close", this.close);
         };
-        this.init = (datas) => {
-            log("loaded blocks", Misc_1.ID(this.id), datas.length);
-            datas.map((data, i) => {
-                if (i === 0)
-                    this.handleFeedHead(data);
-                else
-                    this.handleBlock(data, i);
-            });
-            if (datas.length > 0) {
-                this.sync();
+        this.init = (rawBlocks) => {
+            log("loaded blocks", Misc_1.ID(this.id), rawBlocks.length);
+            rawBlocks.map(this.parseBlock);
+            if (rawBlocks.length > 0) {
+                this.onSync();
             }
+            this.notify({ type: "ActorInitialized", actor: this });
             this.q.subscribe(f => f(this));
+        };
+        // Note: on Actor ready, not Feed!
+        this.onReady = (cb) => {
+            this.q.push(cb);
+        };
+        this.onPeerAdd = (peer) => {
+            log("peer-add feed", Misc_1.ID(this.id));
+            this.peers.add(peer);
+            this.notify({ type: "PeerAdd", actor: this, peer: peer });
+            this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
+        };
+        this.onPeerRemove = (peer) => {
+            this.peers.delete(peer);
+            this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
+        };
+        this.onDownload = (index, data) => {
+            this.parseBlock(data, index);
+            const time = Date.now();
+            const size = data.byteLength;
+            this.notify({ type: "Download", actor: this, index, size, time });
+        };
+        this.onSync = () => {
+            log("sync feed", Misc_1.ID(this.id));
+            this.notify({ type: "ActorSync", actor: this });
+        };
+        this.onClose = () => {
+            this.close();
+        };
+        this.parseBlock = (data, index) => {
+            if (this.type === "Unknown") {
+                if (index === 0) {
+                    this.parseHeaderBlock(data);
+                }
+                else {
+                    this.pending[index] = data;
+                }
+            }
+            else {
+                this.parseDataBlock(data, index);
+            }
         };
         this.close = () => {
             log("closing feed", this.id);
@@ -74,76 +110,10 @@ class Actor {
                 const filename = this.storage("").filename;
                 if (filename) {
                     const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`;
-                    //console.log("RENAME", filename, newName)
                     fs.rename(filename, newName, (err) => {
-                        //console.log("DONE", err)
                     });
                 }
             });
-        };
-        this.peerRemove = (peer) => {
-            this.peers.delete(peer);
-            this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
-        };
-        this.peerAdd = (peer) => {
-            log("peer-add feed", Misc_1.ID(this.id));
-            peer.stream.on("extension", (ext, input) => {
-                if (ext === exports.EXT) {
-                    this.notify({ type: "NewMetadata", input });
-                }
-                if (ext === exports.EXT2) {
-                    //        const clocks = JSON.parse(input.toString()); // FIXME - validate
-                    const msg = Metadata_1.validateMetadataMsg2(input);
-                    //        this.notify({ type: "RemoteMetadata", clocks });
-                    this.notify(msg);
-                }
-            });
-            this.peers.add(peer);
-            const metadata = this.meta.forActor(this.id);
-            const clocks = this.allClocks();
-            this.message2(metadata, clocks, peer);
-            //    this.message(metadata, peer);
-            this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
-        };
-        this.sync = () => {
-            log("sync feed", Misc_1.ID(this.id));
-            this.syncQ.once(f => f());
-            this.notify({ type: "ActorSync", actor: this });
-        };
-        this.handleDownload = (index, data) => {
-            if (this.type === "Unknown") {
-                if (index === 0) {
-                    this.handleFeedHead(data);
-                }
-                else {
-                    this.pending[index] = data;
-                }
-            }
-            else {
-                this.handleBlock(data, index);
-            }
-            const time = Date.now();
-            const size = data.byteLength;
-            this.notify({ type: "Download", actor: this, index, size, time });
-            //    this.sync();
-        };
-        this.handleBlock = (data, idx) => {
-            switch (this.type) {
-                case "Automerge":
-                    const change = Block.unpack(data); // no validation of Change
-                    this.changes[idx] = change;
-                    log(`block xxx idx=${idx} actor=${Misc_1.ID(change.actor)} seq=${change.seq}`);
-                    break;
-                case "File":
-                    this.data[idx - 1] = data;
-                    break;
-                default:
-                    throw new Error("cant handle block if we don't know the type");
-                    break;
-            }
-        };
-        this.push = (cb) => {
-            this.q.push(cb);
         };
         const { publicKey, secretKey } = config.keys;
         const dk = hypercore_1.discoveryKey(publicKey);
@@ -152,54 +122,50 @@ class Actor {
         this.id = id;
         this.storage = config.storage(id);
         this.notify = config.notify;
-        this.meta = config.meta;
-        this.repo = config.repo;
         this.dkString = Base58.encode(dk);
         this.feed = hypercore_1.hypercore(this.storage, publicKey, { secretKey });
         this.q = new Queue_1.default("actor:q-" + id.slice(0, 4));
-        this.syncQ = new Queue_1.default("actor:sync-" + id.slice(0, 4));
-        this.feed.ready(this.feedReady);
+        this.feed.ready(this.onFeedReady);
     }
-    /*
-    message(message: any, target?: Peer) {
-      const peers = target ? [target] : [...this.peers];
-      const payload = Buffer.from(JSON.stringify(message));
-      peers.forEach(peer => peer.stream.extension(EXT, payload));
-    }
-  */
-    message2(blocks, clocks, target) {
-        const peers = target ? [target] : [...this.peers];
-        const message = { type: "RemoteMetadata", clocks, blocks };
-        const payload = Buffer.from(JSON.stringify(message));
-        //    target.stream.extension(EXT2, payload)
-        peers.forEach(peer => peer.stream.extension(exports.EXT2, payload));
-    }
-    handleFeedHead(data) {
-        const head = Block.unpack(data); // no validation of head
-        if (head.hasOwnProperty("type")) {
+    parseHeaderBlock(data) {
+        const header = Block.unpack(data); // no validation of head
+        if (header.hasOwnProperty("type")) {
             this.type = "File";
-            this.fileMetadata = head;
+            this.fileMetadata = header;
         }
         else {
             this.type = "Automerge";
-            this.handleBlock(data, 0);
-            this.pending.map(this.handleBlock);
+            this.parseBlock(data, 0);
+            this.pending.map(this.parseBlock);
             this.pending = [];
         }
     }
-    allClocks() {
-        const clocks = {};
-        this.meta.docsWith(this.id).forEach(id => {
-            const doc = this.repo.docs.get(id);
-            if (doc) {
-                clocks[id] = doc.clock;
-            }
-        });
-        return clocks;
+    parseDataBlock(data, index) {
+        switch (this.type) {
+            case "Automerge":
+                const change = Block.unpack(data); // no validation of Change
+                this.changes[index] = change;
+                log(`block xxx idx=${index} actor=${Misc_1.ID(change.actor)} seq=${change.seq}`);
+                break;
+            case "File":
+                this.data[index - 1] = data;
+                break;
+            default:
+                throw new Error("cant handle block if we don't know the type");
+                break;
+        }
+    }
+    writeChange(change) {
+        const feedLength = this.changes.length;
+        const ok = feedLength + 1 === change.seq;
+        log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`);
+        this.changes.push(change);
+        this.onSync();
+        this.append(Block.pack(change));
     }
     writeFile(data, mimeType) {
         log("writing file");
-        this.q.push(() => {
+        this.onReady(() => {
             log("writing file", data.length, "bytes", mimeType);
             if (this.data.length > 0 || this.changes.length > 0)
                 throw new Error("writeFile called on existing feed");
@@ -214,85 +180,73 @@ class Actor {
             for (let i = 0; i < data.length; i += blockSize) {
                 const block = data.slice(i, i + blockSize);
                 this.data.push(block);
-                const last = i + blockSize >= data.length;
-                this.append(block, () => {
-                    if (last) {
-                        // I dont want read's to work until its synced to disk - could speed this up
-                        // by returning sooner but was having issues where command line tools would
-                        // exit before disk syncing was done
-                        this.syncQ.subscribe(f => f());
-                    }
-                });
+                this.append(block);
             }
         });
     }
-    fileHead(cb) {
-        if (this.fileMetadata) {
-            cb(this.fileMetadata);
-        }
-        else {
-            this.feed.get(0, { wait: true }, (err, data) => {
-                if (err)
-                    throw new Error(`error reading feed head ${this.id}`);
-                const head = JsonBuffer.parse(data);
-                this.fileMetadata = head;
-                cb(head);
-            });
-        }
+    readFile() {
+        return __awaiter(this, void 0, void 0, function* () {
+            log("reading file...");
+            const head = yield this.fileHead();
+            const body = yield this.fileBody(head);
+            return {
+                body,
+                mimeType: head.mimeType
+            };
+        });
     }
-    fileBody(head, cb) {
-        const blockSize = head.blockSize || 1 * MB; // old feeds dont have this
-        const blocks = Math.ceil(head.bytes / blockSize);
-        const file = Buffer.concat(this.data);
-        if (file.length === head.bytes) {
-            cb(file);
-        }
-        else {
-            if (blocks === 1) {
-                this.feed.get(1, { wait: true }, (err, file) => {
-                    if (err)
-                        throw new Error(`error reading feed body ${this.id}`);
-                    this.data = [file];
-                    cb(file);
-                });
+    fileHead() {
+        return new Promise((resolve, reject) => {
+            if (this.fileMetadata) {
+                resolve(this.fileMetadata);
             }
             else {
-                this.feed.getBatch(1, blocks, { wait: true }, (err, data) => {
+                this.feed.get(0, { wait: true }, (err, data) => {
                     if (err)
-                        throw new Error(`error reading feed body ${this.id}`);
-                    this.data = data;
-                    const file = Buffer.concat(this.data);
-                    cb(file);
+                        reject(new Error(`error reading feed head ${this.id}`));
+                    const head = JsonBuffer.parse(data);
+                    this.fileMetadata = head; //Yikes
+                    resolve(head);
                 });
             }
-        }
-    }
-    readFile(cb) {
-        log("reading file...");
-        this.fileHead(head => {
-            const { bytes, mimeType } = head;
-            this.fileBody(head, body => {
-                cb(body, head.mimeType);
-            });
         });
     }
-    append(block, cb) {
+    fileBody(head) {
+        return new Promise((resolve, reject) => {
+            const blockSize = head.blockSize || 1 * MB; // old feeds dont have this
+            const blocks = Math.ceil(head.bytes / blockSize);
+            const file = Buffer.concat(this.data);
+            if (file.length === head.bytes) {
+                resolve(file);
+            }
+            else {
+                if (blocks === 1) {
+                    this.feed.get(1, { wait: true }, (err, file) => {
+                        if (err)
+                            reject(new Error(`error reading feed body ${this.id}`));
+                        this.data = [file];
+                        resolve(file);
+                    });
+                }
+                else {
+                    this.feed.getBatch(1, blocks, { wait: true }, (err, data) => {
+                        if (err)
+                            reject(new Error(`error reading feed body ${this.id}`));
+                        this.data = data;
+                        const file = Buffer.concat(this.data);
+                        resolve(file);
+                    });
+                }
+            }
+        });
+    }
+    append(block) {
         this.feed.append(block, err => {
             log("Feed.append", block.length, "bytes");
             if (err) {
                 throw new Error("failed to append to feed");
             }
-            if (cb)
-                cb();
         });
-    }
-    writeChange(change) {
-        const feedLength = this.changes.length;
-        const ok = feedLength + 1 === change.seq;
-        log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`);
-        this.changes.push(change);
-        this.sync();
-        this.append(Block.pack(change));
     }
 }
 exports.Actor = Actor;
