@@ -1,8 +1,9 @@
 # Hypermerge
 
-Hypermerge a proof of concept library for using the hypercore / hyperprotocol
-tools from the DAT ecosystem to enable peer to peer communication between
-automerge data stores.
+Hypermerge is a Node.js library for building p2p collaborative applications
+without any server infrastructure. It combines [Automerge][automerge], a CRDT,
+with [hypercore][hypercore], a distributed append-only log.
+
 
 If successful this project would provide a way to have apps data sets that are
 conflict free and offline first (thanks to CRDT's) and serverless (thanks to
@@ -75,7 +76,6 @@ repo.replicate(discovery)
 ```ts
 
 const docUrl = repoA.create({ numbers: [ 2,3,4 ]})
-
 // this will block until the state has replicated to machine B
 
 repoA.watch<MyDoc>(docUrl, state => {
@@ -109,3 +109,5 @@ repoB.change<MyDoc>(docUrl, (state) => {
 ```ts
 ```
 
+[automerge]: https://github.com/automerge/automerge
+[hypercore]: https://github.com/mafintosh/hypercore
