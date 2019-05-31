@@ -109,5 +109,35 @@ repoB.change<MyDoc>(docUrl, (state) => {
 ```ts
 ```
 
+
+### Splitting the Front-end and Back-end
+
+Both Hypermerge and Automerge supports separating the front-end (where materialized documents live and changes are made) from the backend (where CRDT computations are handled as well as networking and compression.) This is useful for maintaining application performance by moving expensive computation operations off of the render thread to another location where they don't block user input.
+
+The communication between front-end and back-end is all done via simple Javascript objects and can be serialized/deserialized through JSON if required. 
+
+```js
+  // establish a back-end
+  const back = new RepoBackend({ storage: raf, path: HYPERMERGE_PATH, port: 0 })
+  const discovery = new DiscoverySwarm({ /* your config here */ })
+  back.replicate(discovery)
+
+  // elsewhere, create a front-end (you'll probably want to do this in different threads)
+  const front = new RepoFrontend()
+
+  // the `subscribe` method sends a message stream, the `receive` receives it
+  // for demonstration here we simply output JSON and parse it back in the same location
+  // note that front-end and back-end must each subscribe to each other's streams
+  back.subscribe((msg) => front.receive(JSON.parse(JSON.stringify(msg))))
+  front.subscribe((msg) => back.receive(JSON.parse(JSON.stringify(msg))))
+  
+}
+```
+
+*Note: each back-end only supports a single front-end today.*
+
+
+### Related libraries
+
 [automerge]: https://github.com/automerge/automerge
 [hypercore]: https://github.com/mafintosh/hypercore
