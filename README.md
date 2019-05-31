@@ -105,10 +105,48 @@ repoB.change<MyDoc>(docUrl, (state) => {
 ```
 
 ### Accessing Files
+Hypermerge supports a special kind of core called a hyperfile. Hyperfiles are unchanging, written-once hypercores that store binary data.
+
+Here's a simple example of reading and writing hyperfile buffers.
 
 ```ts
+
+export function writeBuffer(buffer, callback) {
+  const hyperfileUrl = repo.writeFile(buffer, 'application/octet-stream') // TODO: mime type
+  callback(null, hyperfileUrl)
+}
+
+export function fetch(hyperfileId, callback) {
+  repo.readFile(hyperfileId, (error, data) => {
+    if (error) {
+      callback(error)
+      return
+    }
+
+    callback(null, data)
+  })
+}
+
 ```
 
+Note that hyperfiles are conveniently well-suited to treatment as a native protocol for Electron applications. This allows you to refer to them throughout your application directly as though they were regular files for images and other assets without any special treatment. Here's how to register that:
+
+```js
+
+  protocol.registerBufferProtocol('hyperfile', (request, callback) => {
+    try {
+      Hyperfile.fetch(request.url, (data) => {
+        callback({ data })
+      })
+    } catch (e) {
+      log(e)
+    }
+  }, (error) => {
+    if (error) {
+      log('Failed to register protocol')
+    }
+  })
+ ```
 
 ### Splitting the Front-end and Back-end
 
