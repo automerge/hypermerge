@@ -348,7 +348,6 @@ export class RepoBackend {
       case "DocumentMessage": {
         const { contents, id } = (msg as DocumentMsg);
         this.meta.docsWith(id).forEach( (doc: string) => {
-          console.log('pushing to frontend', id)
           this.toFrontend.push({
             type: "DocumentMessage",
             id,
@@ -569,10 +568,8 @@ export class RepoBackend {
         }
         case "DocumentMessage": {
           const { id, contents } = msg
-          console.log("repobackend", id)
           const documentActor = this.actor(id)
           if (documentActor) {
-            console.log('broadcasting')
             DocumentBroadcast.broadcastDocumentMessage(id, contents, documentActor.peers.values())
           }
           break

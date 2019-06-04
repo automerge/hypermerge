@@ -52,7 +52,6 @@ export function broadcastMetadata(
 }
 
 export function broadcastDocumentMessage(id: string, contents: any, peers: Iterable<Peer>) {
-    console.log('broadcastdocument', contents)
     const message: DocumentMessage = { type: "DocumentMessage", id, contents }
     broadcast(message, peers)
 }

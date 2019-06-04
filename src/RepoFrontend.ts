@@ -138,15 +138,7 @@ export class RepoFrontend {
 
   message = ( url: string, contents: any): void => {
     const id = validateDocURL(url);
-    console.log('frontendmessage')
     this.toBackend.push({type: "DocumentMessage", id, contents})
-  }
-
-  onMessage = <T>( url: string, cb: (message: any) => void): void => {
-    validateDocURL(url);
-    const handle = this.open<T>(url);
-    console.log("unimplemented onmessage call")
-    //handle.onMessage(cb);
   }
 
   doc = <T>(url: string, cb?: (val: T, clock?: Clock) => void): Promise<T> => {

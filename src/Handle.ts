@@ -32,6 +32,11 @@ export class Handle<T> {
     return this;
   }
 
+  message = ( contents: any): this => {
+    this.repo.message(this.id, contents)
+    return this
+  }
+
   push = (item: Doc<T>, clock: Clock) => {
     this.state = item;
     this.clock = clock;
