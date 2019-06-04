@@ -31,6 +31,7 @@ export type ActorMsg =
   | PeerUpdate
   | PeerAdd
   | Download
+  | DocumentMessage
 
 interface FeedHeadMetadata {
   type: "File"
@@ -75,6 +76,11 @@ interface Download {
   index: number
 }
 
+interface DocumentMessage {
+  type: "DocumentMessage"
+  contents: any
+}
+
 interface ActorConfig {
   keys: Keys.KeyBuffer
   notify: (msg: ActorMsg) => void
@@ -86,7 +92,7 @@ export class Actor {
   dkString: string
   changes: Change[] = []
   feed: Feed<Uint8Array>
-  peers: Set<Peer> = new Set()
+  peers: Map<string, Peer> = new Map()
   type: FeedType
   private q: Queue<(actor: Actor) => void>
   private notify: (msg: ActorMsg) => void
@@ -143,14 +149,14 @@ export class Actor {
   }
 
   onPeerAdd = (peer: Peer) => {
-    log("peer-add feed", ID(this.id))
-    this.peers.add(peer)
+    log("peer-add feed", ID(this.id), peer.remoteId)
+    this.peers.set(peer.remoteId.toString(), peer)
     this.notify({ type: "PeerAdd", actor: this, peer: peer})
     this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }
 
   onPeerRemove = (peer: Peer) => {
-    this.peers.delete(peer)
+    this.peers.delete(peer.remoteId.toString())
     this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }
 

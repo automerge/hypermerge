@@ -83,6 +83,12 @@ export class DocFrontend<T> {
     });
   }
 
+  messaged(contents: any) {
+    this.handles.forEach(handle => {
+      handle.pushMessage(contents);
+    });
+  }
+
   fork = (): string => {
     return "";
   };

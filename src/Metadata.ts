@@ -8,27 +8,21 @@ import * as URL from "url"
 const log = Debug("repo:metadata");
 
 import { Clock, equivalent, addTo, union, intersection } from "./Clock";
+import { BroadcastMessage } from "./DocumentBroadcast";
 
 export interface NewMetadata {
   type: "NewMetadata"
   input: Uint8Array
 }
 
-export function validateRemoteMetadata(input: Uint8Array): RemoteMetadata {
+export function validateRemoteMetadata(message: RemoteMetadata): RemoteMetadata {
   const result : RemoteMetadata = { type: "RemoteMetadata", clocks: {}, blocks: [] }
-  try {
-    const message : any = JSON.parse(input.toString());
-    if (message instanceof Object && message.blocks instanceof Array && message.clocks instanceof Object) {
-      result.blocks = filterMetadataInputs(message.blocks);
-      result.clocks = message.clocks
-      return result
-    } else {
-      console.log("WARNING: Metadata Msg is not a well formed object", message);
-      return result;
-    }
-  } catch (e) {
-    console.log(input.toString())
-    console.log("WARNING: Metadata Msg is invalid JSON", e);
+  if (message instanceof Object && message.blocks instanceof Array && message.clocks instanceof Object) {
+    result.blocks = filterMetadataInputs(message.blocks);
+    result.clocks = message.clocks
+    return result
+  } else {
+    console.log("WARNING: Metadata Msg is not a well formed object", message);
     return result;
   }
 }

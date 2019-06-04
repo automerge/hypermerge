@@ -21,6 +21,8 @@ export class Repo {
   //follow: (id: string, target: string) => void;
   replicate: (swarm: Swarm) => void;
 
+  message: (id: string, message: any) => void;
+
   fork: (id: string) => string;
   watch: <T>(
     id: string,
@@ -44,6 +46,7 @@ export class Repo {
     this.stream = this.back.stream;
     this.create = this.front.create;
     this.open = this.front.open;
+    this.message = this.front.message
     this.destroy = this.front.destroy;
     this.meta = this.front.meta;
 //    this.follow = this.front.follow;

@@ -17,6 +17,7 @@ export type ToBackendRepoMsg =
   | MergeMsg
   | CreateMsg
   | OpenMsg
+  | DocumentMsg
   | DestroyMsg
   | DebugMsg
   | WriteFile
@@ -114,6 +115,7 @@ export type ToFrontendRepoMsg =
   | ReadyMsg
   | ReadFileReply
   | ReplyMsg
+  | DocumentMsg
   | Uint8Array;
 
 export interface PatchMsg {
@@ -122,6 +124,12 @@ export interface PatchMsg {
   synced: boolean;
   patch: Patch;
   history: number;
+}
+
+export interface DocumentMsg {
+  type: "DocumentMessage";
+  id: string;
+  contents: any;
 }
 
 export interface MaterializeReplyMsg {

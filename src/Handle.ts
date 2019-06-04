@@ -7,6 +7,7 @@ export class Handle<T> {
   clock: Clock | null = null;
   subscription?: (item: Doc<T>, clock?: Clock, index?: number) => void;
   progressSubscription?: (event: ProgressEvent) => void;
+  messageSubscription?: (event: any) => void;
   private counter: number = 0;
   private repo: RepoFrontend;
 
@@ -42,6 +43,12 @@ export class Handle<T> {
   pushProgress = (progress: ProgressEvent) => {
     if (this.progressSubscription) {
       this.progressSubscription(progress)
+    }
+  }
+
+  pushMessage = (contents: any) => {
+    if (this.messageSubscription) {
+      this.messageSubscription(contents)
     }
   }
 
@@ -82,8 +89,22 @@ export class Handle<T> {
     return this
   }
 
+  subscribeMessage = (
+    subscriber: (event: any) => void
+  ): this => {
+    if (this.messageSubscription) {
+      throw new Error("only one progress subscriber for a doc handle")
+    }
+    
+    this.messageSubscription = subscriber
+  
+    return this
+  }
+
   close = () => {
     this.subscription = undefined;
+    this.messageSubscription = undefined;
+    this.progressSubscription = undefined;
     this.state = null;
     this.cleanup();
   };
