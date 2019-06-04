@@ -22,6 +22,7 @@ export declare class DocFrontend<T> {
     handle(): Handle<T>;
     newState(): void;
     progress(progressEvent: ProgressEvent): void;
+    messaged(contents: any): void;
     fork: () => string;
     change: (fn: ChangeFn<T>) => void;
     release: () => void;

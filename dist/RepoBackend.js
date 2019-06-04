@@ -181,6 +181,17 @@ class RepoBackend {
                     });
                     break;
                 }
+                case "DocumentMessage": {
+                    const { contents, id } = msg;
+                    this.meta.docsWith(id).forEach((doc) => {
+                        this.toFrontend.push({
+                            type: "DocumentMessage",
+                            id,
+                            contents
+                        });
+                    });
+                    break;
+                }
                 case "NewMetadata": {
                     // TODO: Warn better than this!
                     console.log("Legacy Metadata message received - better upgrade");
@@ -200,7 +211,7 @@ class RepoBackend {
                     this.meta.docsWith(actor.id).forEach(documentId => {
                         const documentActor = this.actor(documentId);
                         if (documentActor) {
-                            DocumentBroadcast.broadcast(metadata, clocks, documentActor.peers);
+                            DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values());
                         }
                     });
                     this.join(actor.id);
@@ -217,7 +228,7 @@ class RepoBackend {
                     // Broadcast the latest document information to the new peer
                     const metadata = this.meta.forActor(msg.actor.id);
                     const clocks = this.allClocks(msg.actor.id);
-                    DocumentBroadcast.broadcast(metadata, clocks, [msg.peer]);
+                    DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer]);
                     break;
                 }
                 case "ActorSync":
@@ -370,6 +381,14 @@ class RepoBackend {
                     */
                     case "OpenMsg": {
                         this.open(msg.id);
+                        break;
+                    }
+                    case "DocumentMessage": {
+                        const { id, contents } = msg;
+                        const documentActor = this.actor(id);
+                        if (documentActor) {
+                            DocumentBroadcast.broadcastDocumentMessage(id, contents, documentActor.peers.values());
+                        }
                         break;
                     }
                     case "DestroyMsg": {

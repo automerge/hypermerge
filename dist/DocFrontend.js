@@ -118,6 +118,11 @@ class DocFrontend {
             handle.pushProgress(progressEvent);
         });
     }
+    messaged(contents) {
+        this.handles.forEach(handle => {
+            handle.pushMessage(contents);
+        });
+    }
     enableWrites() {
         this.changeQ.subscribe(fn => {
             const [doc, request] = Frontend.change(this.front, fn);

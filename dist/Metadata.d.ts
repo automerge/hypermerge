@@ -5,7 +5,7 @@ export interface NewMetadata {
     type: "NewMetadata";
     input: Uint8Array;
 }
-export declare function validateRemoteMetadata(input: Uint8Array): RemoteMetadata;
+export declare function validateRemoteMetadata(message: RemoteMetadata): RemoteMetadata;
 export declare function cleanMetadataInput(input: any): MetadataBlock | undefined;
 export declare function filterMetadataInputs(input: any[]): MetadataBlock[];
 export interface UrlInfo {

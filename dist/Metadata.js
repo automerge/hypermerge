@@ -27,23 +27,15 @@ const JsonBuffer = __importStar(require("./JsonBuffer"));
 const URL = __importStar(require("url"));
 const log = debug_1.default("repo:metadata");
 const Clock_1 = require("./Clock");
-function validateRemoteMetadata(input) {
+function validateRemoteMetadata(message) {
     const result = { type: "RemoteMetadata", clocks: {}, blocks: [] };
-    try {
-        const message = JSON.parse(input.toString());
-        if (message instanceof Object && message.blocks instanceof Array && message.clocks instanceof Object) {
-            result.blocks = filterMetadataInputs(message.blocks);
-            result.clocks = message.clocks;
-            return result;
-        }
-        else {
-            console.log("WARNING: Metadata Msg is not a well formed object", message);
-            return result;
-        }
+    if (message instanceof Object && message.blocks instanceof Array && message.clocks instanceof Object) {
+        result.blocks = filterMetadataInputs(message.blocks);
+        result.clocks = message.clocks;
+        return result;
     }
-    catch (e) {
-        console.log(input.toString());
-        console.log("WARNING: Metadata Msg is invalid JSON", e);
+    else {
+        console.log("WARNING: Metadata Msg is not a well formed object", message);
         return result;
     }
 }

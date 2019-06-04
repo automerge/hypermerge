@@ -118,6 +118,10 @@ class RepoFrontend {
             handle.subscribe(cb);
             return handle;
         };
+        this.message = (url, contents) => {
+            const id = Metadata_1.validateDocURL(url);
+            this.toBackend.push({ type: "DocumentMessage", id, contents });
+        };
         this.doc = (url, cb) => {
             Metadata_1.validateDocURL(url);
             return new Promise(resolve => {
@@ -232,6 +236,12 @@ class RepoFrontend {
                             doc.progress(progressEvent);
                         }
                         break;
+                    }
+                    case "DocumentMessage": {
+                        const doc = this.docs.get(msg.id);
+                        if (doc) {
+                            doc.messaged(msg.contents);
+                        }
                     }
                 }
             }

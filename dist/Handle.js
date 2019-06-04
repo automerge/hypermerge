@@ -6,6 +6,10 @@ class Handle {
         this.state = null;
         this.clock = null;
         this.counter = 0;
+        this.message = (contents) => {
+            this.repo.message(this.id, contents);
+            return this;
+        };
         this.push = (item, clock) => {
             this.state = item;
             this.clock = clock;
@@ -16,6 +20,11 @@ class Handle {
         this.pushProgress = (progress) => {
             if (this.progressSubscription) {
                 this.progressSubscription(progress);
+            }
+        };
+        this.pushMessage = (contents) => {
+            if (this.messageSubscription) {
+                this.messageSubscription(contents);
             }
         };
         this.once = (subscriber) => {
@@ -42,8 +51,17 @@ class Handle {
             this.progressSubscription = subscriber;
             return this;
         };
+        this.subscribeMessage = (subscriber) => {
+            if (this.messageSubscription) {
+                throw new Error("only one progress subscriber for a doc handle");
+            }
+            this.messageSubscription = subscriber;
+            return this;
+        };
         this.close = () => {
             this.subscription = undefined;
+            this.messageSubscription = undefined;
+            this.progressSubscription = undefined;
             this.state = null;
             this.cleanup();
         };
