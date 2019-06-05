@@ -9,7 +9,7 @@ export declare class Handle<T> {
     messageSubscription?: (event: any) => void;
     private counter;
     private repo;
-    constructor(repo: RepoFrontend);
+    constructor(repo: RepoFrontend, id: string);
     fork(): string;
     merge(other: Handle<T>): this;
     message: (contents: any) => this;

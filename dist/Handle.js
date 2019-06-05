@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class Handle {
-    constructor(repo) {
+    constructor(repo, id) {
         this.id = "";
         this.state = null;
         this.clock = null;
@@ -72,6 +72,7 @@ class Handle {
             return this;
         };
         this.repo = repo;
+        this.id = id;
     }
     fork() {
         return this.repo.fork(this.id);
