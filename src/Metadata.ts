@@ -133,7 +133,9 @@ function validateID(id: string) : Buffer {
 
 export function validateURL(urlString: string) : UrlInfo {
   if (urlString.indexOf(":") === -1) {
-    console.log("WARNING: `${id}` is depricated - now use `hypermerge:/${id}`")
+//    disabled this warning because internal APIs are currently inconsistent in their use
+//    so it's throwing warnings just, like, all the time in normal usage.
+//    console.log("WARNING: `${id}` is deprecated - now use `hypermerge:/${id}`")
 //    throw new Error("WARNING: open(id) is depricated - now use open(`hypermerge:/${id}`)")
     const id = urlString
     const buffer = validateID(id)

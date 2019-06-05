@@ -57,11 +57,10 @@ export class DocFrontend<T> {
   }
 
   handle(): Handle<T> {
-    let handle = new Handle<T>(this.repo);
+    let handle = new Handle<T>(this.repo, this.docId);
     this.handles.add(handle);
     handle.cleanup = () => this.handles.delete(handle);
     handle.changeFn = this.change;
-    handle.id = this.docId;
     if (this.ready) {
       handle.push(this.front, this.clock);
     }

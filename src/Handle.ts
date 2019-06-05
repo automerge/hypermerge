@@ -11,8 +11,9 @@ export class Handle<T> {
   private counter: number = 0;
   private repo: RepoFrontend;
 
-  constructor(repo: RepoFrontend) {
+  constructor(repo: RepoFrontend, id: string) {
     this.repo = repo;
+    this.id = id;
   }
 
   fork(): string {
