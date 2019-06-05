@@ -10,6 +10,7 @@
  * a data structure representing the actor/peers/document relationships which this module can operate on.
  */
 import * as Metadata from "./Metadata";
+import { DocumentMsg } from "./RepoMsg";
 import * as Clock from "./Clock";
 import { Peer } from "./hypercore";
 export declare const EXTENSION_V2 = "hypermerge.2";
@@ -19,12 +20,7 @@ export declare type UnknownMessage = {
     type: "UnknownMessage";
     contents: string;
 };
-export declare type DocumentMessage = {
-    type: "DocumentMessage";
-    id: string;
-    contents: any;
-};
-export declare type BroadcastMessage = Metadata.RemoteMetadata | Metadata.NewMetadata | DocumentMessage | UnknownMessage;
+export declare type BroadcastMessage = Metadata.RemoteMetadata | Metadata.NewMetadata | DocumentMsg | UnknownMessage;
 export declare function broadcast(message: BroadcastMessage, peers: Iterable<Peer>): void;
 export declare function broadcastMetadata(blocks: Metadata.MetadataBlock[], clocks: {
     [id: string]: Clock.Clock;

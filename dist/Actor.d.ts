@@ -7,7 +7,7 @@ import { Change } from "automerge/backend";
 import * as Keys from "./Keys";
 export declare type FeedHead = FeedHeadMetadata | Change;
 export declare type FeedType = "Unknown" | "Automerge" | "File";
-export declare type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | PeerUpdate | PeerAdd | Download | DocumentMessage;
+export declare type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | PeerUpdate | PeerAdd | Download;
 interface FeedHeadMetadata {
     type: "File";
     bytes: number;
@@ -43,10 +43,6 @@ interface Download {
     time: number;
     size: number;
     index: number;
-}
-interface DocumentMessage {
-    type: "DocumentMessage";
-    contents: any;
 }
 interface ActorConfig {
     keys: Keys.KeyBuffer;

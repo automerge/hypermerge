@@ -10,6 +10,7 @@
  * a data structure representing the actor/peers/document relationships which this module can operate on.
  */
 import * as Metadata from "./Metadata"
+import { DocumentMsg } from "./RepoMsg" 
 import * as Clock from "./Clock"
 import { Peer } from "./hypercore"
 
@@ -23,16 +24,10 @@ export type UnknownMessage = {
     contents: string
 }
 
-export type DocumentMessage = {
-    type: "DocumentMessage";
-    id: string;
-    contents: any;    
-}
-
 export type BroadcastMessage =
     | Metadata.RemoteMetadata
     | Metadata.NewMetadata
-    | DocumentMessage
+    | DocumentMsg
     | UnknownMessage
 
 export function broadcast(message: BroadcastMessage, peers: Iterable<Peer>) {
@@ -52,7 +47,7 @@ export function broadcastMetadata(
 }
 
 export function broadcastDocumentMessage(id: string, contents: any, peers: Iterable<Peer>) {
-    const message: DocumentMessage = { type: "DocumentMessage", id, contents }
+    const message: DocumentMsg = { type: "DocumentMessage", id, contents }
     broadcast(message, peers)
 }
 

@@ -31,7 +31,6 @@ export type ActorMsg =
   | PeerUpdate
   | PeerAdd
   | Download
-  | DocumentMessage
 
 interface FeedHeadMetadata {
   type: "File"
@@ -74,11 +73,6 @@ interface Download {
   time: number
   size: number
   index: number
-}
-
-interface DocumentMessage {
-  type: "DocumentMessage"
-  contents: any
 }
 
 interface ActorConfig {

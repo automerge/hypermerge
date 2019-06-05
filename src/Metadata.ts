@@ -8,7 +8,6 @@ import * as URL from "url"
 const log = Debug("repo:metadata");
 
 import { Clock, equivalent, addTo, union, intersection } from "./Clock";
-import { BroadcastMessage } from "./DocumentBroadcast";
 
 export interface NewMetadata {
   type: "NewMetadata"
