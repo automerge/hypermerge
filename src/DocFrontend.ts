@@ -1,6 +1,5 @@
-import { Patch, Doc, Change, ChangeFn } from "automerge/frontend";
+import { Patch, Change, ChangeFn, Frontend } from "automerge";
 import { RepoFrontend, ProgressEvent } from "./RepoFrontend";
-import * as Frontend from "automerge/frontend";
 import { Clock, union } from "./Clock";
 import Queue from "./Queue";
 import { Handle } from "./Handle";
@@ -27,14 +26,14 @@ export class DocFrontend<T> {
   history: number = 0;
   //  private toBackend: Queue<ToBackendRepoMsg>
   private changeQ = new Queue<ChangeFn<T>>("frontend:change");
-  private front: Doc<T>;
+  private front: T;
   private mode: Mode = "pending";
   private handles: Set<Handle<T>> = new Set();
-  private repo: RepoFrontend;
+  private repo: RepoFrontend<T>;
 
   clock: Clock;
 
-  constructor(repo: RepoFrontend, config: Config) {
+  constructor(repo: RepoFrontend<T>, config: Config) {
     //super()
 
     const docId = config.docId;
@@ -44,14 +43,14 @@ export class DocFrontend<T> {
     //    this.toBackend = toBackend
 
     if (actorId) {
-      this.front = Frontend.init(actorId) as Doc<T>;
+      this.front = Frontend.init(actorId) as T;
       this.docId = docId;
       this.actorId = actorId;
       this.ready = true
       this.mode = "write";
       this.enableWrites();
     } else {
-      this.front = Frontend.init({ deferActorId: true }) as Doc<T>;
+      this.front = Frontend.init({ deferActorId: true }) as T;
       this.docId = docId;
     }
   }
@@ -114,7 +113,7 @@ export class DocFrontend<T> {
   init = (synced: boolean, actorId?: string, patch?: Patch, history?: number) => {
     log(
       `init docid=${this.docId} actorId=${actorId} patch=${!!patch} history=${history} mode=${
-        this.mode
+      this.mode
       }`
     );
 
@@ -131,7 +130,7 @@ export class DocFrontend<T> {
       this.front = doc;
       log(
         `change complete doc=${this.docId} seq=${
-          request ? request.seq : "null"
+        request ? request.seq : "null"
         }`
       );
       if (request) {
@@ -146,7 +145,7 @@ export class DocFrontend<T> {
     });
   }
 
-  private updateClockChange(change: Change) {
+  private updateClockChange(change: Change<T>) {
     const oldSeq = this.clock[change.actor] || 0;
     this.clock[change.actor] = Math.max(change.seq, oldSeq);
   }
@@ -183,7 +182,7 @@ export class DocFrontend<T> {
   }
 
   close() {
-    this.handles.forEach( handle => handle.close())
+    this.handles.forEach(handle => handle.close())
     this.handles.clear()
   }
 }

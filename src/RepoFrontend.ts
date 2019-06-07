@@ -2,10 +2,9 @@ import Queue from "./Queue";
 import * as Base58 from "bs58";
 import MapSet from "./MapSet";
 import * as crypto from "hypercore/lib/crypto";
-import { ToFrontendReplyMsg, ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
+import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { Handle } from "./Handle";
-import { ChangeFn, Doc, Patch } from "automerge/frontend";
-import * as Frontend from "automerge/frontend";
+import { Patch, Frontend } from "automerge";
 import { DocFrontend } from "./DocFrontend";
 import { clock2strs, Clock, clockDebug } from "./Clock";
 import Debug from "debug";
@@ -31,15 +30,15 @@ export interface ProgressEvent {
 
 let msgid = 1
 
-export class RepoFrontend {
-  toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:tobackend");
+export class RepoFrontend<T> {
+  toBackend = new Queue<ToBackendRepoMsg<T>>("repo:tobackend");
   docs: Map<string, DocFrontend<any>> = new Map();
   cb: Map<number, (reply: any) => void> = new Map();
   msgcb: Map<number, (patch: Patch) => void> = new Map();
   readFiles: MapSet<string, (data: Uint8Array, mimeType: string) => void> = new MapSet();
   file?: Uint8Array;
 
-  create = <T>(init?: T): string => {
+  create = (init?: T): string => {
     const keys = crypto.keyPair();
     const publicKey = Base58.encode(keys.publicKey);
     const secretKey = Base58.encode(keys.secretKey);
@@ -49,7 +48,7 @@ export class RepoFrontend {
     this.docs.set(docId, doc);
     this.toBackend.push({ type: "CreateMsg", publicKey, secretKey });
     if (init) {
-      doc.change(state => {
+      doc.change((state) => {
         for (let key in init) {
           state[key] = init[key];
         }
@@ -58,15 +57,15 @@ export class RepoFrontend {
     return `hypermerge:/${docId}`;
   };
 
-  change = <T>(id: string, fn: (state: T) => void ) => {
-    this.open<T>(id).change(fn);
+  change = (id: string, fn: (state: T) => void) => {
+    this.open(id).change(fn);
   };
 
-  meta = (url: string, cb:(meta: PublicMetadata | undefined) => void): void => {
-    const {id , type} = validateURL(url);
+  meta = (url: string, cb: (meta: PublicMetadata | undefined) => void): void => {
+    const { id, type } = validateURL(url);
     this.queryBackend({ type: "MetadataMsg", id }, (meta: PublicMetadata | undefined) => {
       if (meta) {
-      const doc = this.docs.get(id);
+        const doc = this.docs.get(id);
         if (doc && meta.type === "Document") {
           meta.actor = doc.actorId
           meta.history = doc.history
@@ -78,7 +77,7 @@ export class RepoFrontend {
   }
 
   meta2 = (url: string): DocMetadata | undefined => {
-    const {id , type} = validateURL(url);
+    const { id, type } = validateURL(url);
     const doc = this.docs.get(id);
     if (!doc) return;
     return {
@@ -97,7 +96,7 @@ export class RepoFrontend {
     });
   };
 
-  writeFile = <T>(data: Uint8Array, mimeType: string): string => {
+  writeFile = (data: Uint8Array, mimeType: string): string => {
     const keys = crypto.keyPair();
     const publicKey = Base58.encode(keys.publicKey);
     const secretKey = Base58.encode(keys.secretKey);
@@ -109,7 +108,7 @@ export class RepoFrontend {
     return `hyperfile:/${publicKey}`;
   };
 
-  readFile = <T>(url: string, cb: (data: Uint8Array, mimeType: string) => void): void => {
+  readFile = (url: string, cb: (data: Uint8Array, mimeType: string) => void): void => {
     const id = validateFileURL(url);
     this.readFiles.add(id, cb);
     this.toBackend.push({ type: "ReadFile", id });
@@ -122,24 +121,24 @@ export class RepoFrontend {
     return fork;
   };
 
-/*
-  follow = (url: string, target: string) => {
-    const id = validateDocURL(url);
-    this.toBackend.push({ type: "FollowMsg", id, target });
-  };
-*/
+  /*
+    follow = (url: string, target: string) => {
+      const id = validateDocURL(url);
+      this.toBackend.push({ type: "FollowMsg", id, target });
+    };
+  */
 
-  watch = <T>( url: string, cb: (val: T, clock?: Clock, index?: number) => void): Handle<T> => {
+  watch = (url: string, cb: (val: T, clock?: Clock, index?: number) => void): Handle<T> => {
     validateDocURL(url);
-    const handle = this.open<T>(url);
+    const handle = this.open(url);
     handle.subscribe(cb);
     return handle;
   };
 
-  doc = <T>(url: string, cb?: (val: T, clock?: Clock) => void): Promise<T> => {
+  doc = (url: string, cb?: (val: T, clock?: Clock) => void): Promise<T> => {
     validateDocURL(url);
     return new Promise(resolve => {
-      const handle = this.open<T>(url);
+      const handle = this.open(url);
       handle.subscribe((val, clock) => {
         resolve(val);
         if (cb) cb(val, clock);
@@ -148,25 +147,25 @@ export class RepoFrontend {
     });
   };
 
-  materialize = <T>(url: string, history: number, cb: (val: T) => void) => {
+  materialize = (url: string, history: number, cb: (val: T) => void) => {
     const id = validateDocURL(url);
     const doc = this.docs.get(id);
     if (doc === undefined) { throw new Error(`No such document ${id}`) }
     if (history < 0 && history >= doc.history) { throw new Error(`Invalid history ${history} for id ${id}`) }
     this.queryBackend({ type: "MaterializeMsg", history, id }, (patch: Patch) => {
-      const doc = Frontend.init({ deferActorId: true }) as Doc<T>;
+      const doc = Frontend.init({ deferActorId: true }) as T;
       cb(Frontend.applyPatch(doc, patch));
     });
   }
 
-  queryBackend( query: ToBackendQueryMsg, cb: (arg: any) => void ) {
+  queryBackend(query: ToBackendQueryMsg, cb: (arg: any) => void) {
     msgid += 1 // global counter
     const id = msgid
-    this.cb.set(id,cb)
-    this.toBackend.push({type: "Query", id, query})
+    this.cb.set(id, cb)
+    this.toBackend.push({ type: "Query", id, query })
   }
 
-  open = <T>(url: string): Handle<T> => {
+  open = (url: string): Handle<T> => {
     const id = validateDocURL(url);
     const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id);
     return doc.handle();
@@ -186,24 +185,24 @@ export class RepoFrontend {
     this.toBackend.push({ type: "DebugMsg", id });
   }
 
-  private openDocFrontend<T>(id: string): DocFrontend<T> {
+  private openDocFrontend(id: string): DocFrontend<T> {
     const doc: DocFrontend<T> = new DocFrontend(this, { docId: id });
     this.toBackend.push({ type: "OpenMsg", id });
     this.docs.set(id, doc);
     return doc;
   }
 
-  subscribe = (subscriber: (message: ToBackendRepoMsg) => void) => {
+  subscribe = (subscriber: (message: ToBackendRepoMsg<T>) => void) => {
     this.toBackend.subscribe(subscriber);
   };
 
-  close = () : void => {
+  close = (): void => {
     this.toBackend.push({ type: "CloseMsg" });
     this.docs.forEach(doc => doc.close())
     this.docs.clear()
   }
 
-  destroy = (url: string) : void => {
+  destroy = (url: string): void => {
     const { id } = validateURL(url);
     this.toBackend.push({ type: "DestroyMsg", id });
     const doc = this.docs.get(id);
@@ -213,18 +212,18 @@ export class RepoFrontend {
     }
   }
 
-/*
-  handleReply = (id: number, reply: ToFrontendReplyMsg) => {
-    const cb = this.cb.get(id)!
-    switch (reply.type) {
-      case "MaterializeReplyMsg": {
-        cb(reply.patch);
-        break;
+  /*
+    handleReply = (id: number, reply: ToFrontendReplyMsg) => {
+      const cb = this.cb.get(id)!
+      switch (reply.type) {
+        case "MaterializeReplyMsg": {
+          cb(reply.patch);
+          break;
+        }
       }
+      this.cb.delete(id)
     }
-    this.cb.delete(id)
-  }
-*/
+  */
 
   receive = (msg: ToFrontendRepoMsg) => {
     if (msg instanceof Uint8Array) {
@@ -246,8 +245,8 @@ export class RepoFrontend {
         }
         case "Reply": {
           const id = msg.id
-//          const reply = msg.reply
-         // this.handleReply(id,reply)
+          //          const reply = msg.reply
+          // this.handleReply(id,reply)
           const cb = this.cb.get(id)!
           cb(msg.payload)
           this.cb.delete(id)!

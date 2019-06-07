@@ -3,7 +3,7 @@
  * For dat, this means the actor abstracts over the hypercore and its peers.
  */
 import { readFeed, hypercore, Feed, Peer, discoveryKey } from "./hypercore"
-import { Change } from "automerge/backend"
+import { Change } from "automerge"
 import { ID } from "./Misc"
 import Queue from "./Queue"
 import * as JsonBuffer from "./JsonBuffer"
@@ -11,26 +11,25 @@ import * as Base58 from "bs58"
 import * as Block from "./Block"
 import * as Keys from "./Keys"
 import Debug from "debug"
+import fs from 'fs'
 
-
-const fs: any = require("fs")
 
 const log = Debug("repo:actor")
 
 const KB = 1024
 const MB = 1024 * KB
 
-export type FeedHead = FeedHeadMetadata | Change
+export type FeedHead<T> = FeedHeadMetadata | Change<T>
 
 export type FeedType = "Unknown" | "Automerge" | "File"
 
-export type ActorMsg =
-  | ActorFeedReady
-  | ActorInitialized
-  | ActorSync
-  | PeerUpdate
-  | PeerAdd
-  | Download
+export type ActorMsg<T> =
+  | ActorFeedReady<T>
+  | ActorInitialized<T>
+  | ActorSync<T>
+  | PeerUpdate<T>
+  | PeerAdd<T>
+  | Download<T>
 
 interface FeedHeadMetadata {
   type: "File"
@@ -39,63 +38,63 @@ interface FeedHeadMetadata {
   blockSize: number
 }
 
-interface ActorSync {
+interface ActorSync<T> {
   type: "ActorSync"
-  actor: Actor
+  actor: Actor<T>
 }
 
-interface ActorFeedReady {
+interface ActorFeedReady<T> {
   type: "ActorFeedReady"
-  actor: Actor
+  actor: Actor<T>
   writable: boolean
 }
 
-interface ActorInitialized {
+interface ActorInitialized<T> {
   type: "ActorInitialized"
-  actor: Actor
+  actor: Actor<T>
 }
 
-interface PeerUpdate {
+interface PeerUpdate<T> {
   type: "PeerUpdate"
-  actor: Actor
+  actor: Actor<T>
   peers: number
 }
 
-interface PeerAdd {
+interface PeerAdd<T> {
   type: "PeerAdd"
-  actor: Actor
+  actor: Actor<T>
   peer: Peer
 }
 
-interface Download {
+interface Download<T> {
   type: "Download"
-  actor: Actor
+  actor: Actor<T>
   time: number
   size: number
   index: number
 }
 
-interface ActorConfig {
+interface ActorConfig<T> {
   keys: Keys.KeyBuffer
-  notify: (msg: ActorMsg) => void
+  notify: (msg: ActorMsg<T>) => void
   storage: (path: string) => Function
 }
 
-export class Actor {
+export class Actor<T> {
   id: string
   dkString: string
-  changes: Change[] = []
+  changes: Change<T>[] = []
   feed: Feed<Uint8Array>
   peers: Set<Peer> = new Set()
   type: FeedType
-  private q: Queue<(actor: Actor) => void>
-  private notify: (msg: ActorMsg) => void
+  private q: Queue<(actor: Actor<T>) => void>
+  private notify: (msg: ActorMsg<T>) => void
   private storage: any
   private data: Uint8Array[] = []
   private pending: Uint8Array[] = []
   private fileMetadata?: FeedHeadMetadata
 
-  constructor(config: ActorConfig) {
+  constructor(config: ActorConfig<T>) {
     const { publicKey, secretKey } = config.keys
     const dk = discoveryKey(publicKey)
     const id = Base58.encode(publicKey)
@@ -106,7 +105,7 @@ export class Actor {
     this.notify = config.notify
     this.dkString = Base58.encode(dk)
     this.feed = hypercore(this.storage, publicKey, { secretKey })
-    this.q = new Queue<(actor: Actor) => void>("actor:q-" + id.slice(0, 4))
+    this.q = new Queue<(actor: Actor<T>) => void>("actor:q-" + id.slice(0, 4))
     this.feed.ready(this.onFeedReady)
   }
 
@@ -137,15 +136,15 @@ export class Actor {
     this.q.subscribe(f => f(this))
   }
 
-  // Note: on Actor ready, not Feed!
-  onReady = (cb: (actor: Actor) => void) => {
+  // Note: on Actor<T> ready, not Feed!
+  onReady = (cb: (actor: Actor<T>) => void) => {
     this.q.push(cb)
   }
 
   onPeerAdd = (peer: Peer) => {
     log("peer-add feed", ID(this.id))
     this.peers.add(peer)
-    this.notify({ type: "PeerAdd", actor: this, peer: peer})
+    this.notify({ type: "PeerAdd", actor: this, peer: peer })
     this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }
 
@@ -199,7 +198,7 @@ export class Actor {
   parseDataBlock(data: Uint8Array, index: number) {
     switch (this.type) {
       case "Automerge":
-        const change: Change = Block.unpack(data) // no validation of Change
+        const change: Change<T> = Block.unpack(data) // no validation of Change<T>
         this.changes[index] = change
         log(`block xxx idx=${index} actor=${ID(change.actor)} seq=${change.seq}`)
         break
@@ -212,7 +211,7 @@ export class Actor {
     }
   }
 
-  writeChange(change: Change) {
+  writeChange(change: Change<T>) {
     const feedLength = this.changes.length
     const ok = feedLength + 1 === change.seq
     log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`)
@@ -243,7 +242,7 @@ export class Actor {
     })
   }
 
-  async readFile(): Promise<{body: Uint8Array, mimeType: string}> {
+  async readFile(): Promise<{ body: Uint8Array, mimeType: string }> {
     log("reading file...")
     const head = await this.fileHead()
     const body = await this.fileBody(head)
@@ -306,17 +305,16 @@ export class Actor {
   close = () => {
     log("closing feed", this.id)
     try {
-      this.feed.close((err: Error) => {})
-    } catch (error) {}
+      this.feed.close((err: Error) => { })
+    } catch (error) { }
   }
 
   destroy = () => {
-    this.feed.close((err: Error) => {
+    this.feed.close(() => {
       const filename = this.storage("").filename
       if (filename) {
         const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`
-        fs.rename(filename, newName, (err: Error) => {
-        })
+        fs.rename(filename, newName, () => {})
       }
     })
   }

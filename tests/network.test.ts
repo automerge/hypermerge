@@ -5,11 +5,16 @@ import { expectDocs } from "./misc"
 
 const ram: Function = require("random-access-memory")
 
+interface State {
+  a?: number
+  b?: number
+}
+
 test("Share a doc between two repos", t => {
   t.plan(0)
 
-  const repoA = new Repo({ storage: ram })
-  const repoB = new Repo({ storage: ram })
+  const repoA = new Repo<State>({ storage: ram })
+  const repoB = new Repo<State>({ storage: ram })
 
   const clientA = new Client({
     id: repoA.id,
@@ -30,17 +35,17 @@ test("Share a doc between two repos", t => {
 
   const id = repoA.create({ a: 1 })
 
-  repoB.change<any>(id, doc => {
+  repoB.change(id, doc => {
     doc.b = 2
   })
 
-  repoA.watch<any>(id,
+  repoA.watch(id,
     expectDocs(t, [
       [{ a: 1 }, "repoA should have create(doc)"],
       [{ a: 1, b: 2 }, "repoA should have repoB's change"],
     ]))
 
-  repoB.watch<any>(id,
+  repoB.watch(id,
     expectDocs(t, [
       [{ a: 1, b: 2 }, "repoB gets repoA's change and its local changes at once"],
     ]))
@@ -56,9 +61,9 @@ test("Share a doc between two repos", t => {
 test("Three way docs don't load until all canges are in", t => {
   t.plan(1)
 
-  const repoA = new Repo({ storage: ram })
-  const repoB = new Repo({ storage: ram })
-  const repoC = new Repo({ storage: ram })
+  const repoA = new Repo<State>({ storage: ram })
+  const repoB = new Repo<State>({ storage: ram })
+  const repoC = new Repo<State>({ storage: ram })
 
   const clientA = new Client({
     id: repoA.id,
@@ -85,22 +90,22 @@ test("Three way docs don't load until all canges are in", t => {
 
   const id = repoA.create({ a: 1 })
 
-  repoB.change<any>(id, doc => {
+  repoB.change(id, doc => {
     doc.b = 2
   })
 
-  repoA.watch<any>(id,
+  repoA.watch(id,
     expectDocs(t, [
       [{ a: 1 }, "repoA should have create(doc)"],
       [{ a: 1, b: 2 }, "repoA should have repoB's change"],
     ]))
 
-  repoB.watch<any>(id,
+  repoB.watch(id,
     expectDocs(t, [
       [{ a: 1, b: 2 }, "repoB gets repoA's change and its local changes at once", () => {
         repoC.replicate(clientC)
         repoC.doc(id, doc => {
-          t.deepEqual(doc, { a: 1, b: 2})
+          t.deepEqual(doc, { a: 1, b: 2 })
         })
       }],
     ]))
