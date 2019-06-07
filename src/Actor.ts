@@ -310,12 +310,11 @@ export class Actor {
   }
 
   destroy = () => {
-    this.feed.close((err: Error) => {
+    this.feed.close(() => {
       const filename = this.storage("").filename
       if (filename) {
         const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`
-        fs.rename(filename, newName, (err: Error) => {
-        })
+        fs.rename(filename, newName, () => {})
       }
     })
   }
