@@ -5,8 +5,8 @@ import { Clock, cmp, union } from "./Clock";
 
 const log = Debug("repo:doc:back");
 
-function _id(id: string) : string {
-  return id.slice(0,4)
+function _id(id: string): string {
+  return id.slice(0, 4)
 }
 
 export type DocBackendMessage
@@ -58,16 +58,16 @@ export class DocBackend {
   id: string;
   actorId?: string; // this might be easier to have as the actor object - FIXME
   clock: Clock = {};
-  back?: BackDoc; // can we make this private?
+  back?: T; // can we make this private?
   changes: Map<string, number> = new Map()
   ready = new Queue<Function>("backend:ready");
   private notify: (msg: DocBackendMessage) => void
   private remoteClock?: Clock = undefined;
-  private synced : boolean = false
-  private localChangeQ = new Queue<Change>("backend:localChangeQ");
-  private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ");
+  private synced: boolean = false
+  private localChangeQ = new Queue<Change<T>>("backend:localChangeQ");
+  private remoteChangesQ = new Queue<Change<T>[]>("backend:remoteChangesQ");
 
-  constructor(documentId: string, notify: (msg: DocBackendMessage) => void, back?: BackDoc) {
+  constructor(documentId: string, notify: (msg: DocBackendMessage<T>) => void, back?: T) {
     this.id = documentId;
     this.notify = notify
 
@@ -89,30 +89,30 @@ export class DocBackend {
     }
   }
 
-  testForSync = () : void => {
+  testForSync = (): void => {
     if (this.remoteClock) {
       const test = cmp(this.clock, this.remoteClock)
       this.synced = (test === "GT" || test === "EQ")
-//      console.log("TARGET CLOCK", this.id, this.synced)
-//      console.log("this.clock",this.clock)
-//      console.log("this.remoteClock",this.remoteClock)
-//    } else {
-//      console.log("TARGET CLOCK NOT SET", this.id, this.synced)
+      //      console.log("TARGET CLOCK", this.id, this.synced)
+      //      console.log("this.clock",this.clock)
+      //      console.log("this.remoteClock",this.remoteClock)
+      //    } else {
+      //      console.log("TARGET CLOCK NOT SET", this.id, this.synced)
     }
   }
 
   target = (clock: Clock): void => {
-//    console.log("Target", clock)
+    //    console.log("Target", clock)
     if (this.synced) return
     this.remoteClock = union(clock, this.remoteClock || {})
     this.testForSync()
   }
 
-  applyRemoteChanges = (changes: Change[]): void => {
+  applyRemoteChanges = (changes: Change<T>[]): void => {
     this.remoteChangesQ.push(changes);
   };
 
-  applyLocalChange = (change: Change): void => {
+  applyLocalChange = (change: Change<T>): void => {
     this.localChangeQ.push(change);
   };
 
@@ -125,10 +125,10 @@ export class DocBackend {
         id: this.id,
         actorId: this.actorId
       });
-    } 
+    }
   };
 
-  updateClock(changes: Change[]) {
+  updateClock(changes: Change<T>[]) {
     changes.forEach(change => {
       const actor = change.actor;
       const oldSeq = this.clock[actor] || 0;
@@ -137,7 +137,7 @@ export class DocBackend {
     if (!this.synced) this.testForSync();
   }
 
-  init = (changes: Change[], actorId?: string) => {
+  init = (changes: Change<T>[], actorId?: string) => {
     this.bench("init", () => {
       //console.log("CHANGES MAX",changes[changes.length - 1])
       //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))

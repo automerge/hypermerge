@@ -57,15 +57,15 @@ export class RepoFrontend {
     return `hypermerge:/${docId}`;
   };
 
-  change = <T>(id: string, fn: (state: T) => void ) => {
+  change = <T>(id: string, fn: (state: T) => void) => {
     this.open<T>(id).change(fn);
   };
 
-  meta = (url: string, cb:(meta: PublicMetadata | undefined) => void): void => {
-    const {id , type} = validateURL(url);
+  meta = (url: string, cb: (meta: PublicMetadata | undefined) => void): void => {
+    const { id, type } = validateURL(url);
     this.queryBackend({ type: "MetadataMsg", id }, (meta: PublicMetadata | undefined) => {
       if (meta) {
-      const doc = this.docs.get(id);
+        const doc = this.docs.get(id);
         if (doc && meta.type === "Document") {
           meta.actor = doc.actorId
           meta.history = doc.history
@@ -77,7 +77,7 @@ export class RepoFrontend {
   }
 
   meta2 = (url: string): DocMetadata | undefined => {
-    const {id , type} = validateURL(url);
+    const { id, type } = validateURL(url);
     const doc = this.docs.get(id);
     if (!doc) return;
     return {
@@ -121,14 +121,14 @@ export class RepoFrontend {
     return fork;
   };
 
-/*
-  follow = (url: string, target: string) => {
-    const id = validateDocURL(url);
-    this.toBackend.push({ type: "FollowMsg", id, target });
-  };
-*/
+  /*
+    follow = (url: string, target: string) => {
+      const id = validateDocURL(url);
+      this.toBackend.push({ type: "FollowMsg", id, target });
+    };
+  */
 
-  watch = <T>( url: string, cb: (val: T, clock?: Clock, index?: number) => void): Handle<T> => {
+  watch = <T>(url: string, cb: (val: T, clock?: Clock, index?: number) => void): Handle<T> => {
     validateDocURL(url);
     const handle = this.open<T>(url);
     handle.subscribe(cb);
@@ -153,16 +153,16 @@ export class RepoFrontend {
     if (doc === undefined) { throw new Error(`No such document ${id}`) }
     if (history < 0 && history >= doc.history) { throw new Error(`Invalid history ${history} for id ${id}`) }
     this.queryBackend({ type: "MaterializeMsg", history, id }, (patch: Patch) => {
-      const doc = Frontend.init({ deferActorId: true }) as Doc<T>;
+      const doc = Frontend.init({ deferActorId: true }) as T;
       cb(Frontend.applyPatch(doc, patch));
     });
   }
 
-  queryBackend( query: ToBackendQueryMsg, cb: (arg: any) => void ) {
+  queryBackend(query: ToBackendQueryMsg, cb: (arg: any) => void) {
     msgid += 1 // global counter
     const id = msgid
-    this.cb.set(id,cb)
-    this.toBackend.push({type: "Query", id, query})
+    this.cb.set(id, cb)
+    this.toBackend.push({ type: "Query", id, query })
   }
 
   open = <T>(url: string): Handle<T> => {
@@ -196,13 +196,13 @@ export class RepoFrontend {
     this.toBackend.subscribe(subscriber);
   };
 
-  close = () : void => {
+  close = (): void => {
     this.toBackend.push({ type: "CloseMsg" });
     this.docs.forEach(doc => doc.close())
     this.docs.clear()
   }
 
-  destroy = (url: string) : void => {
+  destroy = (url: string): void => {
     const { id } = validateURL(url);
     this.toBackend.push({ type: "DestroyMsg", id });
     const doc = this.docs.get(id);
@@ -212,18 +212,18 @@ export class RepoFrontend {
     }
   }
 
-/*
-  handleReply = (id: number, reply: ToFrontendReplyMsg) => {
-    const cb = this.cb.get(id)!
-    switch (reply.type) {
-      case "MaterializeReplyMsg": {
-        cb(reply.patch);
-        break;
+  /*
+    handleReply = (id: number, reply: ToFrontendReplyMsg) => {
+      const cb = this.cb.get(id)!
+      switch (reply.type) {
+        case "MaterializeReplyMsg": {
+          cb(reply.patch);
+          break;
+        }
       }
+      this.cb.delete(id)
     }
-    this.cb.delete(id)
-  }
-*/
+  */
 
   receive = (msg: ToFrontendRepoMsg) => {
     if (msg instanceof Uint8Array) {
@@ -245,8 +245,8 @@ export class RepoFrontend {
         }
         case "Reply": {
           const id = msg.id
-//          const reply = msg.reply
-         // this.handleReply(id,reply)
+          //          const reply = msg.reply
+          // this.handleReply(id,reply)
           const cb = this.cb.get(id)!
           cb(msg.payload)
           this.cb.delete(id)!

@@ -28,7 +28,7 @@ const log = Debug("repo:backend");
 export interface FeedData {
   actorId: string;
   writable: Boolean;
-  changes: Change[];
+  changes: Change<T>[];
 }
 
 export interface Options {
@@ -68,8 +68,8 @@ export class RepoBackend {
     actor.writeFile(data, mimeType);
   }
 
-  private async readFile(id: string): Promise<{body: Uint8Array, mimeType: string}> {
-//    log("readFile",id, this.meta.forDoc(id))
+  private async readFile(id: string): Promise<{ body: Uint8Array, mimeType: string }> {
+    //    log("readFile",id, this.meta.forDoc(id))
     if (this.meta.isDoc(id)) { throw new Error("trying to open a document like a file") }
     const actor = await this.getReadyActor(id)
     return actor.readFile()
@@ -116,7 +116,7 @@ export class RepoBackend {
       this.docs.delete(id)
     }
     const actors = this.meta.allActors()
-    this.actors.forEach((actor,id) => {
+    this.actors.forEach((actor, id) => {
       if (!actors.has(id)) {
         console.log("Orphaned actors - will purge", id)
         this.actors.delete(id)
@@ -128,7 +128,7 @@ export class RepoBackend {
 
   // opening a file fucks it up
   private open(docId: string): DocBackend.DocBackend {
-//    log("open", docId, this.meta.forDoc(docId));
+    //    log("open", docId, this.meta.forDoc(docId));
     if (this.meta.isFile(docId)) { throw new Error("trying to open a file like a document") }
     let doc = this.docs.get(docId) || new DocBackend.DocBackend(docId, this.documentNotify);
     if (!this.docs.has(docId)) {
@@ -144,25 +144,25 @@ export class RepoBackend {
     this.syncReadyActors(Object.keys(clock));
   }
 
-/*
-  follow(id: string, target: string) {
-    this.meta.follow(id, target);
-    this.syncReadyActors(this.meta.actors(id));
-  }
-*/
+  /*
+    follow(id: string, target: string) {
+      this.meta.follow(id, target);
+      this.syncReadyActors(this.meta.actors(id));
+    }
+  */
 
   close = () => {
     this.actors.forEach(actor => actor.close())
     this.actors.clear()
 
-    const swarm : any = this.swarm // FIXME - any is bad
+    const swarm: any = this.swarm // FIXME - any is bad
     if (swarm) {
       try {
         swarm.discovery.removeAllListeners()
         swarm.discovery.close()
-        swarm.peers.forEach((p : any) => p.connections.forEach((con:any) => con.destroy()))
+        swarm.peers.forEach((p: any) => p.connections.forEach((con: any) => con.destroy()))
         swarm.removeAllListeners()
-      } catch (error) {}
+      } catch (error) { }
     }
   }
 
@@ -185,11 +185,11 @@ export class RepoBackend {
   private async loadDocument(doc: DocBackend.DocBackend) {
     const actors = await this.allReadyActors(doc.id)
     log(`load document 2 actors=${actors.map((a) => a.id)}`)
-    const changes: Change[] = [];
+    const changes: Change<T>[] = [];
     actors.forEach(actor => {
-      const max = this.meta.clockAt(doc.id,actor.id);
+      const max = this.meta.clockAt(doc.id, actor.id);
       const slice = actor.changes.slice(0, max);
-      doc.changes.set(actor.id,slice.length)
+      doc.changes.set(actor.id, slice.length)
       log(`change actor=${ID(actor.id)} changes=0..${slice.length}`)
       changes.push(...slice);
     });
@@ -204,7 +204,7 @@ export class RepoBackend {
     const dkBuffer = discoveryKey(Base58.decode(actorId))
     const dk = Base58.encode(dkBuffer)
     if (this.swarm && !this.joined.has(dk)) {
-      log("swarm.join",ID(actorId), ID(dk)) 
+      log("swarm.join", ID(actorId), ID(dk))
       this.swarm.join(dkBuffer);
     }
     this.joined.add(dk);
@@ -214,7 +214,7 @@ export class RepoBackend {
     const dkBuffer = discoveryKey(Base58.decode(actorId));
     const dk = Base58.encode(dkBuffer);
     if (this.swarm && this.joined.has(dk)) {
-      log("leave",ID(actorId), ID(dk))
+      log("leave", ID(actorId), ID(dk))
       this.swarm.leave(dkBuffer);
     }
     this.joined.delete(dk);
@@ -225,7 +225,7 @@ export class RepoBackend {
     const actor = this.actors.get(actorId) || this.initActor({ publicKey });
     const actorPromise = new Promise<Actor>((resolve, reject) => {
       try {
-      actor.onReady(resolve)
+        actor.onReady(resolve)
       } catch (e) {
         reject(e)
       }
@@ -391,7 +391,7 @@ export class RepoBackend {
         this.syncChanges(msg.actor);
         break;
       case "Download":
-        this.meta.docsWith(msg.actor.id).forEach( (doc: string) => {
+        this.meta.docsWith(msg.actor.id).forEach((doc: string) => {
           this.toFrontend.push({
             type: "ActorBlockDownloadedMsg",
             id: doc,
@@ -421,7 +421,7 @@ export class RepoBackend {
       const doc = this.docs.get(docId);
       if (doc) {
         doc.ready.push(() => {
-          const max = this.meta.clockAt(docId,actorId)
+          const max = this.meta.clockAt(docId, actorId)
           const min = doc.changes.get(actorId) || 0
           const changes = []
           let i = min;
@@ -430,8 +430,8 @@ export class RepoBackend {
             log(`change found xxx id=${ID(actor.id)} seq=${change.seq}`)
             changes.push(change)
           }
-          doc.changes.set(actorId,i)
-  //        log(`changes found xxx doc=${ID(docId)} actor=${ID(actor.id)} n=[${min}+${changes.length}/${max}]`);
+          doc.changes.set(actorId, i)
+          //        log(`changes found xxx doc=${ID(docId)} actor=${ID(actor.id)} n=[${min}+${changes.length}/${max}]`);
           if (changes.length > 0) {
             log(`applyremotechanges ${changes.length}`)
             doc.applyRemoteChanges(changes);
@@ -485,7 +485,7 @@ export class RepoBackend {
         const doc = this.docs.get(query.id)!
         const changes = (doc.back as any).getIn(['opSet', 'history']).slice(0, query.history).toArray()
         const [_, patch] = Backend.applyChanges(Backend.init(), changes);
-        this.toFrontend.push({ type: "Reply", id, payload: patch})
+        this.toFrontend.push({ type: "Reply", id, payload: patch })
         break;
       }
     }
@@ -544,12 +544,12 @@ export class RepoBackend {
           this.merge(msg.id, strs2clock(msg.actors));
           break;
         }
-/*
-        case "FollowMsg": {
-          this.follow(msg.id, msg.target);
-          break;
-        }
-*/
+        /*
+                case "FollowMsg": {
+                  this.follow(msg.id, msg.target);
+                  break;
+                }
+        */
         case "OpenMsg": {
           this.open(msg.id);
           break;

@@ -3,9 +3,9 @@ import { RepoFrontend, ProgressEvent } from "./RepoFrontend";
 
 export class Handle<T> {
   id: string = "";
-  state: Doc<T> | null = null;
+  state: T | null = null;
   clock: Clock | null = null;
-  subscription?: (item: Doc<T>, clock?: Clock, index?: number) => void;
+  subscription?: (item: T, clock?: Clock, index?: number) => void;
   progressSubscription?: (event: ProgressEvent) => void;
   private counter: number = 0;
   private repo: RepoFrontend;
@@ -18,20 +18,20 @@ export class Handle<T> {
     return this.repo.fork(this.id);
   }
 
-/*
-  follow() {
-    const id = this.repo.create();
-    this.repo.follow(id, this.id);
-    return id;
-  }
-*/
+  /*
+    follow() {
+      const id = this.repo.create();
+      this.repo.follow(id, this.id);
+      return id;
+    }
+  */
 
   merge(other: Handle<T>): this {
     this.repo.merge(this.id, other.id);
     return this;
   }
 
-  push = (item: Doc<T>, clock: Clock) => {
+  push = (item: T, clock: Clock) => {
     this.state = item;
     this.clock = clock;
     if (this.subscription) {
@@ -46,9 +46,9 @@ export class Handle<T> {
   }
 
   once = (
-    subscriber: (doc: Doc<T>, clock?: Clock, index?: number) => void
+    subscriber: (doc: T, clock?: Clock, index?: number) => void
   ): this => {
-    this.subscribe((doc: Doc<T>, clock?: Clock, index?: number) => {
+    this.subscribe((doc: T, clock?: Clock, index?: number) => {
       subscriber(doc, clock, index);
       this.close();
     });
@@ -56,7 +56,7 @@ export class Handle<T> {
   };
 
   subscribe = (
-    subscriber: (doc: Doc<T>, clock?: Clock, index?: number) => void
+    subscriber: (doc: T, clock?: Clock, index?: number) => void
   ): this => {
     if (this.subscription) {
       throw new Error("only one subscriber for a doc handle");
@@ -76,9 +76,9 @@ export class Handle<T> {
     if (this.progressSubscription) {
       throw new Error("only one progress subscriber for a doc handle")
     }
-    
+
     this.progressSubscription = subscriber
-  
+
     return this
   }
 
@@ -92,9 +92,9 @@ export class Handle<T> {
     this.repo.debug(this.id);
   }
 
-  cleanup = () => {};
+  cleanup = () => { };
 
-  changeFn = (fn: ChangeFn<T>) => {};
+  changeFn = (fn: ChangeFn<T>) => { };
 
   change = (fn: ChangeFn<T>): this => {
     this.changeFn(fn);

@@ -26,7 +26,7 @@ export class DocFrontend<T> {
   history: number = 0;
   //  private toBackend: Queue<ToBackendRepoMsg>
   private changeQ = new Queue<ChangeFn<T>>("frontend:change");
-  private front: Doc<T>;
+  private front: T;
   private mode: Mode = "pending";
   private handles: Set<Handle<T>> = new Set();
   private repo: RepoFrontend;
@@ -43,14 +43,14 @@ export class DocFrontend<T> {
     //    this.toBackend = toBackend
 
     if (actorId) {
-      this.front = Frontend.init(actorId) as Doc<T>;
+      this.front = Frontend.init(actorId) as T;
       this.docId = docId;
       this.actorId = actorId;
       this.ready = true
       this.mode = "write";
       this.enableWrites();
     } else {
-      this.front = Frontend.init({ deferActorId: true }) as Doc<T>;
+      this.front = Frontend.init({ deferActorId: true }) as T;
       this.docId = docId;
     }
   }
@@ -113,7 +113,7 @@ export class DocFrontend<T> {
   init = (synced: boolean, actorId?: string, patch?: Patch, history?: number) => {
     log(
       `init docid=${this.docId} actorId=${actorId} patch=${!!patch} history=${history} mode=${
-        this.mode
+      this.mode
       }`
     );
 
@@ -130,7 +130,7 @@ export class DocFrontend<T> {
       this.front = doc;
       log(
         `change complete doc=${this.docId} seq=${
-          request ? request.seq : "null"
+        request ? request.seq : "null"
         }`
       );
       if (request) {
@@ -145,7 +145,7 @@ export class DocFrontend<T> {
     });
   }
 
-  private updateClockChange(change: Change) {
+  private updateClockChange(change: Change<T>) {
     const oldSeq = this.clock[change.actor] || 0;
     this.clock[change.actor] = Math.max(change.seq, oldSeq);
   }
@@ -182,7 +182,7 @@ export class DocFrontend<T> {
   }
 
   close() {
-    this.handles.forEach( handle => handle.close())
+    this.handles.forEach(handle => handle.close())
     this.handles.clear()
   }
 }

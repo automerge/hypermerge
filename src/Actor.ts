@@ -19,7 +19,7 @@ const log = Debug("repo:actor")
 const KB = 1024
 const MB = 1024 * KB
 
-export type FeedHead = FeedHeadMetadata | Change
+export type FeedHead = FeedHeadMetadata | Change<T>
 
 export type FeedType = "Unknown" | "Automerge" | "File"
 
@@ -83,7 +83,7 @@ interface ActorConfig {
 export class Actor {
   id: string
   dkString: string
-  changes: Change[] = []
+  changes: Change<T>[] = []
   feed: Feed<Uint8Array>
   peers: Set<Peer> = new Set()
   type: FeedType
@@ -144,7 +144,7 @@ export class Actor {
   onPeerAdd = (peer: Peer) => {
     log("peer-add feed", ID(this.id))
     this.peers.add(peer)
-    this.notify({ type: "PeerAdd", actor: this, peer: peer})
+    this.notify({ type: "PeerAdd", actor: this, peer: peer })
     this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }
 
@@ -198,7 +198,7 @@ export class Actor {
   parseDataBlock(data: Uint8Array, index: number) {
     switch (this.type) {
       case "Automerge":
-        const change: Change = Block.unpack(data) // no validation of Change
+        const change: Change<T> = Block.unpack(data) // no validation of Change<T>
         this.changes[index] = change
         log(`block xxx idx=${index} actor=${ID(change.actor)} seq=${change.seq}`)
         break
@@ -211,7 +211,7 @@ export class Actor {
     }
   }
 
-  writeChange(change: Change) {
+  writeChange(change: Change<T>) {
     const feedLength = this.changes.length
     const ok = feedLength + 1 === change.seq
     log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`)
@@ -242,7 +242,7 @@ export class Actor {
     })
   }
 
-  async readFile(): Promise<{body: Uint8Array, mimeType: string}> {
+  async readFile(): Promise<{ body: Uint8Array, mimeType: string }> {
     log("reading file...")
     const head = await this.fileHead()
     const body = await this.fileBody(head)
@@ -305,8 +305,8 @@ export class Actor {
   close = () => {
     log("closing feed", this.id)
     try {
-      this.feed.close((err: Error) => {})
-    } catch (error) {}
+      this.feed.close((err: Error) => { })
+    } catch (error) { }
   }
 
   destroy = () => {

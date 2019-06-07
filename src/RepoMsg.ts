@@ -104,7 +104,7 @@ export interface NeedsActorIdMsg {
 export interface RequestMsg {
   type: "RequestMsg";
   id: string;
-  request: Change;
+  request: Change<T>;
 }
 
 export type ToFrontendRepoMsg =
