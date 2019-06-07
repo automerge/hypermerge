@@ -76,11 +76,11 @@ export function equivalent(c1: Clock, c2: Clock): boolean {
   return true;
 }
 
-export function union(c1: Clock, c2: Clock): Clock {
+export function union(c1: Clock, c2: Clock | undefined): Clock {
   let acc: Clock = Object.assign({}, c1)
 
-  for (let id in c2) {
-    acc[id] = Math.max(acc[id] || 0,c2[id])
+  if (c2) for (let id in c2) {
+    acc[id] = Math.max(acc[id] || 0, c2[id])
   }
 
   return acc
