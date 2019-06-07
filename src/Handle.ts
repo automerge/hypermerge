@@ -8,9 +8,9 @@ export class Handle<T> {
   subscription?: (item: T, clock?: Clock, index?: number) => void;
   progressSubscription?: (event: ProgressEvent) => void;
   private counter: number = 0;
-  private repo: RepoFrontend;
+  private repo: RepoFrontend<T>;
 
-  constructor(repo: RepoFrontend) {
+  constructor(repo: RepoFrontend<T>) {
     this.repo = repo;
   }
 

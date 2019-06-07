@@ -19,17 +19,17 @@ const log = Debug("repo:actor")
 const KB = 1024
 const MB = 1024 * KB
 
-export type FeedHead = FeedHeadMetadata | Change<T>
+export type FeedHead<T> = FeedHeadMetadata | Change<T>
 
 export type FeedType = "Unknown" | "Automerge" | "File"
 
-export type ActorMsg =
-  | ActorFeedReady
-  | ActorInitialized
-  | ActorSync
-  | PeerUpdate
-  | PeerAdd
-  | Download
+export type ActorMsg<T> =
+  | ActorFeedReady<T>
+  | ActorInitialized<T>
+  | ActorSync<T>
+  | PeerUpdate<T>
+  | PeerAdd<T>
+  | Download<T>
 
 interface FeedHeadMetadata {
   type: "File"
@@ -38,63 +38,63 @@ interface FeedHeadMetadata {
   blockSize: number
 }
 
-interface ActorSync {
+interface ActorSync<T> {
   type: "ActorSync"
-  actor: Actor
+  actor: Actor<T>
 }
 
-interface ActorFeedReady {
+interface ActorFeedReady<T> {
   type: "ActorFeedReady"
-  actor: Actor
+  actor: Actor<T>
   writable: boolean
 }
 
-interface ActorInitialized {
+interface ActorInitialized<T> {
   type: "ActorInitialized"
-  actor: Actor
+  actor: Actor<T>
 }
 
-interface PeerUpdate {
+interface PeerUpdate<T> {
   type: "PeerUpdate"
-  actor: Actor
+  actor: Actor<T>
   peers: number
 }
 
-interface PeerAdd {
+interface PeerAdd<T> {
   type: "PeerAdd"
-  actor: Actor
+  actor: Actor<T>
   peer: Peer
 }
 
-interface Download {
+interface Download<T> {
   type: "Download"
-  actor: Actor
+  actor: Actor<T>
   time: number
   size: number
   index: number
 }
 
-interface ActorConfig {
+interface ActorConfig<T> {
   keys: Keys.KeyBuffer
-  notify: (msg: ActorMsg) => void
+  notify: (msg: ActorMsg<T>) => void
   storage: (path: string) => Function
 }
 
-export class Actor {
+export class Actor<T> {
   id: string
   dkString: string
   changes: Change<T>[] = []
   feed: Feed<Uint8Array>
   peers: Set<Peer> = new Set()
   type: FeedType
-  private q: Queue<(actor: Actor) => void>
-  private notify: (msg: ActorMsg) => void
+  private q: Queue<(actor: Actor<T>) => void>
+  private notify: (msg: ActorMsg<T>) => void
   private storage: any
   private data: Uint8Array[] = []
   private pending: Uint8Array[] = []
   private fileMetadata?: FeedHeadMetadata
 
-  constructor(config: ActorConfig) {
+  constructor(config: ActorConfig<T>) {
     const { publicKey, secretKey } = config.keys
     const dk = discoveryKey(publicKey)
     const id = Base58.encode(publicKey)
@@ -105,7 +105,7 @@ export class Actor {
     this.notify = config.notify
     this.dkString = Base58.encode(dk)
     this.feed = hypercore(this.storage, publicKey, { secretKey })
-    this.q = new Queue<(actor: Actor) => void>("actor:q-" + id.slice(0, 4))
+    this.q = new Queue<(actor: Actor<T>) => void>("actor:q-" + id.slice(0, 4))
     this.feed.ready(this.onFeedReady)
   }
 
@@ -136,8 +136,8 @@ export class Actor {
     this.q.subscribe(f => f(this))
   }
 
-  // Note: on Actor ready, not Feed!
-  onReady = (cb: (actor: Actor) => void) => {
+  // Note: on Actor<T> ready, not Feed!
+  onReady = (cb: (actor: Actor<T>) => void) => {
     this.q.push(cb)
   }
 

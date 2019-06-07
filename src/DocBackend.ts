@@ -9,11 +9,11 @@ function _id(id: string): string {
   return id.slice(0, 4)
 }
 
-export type DocBackendMessage
+export type DocBackendMessage<T>
   = ReadyMsg
   | ActorIdMsg
-  | RemotePatchMsg
-  | LocalPatchMsg
+  | RemotePatchMsg<T>
+  | LocalPatchMsg<T>
 
 interface ReadyMsg {
   type: "ReadyMsg"
@@ -30,7 +30,7 @@ interface ActorIdMsg {
   actorId: string
 }
 
-interface RemotePatchMsg {
+interface RemotePatchMsg<T> {
   type: "RemotePatchMsg"
   id: string
   actorId?: string,
@@ -40,7 +40,7 @@ interface RemotePatchMsg {
   history: number
 }
 
-interface LocalPatchMsg {
+interface LocalPatchMsg<T> {
   type: "LocalPatchMsg"
   id: string
   actorId: string,
@@ -54,14 +54,14 @@ interface LocalPatchMsg {
 //  [actorId: string]: number;
 //}
 
-export class DocBackend {
+export class DocBackend<T> {
   id: string;
   actorId?: string; // this might be easier to have as the actor object - FIXME
   clock: Clock = {};
   back?: T; // can we make this private?
   changes: Map<string, number> = new Map()
   ready = new Queue<Function>("backend:ready");
-  private notify: (msg: DocBackendMessage) => void
+  private notify: (msg: DocBackendMessage<T>) => void
   private remoteClock?: Clock = undefined;
   private synced: boolean = false
   private localChangeQ = new Queue<Change<T>>("backend:localChangeQ");

@@ -9,11 +9,11 @@ export type ToFrontendReplyMsg =
   | MaterializeReplyMsg
   | MetadataReplyMsg
 
-export type ToBackendRepoMsg =
+export type ToBackendRepoMsg<T> =
   | NeedsActorIdMsg
-  | RequestMsg
+  | RequestMsg<T>
   | CloseMsg
-//  | FollowMsg
+  //  | FollowMsg
   | MergeMsg
   | CreateMsg
   | OpenMsg
@@ -22,7 +22,7 @@ export type ToBackendRepoMsg =
   | WriteFile
   | ReadFile
   | QueryMsg
-//  | MaterializeMsg
+  //  | MaterializeMsg
   | Uint8Array;
 
 export interface QueryMsg {
@@ -35,7 +35,7 @@ export interface ReplyMsg {
   type: "Reply";
   id: number;
   payload: any // PublicMetadata | Patch
-//  reply: ToFrontendReplyMsg;
+  //  reply: ToFrontendReplyMsg;
 }
 
 export interface MaterializeMsg {
@@ -101,7 +101,7 @@ export interface NeedsActorIdMsg {
   id: string;
 }
 
-export interface RequestMsg {
+export interface RequestMsg<T> {
   type: "RequestMsg";
   id: string;
   request: Change<T>;

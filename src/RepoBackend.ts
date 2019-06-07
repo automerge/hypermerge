@@ -25,7 +25,7 @@ const HypercoreProtocol: Function = require("hypercore-protocol");
 
 const log = Debug("repo:backend");
 
-export interface FeedData {
+export interface FeedData<T> {
   actorId: string;
   writable: Boolean;
   changes: Change<T>[];
@@ -36,13 +36,13 @@ export interface Options {
   storage: Function;
 }
 
-export class RepoBackend {
+export class RepoBackend<T> {
   path?: string;
   storage: Function;
   joined: Set<string> = new Set();
-  actors: Map<string, Actor> = new Map();
-  actorsDk: Map<string, Actor> = new Map();
-  docs: Map<string, DocBackend.DocBackend> = new Map();
+  actors: Map<string, Actor<T>> = new Map();
+  actorsDk: Map<string, Actor<T>> = new Map();
+  docs: Map<string, DocBackend<T>> = new Map();
   meta: Metadata;
   opts: Options;
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue("repo:toFrontend");
@@ -75,10 +75,10 @@ export class RepoBackend {
     return actor.readFile()
   }
 
-  private create(keys: Keys.KeyBuffer): DocBackend.DocBackend {
+  private create(keys: Keys.KeyBuffer): DocBackend<T> {
     const docId = Keys.encode(keys.publicKey);
     log("create", docId);
-    const doc = new DocBackend.DocBackend(docId, this.documentNotify, Backend.init());
+    const doc = new DocBackend<T>(docId, this.documentNotify, Backend.init());
 
     this.docs.set(docId, doc);
 
@@ -127,10 +127,10 @@ export class RepoBackend {
   }
 
   // opening a file fucks it up
-  private open(docId: string): DocBackend.DocBackend {
+  private open(docId: string): DocBackend<T> {
     //    log("open", docId, this.meta.forDoc(docId));
     if (this.meta.isFile(docId)) { throw new Error("trying to open a file like a document") }
-    let doc = this.docs.get(docId) || new DocBackend.DocBackend(docId, this.documentNotify);
+    let doc = this.docs.get(docId) || new DocBackend<T>(docId, this.documentNotify);
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc);
       this.meta.addActor(docId, docId);
@@ -177,12 +177,12 @@ export class RepoBackend {
     }
   };
 
-  private async allReadyActors(docId: string): Promise<Actor[]> {
+  private async allReadyActors(docId: string): Promise<Actor<T>[]> {
     const actorIds = await this.meta.actorsAsync(docId)
     return Promise.all(actorIds.map(this.getReadyActor))
   }
 
-  private async loadDocument(doc: DocBackend.DocBackend) {
+  private async loadDocument(doc: DocBackend<T>) {
     const actors = await this.allReadyActors(doc.id)
     log(`load document 2 actors=${actors.map((a) => a.id)}`)
     const changes: Change<T>[] = [];
@@ -220,10 +220,10 @@ export class RepoBackend {
     this.joined.delete(dk);
   };
 
-  private getReadyActor = (actorId: string): Promise<Actor> => {
+  private getReadyActor = (actorId: string): Promise<Actor<T>> => {
     const publicKey = Base58.decode(actorId);
     const actor = this.actors.get(actorId) || this.initActor({ publicKey });
-    const actorPromise = new Promise<Actor>((resolve, reject) => {
+    const actorPromise = new Promise<Actor<T>>((resolve, reject) => {
       try {
         actor.onReady(resolve)
       } catch (e) {
@@ -239,7 +239,7 @@ export class RepoBackend {
     };
   };
 
-  initActorFeed(doc: DocBackend.DocBackend): string {
+  initActorFeed(doc: DocBackend<T>): string {
     log("initActorFeed", doc.id);
     const keys = crypto.keyPair();
     const actorId = Keys.encode(keys.publicKey);
@@ -248,11 +248,11 @@ export class RepoBackend {
     return actorId;
   }
 
-  actorIds(doc: DocBackend.DocBackend): string[] {
+  actorIds(doc: DocBackend<T>): string[] {
     return this.meta.actors(doc.id);
   }
 
-  docActors(doc: DocBackend.DocBackend): Actor[] {
+  docActors(doc: DocBackend<T>): Actor<T>[] {
     return this.actorIds(doc)
       .map(id => this.actors.get(id))
       .filter(notEmpty);
@@ -276,7 +276,7 @@ export class RepoBackend {
     return clocks
   }
 
-  private documentNotify = (msg: DocBackend.DocBackendMessage) => {
+  private documentNotify = (msg: DocBackendMessage<T>) => {
     switch (msg.type) {
       case "ReadyMsg": {
         this.toFrontend.push({
@@ -352,7 +352,7 @@ export class RepoBackend {
     }
   }
 
-  private actorNotify = (msg: ActorMsg) => {
+  private actorNotify = (msg: ActorMsg<T>) => {
     switch (msg.type) {
       case "ActorFeedReady": {
         const actor = msg.actor
@@ -405,7 +405,7 @@ export class RepoBackend {
     }
   };
 
-  private initActor(keys: Keys.KeyBuffer): Actor {
+  private initActor(keys: Keys.KeyBuffer): Actor<T> {
     const notify = this.actorNotify;
     const storage = this.storageFn;
     const actor = new Actor({ keys, notify, storage });
@@ -414,7 +414,7 @@ export class RepoBackend {
     return actor;
   }
 
-  syncChanges = (actor: Actor) => {
+  syncChanges = (actor: Actor<T>) => {
     const actorId = actor.id;
     const docIds = this.meta.docsWith(actorId);
     docIds.forEach(docId => {
@@ -491,7 +491,7 @@ export class RepoBackend {
     }
   }
 
-  receive = (msg: ToBackendRepoMsg) => {
+  receive = (msg: ToBackendRepoMsg<T>) => {
     if (msg instanceof Uint8Array) {
       this.file = msg;
     } else {
@@ -570,7 +570,7 @@ export class RepoBackend {
     }
   };
 
-  actor(id: string): Actor | undefined {
+  actor(id: string): Actor<T> | undefined {
     return this.actors.get(id);
   }
 }

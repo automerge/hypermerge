@@ -29,11 +29,11 @@ export class DocFrontend<T> {
   private front: T;
   private mode: Mode = "pending";
   private handles: Set<Handle<T>> = new Set();
-  private repo: RepoFrontend;
+  private repo: RepoFrontend<T>;
 
   clock: Clock;
 
-  constructor(repo: RepoFrontend, config: Config) {
+  constructor(repo: RepoFrontend<T>, config: Config) {
     //super()
 
     const docId = config.docId;
