@@ -1,5 +1,5 @@
 import { Options, RepoBackend } from "./RepoBackend";
-import { RepoFrontend, DocMetadata } from "./RepoFrontend";
+import { RepoFrontend } from "./RepoFrontend";
 import { Handle } from "./Handle";
 import { PublicMetadata } from "./Metadata";
 import { Clock } from "./Clock";

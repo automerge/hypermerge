@@ -1,4 +1,4 @@
-import { Clock, Doc, ChangeFn } from "automerge/frontend";
+import { Clock, ChangeFn } from "automerge";
 import { RepoFrontend, ProgressEvent } from "./RepoFrontend";
 
 export class Handle<T> {

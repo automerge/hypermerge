@@ -1,4 +1,4 @@
-import { Patch, Change } from "automerge/frontend";
+import { Patch, Change } from "automerge";
 import { PublicMetadata } from "./Metadata"
 
 export type ToBackendQueryMsg =

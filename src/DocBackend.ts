@@ -1,6 +1,4 @@
-import * as Backend from "automerge/backend";
-import { Change, BackDoc } from "automerge/backend";
-import * as Frontend from "automerge/frontend"
+import { Change, Backend, Patch } from "automerge";
 import Queue from "./Queue";
 import Debug from "debug";
 import { Clock, cmp, union } from "./Clock";
@@ -23,7 +21,7 @@ interface ReadyMsg {
   synced: boolean
   actorId?: string
   history?: number
-  patch?: Frontend.Patch
+  patch?: Patch
 }
 
 interface ActorIdMsg {
@@ -37,8 +35,8 @@ interface RemotePatchMsg {
   id: string
   actorId?: string,
   synced: boolean
-  patch: Frontend.Patch
-  change?: Change,
+  patch: Patch
+  change?: Change<T>,
   history: number
 }
 
@@ -47,8 +45,8 @@ interface LocalPatchMsg {
   id: string
   actorId: string,
   synced: boolean
-  patch: Frontend.Patch
-  change: Change,
+  patch: Patch
+  change: Change<T>,
   history: number
 }
 

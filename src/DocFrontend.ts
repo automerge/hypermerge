@@ -1,6 +1,5 @@
-import { Patch, Doc, Change, ChangeFn } from "automerge/frontend";
+import { Patch, Change, ChangeFn, Frontend } from "automerge";
 import { RepoFrontend, ProgressEvent } from "./RepoFrontend";
-import * as Frontend from "automerge/frontend";
 import { Clock, union } from "./Clock";
 import Queue from "./Queue";
 import { Handle } from "./Handle";
