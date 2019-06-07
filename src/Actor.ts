@@ -11,9 +11,8 @@ import * as Base58 from "bs58"
 import * as Block from "./Block"
 import * as Keys from "./Keys"
 import Debug from "debug"
+import fs from 'fs'
 
-
-const fs: any = require("fs")
 
 const log = Debug("repo:actor")
 
