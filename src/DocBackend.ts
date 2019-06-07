@@ -62,12 +62,12 @@ export class DocBackend {
   clock: Clock = {};
   back?: BackDoc; // can we make this private?
   changes: Map<string, number> = new Map()
-  ready = new Queue<Function>("backend:ready");
+  ready = new Queue<Function>("doc:back:readyQ");
   private notify: (msg: DocBackendMessage) => void
   private remoteClock?: Clock = undefined;
   private synced : boolean = false
-  private localChangeQ = new Queue<Change>("backend:localChangeQ");
-  private remoteChangesQ = new Queue<Change[]>("backend:remoteChangesQ");
+  private localChangeQ = new Queue<Change>("doc:back:localChangeQ");
+  private remoteChangesQ = new Queue<Change[]>("doc:back:remoteChangesQ");
 
   constructor(documentId: string, notify: (msg: DocBackendMessage) => void, back?: BackDoc) {
     this.id = documentId;
