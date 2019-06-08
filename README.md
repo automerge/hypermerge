@@ -69,7 +69,24 @@ repo.replicate(discovery)
       handle.close()
     }
   })
+
 ```
+
+*NOTE*: If you're familiar with Automerge: the `change` function in Hypermerge is asynchronous, unlike the `Automerge.change` function is synchronous. What this means is that although `Automerge.change` returns an object representing the new state of your document, `repo.change` (or `handle.change`) does NOT. So:
+
+```ts
+// ok in Automerge!
+doc1 = Automerge.change(doc1, "msg", (doc) => {
+  doc.foo = "bar"
+})
+
+// NOT ok in Hypermerge!
+doc1 = repo.change(url1, (doc) => {
+  doc.foo = "bar"
+})
+```
+
+Instead, you should expect to get document state updates via `repo.watch` (or `handle.subscribe`) as shown in the example above.
 
 ### Two repos on different machines
 
