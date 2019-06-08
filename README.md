@@ -72,7 +72,7 @@ repo.replicate(discovery)
 
 ```
 
-*NOTE*: If you're familiar with Automerge: the `change` function in Hypermerge is asynchronous, unlike the `Automerge.change` function is synchronous. What this means is that although `Automerge.change` returns an object representing the new state of your document, `repo.change` (or `handle.change`) does NOT. So:
+*NOTE*: If you're familiar with Automerge: the `change` function in Hypermerge is asynchronous, while the `Automerge.change` function is synchronous. What this means is that although `Automerge.change` returns an object representing the new state of your document, `repo.change` (or `handle.change`) does NOT. So:
 
 ```ts
 // ok in Automerge!
