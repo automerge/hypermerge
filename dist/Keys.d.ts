@@ -1,4 +1,3 @@
-/// <reference types="node" />
 export interface KeyBuffer {
     publicKey: Buffer;
     secretKey?: Buffer;

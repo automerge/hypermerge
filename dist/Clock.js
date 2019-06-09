@@ -78,9 +78,10 @@ function equivalent(c1, c2) {
 exports.equivalent = equivalent;
 function union(c1, c2) {
     let acc = Object.assign({}, c1);
-    for (let id in c2) {
-        acc[id] = Math.max(acc[id] || 0, c2[id]);
-    }
+    if (c2)
+        for (let id in c2) {
+            acc[id] = Math.max(acc[id] || 0, c2[id]);
+        }
     return acc;
 }
 exports.union = union;

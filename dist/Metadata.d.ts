@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import Queue from "./Queue";
 import { Clock } from "./Clock";
 export interface NewMetadata {

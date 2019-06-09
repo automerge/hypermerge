@@ -1,16 +1,9 @@
 "use strict";
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const Frontend = __importStar(require("automerge/frontend"));
+const automerge_1 = require("automerge");
 const Clock_1 = require("./Clock");
 const Queue_1 = __importDefault(require("./Queue"));
 const Handle_1 = require("./Handle");
@@ -44,7 +37,7 @@ class DocFrontend {
         this.setActorId = (actorId) => {
             log("setActorId", this.docId, actorId, this.mode);
             this.actorId = actorId;
-            this.front = Frontend.setActorId(this.front, actorId);
+            this.front = automerge_1.Frontend.setActorId(this.front, actorId);
             if (this.mode === "read") {
                 this.mode = "write";
                 this.enableWrites(); // has to be after the queue
@@ -62,7 +55,7 @@ class DocFrontend {
         this.patch = (patch, synced, history) => {
             this.bench("patch", () => {
                 this.history = history;
-                this.front = Frontend.applyPatch(this.front, patch);
+                this.front = automerge_1.Frontend.applyPatch(this.front, patch);
                 this.updateClockPatch(patch);
                 if (patch.diffs.length > 0 && synced) {
                     if (this.mode === "pending") {
@@ -83,7 +76,7 @@ class DocFrontend {
         this.clock = {};
         //    this.toBackend = toBackend
         if (actorId) {
-            this.front = Frontend.init(actorId);
+            this.front = automerge_1.Frontend.init(actorId);
             this.docId = docId;
             this.actorId = actorId;
             this.ready = true;
@@ -91,7 +84,7 @@ class DocFrontend {
             this.enableWrites();
         }
         else {
-            this.front = Frontend.init({ deferActorId: true });
+            this.front = automerge_1.Frontend.init({ deferActorId: true });
             this.docId = docId;
         }
     }
@@ -120,7 +113,7 @@ class DocFrontend {
     }
     enableWrites() {
         this.changeQ.subscribe(fn => {
-            const [doc, request] = Frontend.change(this.front, fn);
+            const [doc, request] = automerge_1.Frontend.change(this.front, fn);
             this.front = doc;
             log(`change complete doc=${this.docId} seq=${request ? request.seq : "null"}`);
             if (request) {

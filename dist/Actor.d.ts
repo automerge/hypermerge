@@ -3,56 +3,56 @@
  * For dat, this means the actor abstracts over the hypercore and its peers.
  */
 import { Feed, Peer } from "./hypercore";
-import { Change } from "automerge/backend";
+import { Change } from "automerge";
 import * as Keys from "./Keys";
-export declare type FeedHead = FeedHeadMetadata | Change;
+export declare type FeedHead<T> = FeedHeadMetadata | Change<T>;
 export declare type FeedType = "Unknown" | "Automerge" | "File";
-export declare type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | PeerUpdate | PeerAdd | Download;
+export declare type ActorMsg<T> = ActorFeedReady<T> | ActorInitialized<T> | ActorSync<T> | PeerUpdate<T> | PeerAdd<T> | Download<T>;
 interface FeedHeadMetadata {
     type: "File";
     bytes: number;
     mimeType: string;
     blockSize: number;
 }
-interface ActorSync {
+interface ActorSync<T> {
     type: "ActorSync";
-    actor: Actor;
+    actor: Actor<T>;
 }
-interface ActorFeedReady {
+interface ActorFeedReady<T> {
     type: "ActorFeedReady";
-    actor: Actor;
+    actor: Actor<T>;
     writable: boolean;
 }
-interface ActorInitialized {
+interface ActorInitialized<T> {
     type: "ActorInitialized";
-    actor: Actor;
+    actor: Actor<T>;
 }
-interface PeerUpdate {
+interface PeerUpdate<T> {
     type: "PeerUpdate";
-    actor: Actor;
+    actor: Actor<T>;
     peers: number;
 }
-interface PeerAdd {
+interface PeerAdd<T> {
     type: "PeerAdd";
-    actor: Actor;
+    actor: Actor<T>;
     peer: Peer;
 }
-interface Download {
+interface Download<T> {
     type: "Download";
-    actor: Actor;
+    actor: Actor<T>;
     time: number;
     size: number;
     index: number;
 }
-interface ActorConfig {
+interface ActorConfig<T> {
     keys: Keys.KeyBuffer;
-    notify: (msg: ActorMsg) => void;
+    notify: (msg: ActorMsg<T>) => void;
     storage: (path: string) => Function;
 }
-export declare class Actor {
+export declare class Actor<T> {
     id: string;
     dkString: string;
-    changes: Change[];
+    changes: Change<T>[];
     feed: Feed<Uint8Array>;
     peers: Set<Peer>;
     type: FeedType;
@@ -62,10 +62,10 @@ export declare class Actor {
     private data;
     private pending;
     private fileMetadata?;
-    constructor(config: ActorConfig);
+    constructor(config: ActorConfig<T>);
     onFeedReady: () => void;
     init: (rawBlocks: Uint8Array[]) => void;
-    onReady: (cb: (actor: Actor) => void) => void;
+    onReady: (cb: (actor: Actor<T>) => void) => void;
     onPeerAdd: (peer: Peer) => void;
     onPeerRemove: (peer: Peer) => void;
     onDownload: (index: number, data: Uint8Array) => void;
@@ -74,7 +74,7 @@ export declare class Actor {
     parseBlock: (data: Uint8Array, index: number) => void;
     parseHeaderBlock(data: Uint8Array): void;
     parseDataBlock(data: Uint8Array, index: number): void;
-    writeChange(change: Change): void;
+    writeChange(change: Change<T>): void;
     writeFile(data: Uint8Array, mimeType: string): void;
     readFile(): Promise<{
         body: Uint8Array;

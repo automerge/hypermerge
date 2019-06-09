@@ -25,8 +25,8 @@ const Clock_1 = require("./Clock");
 const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
 const hypercore_1 = require("./hypercore");
-const Backend = __importStar(require("automerge/backend"));
-const DocBackend = __importStar(require("./DocBackend"));
+const automerge_1 = require("automerge");
+const DocBackend_1 = require("./DocBackend");
 const Misc_1 = require("./Misc");
 const debug_1 = __importDefault(require("debug"));
 const DocumentBroadcast = __importStar(require("./DocumentBroadcast"));
@@ -302,7 +302,7 @@ class RepoBackend {
                 case "MaterializeMsg": {
                     const doc = this.docs.get(query.id);
                     const changes = doc.back.getIn(['opSet', 'history']).slice(0, query.history).toArray();
-                    const [_, patch] = Backend.applyChanges(Backend.init(), changes);
+                    const [_, patch] = automerge_1.Backend.applyChanges(automerge_1.Backend.init(), changes);
                     this.toFrontend.push({ type: "Reply", id, payload: patch });
                     break;
                 }
@@ -412,7 +412,7 @@ class RepoBackend {
     create(keys) {
         const docId = Keys.encode(keys.publicKey);
         log("create", docId);
-        const doc = new DocBackend.DocBackend(docId, this.documentNotify, Backend.init());
+        const doc = new DocBackend_1.DocBackend(docId, this.documentNotify, automerge_1.Backend.init());
         this.docs.set(docId, doc);
         this.meta.addActor(doc.id, doc.id);
         this.initActor(keys);
@@ -460,7 +460,7 @@ class RepoBackend {
         if (this.meta.isFile(docId)) {
             throw new Error("trying to open a file like a document");
         }
-        let doc = this.docs.get(docId) || new DocBackend.DocBackend(docId, this.documentNotify);
+        let doc = this.docs.get(docId) || new DocBackend_1.DocBackend(docId, this.documentNotify);
         if (!this.docs.has(docId)) {
             this.docs.set(docId, doc);
             this.meta.addActor(docId, docId);

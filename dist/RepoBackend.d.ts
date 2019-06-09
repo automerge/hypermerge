@@ -1,31 +1,30 @@
-/// <reference types="node" />
 import Queue from "./Queue";
 import { Metadata } from "./Metadata";
 import { Actor } from "./Actor";
-import { Clock, Change } from "automerge/backend";
+import { Clock, Change } from "automerge";
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
-import * as DocBackend from "./DocBackend";
+import { DocBackend } from "./DocBackend";
 interface Swarm {
     join(dk: Buffer): void;
     leave(dk: Buffer): void;
     on: Function;
 }
-export interface FeedData {
+export interface FeedData<T> {
     actorId: string;
     writable: Boolean;
-    changes: Change[];
+    changes: Change<T>[];
 }
 export interface Options {
     path?: string;
     storage: Function;
 }
-export declare class RepoBackend {
+export declare class RepoBackend<T> {
     path?: string;
     storage: Function;
     joined: Set<string>;
-    actors: Map<string, Actor>;
-    actorsDk: Map<string, Actor>;
-    docs: Map<string, DocBackend.DocBackend>;
+    actors: Map<string, Actor<T>>;
+    actorsDk: Map<string, Actor<T>>;
+    docs: Map<string, DocBackend<T>>;
     meta: Metadata;
     opts: Options;
     toFrontend: Queue<ToFrontendRepoMsg>;
@@ -48,9 +47,9 @@ export declare class RepoBackend {
     leave: (actorId: string) => void;
     private getReadyActor;
     storageFn: (path: string) => Function;
-    initActorFeed(doc: DocBackend.DocBackend): string;
-    actorIds(doc: DocBackend.DocBackend): string[];
-    docActors(doc: DocBackend.DocBackend): Actor[];
+    initActorFeed(doc: DocBackend<T>): string;
+    actorIds(doc: DocBackend<T>): string[];
+    docActors(doc: DocBackend<T>): Actor<T>[];
     syncReadyActors: (ids: string[]) => void;
     allClocks(actorId: string): {
         [id: string]: Clock;
@@ -59,11 +58,11 @@ export declare class RepoBackend {
     private broadcastNotify;
     private actorNotify;
     private initActor;
-    syncChanges: (actor: Actor) => void;
+    syncChanges: (actor: Actor<T>) => void;
     stream: (opts: any) => any;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;
     handleQuery: (id: number, query: ToBackendQueryMsg) => void;
-    receive: (msg: ToBackendRepoMsg) => void;
-    actor(id: string): Actor | undefined;
+    receive: (msg: ToBackendRepoMsg<T>) => void;
+    actor(id: string): Actor<T> | undefined;
 }
 export {};

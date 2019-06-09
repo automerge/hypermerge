@@ -1,4 +1,4 @@
-import { Patch, ChangeFn } from "automerge/frontend";
+import { Patch, ChangeFn } from "automerge";
 import { RepoFrontend, ProgressEvent } from "./RepoFrontend";
 import { Clock } from "./Clock";
 import { Handle } from "./Handle";
@@ -18,7 +18,7 @@ export declare class DocFrontend<T> {
     private handles;
     private repo;
     clock: Clock;
-    constructor(repo: RepoFrontend, config: Config);
+    constructor(repo: RepoFrontend<T>, config: Config);
     handle(): Handle<T>;
     newState(): void;
     progress(progressEvent: ProgressEvent): void;

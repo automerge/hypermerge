@@ -14,7 +14,7 @@ const Queue_1 = __importDefault(require("./Queue"));
 const Base58 = __importStar(require("bs58"));
 const MapSet_1 = __importDefault(require("./MapSet"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
-const Frontend = __importStar(require("automerge/frontend"));
+const automerge_1 = require("automerge");
 const DocFrontend_1 = require("./DocFrontend");
 const Clock_1 = require("./Clock");
 const debug_1 = __importDefault(require("debug"));
@@ -40,7 +40,7 @@ class RepoFrontend {
             this.docs.set(docId, doc);
             this.toBackend.push({ type: "CreateMsg", publicKey, secretKey });
             if (init) {
-                doc.change(state => {
+                doc.change((state) => {
                     for (let key in init) {
                         state[key] = init[key];
                     }
@@ -140,8 +140,8 @@ class RepoFrontend {
                 throw new Error(`Invalid history ${history} for id ${id}`);
             }
             this.queryBackend({ type: "MaterializeMsg", history, id }, (patch) => {
-                const doc = Frontend.init({ deferActorId: true });
-                cb(Frontend.applyPatch(doc, patch));
+                const doc = automerge_1.Frontend.init({ deferActorId: true });
+                cb(automerge_1.Frontend.applyPatch(doc, patch));
             });
         };
         this.open = (url) => {

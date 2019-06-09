@@ -1,4 +1,3 @@
-/// <reference types="node" />
 declare type Key = string | Buffer;
 declare type Storage = string | Function;
 export interface Options {

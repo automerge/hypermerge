@@ -29,7 +29,7 @@ const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Base58 = __importStar(require("bs58"));
 const Block = __importStar(require("./Block"));
 const debug_1 = __importDefault(require("debug"));
-const fs = require("fs");
+const fs_1 = __importDefault(require("fs"));
 const log = debug_1.default("repo:actor");
 const KB = 1024;
 const MB = 1024 * KB;
@@ -58,7 +58,7 @@ class Actor {
             this.notify({ type: "ActorInitialized", actor: this });
             this.q.subscribe(f => f(this));
         };
-        // Note: on Actor ready, not Feed!
+        // Note: on Actor<T> ready, not Feed!
         this.onReady = (cb) => {
             this.q.push(cb);
         };
@@ -106,12 +106,11 @@ class Actor {
             catch (error) { }
         };
         this.destroy = () => {
-            this.feed.close((err) => {
+            this.feed.close(() => {
                 const filename = this.storage("").filename;
                 if (filename) {
                     const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`;
-                    fs.rename(filename, newName, (err) => {
-                    });
+                    fs_1.default.rename(filename, newName, () => { });
                 }
             });
         };
@@ -143,7 +142,7 @@ class Actor {
     parseDataBlock(data, index) {
         switch (this.type) {
             case "Automerge":
-                const change = Block.unpack(data); // no validation of Change
+                const change = Block.unpack(data); // no validation of Change<T>
                 this.changes[index] = change;
                 log(`block xxx idx=${index} actor=${Misc_1.ID(change.actor)} seq=${change.seq}`);
                 break;

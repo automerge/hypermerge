@@ -1,8 +1,8 @@
-import { Patch, Change } from "automerge/frontend";
+import { Patch, Change } from "automerge";
 import { PublicMetadata } from "./Metadata";
 export declare type ToBackendQueryMsg = MaterializeMsg | MetadataMsg;
 export declare type ToFrontendReplyMsg = MaterializeReplyMsg | MetadataReplyMsg;
-export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DestroyMsg | DebugMsg | WriteFile | ReadFile | QueryMsg | Uint8Array;
+export declare type ToBackendRepoMsg<T> = NeedsActorIdMsg | RequestMsg<T> | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DestroyMsg | DebugMsg | WriteFile | ReadFile | QueryMsg | Uint8Array;
 export interface QueryMsg {
     type: "Query";
     id: number;
@@ -58,10 +58,10 @@ export interface NeedsActorIdMsg {
     type: "NeedsActorIdMsg";
     id: string;
 }
-export interface RequestMsg {
+export interface RequestMsg<T> {
     type: "RequestMsg";
     id: string;
-    request: Change;
+    request: Change<T>;
 }
 export declare type ToFrontendRepoMsg = PatchMsg | ActorBlockDownloadedMsg | ActorIdMsg | ReadyMsg | ReadFileReply | ReplyMsg | Uint8Array;
 export interface PatchMsg {
