@@ -46,13 +46,13 @@ export class Handle<T> {
     }
   };
 
-  pushProgress = (progress: ProgressEvent) => {
+  receiveProgressEvent = (progress: ProgressEvent) => {
     if (this.progressSubscription) {
       this.progressSubscription(progress)
     }
   }
 
-  pushMessage = (contents: any) => {
+  receiveDocumentMessage = (contents: any) => {
     if (this.messageSubscription) {
       this.messageSubscription(contents)
     }
@@ -99,7 +99,7 @@ export class Handle<T> {
     subscriber: (event: any) => void
   ): this => {
     if (this.messageSubscription) {
-      throw new Error("only one progress subscriber for a doc handle")
+      throw new Error("only one document message subscriber for a doc handle")
     }
     
     this.messageSubscription = subscriber

@@ -78,13 +78,13 @@ export class DocFrontend<T> {
 
   progress(progressEvent: ProgressEvent) {
     this.handles.forEach(handle => {
-      handle.pushProgress(progressEvent);
+      handle.receiveProgressEvent(progressEvent);
     });
   }
 
   messaged(contents: any) {
     this.handles.forEach(handle => {
-      handle.pushMessage(contents);
+      handle.receiveDocumentMessage(contents);
     });
   }
 

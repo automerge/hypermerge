@@ -347,12 +347,10 @@ export class RepoBackend {
       }
       case "DocumentMessage": {
         const { contents, id } = (msg as DocumentMsg);
-        this.meta.docsWith(id).forEach( (doc: string) => {
-          this.toFrontend.push({
-            type: "DocumentMessage",
-            id,
-            contents
-          })
+        this.toFrontend.push({
+          type: "DocumentMessage",
+          id,
+          contents
         })
         break
       }
@@ -567,6 +565,7 @@ export class RepoBackend {
           break;
         }
         case "DocumentMessage": {
+          // Note: 'id' is the document id of the document to send the message to.
           const { id, contents } = msg
           const documentActor = this.actor(id)
           if (documentActor) {
