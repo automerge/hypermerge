@@ -144,8 +144,11 @@ export class Actor {
 
   onPeerAdd = (peer: Peer) => {
     log("peer-add feed", ID(this.id), peer.remoteId)
+    // peer-add is called multiple times. Noop if we already know about this peer.
+    if (this.peers.has(peer.remoteId.toString())) return
+
     this.peers.set(peer.remoteId.toString(), peer)
-    this.notify({ type: "PeerAdd", actor: this, peer: peer})
+    this.notify({ type: "PeerAdd", actor: this, peer: peer })
     this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size })
   }
 
@@ -243,7 +246,7 @@ export class Actor {
     })
   }
 
-  async readFile(): Promise<{body: Uint8Array, mimeType: string}> {
+  async readFile(): Promise<{ body: Uint8Array, mimeType: string }> {
     log("reading file...")
     const head = await this.fileHead()
     const body = await this.fileBody(head)
@@ -306,8 +309,8 @@ export class Actor {
   close = () => {
     log("closing feed", this.id)
     try {
-      this.feed.close((err: Error) => {})
-    } catch (error) {}
+      this.feed.close((err: Error) => { })
+    } catch (error) { }
   }
 
   destroy = () => {
