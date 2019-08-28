@@ -7,11 +7,13 @@ export class Handle<T> {
   clock: Clock | null = null;
   subscription?: (item: Doc<T>, clock?: Clock, index?: number) => void;
   progressSubscription?: (event: ProgressEvent) => void;
+  messageSubscription?: (event: any) => void;
   private counter: number = 0;
   private repo: RepoFrontend;
 
-  constructor(repo: RepoFrontend) {
+  constructor(repo: RepoFrontend, id: string) {
     this.repo = repo;
+    this.id = id;
   }
 
   fork(): string {
@@ -31,6 +33,11 @@ export class Handle<T> {
     return this;
   }
 
+  message = ( contents: any): this => {
+    this.repo.message(this.id, contents)
+    return this
+  }
+
   push = (item: Doc<T>, clock: Clock) => {
     this.state = item;
     this.clock = clock;
@@ -39,9 +46,15 @@ export class Handle<T> {
     }
   };
 
-  pushProgress = (progress: ProgressEvent) => {
+  receiveProgressEvent = (progress: ProgressEvent) => {
     if (this.progressSubscription) {
       this.progressSubscription(progress)
+    }
+  }
+
+  receiveDocumentMessage = (contents: any) => {
+    if (this.messageSubscription) {
+      this.messageSubscription(contents)
     }
   }
 
@@ -82,8 +95,22 @@ export class Handle<T> {
     return this
   }
 
+  subscribeMessage = (
+    subscriber: (event: any) => void
+  ): this => {
+    if (this.messageSubscription) {
+      throw new Error("only one document message subscriber for a doc handle")
+    }
+    
+    this.messageSubscription = subscriber
+  
+    return this
+  }
+
   close = () => {
     this.subscription = undefined;
+    this.messageSubscription = undefined;
+    this.progressSubscription = undefined;
     this.state = null;
     this.cleanup();
   };

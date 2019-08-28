@@ -14,21 +14,14 @@ export interface NewMetadata {
   input: Uint8Array
 }
 
-export function validateRemoteMetadata(input: Uint8Array): RemoteMetadata {
+export function validateRemoteMetadata(message: RemoteMetadata): RemoteMetadata {
   const result : RemoteMetadata = { type: "RemoteMetadata", clocks: {}, blocks: [] }
-  try {
-    const message : any = JSON.parse(input.toString());
-    if (message instanceof Object && message.blocks instanceof Array && message.clocks instanceof Object) {
-      result.blocks = filterMetadataInputs(message.blocks);
-      result.clocks = message.clocks
-      return result
-    } else {
-      console.log("WARNING: Metadata Msg is not a well formed object", message);
-      return result;
-    }
-  } catch (e) {
-    console.log(input.toString())
-    console.log("WARNING: Metadata Msg is invalid JSON", e);
+  if (message instanceof Object && message.blocks instanceof Array && message.clocks instanceof Object) {
+    result.blocks = filterMetadataInputs(message.blocks);
+    result.clocks = message.clocks
+    return result
+  } else {
+    console.log("WARNING: Metadata Msg is not a well formed object", message);
     return result;
   }
 }
@@ -140,7 +133,9 @@ function validateID(id: string) : Buffer {
 
 export function validateURL(urlString: string) : UrlInfo {
   if (urlString.indexOf(":") === -1) {
-    console.log("WARNING: `${id}` is depricated - now use `hypermerge:/${id}`")
+//    disabled this warning because internal APIs are currently inconsistent in their use
+//    so it's throwing warnings just, like, all the time in normal usage.
+//    console.log("WARNING: `${id}` is deprecated - now use `hypermerge:/${id}`")
 //    throw new Error("WARNING: open(id) is depricated - now use open(`hypermerge:/${id}`)")
     const id = urlString
     const buffer = validateID(id)

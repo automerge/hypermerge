@@ -36,7 +36,7 @@ const MB = 1024 * KB;
 class Actor {
     constructor(config) {
         this.changes = [];
-        this.peers = new Set();
+        this.peers = new Map();
         this.data = [];
         this.pending = [];
         this.onFeedReady = () => {
@@ -63,13 +63,13 @@ class Actor {
             this.q.push(cb);
         };
         this.onPeerAdd = (peer) => {
-            log("peer-add feed", Misc_1.ID(this.id));
-            this.peers.add(peer);
+            log("peer-add feed", Misc_1.ID(this.id), peer.remoteId);
+            this.peers.set(peer.remoteId.toString(), peer);
             this.notify({ type: "PeerAdd", actor: this, peer: peer });
             this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
         };
         this.onPeerRemove = (peer) => {
-            this.peers.delete(peer);
+            this.peers.delete(peer.remoteId.toString());
             this.notify({ type: "PeerUpdate", actor: this, peers: this.peers.size });
         };
         this.onDownload = (index, data) => {

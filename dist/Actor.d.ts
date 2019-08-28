@@ -54,7 +54,7 @@ export declare class Actor {
     dkString: string;
     changes: Change[];
     feed: Feed<Uint8Array>;
-    peers: Set<Peer>;
+    peers: Map<string, Peer>;
     type: FeedType;
     private q;
     private notify;

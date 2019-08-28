@@ -136,6 +136,11 @@ export class RepoFrontend {
     return handle;
   };
 
+  message = ( url: string, contents: any): void => {
+    const id = validateDocURL(url);
+    this.toBackend.push({type: "DocumentMessage", id, contents})
+  }
+
   doc = <T>(url: string, cb?: (val: T, clock?: Clock) => void): Promise<T> => {
     validateDocURL(url);
     return new Promise(resolve => {
@@ -279,6 +284,12 @@ export class RepoFrontend {
             doc.progress(progressEvent)
           }
           break;
+        }
+        case "DocumentMessage": {
+          const doc = this.docs.get(msg.id);
+          if (doc) {
+            doc.messaged(msg.contents)
+          }
         }
       }
     }
