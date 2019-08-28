@@ -1,0 +1,4 @@
+{
+  "typescript.format.enable": false,
+  "editor.formatOnSave": false
+}
