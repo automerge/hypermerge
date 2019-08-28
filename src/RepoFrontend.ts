@@ -32,7 +32,7 @@ export interface ProgressEvent {
 let msgid = 1
 
 export class RepoFrontend {
-  toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:tobackend");
+  toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:front:toBackendQ");
   docs: Map<string, DocFrontend<any>> = new Map();
   cb: Map<number, (reply: any) => void> = new Map();
   msgcb: Map<number, (patch: Patch) => void> = new Map();

@@ -185,7 +185,7 @@ export class Metadata {
   private files: Map<string, number> = new Map();
   private mimeTypes: Map<string, string> = new Map();
   private merges: Map<string, Clock> = new Map();
-  readyQ: Queue<() => void> = new Queue(); // FIXME - need a better api for accessing metadata
+  readyQ: Queue<() => void> = new Queue("repo:metadata:readyQ"); // FIXME - need a better api for accessing metadata
   private _clocks: { [id:string]: Clock } = {}
   private _docsWith: Map<string, string[]> = new Map()
 

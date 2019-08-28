@@ -106,7 +106,7 @@ export class Actor {
     this.notify = config.notify
     this.dkString = Base58.encode(dk)
     this.feed = hypercore(this.storage, publicKey, { secretKey })
-    this.q = new Queue<(actor: Actor) => void>("actor:q-" + id.slice(0, 4))
+    this.q = new Queue<(actor: Actor) => void>("repo:actor:Q" + id.slice(0, 4))
     this.feed.ready(this.onFeedReady)
   }
 

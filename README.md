@@ -69,7 +69,24 @@ repo.replicate(discovery)
       handle.close()
     }
   })
+
 ```
+
+*NOTE*: If you're familiar with Automerge: the `change` function in Hypermerge is asynchronous, while the `Automerge.change` function is synchronous. What this means is that although `Automerge.change` returns an object representing the new state of your document, `repo.change` (or `handle.change`) does NOT. So:
+
+```ts
+// ok in Automerge!
+doc1 = Automerge.change(doc1, "msg", (doc) => {
+  doc.foo = "bar"
+})
+
+// NOT ok in Hypermerge!
+doc1 = repo.change(url1, (doc) => {
+  doc.foo = "bar"
+})
+```
+
+Instead, you should expect to get document state updates via `repo.watch` (or `handle.subscribe`) as shown in the example above.
 
 ### Two repos on different machines
 
@@ -105,9 +122,77 @@ repoB.change<MyDoc>(docUrl, (state) => {
 ```
 
 ### Accessing Files
+Hypermerge supports a special kind of core called a hyperfile. Hyperfiles are unchanging, written-once hypercores that store binary data.
+
+Here's a simple example of reading and writing hyperfile buffers.
 
 ```ts
+
+export function writeBuffer(buffer, callback) {
+  const hyperfileUrl = repo.writeFile(buffer, 'application/octet-stream') // TODO: mime type
+  callback(null, hyperfileUrl)
+}
+
+export function fetch(hyperfileId, callback) {
+  repo.readFile(hyperfileId, (error, data) => {
+    if (error) {
+      callback(error)
+      return
+    }
+
+    callback(null, data)
+  })
+}
+
 ```
+
+Note that hyperfiles are conveniently well-suited to treatment as a native protocol for Electron applications. This allows you to refer to them throughout your application directly as though they were regular files for images and other assets without any special treatment. Here's how to register that:
+
+```js
+
+  protocol.registerBufferProtocol('hyperfile', (request, callback) => {
+    try {
+      Hyperfile.fetch(request.url, (data) => {
+        callback({ data })
+      })
+    } catch (e) {
+      log(e)
+    }
+  }, (error) => {
+    if (error) {
+      log('Failed to register protocol')
+    }
+  })
+ ```
+
+### Splitting the Front-end and Back-end
+
+Both Hypermerge and Automerge supports separating the front-end (where materialized documents live and changes are made) from the backend (where CRDT computations are handled as well as networking and compression.) This is useful for maintaining application performance by moving expensive computation operations off of the render thread to another location where they don't block user input.
+
+The communication between front-end and back-end is all done via simple Javascript objects and can be serialized/deserialized through JSON if required. 
+
+```js
+  // establish a back-end
+  const back = new RepoBackend({ storage: raf, path: HYPERMERGE_PATH, port: 0 })
+  const discovery = new DiscoverySwarm({ /* your config here */ })
+  back.replicate(discovery)
+
+  // elsewhere, create a front-end (you'll probably want to do this in different threads)
+  const front = new RepoFrontend()
+
+  // the `subscribe` method sends a message stream, the `receive` receives it
+  // for demonstration here we simply output JSON and parse it back in the same location
+  // note that front-end and back-end must each subscribe to each other's streams
+  back.subscribe((msg) => front.receive(JSON.parse(JSON.stringify(msg))))
+  front.subscribe((msg) => back.receive(JSON.parse(JSON.stringify(msg))))
+  
+}
+```
+
+*Note: each back-end only supports a single front-end today.*
+
+
+### Related libraries
 
 [automerge]: https://github.com/automerge/automerge
 [hypercore]: https://github.com/mafintosh/hypercore

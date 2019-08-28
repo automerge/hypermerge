@@ -26,7 +26,7 @@ export class DocFrontend<T> {
   actorId?: string;
   history: number = 0;
   //  private toBackend: Queue<ToBackendRepoMsg>
-  private changeQ = new Queue<ChangeFn<T>>("frontend:change");
+  private changeQ = new Queue<ChangeFn<T>>("repo:front:changeQ");
   private front: Doc<T>;
   private mode: Mode = "pending";
   private handles: Set<Handle<T>> = new Set();

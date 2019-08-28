@@ -46,7 +46,7 @@ export class RepoBackend {
   docs: Map<string, DocBackend.DocBackend> = new Map();
   meta: Metadata;
   opts: Options;
-  toFrontend: Queue<ToFrontendRepoMsg> = new Queue("repo:toFrontend");
+  toFrontend: Queue<ToFrontendRepoMsg> = new Queue("repo:back:toFrontend");
   swarm?: Swarm;
   id: Buffer;
   file?: Uint8Array;
