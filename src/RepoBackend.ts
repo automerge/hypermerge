@@ -1,7 +1,7 @@
 import Queue from "./Queue";
 import { Metadata } from "./Metadata";
 import { Actor, ActorMsg } from "./Actor";
-import { strs2clock, clockDebug } from "./Clock";
+import { strs2clock, clockDebug, clockActorIds } from "./Clock";
 import * as Base58 from "bs58";
 import * as crypto from "hypercore/lib/crypto";
 import { discoveryKey } from "./hypercore";
@@ -9,7 +9,7 @@ import * as Backend from "automerge/backend";
 import { Clock, Change } from "automerge/backend";
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendReplyMsg, ToFrontendRepoMsg, DocumentMsg } from "./RepoMsg";
 import * as DocBackend from "./DocBackend"
-import { notEmpty, ID } from "./Misc";
+import { notEmpty, ID, ActorId, DiscoveryId, DocId, HyperfileId, encodeDocId, rootActorId, encodeDiscoveryId, encodeActorId } from "./Misc";
 import Debug from "debug";
 import * as DocumentBroadcast from "./DocumentBroadcast"
 import * as Keys from "./Keys"
@@ -27,7 +27,7 @@ const HypercoreProtocol: Function = require("hypercore-protocol");
 const log = Debug("repo:backend");
 
 export interface FeedData {
-  actorId: string;
+  actorId: ActorId;
   writable: Boolean;
   changes: Change[];
 }
@@ -40,10 +40,10 @@ export interface Options {
 export class RepoBackend {
   path?: string;
   storage: Function;
-  joined: Set<string> = new Set();
-  actors: Map<string, Actor> = new Map();
-  actorsDk: Map<string, Actor> = new Map();
-  docs: Map<string, DocBackend.DocBackend> = new Map();
+  joined: Set<DiscoveryId> = new Set();
+  actors: Map<ActorId, Actor> = new Map();
+  actorsDk: Map<DiscoveryId, Actor> = new Map();
+  docs: Map<DocId, DocBackend.DocBackend> = new Map();
   meta: Metadata;
   opts: Options;
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue("repo:back:toFrontend");
@@ -61,7 +61,7 @@ export class RepoBackend {
   }
 
   private writeFile(keys: Keys.KeyBuffer, data: Uint8Array, mimeType: string) {
-    const fileId = Keys.encode(keys.publicKey);
+    const fileId = Keys.encode(keys.publicKey) as HyperfileId;
 
     this.meta.addFile(fileId, data.length, mimeType);
 
@@ -69,28 +69,28 @@ export class RepoBackend {
     actor.writeFile(data, mimeType);
   }
 
-  private async readFile(id: string): Promise<{body: Uint8Array, mimeType: string}> {
+  private async readFile(id: HyperfileId): Promise<{body: Uint8Array, mimeType: string}> {
 //    log("readFile",id, this.meta.forDoc(id))
     if (this.meta.isDoc(id)) { throw new Error("trying to open a document like a file") }
-    const actor = await this.getReadyActor(id)
+    const actor = await this.getReadyActor(id as unknown as ActorId)
     return actor.readFile()
   }
 
   private create(keys: Keys.KeyBuffer): DocBackend.DocBackend {
-    const docId = Keys.encode(keys.publicKey);
+    const docId = encodeDocId(keys.publicKey);
     log("create", docId);
     const doc = new DocBackend.DocBackend(docId, this.documentNotify, Backend.init());
 
     this.docs.set(docId, doc);
 
-    this.meta.addActor(doc.id, doc.id);
+    this.meta.addActor(doc.id, rootActorId(doc.id));
 
     this.initActor(keys);
 
     return doc;
   }
 
-  private debug(id: string) {
+  private debug(id: DocId) {
     const doc = this.docs.get(id);
     const short = id.substr(0, 5);
     if (doc === undefined) {
@@ -110,7 +110,7 @@ export class RepoBackend {
     }
   }
 
-  private destroy(id: string) {
+  private destroy(id: DocId) {
     this.meta.delete(id)
     const doc = this.docs.get(id)
     if (doc) {
@@ -128,21 +128,21 @@ export class RepoBackend {
   }
 
   // opening a file fucks it up
-  private open(docId: string): DocBackend.DocBackend {
+  private open(docId: DocId): DocBackend.DocBackend {
 //    log("open", docId, this.meta.forDoc(docId));
     if (this.meta.isFile(docId)) { throw new Error("trying to open a file like a document") }
     let doc = this.docs.get(docId) || new DocBackend.DocBackend(docId, this.documentNotify);
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc);
-      this.meta.addActor(docId, docId);
+      this.meta.addActor(docId, rootActorId(docId));
       this.loadDocument(doc);
     }
     return doc;
   }
 
-  merge(id: string, clock: Clock) {
+  merge(id: DocId, clock: Clock) {
     this.meta.merge(id, clock);
-    this.syncReadyActors(Object.keys(clock));
+    this.syncReadyActors(clockActorIds(clock));
   }
 
 /*
@@ -178,7 +178,7 @@ export class RepoBackend {
     }
   };
 
-  private async allReadyActors(docId: string): Promise<Actor[]> {
+  private async allReadyActors(docId: DocId): Promise<Actor[]> {
     const actorIds = await this.meta.actorsAsync(docId)
     return Promise.all(actorIds.map(this.getReadyActor))
   }
@@ -201,19 +201,19 @@ export class RepoBackend {
     doc.init(changes, actorId);
   }
 
-  join = (actorId: string) => {
+  join = (actorId: ActorId) => {
     const dkBuffer = discoveryKey(Base58.decode(actorId))
-    const dk = Base58.encode(dkBuffer)
+    const dk = encodeDiscoveryId(dkBuffer)
     if (this.swarm && !this.joined.has(dk)) {
-      log("swarm.join",ID(actorId), ID(dk)) 
+      log("swarm.join",ID(actorId), ID(dk))
       this.swarm.join(dkBuffer);
     }
     this.joined.add(dk);
   };
 
-  leave = (actorId: string) => {
+  leave = (actorId: ActorId) => {
     const dkBuffer = discoveryKey(Base58.decode(actorId));
-    const dk = Base58.encode(dkBuffer);
+    const dk = encodeDiscoveryId(dkBuffer);
     if (this.swarm && this.joined.has(dk)) {
       log("leave",ID(actorId), ID(dk))
       this.swarm.leave(dkBuffer);
@@ -221,7 +221,7 @@ export class RepoBackend {
     this.joined.delete(dk);
   };
 
-  private getReadyActor = (actorId: string): Promise<Actor> => {
+  private getReadyActor = (actorId: ActorId): Promise<Actor> => {
     const publicKey = Base58.decode(actorId);
     const actor = this.actors.get(actorId) || this.initActor({ publicKey });
     const actorPromise = new Promise<Actor>((resolve, reject) => {
@@ -240,16 +240,16 @@ export class RepoBackend {
     };
   };
 
-  initActorFeed(doc: DocBackend.DocBackend): string {
+  initActorFeed(doc: DocBackend.DocBackend): ActorId {
     log("initActorFeed", doc.id);
     const keys = crypto.keyPair();
-    const actorId = Keys.encode(keys.publicKey);
+    const actorId = encodeActorId(keys.publicKey);
     this.meta.addActor(doc.id, actorId);
     this.initActor(keys);
     return actorId;
   }
 
-  actorIds(doc: DocBackend.DocBackend): string[] {
+  actorIds(doc: DocBackend.DocBackend): ActorId[] {
     return this.meta.actors(doc.id);
   }
 
@@ -259,15 +259,15 @@ export class RepoBackend {
       .filter(notEmpty);
   }
 
-  syncReadyActors = (ids: string[]) => {
+  syncReadyActors = (ids: ActorId[]) => {
     ids.forEach(async id => {
       const actor = await this.getReadyActor(id)
       this.syncChanges(actor)
     })
   };
 
-  allClocks(actorId: string): { [id: string]: Clock } {
-    const clocks: { [id: string]: Clock } = {}
+  allClocks(actorId: ActorId): { [docId: string]: Clock } {
+    const clocks: { [docId: string]: Clock } = {}
     this.meta.docsWith(actorId).forEach(documentId => {
       const doc = this.docs.get(documentId)
       if (doc) {
@@ -329,9 +329,9 @@ export class RepoBackend {
   private broadcastNotify = (msg: DocumentBroadcast.BroadcastMessage) => {
     switch (msg.type) {
       case "RemoteMetadata": {
-        for (let id in msg.clocks) {
-          const clock = msg.clocks[id]
-          const doc = this.docs.get(id)
+        for (let docId in msg.clocks) {
+          const clock = msg.clocks[docId]
+          const doc = this.docs.get(docId as DocId)
           if (clock && doc) {
             doc.target(clock)
           }
@@ -339,8 +339,8 @@ export class RepoBackend {
         const _blocks = msg.blocks;
         this.meta.addBlocks(_blocks);
         _blocks.map(block => {
-          if (block.actors) this.syncReadyActors(block.actors)
-          if (block.merge) this.syncReadyActors(Object.keys(block.merge))
+          if ('actors' in block && block.actors) this.syncReadyActors(block.actors)
+          if ('merge' in block && block.merge) this.syncReadyActors(clockActorIds(block.merge))
           // if (block.follows) block.follows.forEach(id => this.open(id))
         });
         break
@@ -372,7 +372,7 @@ export class RepoBackend {
         const metadata = this.meta.forActor(actor.id)
         const clocks = this.allClocks(actor.id)
         this.meta.docsWith(actor.id).forEach(documentId => {
-          const documentActor = this.actor(documentId)
+          const documentActor = this.actor(rootActorId(documentId))
           if (documentActor) {
             DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values())
           }
@@ -401,10 +401,10 @@ export class RepoBackend {
         this.syncChanges(msg.actor);
         break;
       case "Download":
-        this.meta.docsWith(msg.actor.id).forEach( (doc: string) => {
+        this.meta.docsWith(msg.actor.id).forEach( (docId) => {
           this.toFrontend.push({
             type: "ActorBlockDownloadedMsg",
-            id: doc,
+            id: docId,
             actorId: msg.actor.id,
             index: msg.index,
             size: msg.size,
@@ -461,7 +461,7 @@ export class RepoBackend {
     });
 
     let add = (dk: Buffer) => {
-      const actor = this.actorsDk.get(Base58.encode(dk));
+      const actor = this.actorsDk.get(encodeDiscoveryId(dk));
       if (actor) {
         log("replicate feed!", ID(Base58.encode(dk)));
         actor.feed.replicate({
@@ -567,7 +567,7 @@ export class RepoBackend {
         case "DocumentMessage": {
           // Note: 'id' is the document id of the document to send the message to.
           const { id, contents } = msg
-          const documentActor = this.actor(id)
+          const documentActor = this.actor(rootActorId(id))
           if (documentActor) {
             DocumentBroadcast.broadcastDocumentMessage(id, contents, documentActor.peers.values())
           }
@@ -589,7 +589,7 @@ export class RepoBackend {
     }
   };
 
-  actor(id: string): Actor | undefined {
+  actor(id: ActorId): Actor | undefined {
     return this.actors.get(id);
   }
 }

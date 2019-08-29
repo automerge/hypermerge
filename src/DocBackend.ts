@@ -4,12 +4,9 @@ import * as Frontend from "automerge/frontend"
 import Queue from "./Queue";
 import Debug from "debug";
 import { Clock, cmp, union } from "./Clock";
+import { ActorId, DocId, rootActorId } from "./Misc";
 
 const log = Debug("repo:doc:back");
-
-function _id(id: string) : string {
-  return id.slice(0,4)
-}
 
 export type DocBackendMessage
   = ReadyMsg
@@ -19,46 +16,42 @@ export type DocBackendMessage
 
 interface ReadyMsg {
   type: "ReadyMsg"
-  id: string
+  id: DocId
   synced: boolean
-  actorId?: string
+  actorId?: ActorId
   history?: number
   patch?: Frontend.Patch
 }
 
 interface ActorIdMsg {
   type: "ActorIdMsg"
-  id: string
-  actorId: string
+  id: DocId
+  actorId: ActorId
 }
 
 interface RemotePatchMsg {
   type: "RemotePatchMsg"
-  id: string
-  actorId?: string,
+  id: DocId
+  actorId?: ActorId
   synced: boolean
   patch: Frontend.Patch
-  change?: Change,
+  change?: Change
   history: number
 }
 
 interface LocalPatchMsg {
   type: "LocalPatchMsg"
-  id: string
-  actorId: string,
+  id: DocId
+  actorId: ActorId
   synced: boolean
   patch: Frontend.Patch
   change: Change,
   history: number
 }
 
-//export interface Clock {
-//  [actorId: string]: number;
-//}
-
 export class DocBackend {
-  id: string;
-  actorId?: string; // this might be easier to have as the actor object - FIXME
+  id: DocId;
+  actorId?: ActorId; // this might be easier to have as the actor object - FIXME
   clock: Clock = {};
   back?: BackDoc; // can we make this private?
   changes: Map<string, number> = new Map()
@@ -69,13 +62,13 @@ export class DocBackend {
   private localChangeQ = new Queue<Change>("doc:back:localChangeQ");
   private remoteChangesQ = new Queue<Change[]>("doc:back:remoteChangesQ");
 
-  constructor(documentId: string, notify: (msg: DocBackendMessage) => void, back?: BackDoc) {
+  constructor(documentId: DocId, notify: (msg: DocBackendMessage) => void, back?: BackDoc) {
     this.id = documentId;
     this.notify = notify
 
     if (back) {
       this.back = back;
-      this.actorId = documentId;
+      this.actorId = rootActorId(documentId);
       this.ready.subscribe(f => f());
       this.synced = true
       this.subscribeToRemoteChanges();
@@ -85,7 +78,7 @@ export class DocBackend {
         type: "ReadyMsg",
         id: this.id,
         synced: this.synced,
-        actorId: documentId,
+        actorId: this.actorId,
         history
       });
     }
@@ -118,7 +111,7 @@ export class DocBackend {
     this.localChangeQ.push(change);
   };
 
-  initActor = (actorId: string) => {
+  initActor = (actorId: ActorId) => {
     log("initActor");
     if (this.back) {
       this.actorId = this.actorId || actorId
@@ -127,7 +120,7 @@ export class DocBackend {
         id: this.id,
         actorId: this.actorId
       });
-    } 
+    }
   };
 
   updateClock(changes: Change[]) {
@@ -139,7 +132,7 @@ export class DocBackend {
     if (!this.synced) this.testForSync();
   }
 
-  init = (changes: Change[], actorId?: string) => {
+  init = (changes: Change[], actorId?: ActorId) => {
     this.bench("init", () => {
       //console.log("CHANGES MAX",changes[changes.length - 1])
       //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))

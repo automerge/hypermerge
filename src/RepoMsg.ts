@@ -1,5 +1,6 @@
 import { Patch, Change } from "automerge/frontend";
 import { PublicMetadata } from "./Metadata"
+import { DocId, HyperfileId, ActorId } from "./Misc";
 
 export type ToBackendQueryMsg =
   | MaterializeMsg
@@ -41,13 +42,13 @@ export interface ReplyMsg {
 
 export interface MaterializeMsg {
   type: "MaterializeMsg";
-  id: string;
+  id: DocId;
   history: number;
 }
 
 export interface MetadataMsg {
   type: "MetadataMsg";
-  id: string;
+  id: DocId | HyperfileId;
 }
 
 export interface CreateMsg {
@@ -65,13 +66,13 @@ export interface WriteFile {
 
 export interface ReadFile {
   type: "ReadFile";
-  id: string;
+  id: HyperfileId;
 }
 
 export interface MergeMsg {
   type: "MergeMsg";
-  id: string;
-  actors: string[];
+  id: DocId;
+  actors: string[]; // ActorId | `${ActorId}-${seq}`
 }
 
 /*
@@ -84,27 +85,27 @@ export interface FollowMsg {
 
 export interface DebugMsg {
   type: "DebugMsg";
-  id: string;
+  id: DocId;
 }
 
 export interface OpenMsg {
   type: "OpenMsg";
-  id: string;
+  id: DocId;
 }
 
 export interface DestroyMsg {
   type: "DestroyMsg";
-  id: string;
+  id: DocId;
 }
 
 export interface NeedsActorIdMsg {
   type: "NeedsActorIdMsg";
-  id: string;
+  id: DocId;
 }
 
 export interface RequestMsg {
   type: "RequestMsg";
-  id: string;
+  id: DocId;
   request: Change;
 }
 
@@ -120,7 +121,7 @@ export type ToFrontendRepoMsg =
 
 export interface PatchMsg {
   type: "PatchMsg";
-  id: string;
+  id: DocId;
   synced: boolean;
   patch: Patch;
   history: number;
@@ -128,7 +129,7 @@ export interface PatchMsg {
 
 export interface DocumentMsg {
   type: "DocumentMessage";
-  id: string;
+  id: DocId;
   contents: any;
 }
 
@@ -144,14 +145,14 @@ export interface MetadataReplyMsg {
 
 export interface ReadFileReply {
   type: "ReadFileReply";
-  id: string;
+  id: HyperfileId;
   mimeType: string;
 }
 
 export interface ActorIdMsg {
   type: "ActorIdMsg";
-  id: string;
-  actorId: string;
+  id: DocId;
+  actorId: ActorId;
 }
 
 export interface CloseMsg {
@@ -160,17 +161,17 @@ export interface CloseMsg {
 
 export interface ReadyMsg {
   type: "ReadyMsg";
-  id: string;
+  id: DocId;
   synced: boolean;
-  actorId?: string;
+  actorId?: ActorId;
   patch?: Patch;
   history?: number;
 }
 
 export interface ActorBlockDownloadedMsg {
   type: "ActorBlockDownloadedMsg";
-  id: string;
-  actorId: string;
+  id: DocId;
+  actorId: ActorId;
   index: number;
   size: number;
   time: number;

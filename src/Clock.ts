@@ -1,5 +1,7 @@
+import { ActorId } from "./Misc";
+
 export interface Clock {
-  [actorId: string]: number;
+  [actorId: string /* ActorId */]: number;
 }
 
 export type CMP = "GT" | "LT" | "CONCUR" | "EQ"
@@ -27,6 +29,10 @@ export function cmp(a: Clock, b: Clock) : CMP {
     return "LT"
   }
   return "CONCUR"
+}
+
+export function clockActorIds(clock: Clock): ActorId[] {
+  return Object.keys(clock) as ActorId[]
 }
 
 export function strs2clock(input: string | string[]): Clock {

@@ -4,7 +4,7 @@
  */
 import { readFeed, hypercore, Feed, Peer, discoveryKey } from "./hypercore"
 import { Change } from "automerge/backend"
-import { ID } from "./Misc"
+import { ID, ActorId, DiscoveryId, encodeActorId, encodeDiscoveryId } from "./Misc"
 import Queue from "./Queue"
 import * as JsonBuffer from "./JsonBuffer"
 import * as Base58 from "bs58"
@@ -82,8 +82,8 @@ interface ActorConfig {
 }
 
 export class Actor {
-  id: string
-  dkString: string
+  id: ActorId
+  dkString: DiscoveryId
   changes: Change[] = []
   feed: Feed<Uint8Array>
   peers: Map<string, Peer> = new Map()
@@ -98,13 +98,13 @@ export class Actor {
   constructor(config: ActorConfig) {
     const { publicKey, secretKey } = config.keys
     const dk = discoveryKey(publicKey)
-    const id = Base58.encode(publicKey)
+    const id = encodeActorId(publicKey)
 
     this.type = "Unknown"
     this.id = id
     this.storage = config.storage(id)
     this.notify = config.notify
-    this.dkString = Base58.encode(dk)
+    this.dkString = encodeDiscoveryId(dk)
     this.feed = hypercore(this.storage, publicKey, { secretKey })
     this.q = new Queue<(actor: Actor) => void>("repo:actor:Q" + id.slice(0, 4))
     this.feed.ready(this.onFeedReady)

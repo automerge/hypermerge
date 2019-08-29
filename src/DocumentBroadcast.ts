@@ -1,18 +1,19 @@
 /**
  * Communicate document information required to replicate documents and their actors.
- * 
+ *
  * TODO: Rename. Discover? Advertise?
- * 
+ *
  * TODO: Clean up dependency on Metadata. The extension should know its own format and
  * translate that to something metadata can use.
- * 
+ *
  * TODO: Move more of the logic for which peers to send messages to into this module. Will require
  * a data structure representing the actor/peers/document relationships which this module can operate on.
  */
 import * as Metadata from "./Metadata"
-import { DocumentMsg } from "./RepoMsg" 
+import { DocumentMsg } from "./RepoMsg"
 import * as Clock from "./Clock"
 import { Peer } from "./hypercore"
+import { DocId } from "./Misc";
 
 
 export const EXTENSION_V2 = "hypermerge.2"
@@ -39,14 +40,14 @@ export function broadcast(message: BroadcastMessage, peers: Iterable<Peer>) {
 
 export function broadcastMetadata(
     blocks: Metadata.MetadataBlock[],
-    clocks: { [id: string]: Clock.Clock },
+    clocks: { [id: string /* ActorId */]: Clock.Clock },
     peers: Iterable<Peer>
   ) {
     const message: Metadata.RemoteMetadata = { type: "RemoteMetadata", clocks, blocks }
     broadcast(message, peers)
 }
 
-export function broadcastDocumentMessage(id: string, contents: any, peers: Iterable<Peer>) {
+export function broadcastDocumentMessage(id: DocId, contents: any, peers: Iterable<Peer>) {
     const message: DocumentMsg = { type: "DocumentMessage", id, contents }
     broadcast(message, peers)
 }
@@ -75,7 +76,7 @@ function parseMessage(extension: string, input: Uint8Array) {
                     break
                 }
                 case "DocumentMessage": {
-                    // no need to edit the message, we can just pass it through 
+                    // no need to edit the message, we can just pass it through
                     break
                 }
                 default: {

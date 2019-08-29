@@ -1,8 +1,10 @@
 import { Clock, Doc, ChangeFn } from "automerge/frontend";
 import { RepoFrontend, ProgressEvent } from "./RepoFrontend";
+import { DocUrl } from "./Misc";
 
 export class Handle<T> {
-  id: string = "";
+  // id: DocId
+  url: DocUrl;
   state: Doc<T> | null = null;
   clock: Clock | null = null;
   subscription?: (item: Doc<T>, clock?: Clock, index?: number) => void;
@@ -11,13 +13,13 @@ export class Handle<T> {
   private counter: number = 0;
   private repo: RepoFrontend;
 
-  constructor(repo: RepoFrontend, id: string) {
+  constructor(repo: RepoFrontend, url: DocUrl) {
     this.repo = repo;
-    this.id = id;
+    this.url = url;
   }
 
-  fork(): string {
-    return this.repo.fork(this.id);
+  fork(): DocUrl {
+    return this.repo.fork(this.url);
   }
 
 /*
@@ -29,12 +31,12 @@ export class Handle<T> {
 */
 
   merge(other: Handle<T>): this {
-    this.repo.merge(this.id, other.id);
+    this.repo.merge(this.url, other.url);
     return this;
   }
 
   message = ( contents: any): this => {
-    this.repo.message(this.id, contents)
+    this.repo.message(this.url, contents)
     return this
   }
 
@@ -89,9 +91,9 @@ export class Handle<T> {
     if (this.progressSubscription) {
       throw new Error("only one progress subscriber for a doc handle")
     }
-    
+
     this.progressSubscription = subscriber
-  
+
     return this
   }
 
@@ -101,9 +103,9 @@ export class Handle<T> {
     if (this.messageSubscription) {
       throw new Error("only one document message subscriber for a doc handle")
     }
-    
+
     this.messageSubscription = subscriber
-  
+
     return this
   }
 
@@ -116,7 +118,7 @@ export class Handle<T> {
   };
 
   debug() {
-    this.repo.debug(this.id);
+    this.repo.debug(this.url);
   }
 
   cleanup = () => {};
