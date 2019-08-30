@@ -26,11 +26,11 @@ export function encodeHyperfileId(hyperfileKey: Buffer): HyperfileId {
   return Base58.encode(hyperfileKey) as HyperfileId
 }
 
-export function asDocUrl(docId: DocId): DocUrl {
+export function toDocUrl(docId: DocId): DocUrl {
   return `hypermerge:/${docId}` as DocUrl
 }
 
-export function asHyperfileUrl(hyperfileId: HyperfileId): HyperfileUrl {
+export function toHyperfileUrl(hyperfileId: HyperfileId): HyperfileUrl {
   return `hyperfile:/${hyperfileId}` as HyperfileUrl
 }
 

@@ -5,7 +5,7 @@ import { Clock, union } from "./Clock";
 import Queue from "./Queue";
 import { Handle } from "./Handle";
 import Debug from "debug";
-import { ActorId, DocId, DocUrl, asDocUrl } from "./Misc";
+import { ActorId, DocId, DocUrl, toDocUrl } from "./Misc";
 
 // TODO - i bet this can be rewritten where the Frontend allocates the actorid on write - this
 // would make first writes a few ms faster
@@ -44,7 +44,7 @@ export class DocFrontend<T> {
     this.repo = repo;
     this.clock = {};
     this.docId = docId;
-    this.docUrl = asDocUrl(docId)
+    this.docUrl = toDocUrl(docId)
 
     //    this.toBackend = toBackend
 

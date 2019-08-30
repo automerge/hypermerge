@@ -11,7 +11,7 @@ import * as Keys from './Keys'
 import Debug from "debug";
 import { PublicMetadata, validateDocURL, validateFileURL, validateURL } from "./Metadata";
 import mime from "mime-types";
-import { DocUrl, DocId, ActorId, asDocUrl, HyperfileId, HyperfileUrl, rootActorId, asHyperfileUrl } from "./Misc";
+import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId, toHyperfileUrl } from "./Misc";
 
 Debug.formatters.b = Base58.encode;
 
@@ -56,7 +56,7 @@ export class RepoFrontend {
         }
       });
     }
-    return asDocUrl(docId);
+    return toDocUrl(docId);
   };
 
   change = <T>(url: DocUrl, fn: (state: T) => void ) => {
@@ -107,7 +107,7 @@ export class RepoFrontend {
     }
     this.toBackend.push(data);
     this.toBackend.push({ type: "WriteFile", publicKey, secretKey, mimeType });
-    return asHyperfileUrl(hyperfileId)
+    return toHyperfileUrl(hyperfileId)
   };
 
   readFile = <T>(url: HyperfileUrl, cb: (data: Uint8Array, mimeType: string) => void): void => {
