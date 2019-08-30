@@ -1,17 +1,17 @@
 import Queue from "./Queue";
 import * as Base58 from "bs58";
 import MapSet from "./MapSet";
-import * as crypto from "hypercore/lib/crypto";
-import { ToFrontendReplyMsg, ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
+import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { Handle } from "./Handle";
-import { ChangeFn, Doc, Patch } from "automerge/frontend";
+import { Doc, Patch } from "automerge/frontend";
 import * as Frontend from "automerge/frontend";
 import { DocFrontend } from "./DocFrontend";
 import { clock2strs, Clock, clockDebug } from "./Clock";
+import * as Keys from './Keys'
 import Debug from "debug";
-import { PublicMetadata, validateDocURL, validateFileURL, validateURL, PublicDocMetadata } from "./Metadata";
+import { PublicMetadata, validateDocURL, validateFileURL, validateURL } from "./Metadata";
 import mime from "mime-types";
-import { DocUrl, DocId, ActorId, asDocUrl, HyperfileId, HyperfileUrl } from "./Misc";
+import { DocUrl, DocId, ActorId, asDocUrl, HyperfileId, HyperfileUrl, rootActorId, asHyperfileUrl } from "./Misc";
 
 Debug.formatters.b = Base58.encode;
 
@@ -41,14 +41,14 @@ export class RepoFrontend {
   file?: Uint8Array;
 
   create = <T>(init?: T): DocUrl => {
-    const keys = crypto.keyPair();
-    const publicKey = Base58.encode(keys.publicKey);
-    const secretKey = Base58.encode(keys.secretKey);
+    const { publicKey, secretKey } = Keys.create()
     const docId = publicKey as DocId;
-    const actorId = publicKey as ActorId;
+    const actorId = rootActorId(docId);
     const doc = new DocFrontend(this, { actorId, docId });
+
     this.docs.set(docId, doc);
     this.toBackend.push({ type: "CreateMsg", publicKey, secretKey });
+
     if (init) {
       doc.change(state => {
         for (let key in init) {
@@ -99,15 +99,15 @@ export class RepoFrontend {
   };
 
   writeFile = <T>(data: Uint8Array, mimeType: string): HyperfileUrl => {
-    const keys = crypto.keyPair();
-    const publicKey = Base58.encode(keys.publicKey);
-    const secretKey = Base58.encode(keys.secretKey);
+    const { publicKey, secretKey } = Keys.create()
+    const hyperfileId = publicKey as HyperfileId
+
     if (mime.extensions[mimeType] === undefined) {
       throw new Error(`invalid mime type ${mimeType}`)
     }
     this.toBackend.push(data);
     this.toBackend.push({ type: "WriteFile", publicKey, secretKey, mimeType });
-    return `hyperfile:/${publicKey}` as HyperfileUrl;
+    return asHyperfileUrl(hyperfileId)
   };
 
   readFile = <T>(url: HyperfileUrl, cb: (data: Uint8Array, mimeType: string) => void): void => {

@@ -30,6 +30,10 @@ export function asDocUrl(docId: DocId): DocUrl {
   return `hypermerge:/${docId}` as DocUrl
 }
 
+export function asHyperfileUrl(hyperfileId: HyperfileId): HyperfileUrl {
+  return `hyperfile:/${hyperfileId}` as HyperfileUrl
+}
+
 export function rootActorId(docId: DocId): ActorId {
   return docId as string as ActorId
 }

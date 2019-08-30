@@ -72,7 +72,7 @@ export interface ReadFile {
 export interface MergeMsg {
   type: "MergeMsg";
   id: DocId;
-  actors: string[]; // ActorId | `${ActorId}-${seq}`
+  actors: string[]; // ActorId | `${ActorId}:${seq}` (result of clock2strs function)
 }
 
 /*
