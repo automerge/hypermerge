@@ -1,4 +1,4 @@
-import * as Base58 from "bs58"
+import * as Base58 from 'bs58'
 
 export type BaseId = string & { id: true }
 export type DocId = BaseId & { docId: true }
@@ -35,28 +35,26 @@ export function toHyperfileUrl(hyperfileId: HyperfileId): HyperfileUrl {
 }
 
 export function rootActorId(docId: DocId): ActorId {
-  return docId as string as ActorId
+  return (docId as string) as ActorId
 }
 
 export function hyperfileActorId(hyperfileId: HyperfileId): ActorId {
-  return hyperfileId as string as ActorId
+  return (hyperfileId as string) as ActorId
 }
 
 export function isBaseUrl(str: BaseUrl | BaseId): str is BaseUrl {
-  return str.includes(":")
+  return str.includes(':')
 }
 
 export function joinSets<T>(sets: Set<T>[]): Set<T> {
-  const total = ([] as T[]).concat(...sets.map(a => [...a]));
-  return new Set(total);
+  const total = ([] as T[]).concat(...sets.map((a) => [...a]))
+  return new Set(total)
 }
 
-export function ID(_id: string) : string {
-  return _id.slice(0,4)
+export function ID(_id: string): string {
+  return _id.slice(0, 4)
 }
 
-export function notEmpty<TValue>(
-  value: TValue | null | undefined
-): value is TValue {
-  return value !== null && value !== undefined;
+export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
+  return value !== null && value !== undefined
 }

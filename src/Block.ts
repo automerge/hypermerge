@@ -1,14 +1,12 @@
-const brotli = require("iltorb")
-const BROTLI = "BR"
+const brotli = require('iltorb')
+const BROTLI = 'BR'
 const BROTLI_MODE_TEXT = 1
-import * as JsonBuffer from "./JsonBuffer"
+import * as JsonBuffer from './JsonBuffer'
 
 export function pack(obj: Object): Buffer {
   const blockHeader = Buffer.from(BROTLI)
   const source = JsonBuffer.bufferify(obj)
-  const blockBody = Buffer.from(
-    brotli.compressSync(source, { mode: BROTLI_MODE_TEXT }),
-  )
+  const blockBody = Buffer.from(brotli.compressSync(source, { mode: BROTLI_MODE_TEXT }))
   if (source.length < blockBody.length) {
     // TODO: log when this happens
     return source

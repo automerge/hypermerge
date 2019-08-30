@@ -1,3 +1,3 @@
-declare module "hypercore/lib/crypto" {
+declare module 'hypercore/lib/crypto' {
   function keyPair(): any
 }

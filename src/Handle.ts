@@ -1,28 +1,28 @@
-import { Clock, Doc, ChangeFn } from "automerge/frontend";
-import { RepoFrontend, ProgressEvent } from "./RepoFrontend";
-import { DocUrl } from "./Misc";
+import { Clock, Doc, ChangeFn } from 'automerge/frontend'
+import { RepoFrontend, ProgressEvent } from './RepoFrontend'
+import { DocUrl } from './Misc'
 
 export class Handle<T> {
   // id: DocId
-  url: DocUrl;
-  state: Doc<T> | null = null;
-  clock: Clock | null = null;
-  subscription?: (item: Doc<T>, clock?: Clock, index?: number) => void;
-  progressSubscription?: (event: ProgressEvent) => void;
-  messageSubscription?: (event: any) => void;
-  private counter: number = 0;
-  private repo: RepoFrontend;
+  url: DocUrl
+  state: Doc<T> | null = null
+  clock: Clock | null = null
+  subscription?: (item: Doc<T>, clock?: Clock, index?: number) => void
+  progressSubscription?: (event: ProgressEvent) => void
+  messageSubscription?: (event: any) => void
+  private counter: number = 0
+  private repo: RepoFrontend
 
   constructor(repo: RepoFrontend, url: DocUrl) {
-    this.repo = repo;
-    this.url = url;
+    this.repo = repo
+    this.url = url
   }
 
   fork(): DocUrl {
-    return this.repo.fork(this.url);
+    return this.repo.fork(this.url)
   }
 
-/*
+  /*
   follow() {
     const id = this.repo.create();
     this.repo.follow(id, this.id);
@@ -31,22 +31,22 @@ export class Handle<T> {
 */
 
   merge(other: Handle<T>): this {
-    this.repo.merge(this.url, other.url);
-    return this;
+    this.repo.merge(this.url, other.url)
+    return this
   }
 
-  message = ( contents: any): this => {
+  message = (contents: any): this => {
     this.repo.message(this.url, contents)
     return this
   }
 
   push = (item: Doc<T>, clock: Clock) => {
-    this.state = item;
-    this.clock = clock;
+    this.state = item
+    this.clock = clock
     if (this.subscription) {
-      this.subscription(item, clock, this.counter++);
+      this.subscription(item, clock, this.counter++)
     }
-  };
+  }
 
   receiveProgressEvent = (progress: ProgressEvent) => {
     if (this.progressSubscription) {
@@ -60,36 +60,30 @@ export class Handle<T> {
     }
   }
 
-  once = (
-    subscriber: (doc: Doc<T>, clock?: Clock, index?: number) => void
-  ): this => {
+  once = (subscriber: (doc: Doc<T>, clock?: Clock, index?: number) => void): this => {
     this.subscribe((doc: Doc<T>, clock?: Clock, index?: number) => {
-      subscriber(doc, clock, index);
-      this.close();
-    });
-    return this;
-  };
+      subscriber(doc, clock, index)
+      this.close()
+    })
+    return this
+  }
 
-  subscribe = (
-    subscriber: (doc: Doc<T>, clock?: Clock, index?: number) => void
-  ): this => {
+  subscribe = (subscriber: (doc: Doc<T>, clock?: Clock, index?: number) => void): this => {
     if (this.subscription) {
-      throw new Error("only one subscriber for a doc handle");
+      throw new Error('only one subscriber for a doc handle')
     }
 
-    this.subscription = subscriber;
+    this.subscription = subscriber
 
     if (this.state != null && this.clock != null) {
-      subscriber(this.state, this.clock, this.counter++);
+      subscriber(this.state, this.clock, this.counter++)
     }
-    return this;
-  };
+    return this
+  }
 
-  subscribeProgress = (
-    subscriber: (event: ProgressEvent) => void
-  ): this => {
+  subscribeProgress = (subscriber: (event: ProgressEvent) => void): this => {
     if (this.progressSubscription) {
-      throw new Error("only one progress subscriber for a doc handle")
+      throw new Error('only one progress subscriber for a doc handle')
     }
 
     this.progressSubscription = subscriber
@@ -97,11 +91,9 @@ export class Handle<T> {
     return this
   }
 
-  subscribeMessage = (
-    subscriber: (event: any) => void
-  ): this => {
+  subscribeMessage = (subscriber: (event: any) => void): this => {
     if (this.messageSubscription) {
-      throw new Error("only one document message subscriber for a doc handle")
+      throw new Error('only one document message subscriber for a doc handle')
     }
 
     this.messageSubscription = subscriber
@@ -110,23 +102,23 @@ export class Handle<T> {
   }
 
   close = () => {
-    this.subscription = undefined;
-    this.messageSubscription = undefined;
-    this.progressSubscription = undefined;
-    this.state = null;
-    this.cleanup();
-  };
-
-  debug() {
-    this.repo.debug(this.url);
+    this.subscription = undefined
+    this.messageSubscription = undefined
+    this.progressSubscription = undefined
+    this.state = null
+    this.cleanup()
   }
 
-  cleanup = () => {};
+  debug() {
+    this.repo.debug(this.url)
+  }
 
-  changeFn = (fn: ChangeFn<T>) => {};
+  cleanup = () => {}
+
+  changeFn = (fn: ChangeFn<T>) => {}
 
   change = (fn: ChangeFn<T>): this => {
-    this.changeFn(fn);
-    return this;
-  };
+    this.changeFn(fn)
+    return this
+  }
 }

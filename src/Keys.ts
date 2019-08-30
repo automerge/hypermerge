@@ -1,9 +1,9 @@
-import * as Base58 from "bs58";
-import * as crypto from "hypercore/lib/crypto";
+import * as Base58 from 'bs58'
+import * as crypto from 'hypercore/lib/crypto'
 
 export interface KeyBuffer {
-  publicKey: Buffer;
-  secretKey?: Buffer;
+  publicKey: Buffer
+  secretKey?: Buffer
 }
 
 export interface KeyPair {
@@ -15,7 +15,7 @@ export function create(): KeyPair {
   const keys = crypto.keyPair()
   return {
     publicKey: encode(keys.publicKey),
-    secretKey: encode(keys.secretKey)
+    secretKey: encode(keys.secretKey),
   }
 }
 

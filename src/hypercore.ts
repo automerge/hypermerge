@@ -1,10 +1,10 @@
 declare function require(moduleName: string): any
 
-let _hypercore = require("hypercore")
+let _hypercore = require('hypercore')
 
-import Debug from "debug"
-import { ID, ActorId } from "./Misc"
-const log = Debug("repo:hypermerge")
+import Debug from 'debug'
+import { ID, ActorId } from './Misc'
+const log = Debug('repo:hypermerge')
 
 type Key = string | Buffer
 type Storage = string | Function
@@ -25,11 +25,7 @@ export function discoveryKey(buf: Buffer): Buffer {
 }
 
 export function hypercore<T>(storage: Storage, options: Options): Feed<T>
-export function hypercore<T>(
-  storage: Storage,
-  key: Key,
-  options: Options,
-): Feed<T>
+export function hypercore<T>(storage: Storage, key: Key, options: Options): Feed<T>
 export function hypercore<T>(storage: Storage, arg2: any, arg3?: any): Feed<T> {
   if (arg3) {
     return _hypercore(storage, arg2, arg3)
@@ -39,16 +35,16 @@ export function hypercore<T>(storage: Storage, arg2: any, arg3?: any): Feed<T> {
 }
 
 export interface Feed<T> {
-  on(event: "ready", cb: () => void): this
-  on(event: "close", cb: () => void): this
-  on(event: "sync", cb: () => void): this
-  on(event: "error", cb: (err: Error) => void): this
-  on(event: "download", cb: (index: number, data: Buffer) => void): this
-  on(event: "upload", cb: (index: number, data: T) => void): this
-  on(event: "data", cb: (idx: number, data: T) => void): this
-  on(event: "peer-add", cb: (peer: Peer) => void): this
-  on(event: "peer-remove", cb: (peer: Peer) => void): this
-  on(event: "extension", cb: (a: any, b: any) => void): this
+  on(event: 'ready', cb: () => void): this
+  on(event: 'close', cb: () => void): this
+  on(event: 'sync', cb: () => void): this
+  on(event: 'error', cb: (err: Error) => void): this
+  on(event: 'download', cb: (index: number, data: Buffer) => void): this
+  on(event: 'upload', cb: (index: number, data: T) => void): this
+  on(event: 'data', cb: (idx: number, data: T) => void): this
+  on(event: 'peer-add', cb: (peer: Peer) => void): this
+  on(event: 'peer-remove', cb: (peer: Peer) => void): this
+  on(event: 'extension', cb: (a: any, b: any) => void): this
 
   peers: Peer[]
   replicate: Function
@@ -70,22 +66,17 @@ export interface Feed<T> {
   get(index: number, cb: (err: Error, data: T) => void): void
   get(index: number, config: any, cb: (err: Error, data: T) => void): void
   getBatch(start: number, end: number, cb: (Err: any, data: T[]) => void): void
-  getBatch(
-    start: number,
-    end: number,
-    config: any,
-    cb: (Err: any, data: T[]) => void,
-  ): void
+  getBatch(start: number, end: number, config: any, cb: (Err: any, data: T[]) => void): void
   discoveryKey: Buffer
   id: Buffer
   length: number
 }
 
 function readFeedN<T>(
-  id: ActorId | "ledger",
+  id: ActorId | 'ledger',
   feed: Feed<T>,
   index: number,
-  cb: (data: T[]) => void,
+  cb: (data: T[]) => void
 ) {
   log(`readFeedN id=${ID(id)} (0..${index})`)
 
@@ -104,11 +95,7 @@ function readFeedN<T>(
   }
 }
 
-export function readFeed<T>(
-  id: ActorId | "ledger",
-  feed: Feed<T>,
-  cb: (data: T[]) => void,
-) {
+export function readFeed<T>(id: ActorId | 'ledger', feed: Feed<T>, cb: (data: T[]) => void) {
   //  const id = feed.id.toString('hex').slice(0,4)
   const length = feed.downloaded()
 
