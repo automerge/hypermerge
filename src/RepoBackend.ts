@@ -9,7 +9,7 @@ import * as Backend from "automerge/backend";
 import { Clock, Change } from "automerge/backend";
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendReplyMsg, ToFrontendRepoMsg, DocumentMsg } from "./RepoMsg";
 import * as DocBackend from "./DocBackend"
-import { notEmpty, ID, ActorId, DiscoveryId, DocId, HyperfileId, encodeDocId, rootActorId, encodeDiscoveryId, encodeActorId } from "./Misc";
+import { notEmpty, ID, ActorId, DiscoveryId, DocId, HyperfileId, encodeDocId, rootActorId, encodeDiscoveryId, encodeActorId, encodeHyperfileId, hyperfileActorId } from "./Misc";
 import Debug from "debug";
 import * as DocumentBroadcast from "./DocumentBroadcast"
 import * as Keys from "./Keys"
@@ -61,7 +61,7 @@ export class RepoBackend {
   }
 
   private writeFile(keys: Keys.KeyBuffer, data: Uint8Array, mimeType: string) {
-    const fileId = Keys.encode(keys.publicKey) as HyperfileId;
+    const fileId = encodeHyperfileId(keys.publicKey);
 
     this.meta.addFile(fileId, data.length, mimeType);
 
@@ -72,7 +72,7 @@ export class RepoBackend {
   private async readFile(id: HyperfileId): Promise<{body: Uint8Array, mimeType: string}> {
 //    log("readFile",id, this.meta.forDoc(id))
     if (this.meta.isDoc(id)) { throw new Error("trying to open a document like a file") }
-    const actor = await this.getReadyActor(id as unknown as ActorId)
+    const actor = await this.getReadyActor(hyperfileActorId(id))
     return actor.readFile()
   }
 

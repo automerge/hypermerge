@@ -22,12 +22,20 @@ export function encodeDiscoveryId(discoveryKey: Buffer): DiscoveryId {
   return Base58.encode(discoveryKey) as DiscoveryId
 }
 
+export function encodeHyperfileId(hyperfileKey: Buffer): HyperfileId {
+  return Base58.encode(hyperfileKey) as HyperfileId
+}
+
 export function asDocUrl(docId: DocId): DocUrl {
   return `hypermerge:/${docId}` as DocUrl
 }
 
 export function rootActorId(docId: DocId): ActorId {
   return docId as string as ActorId
+}
+
+export function hyperfileActorId(hyperfileId: HyperfileId): ActorId {
+  return hyperfileId as string as ActorId
 }
 
 export function isBaseUrl(str: BaseUrl | BaseId): str is BaseUrl {
