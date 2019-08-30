@@ -7,3 +7,4 @@ export { RepoFrontend } from "./RepoFrontend";
 
 export { DocBackend } from "./DocBackend";
 export { DocFrontend } from "./DocFrontend";
+export { DocUrl, HyperfileUrl } from "./Misc";

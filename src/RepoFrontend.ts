@@ -1,16 +1,17 @@
 import Queue from "./Queue";
 import * as Base58 from "bs58";
 import MapSet from "./MapSet";
-import * as crypto from "hypercore/lib/crypto";
-import { ToFrontendReplyMsg, ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
+import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
 import { Handle } from "./Handle";
-import { ChangeFn, Doc, Patch } from "automerge/frontend";
+import { Doc, Patch } from "automerge/frontend";
 import * as Frontend from "automerge/frontend";
 import { DocFrontend } from "./DocFrontend";
 import { clock2strs, Clock, clockDebug } from "./Clock";
+import * as Keys from './Keys'
 import Debug from "debug";
 import { PublicMetadata, validateDocURL, validateFileURL, validateURL } from "./Metadata";
 import mime from "mime-types";
+import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId, toHyperfileUrl } from "./Misc";
 
 Debug.formatters.b = Base58.encode;
 
@@ -19,11 +20,11 @@ const log = Debug("repo:front");
 export interface DocMetadata {
   clock: Clock;
   history: number;
-  actor?: string;
+  actor?: ActorId;
 }
 
 export interface ProgressEvent {
-  actor: string;
+  actor: ActorId;
   index: number;
   size: number;
   time: number;
@@ -33,21 +34,21 @@ let msgid = 1
 
 export class RepoFrontend {
   toBackend: Queue<ToBackendRepoMsg> = new Queue("repo:front:toBackendQ");
-  docs: Map<string, DocFrontend<any>> = new Map();
+  docs: Map<DocId, DocFrontend<any>> = new Map();
   cb: Map<number, (reply: any) => void> = new Map();
   msgcb: Map<number, (patch: Patch) => void> = new Map();
-  readFiles: MapSet<string, (data: Uint8Array, mimeType: string) => void> = new MapSet();
+  readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void> = new MapSet();
   file?: Uint8Array;
 
-  create = <T>(init?: T): string => {
-    const keys = crypto.keyPair();
-    const publicKey = Base58.encode(keys.publicKey);
-    const secretKey = Base58.encode(keys.secretKey);
-    const docId = publicKey;
-    const actorId = publicKey;
+  create = <T>(init?: T): DocUrl => {
+    const { publicKey, secretKey } = Keys.create()
+    const docId = publicKey as DocId;
+    const actorId = rootActorId(docId);
     const doc = new DocFrontend(this, { actorId, docId });
+
     this.docs.set(docId, doc);
     this.toBackend.push({ type: "CreateMsg", publicKey, secretKey });
+
     if (init) {
       doc.change(state => {
         for (let key in init) {
@@ -55,18 +56,18 @@ export class RepoFrontend {
         }
       });
     }
-    return `hypermerge:/${docId}`;
+    return toDocUrl(docId);
   };
 
-  change = <T>(id: string, fn: (state: T) => void ) => {
-    this.open<T>(id).change(fn);
+  change = <T>(url: DocUrl, fn: (state: T) => void ) => {
+    this.open<T>(url).change(fn);
   };
 
-  meta = (url: string, cb:(meta: PublicMetadata | undefined) => void): void => {
+  meta = (url: DocUrl | HyperfileUrl, cb:(meta: PublicMetadata | undefined) => void): void => {
     const {id , type} = validateURL(url);
-    this.queryBackend({ type: "MetadataMsg", id }, (meta: PublicMetadata | undefined) => {
+    this.queryBackend({ type: "MetadataMsg", id: id as DocId | HyperfileId }, (meta: PublicMetadata | undefined) => {
       if (meta) {
-      const doc = this.docs.get(id);
+      const doc = this.docs.get(id as DocId);
         if (doc && meta.type === "Document") {
           meta.actor = doc.actorId
           meta.history = doc.history
@@ -77,9 +78,9 @@ export class RepoFrontend {
     })
   }
 
-  meta2 = (url: string): DocMetadata | undefined => {
+  meta2 = (url: DocUrl | HyperfileUrl): DocMetadata | undefined => {
     const {id , type} = validateURL(url);
-    const doc = this.docs.get(id);
+    const doc = this.docs.get(id as DocId);
     if (!doc) return;
     return {
       actor: doc.actorId,
@@ -88,7 +89,7 @@ export class RepoFrontend {
     };
   };
 
-  merge = (url: string, target: string) => {
+  merge = (url: DocUrl, target: DocUrl) => {
     const id = validateDocURL(url);
     validateDocURL(target);
     this.doc(target, (doc, clock) => {
@@ -97,25 +98,25 @@ export class RepoFrontend {
     });
   };
 
-  writeFile = <T>(data: Uint8Array, mimeType: string): string => {
-    const keys = crypto.keyPair();
-    const publicKey = Base58.encode(keys.publicKey);
-    const secretKey = Base58.encode(keys.secretKey);
+  writeFile = <T>(data: Uint8Array, mimeType: string): HyperfileUrl => {
+    const { publicKey, secretKey } = Keys.create()
+    const hyperfileId = publicKey as HyperfileId
+
     if (mime.extensions[mimeType] === undefined) {
       throw new Error(`invalid mime type ${mimeType}`)
     }
     this.toBackend.push(data);
     this.toBackend.push({ type: "WriteFile", publicKey, secretKey, mimeType });
-    return `hyperfile:/${publicKey}`;
+    return toHyperfileUrl(hyperfileId)
   };
 
-  readFile = <T>(url: string, cb: (data: Uint8Array, mimeType: string) => void): void => {
+  readFile = <T>(url: HyperfileUrl, cb: (data: Uint8Array, mimeType: string) => void): void => {
     const id = validateFileURL(url);
     this.readFiles.add(id, cb);
     this.toBackend.push({ type: "ReadFile", id });
   };
 
-  fork = (url: string): string => {
+  fork = (url: DocUrl): DocUrl => {
     validateDocURL(url);
     const fork = this.create();
     this.merge(fork, url);
@@ -129,19 +130,19 @@ export class RepoFrontend {
   };
 */
 
-  watch = <T>( url: string, cb: (val: T, clock?: Clock, index?: number) => void): Handle<T> => {
+  watch = <T>( url: DocUrl, cb: (val: T, clock?: Clock, index?: number) => void): Handle<T> => {
     validateDocURL(url);
     const handle = this.open<T>(url);
     handle.subscribe(cb);
     return handle;
   };
 
-  message = ( url: string, contents: any): void => {
+  message = ( url: DocUrl, contents: any): void => {
     const id = validateDocURL(url);
     this.toBackend.push({type: "DocumentMessage", id, contents})
   }
 
-  doc = <T>(url: string, cb?: (val: T, clock?: Clock) => void): Promise<T> => {
+  doc = <T>(url: DocUrl, cb?: (val: T, clock?: Clock) => void): Promise<T> => {
     validateDocURL(url);
     return new Promise(resolve => {
       const handle = this.open<T>(url);
@@ -153,7 +154,7 @@ export class RepoFrontend {
     });
   };
 
-  materialize = <T>(url: string, history: number, cb: (val: T) => void) => {
+  materialize = <T>(url: DocUrl, history: number, cb: (val: T) => void) => {
     const id = validateDocURL(url);
     const doc = this.docs.get(id);
     if (doc === undefined) { throw new Error(`No such document ${id}`) }
@@ -171,13 +172,13 @@ export class RepoFrontend {
     this.toBackend.push({type: "Query", id, query})
   }
 
-  open = <T>(url: string): Handle<T> => {
+  open = <T>(url: DocUrl): Handle<T> => {
     const id = validateDocURL(url);
     const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id);
     return doc.handle();
   }
 
-  debug(url: string) {
+  debug(url: DocUrl) {
     const id = validateDocURL(url);
     const doc = this.docs.get(id);
     const short = id.substr(0, 5);
@@ -191,7 +192,7 @@ export class RepoFrontend {
     this.toBackend.push({ type: "DebugMsg", id });
   }
 
-  private openDocFrontend<T>(id: string): DocFrontend<T> {
+  private openDocFrontend<T>(id: DocId): DocFrontend<T> {
     const doc: DocFrontend<T> = new DocFrontend(this, { docId: id });
     this.toBackend.push({ type: "OpenMsg", id });
     this.docs.set(id, doc);
@@ -208,8 +209,8 @@ export class RepoFrontend {
     this.docs.clear()
   }
 
-  destroy = (url: string) : void => {
-    const { id } = validateURL(url);
+  destroy = (url: DocUrl) : void => {
+    const id = validateDocURL(url);
     this.toBackend.push({ type: "DestroyMsg", id });
     const doc = this.docs.get(id);
     if (doc) {

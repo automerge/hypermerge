@@ -5,6 +5,7 @@ import { Clock, union } from "./Clock";
 import Queue from "./Queue";
 import { Handle } from "./Handle";
 import Debug from "debug";
+import { ActorId, DocId, DocUrl, toDocUrl } from "./Misc";
 
 // TODO - i bet this can be rewritten where the Frontend allocates the actorid on write - this
 // would make first writes a few ms faster
@@ -16,14 +17,15 @@ export type Patch = Patch;
 type Mode = "pending" | "read" | "write";
 
 interface Config {
-  docId: string;
-  actorId?: string;
+  docId: DocId;
+  actorId?: ActorId;
 }
 
 export class DocFrontend<T> {
-  private docId: string;
+  private docId: DocId;
+  private docUrl: DocUrl;
   ready: boolean = false; // do I need ready? -- covered my state !== pending?
-  actorId?: string;
+  actorId?: ActorId;
   history: number = 0;
   //  private toBackend: Queue<ToBackendRepoMsg>
   private changeQ = new Queue<ChangeFn<T>>("repo:front:changeQ");
@@ -41,23 +43,24 @@ export class DocFrontend<T> {
     const actorId = config.actorId;
     this.repo = repo;
     this.clock = {};
+    this.docId = docId;
+    this.docUrl = toDocUrl(docId)
+
     //    this.toBackend = toBackend
 
     if (actorId) {
       this.front = Frontend.init(actorId) as Doc<T>;
-      this.docId = docId;
       this.actorId = actorId;
       this.ready = true
       this.mode = "write";
       this.enableWrites();
     } else {
       this.front = Frontend.init({ deferActorId: true }) as Doc<T>;
-      this.docId = docId;
     }
   }
 
   handle(): Handle<T> {
-    let handle = new Handle<T>(this.repo, this.docId);
+    let handle = new Handle<T>(this.repo, this.docUrl);
     this.handles.add(handle);
     handle.cleanup = () => this.handles.delete(handle);
     handle.changeFn = this.change;
@@ -105,7 +108,7 @@ export class DocFrontend<T> {
     // what does this do now? - FIXME
   };
 
-  setActorId = (actorId: string) => {
+  setActorId = (actorId: ActorId) => {
     log("setActorId", this.docId, actorId, this.mode);
     this.actorId = actorId;
     this.front = Frontend.setActorId(this.front, actorId);
@@ -116,7 +119,7 @@ export class DocFrontend<T> {
     }
   };
 
-  init = (synced: boolean, actorId?: string, patch?: Patch, history?: number) => {
+  init = (synced: boolean, actorId?: ActorId, patch?: Patch, history?: number) => {
     log(
       `init docid=${this.docId} actorId=${actorId} patch=${!!patch} history=${history} mode=${
         this.mode
