@@ -6,8 +6,6 @@ import { readFeed, hypercore, Feed, Peer, discoveryKey } from './hypercore'
 import { Change } from 'automerge/backend'
 import { ID, ActorId, DiscoveryId, encodeActorId, encodeDiscoveryId } from './Misc'
 import Queue from './Queue'
-import * as JsonBuffer from './JsonBuffer'
-import * as Base58 from 'bs58'
 import * as Block from './Block'
 import * as Keys from './Keys'
 import Debug from 'debug'
@@ -19,10 +17,6 @@ const log = Debug('repo:actor')
 const KB = 1024
 const MB = 1024 * KB
 
-export type FeedHead = FeedHeadMetadata | Change
-
-export type FeedType = 'Unknown' | 'Automerge' | 'File'
-
 export type ActorMsg =
   | ActorFeedReady
   | ActorInitialized
@@ -30,13 +24,6 @@ export type ActorMsg =
   | PeerUpdate
   | PeerAdd
   | Download
-
-interface FeedHeadMetadata {
-  type: 'File'
-  bytes: number
-  mimeType: string
-  blockSize: number
-}
 
 interface ActorSync {
   type: 'ActorSync'
@@ -86,20 +73,16 @@ export class Actor {
   changes: Change[] = []
   feed: Feed<Uint8Array>
   peers: Map<string, Peer> = new Map()
-  type: FeedType
   private q: Queue<(actor: Actor) => void>
   private notify: (msg: ActorMsg) => void
   private storage: any
-  private data: Uint8Array[] = []
   private pending: Uint8Array[] = []
-  private fileMetadata?: FeedHeadMetadata
 
   constructor(config: ActorConfig) {
     const { publicKey, secretKey } = config.keys
     const dk = discoveryKey(publicKey)
     const id = encodeActorId(publicKey)
 
-    this.type = 'Unknown'
     this.id = id
     this.storage = config.storage(id)
     this.notify = config.notify
@@ -174,44 +157,9 @@ export class Actor {
   }
 
   parseBlock = (data: Uint8Array, index: number) => {
-    if (this.type === 'Unknown') {
-      if (index === 0) {
-        this.parseHeaderBlock(data)
-      } else {
-        this.pending[index] = data
-      }
-    } else {
-      this.parseDataBlock(data, index)
-    }
-  }
-
-  parseHeaderBlock(data: Uint8Array) {
-    const header = Block.unpack(data) // no validation of head
-    if (header.hasOwnProperty('type')) {
-      this.type = 'File'
-      this.fileMetadata = header
-    } else {
-      this.type = 'Automerge'
-      this.parseBlock(data, 0)
-      this.pending.map(this.parseBlock)
-      this.pending = []
-    }
-  }
-
-  parseDataBlock(data: Uint8Array, index: number) {
-    switch (this.type) {
-      case 'Automerge':
-        const change: Change = Block.unpack(data) // no validation of Change
-        this.changes[index] = change
-        log(`block xxx idx=${index} actor=${ID(change.actor)} seq=${change.seq}`)
-        break
-      case 'File':
-        this.data[index - 1] = data
-        break
-      default:
-        throw new Error("cant handle block if we don't know the type")
-        break
-    }
+    const change: Change = Block.unpack(data) // no validation of Change
+    this.changes[index] = change
+    log(`block xxx idx=${index} actor=${ID(change.actor)} seq=${change.seq}`)
   }
 
   writeChange(change: Change) {
@@ -221,79 +169,6 @@ export class Actor {
     this.changes.push(change)
     this.onSync()
     this.append(Block.pack(change))
-  }
-
-  writeFile(data: Uint8Array, mimeType: string) {
-    log('writing file')
-    this.onReady(() => {
-      log('writing file', data.length, 'bytes', mimeType)
-      if (this.data.length > 0 || this.changes.length > 0)
-        throw new Error('writeFile called on existing feed')
-      const blockSize = 1 * MB
-      this.fileMetadata = {
-        type: 'File',
-        bytes: data.length,
-        mimeType,
-        blockSize,
-      }
-      this.append(Buffer.from(JSON.stringify(this.fileMetadata)))
-      for (let i = 0; i < data.length; i += blockSize) {
-        const block = data.slice(i, i + blockSize)
-        this.data.push(block)
-        this.append(block)
-      }
-    })
-  }
-
-  async readFile(): Promise<{ body: Uint8Array; mimeType: string }> {
-    log('reading file...')
-    const head = await this.fileHead()
-    const body = await this.fileBody(head)
-    return {
-      body,
-      mimeType: head.mimeType,
-    }
-  }
-
-  fileHead(): Promise<FeedHeadMetadata> {
-    return new Promise((resolve, reject) => {
-      if (this.fileMetadata) {
-        resolve(this.fileMetadata)
-      } else {
-        this.feed.get(0, { wait: true }, (err, data) => {
-          if (err) reject(new Error(`error reading feed head ${this.id}`))
-          const head: FeedHeadMetadata = JsonBuffer.parse(data)
-          this.fileMetadata = head //Yikes
-          resolve(head)
-        })
-      }
-    })
-  }
-
-  fileBody(head: FeedHeadMetadata): Promise<Uint8Array> {
-    return new Promise((resolve, reject) => {
-      const blockSize = head.blockSize || 1 * MB // old feeds dont have this
-      const blocks = Math.ceil(head.bytes / blockSize)
-      const file = Buffer.concat(this.data)
-      if (file.length === head.bytes) {
-        resolve(file)
-      } else {
-        if (blocks === 1) {
-          this.feed.get(1, { wait: true }, (err, file) => {
-            if (err) reject(new Error(`error reading feed body ${this.id}`))
-            this.data = [file]
-            resolve(file)
-          })
-        } else {
-          this.feed.getBatch(1, blocks, { wait: true }, (err, data) => {
-            if (err) reject(new Error(`error reading feed body ${this.id}`))
-            this.data = data
-            const file = Buffer.concat(this.data)
-            resolve(file)
-          })
-        }
-      }
-    })
   }
 
   private append(block: Uint8Array) {

@@ -21,17 +21,17 @@ import {
   ActorId,
   DiscoveryId,
   DocId,
-  HyperfileId,
   encodeDocId,
   rootActorId,
   encodeDiscoveryId,
   encodeActorId,
-  encodeHyperfileId,
-  hyperfileActorId,
 } from './Misc'
 import Debug from 'debug'
 import * as DocumentBroadcast from './DocumentBroadcast'
 import * as Keys from './Keys'
+import FeedStore from './FeedStore'
+import FileStore, { Header } from './FileStore'
+import FileServer from './FileServer'
 
 interface Swarm {
   join(dk: Buffer): void
@@ -59,6 +59,8 @@ export interface Options {
 export class RepoBackend {
   path?: string
   storage: Function
+  store: FeedStore
+  files: FileStore
   joined: Set<DiscoveryId> = new Set()
   actors: Map<ActorId, Actor> = new Map()
   actorsDk: Map<DiscoveryId, Actor> = new Map()
@@ -68,33 +70,31 @@ export class RepoBackend {
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
   swarm?: Swarm
   id: Buffer
-  file?: Uint8Array
+  private fileServer: FileServer
 
   constructor(opts: Options) {
     this.opts = opts
     this.path = opts.path || 'default'
     this.storage = opts.storage
+    this.store = new FeedStore(this.storageFn)
+    this.files = new FileStore(this.store)
+    this.files.writeLog.subscribe((header) => {
+      this.meta.addFile(header.url, header.bytes, header.mimeType)
+    })
+    this.fileServer = new FileServer(this.files)
 
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
     this.id = this.meta.id
   }
 
-  private writeFile(keys: Keys.KeyBuffer, data: Uint8Array, mimeType: string) {
-    const fileId = encodeHyperfileId(keys.publicKey)
+  startFileServer(path: string) {
+    if (this.fileServer.isListening()) return
 
-    this.meta.addFile(fileId, data.length, mimeType)
-
-    const actor = this.initActor(keys)
-    actor.writeFile(data, mimeType)
-  }
-
-  private async readFile(id: HyperfileId): Promise<{ body: Uint8Array; mimeType: string }> {
-    //    log("readFile",id, this.meta.forDoc(id))
-    if (this.meta.isDoc(id)) {
-      throw new Error('trying to open a document like a file')
-    }
-    const actor = await this.getReadyActor(hyperfileActorId(id))
-    return actor.readFile()
+    this.fileServer.listen(path)
+    this.toFrontend.push({
+      type: 'FileServerReadyMsg',
+      host: path,
+    })
   }
 
   private create(keys: Keys.KeyBuffer): DocBackend.DocBackend {
@@ -259,7 +259,7 @@ export class RepoBackend {
     return actorPromise
   }
 
-  storageFn = (path: string): Function => {
+  storageFn = (path: string) => {
     return (name: string) => {
       return this.storage(this.path + '/' + path + '/' + name)
     }
@@ -529,89 +529,66 @@ export class RepoBackend {
   }
 
   receive = (msg: ToBackendRepoMsg) => {
-    if (msg instanceof Uint8Array) {
-      this.file = msg
-    } else {
-      switch (msg.type) {
-        case 'NeedsActorIdMsg': {
-          const doc = this.docs.get(msg.id)!
-          const actorId = this.initActorFeed(doc)
-          doc.initActor(actorId)
-          break
+    switch (msg.type) {
+      case 'NeedsActorIdMsg': {
+        const doc = this.docs.get(msg.id)!
+        const actorId = this.initActorFeed(doc)
+        doc.initActor(actorId)
+        break
+      }
+      case 'RequestMsg': {
+        const doc = this.docs.get(msg.id)!
+        doc.applyLocalChange(msg.request)
+        break
+      }
+      case 'Query': {
+        const query = msg.query
+        const id = msg.id
+        this.handleQuery(id, query)
+        break
+      }
+      case 'CreateMsg': {
+        const keys = {
+          publicKey: Keys.decode(msg.publicKey),
+          secretKey: Keys.decode(msg.secretKey),
         }
-        case 'RequestMsg': {
-          const doc = this.docs.get(msg.id)!
-          doc.applyLocalChange(msg.request)
-          break
-        }
-        case 'WriteFile': {
-          const keys = {
-            publicKey: Keys.decode(msg.publicKey),
-            secretKey: Keys.decode(msg.secretKey),
-          }
-          log('write file', msg.mimeType)
-          this.writeFile(keys, this.file!, msg.mimeType)
-          delete this.file
-          break
-        }
-        case 'Query': {
-          const query = msg.query
-          const id = msg.id
-          this.handleQuery(id, query)
-          break
-        }
-        case 'ReadFile': {
-          const id = msg.id
-          log('read file', id)
-          this.readFile(id).then((file) => {
-            this.toFrontend.push(file.body)
-            this.toFrontend.push({ type: 'ReadFileReply', id, mimeType: file.mimeType })
-          })
-          break
-        }
-        case 'CreateMsg': {
-          const keys = {
-            publicKey: Keys.decode(msg.publicKey),
-            secretKey: Keys.decode(msg.secretKey),
-          }
-          this.create(keys)
-          break
-        }
-        case 'MergeMsg': {
-          this.merge(msg.id, strs2clock(msg.actors))
-          break
-        }
-        /*
+        this.create(keys)
+        break
+      }
+      case 'MergeMsg': {
+        this.merge(msg.id, strs2clock(msg.actors))
+        break
+      }
+      /*
         case "FollowMsg": {
           this.follow(msg.id, msg.target);
           break;
         }
 */
-        case 'OpenMsg': {
-          this.open(msg.id)
-          break
+      case 'OpenMsg': {
+        this.open(msg.id)
+        break
+      }
+      case 'DocumentMessage': {
+        // Note: 'id' is the document id of the document to send the message to.
+        const { id, contents } = msg
+        const documentActor = this.actor(rootActorId(id))
+        if (documentActor) {
+          DocumentBroadcast.broadcastDocumentMessage(id, contents, documentActor.peers.values())
         }
-        case 'DocumentMessage': {
-          // Note: 'id' is the document id of the document to send the message to.
-          const { id, contents } = msg
-          const documentActor = this.actor(rootActorId(id))
-          if (documentActor) {
-            DocumentBroadcast.broadcastDocumentMessage(id, contents, documentActor.peers.values())
-          }
-          break
-        }
-        case 'DestroyMsg': {
-          this.destroy(msg.id)
-          break
-        }
-        case 'DebugMsg': {
-          this.debug(msg.id)
-          break
-        }
-        case 'CloseMsg': {
-          this.close()
-          break
-        }
+        break
+      }
+      case 'DestroyMsg': {
+        this.destroy(msg.id)
+        break
+      }
+      case 'DebugMsg': {
+        this.debug(msg.id)
+        break
+      }
+      case 'CloseMsg': {
+        this.close()
+        break
       }
     }
   }

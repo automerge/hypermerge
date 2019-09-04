@@ -8,14 +8,24 @@ export interface KeyBuffer {
 
 export interface KeyPair {
   publicKey: string
-  secretKey: string
+  secretKey?: string
 }
 
-export function create(): KeyPair {
-  const keys = crypto.keyPair()
+export function create(): Required<KeyPair> {
+  return encodePair(crypto.keyPair()) as Required<KeyPair>
+}
+
+export function decodePair(keys: KeyPair): KeyBuffer {
+  return {
+    publicKey: decode(keys.publicKey),
+    secretKey: keys.secretKey ? decode(keys.secretKey) : undefined,
+  }
+}
+
+export function encodePair(keys: KeyBuffer): KeyPair {
   return {
     publicKey: encode(keys.publicKey),
-    secretKey: encode(keys.secretKey),
+    secretKey: keys.secretKey ? encode(keys.secretKey) : undefined,
   }
 }
 

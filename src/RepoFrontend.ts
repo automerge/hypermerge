@@ -48,6 +48,7 @@ export class RepoFrontend {
   msgcb: Map<number, (patch: Patch) => void> = new Map()
   readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void> = new MapSet()
   file?: Uint8Array
+  fileServerHost?: string
 
   create = <T>(init?: T): DocUrl => {
     const { publicKey, secretKey } = Keys.create()
@@ -56,7 +57,7 @@ export class RepoFrontend {
     const doc = new DocFrontend(this, { actorId, docId })
 
     this.docs.set(docId, doc)
-    this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey })
+    this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey: secretKey! })
 
     if (init) {
       doc.change((state) => {
@@ -110,7 +111,8 @@ export class RepoFrontend {
     })
   }
 
-  writeFile = <T>(data: Uint8Array, mimeType: string): HyperfileUrl => {
+  writeFile = <T>(data: Uint8Array, mimeType: string): Promise<HyperfileUrl> => {
+    return new Promise((res, rej) => {})
     const { publicKey, secretKey } = Keys.create()
     const hyperfileId = publicKey as HyperfileId
 
@@ -307,6 +309,11 @@ export class RepoFrontend {
           if (doc) {
             doc.messaged(msg.contents)
           }
+          break
+        }
+        case 'FileServerReadyMsg': {
+          this.fileServerHost = msg.host
+          break
         }
       }
     }

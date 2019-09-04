@@ -438,7 +438,8 @@ export class Metadata {
     this.writeThrough({ id, merge })
   }
 
-  addFile(id: HyperfileId, bytes: number, mimeType: string) {
+  addFile(hyperfileUrl: HyperfileUrl, bytes: number, mimeType: string) {
+    const id = validateFileURL(hyperfileUrl)
     this.writeThrough({ id, bytes, mimeType })
   }
 

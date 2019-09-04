@@ -17,11 +17,8 @@ export type ToBackendRepoMsg =
   | DocumentMsg
   | DestroyMsg
   | DebugMsg
-  | WriteFile
-  | ReadFile
   | QueryMsg
-  //  | MaterializeMsg
-  | Uint8Array
+//  | MaterializeMsg
 
 export interface QueryMsg {
   type: 'Query'
@@ -51,18 +48,6 @@ export interface CreateMsg {
   type: 'CreateMsg'
   publicKey: string
   secretKey: string
-}
-
-export interface WriteFile {
-  type: 'WriteFile'
-  publicKey: string
-  secretKey: string
-  mimeType: string
-}
-
-export interface ReadFile {
-  type: 'ReadFile'
-  id: HyperfileId
 }
 
 export interface MergeMsg {
@@ -114,6 +99,7 @@ export type ToFrontendRepoMsg =
   | ReplyMsg
   | DocumentMsg
   | Uint8Array
+  | FileServerReadyMsg
 
 export interface PatchMsg {
   type: 'PatchMsg'
@@ -171,4 +157,9 @@ export interface ActorBlockDownloadedMsg {
   index: number
   size: number
   time: number
+}
+
+export interface FileServerReadyMsg {
+  type: 'FileServerReadyMsg'
+  host: string
 }
