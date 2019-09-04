@@ -188,6 +188,10 @@ export class RepoBackend {
         swarm.removeAllListeners()
       } catch (error) {}
     }
+
+    if (this.fileServer.isListening()) {
+      this.fileServer.close()
+    }
   }
 
   replicate = (swarm: Swarm) => {

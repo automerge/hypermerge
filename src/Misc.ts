@@ -1,4 +1,5 @@
 import * as Base58 from 'bs58'
+import { Readable } from 'stream'
 
 export type BaseId = string & { id: true }
 export type DocId = BaseId & { docId: true }
@@ -57,4 +58,23 @@ export function ID(_id: string): string {
 
 export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
   return value !== null && value !== undefined
+}
+
+export function streamToBuffer(stream: Readable): Promise<Buffer> {
+  return new Promise((res, rej) => {
+    const buffers: Buffer[] = []
+    stream
+      .on('data', (data: Buffer) => buffers.push(data))
+      .on('error', (err: any) => rej(err))
+      .on('end', () => res(Buffer.concat(buffers)))
+  })
+}
+
+export function bufferToStream(buffer: Buffer): Readable {
+  return new Readable({
+    read() {
+      this.push(buffer)
+      this.push(null)
+    },
+  })
 }

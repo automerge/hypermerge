@@ -9,18 +9,12 @@ import { DocFrontend } from './DocFrontend'
 import { clock2strs, Clock, clockDebug } from './Clock'
 import * as Keys from './Keys'
 import Debug from 'debug'
-import { PublicMetadata, validateDocURL, validateFileURL, validateURL } from './Metadata'
-import mime from 'mime-types'
-import {
-  DocUrl,
-  DocId,
-  ActorId,
-  toDocUrl,
-  HyperfileId,
-  HyperfileUrl,
-  rootActorId,
-  toHyperfileUrl,
-} from './Misc'
+import { PublicMetadata, validateDocURL, validateURL } from './Metadata'
+import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId } from './Misc'
+import { Header } from './FileStore'
+import { Readable } from 'stream'
+import http from 'http'
+import { streamToBuffer } from './Misc'
 
 Debug.formatters.b = Base58.encode
 
@@ -48,7 +42,11 @@ export class RepoFrontend {
   msgcb: Map<number, (patch: Patch) => void> = new Map()
   readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void> = new MapSet()
   file?: Uint8Array
-  fileServerHost?: string
+  private backendServerPath: string
+
+  constructor(backendServerPath: string) {
+    this.backendServerPath = backendServerPath
+  }
 
   create = <T>(init?: T): DocUrl => {
     const { publicKey, secretKey } = Keys.create()
@@ -111,23 +109,58 @@ export class RepoFrontend {
     })
   }
 
-  // writeFile = <T>(data: Uint8Array, mimeType: string): Promise<HyperfileUrl> => {
-  //   const { publicKey, secretKey } = Keys.create()
-  //   const hyperfileId = publicKey as HyperfileId
+  writeFile(data: Readable, size: number, mimeType: string): Promise<HyperfileUrl> {
+    return new Promise((resolve, reject) => {
+      const options = {
+        socketPath: this.backendServerPath,
+        path: '/upload',
+        method: 'POST',
+        headers: {
+          'Content-Type': mimeType,
+          'Content-Length': size,
+        },
+      }
+      const req = http.request(options, async (response) => {
+        if (response.statusCode !== 200) {
+          reject(
+            new Error(
+              `Server error: ${response.statusCode}, with message: ${response.statusMessage}`
+            )
+          )
+        }
+        const buffer = await streamToBuffer(response)
+        try {
+          const { url } = JSON.parse(buffer.toString()) as Header
+          if (!url) reject(new Error('Invalid response'))
+          resolve(url as HyperfileUrl)
+        } catch (e) {
+          reject(e.message)
+        }
+      })
+      data.pipe(req)
+    })
+  }
 
-  //   if (mime.extensions[mimeType] === undefined) {
-  //     throw new Error(`invalid mime type ${mimeType}`)
-  //   }
-  //   this.toBackend.push(data)
-  //   this.toBackend.push({ type: 'WriteFile', publicKey, secretKey, mimeType })
-  //   return toHyperfileUrl(hyperfileId)
-  // }
-
-  // readFile = <T>(url: HyperfileUrl, cb: (data: Uint8Array, mimeType: string) => void): void => {
-  //   const id = validateFileURL(url)
-  //   this.readFiles.add(id, cb)
-  //   this.toBackend.push({ type: 'ReadFile', id })
-  // }
+  readFile = (url: HyperfileUrl): Promise<[Readable, string]> => {
+    return new Promise((resolve, reject) => {
+      const options = {
+        socketPath: this.backendServerPath,
+        path: '/' + url,
+      }
+      http.get(options, (response) => {
+        if (response.statusCode !== 200) {
+          reject(
+            new Error(`Server error, code=${response.statusCode} message=${response.statusMessage}`)
+          )
+        }
+        const mimeType = response.headers['content-type'] as string
+        if (!mimeType) {
+          reject(new Error('Missing mimetype in FileServer response'))
+        }
+        resolve([response, mimeType])
+      })
+    })
+  }
 
   fork = (url: DocUrl): DocUrl => {
     validateDocURL(url)
@@ -250,70 +283,62 @@ export class RepoFrontend {
 */
 
   receive = (msg: ToFrontendRepoMsg) => {
-    if (msg instanceof Uint8Array) {
-      this.file = msg
-    } else {
-      switch (msg.type) {
-        case 'ReadFileReply': {
-          const cbs = this.readFiles.delete(msg.id)
-          cbs.forEach((cb) => cb(this.file!, msg.mimeType))
-          delete this.file
-          break
+    switch (msg.type) {
+      case 'ReadFileReply': {
+        const cbs = this.readFiles.delete(msg.id)
+        cbs.forEach((cb) => cb(this.file!, msg.mimeType))
+        delete this.file
+        break
+      }
+      case 'PatchMsg': {
+        const doc = this.docs.get(msg.id)
+        if (doc) {
+          doc.patch(msg.patch, msg.synced, msg.history)
         }
-        case 'PatchMsg': {
-          const doc = this.docs.get(msg.id)
-          if (doc) {
-            doc.patch(msg.patch, msg.synced, msg.history)
+        break
+      }
+      case 'Reply': {
+        const id = msg.id
+        //          const reply = msg.reply
+        // this.handleReply(id,reply)
+        const cb = this.cb.get(id)!
+        cb(msg.payload)
+        this.cb.delete(id)!
+        break
+      }
+      case 'ActorIdMsg': {
+        const doc = this.docs.get(msg.id)
+        if (doc) {
+          doc.setActorId(msg.actorId)
+        }
+        break
+      }
+      case 'ReadyMsg': {
+        const doc = this.docs.get(msg.id)
+        if (doc) {
+          doc.init(msg.synced, msg.actorId, msg.patch, msg.history)
+        }
+        break
+      }
+      case 'ActorBlockDownloadedMsg': {
+        const doc = this.docs.get(msg.id)
+        if (doc) {
+          const progressEvent = {
+            actor: msg.actorId,
+            index: msg.index,
+            size: msg.size,
+            time: msg.time,
           }
-          break
+          doc.progress(progressEvent)
         }
-        case 'Reply': {
-          const id = msg.id
-          //          const reply = msg.reply
-          // this.handleReply(id,reply)
-          const cb = this.cb.get(id)!
-          cb(msg.payload)
-          this.cb.delete(id)!
-          break
+        break
+      }
+      case 'DocumentMessage': {
+        const doc = this.docs.get(msg.id)
+        if (doc) {
+          doc.messaged(msg.contents)
         }
-        case 'ActorIdMsg': {
-          const doc = this.docs.get(msg.id)
-          if (doc) {
-            doc.setActorId(msg.actorId)
-          }
-          break
-        }
-        case 'ReadyMsg': {
-          const doc = this.docs.get(msg.id)
-          if (doc) {
-            doc.init(msg.synced, msg.actorId, msg.patch, msg.history)
-          }
-          break
-        }
-        case 'ActorBlockDownloadedMsg': {
-          const doc = this.docs.get(msg.id)
-          if (doc) {
-            const progressEvent = {
-              actor: msg.actorId,
-              index: msg.index,
-              size: msg.size,
-              time: msg.time,
-            }
-            doc.progress(progressEvent)
-          }
-          break
-        }
-        case 'DocumentMessage': {
-          const doc = this.docs.get(msg.id)
-          if (doc) {
-            doc.messaged(msg.contents)
-          }
-          break
-        }
-        case 'FileServerReadyMsg': {
-          this.fileServerHost = msg.host
-          break
-        }
+        break
       }
     }
   }

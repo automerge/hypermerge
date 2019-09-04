@@ -98,7 +98,6 @@ export type ToFrontendRepoMsg =
   | ReadFileReply
   | ReplyMsg
   | DocumentMsg
-  | Uint8Array
   | FileServerReadyMsg
 
 export interface PatchMsg {

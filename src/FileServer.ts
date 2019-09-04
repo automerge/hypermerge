@@ -2,7 +2,7 @@ import { Server, createServer, IncomingMessage, ServerResponse, IncomingHttpHead
 import { parse } from 'url'
 import { Readable } from 'stream'
 import FileStore, { isHyperfileUrl } from './FileStore'
-import { HyperfileUrl } from './Misc'
+import { HyperfileUrl, streamToBuffer } from './Misc'
 
 export default class FileServer {
   private store: FileStore
@@ -19,6 +19,10 @@ export default class FileServer {
 
   isListening(): boolean {
     return this.http.listening
+  }
+
+  close() {
+    this.http.close()
   }
 
   private onConnection = (req: IncomingMessage, res: ServerResponse) => {
@@ -80,14 +84,4 @@ function uploadInfo(headers: IncomingHttpHeaders): UploadInfo {
     mimeType,
     bytes,
   }
-}
-
-function streamToBuffer(stream: Readable): Promise<Buffer> {
-  return new Promise((res, rej) => {
-    const buffers: Buffer[] = []
-    stream
-      .on('data', (data) => buffers.push(data))
-      .on('error', (err) => rej(err))
-      .on('end', () => res(Buffer.concat(buffers)))
-  })
 }

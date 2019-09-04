@@ -1,4 +1,5 @@
-import test from "tape"
+import test from 'tape'
+import uuid from 'uuid/v4'
 
 type DocMsg = [any, string]
 type DocMsgCB = [any, string, any]
@@ -8,7 +9,7 @@ export function expectDocs(t: test.Test, docs: DocInfo[]) {
   let i = 0
 
   // add to the current planned test length:
-  t.plan( ((<any>t)._plan || 0) + docs.length)
+  t.plan(((<any>t)._plan || 0) + docs.length)
 
   return (doc: any) => {
     const tmp = docs[i++]
@@ -20,4 +21,11 @@ export function expectDocs(t: test.Test, docs: DocInfo[]) {
       if (cb) cb()
     }
   }
+}
+
+export function generateServerPath() {
+  const shortId = uuid()
+    .toString()
+    .slice(0, 4)
+  return `/tmp/hypermerge-test-${shortId}.sock`
 }
