@@ -111,24 +111,23 @@ export class RepoFrontend {
     })
   }
 
-  writeFile = <T>(data: Uint8Array, mimeType: string): Promise<HyperfileUrl> => {
-    return new Promise((res, rej) => {})
-    const { publicKey, secretKey } = Keys.create()
-    const hyperfileId = publicKey as HyperfileId
+  // writeFile = <T>(data: Uint8Array, mimeType: string): Promise<HyperfileUrl> => {
+  //   const { publicKey, secretKey } = Keys.create()
+  //   const hyperfileId = publicKey as HyperfileId
 
-    if (mime.extensions[mimeType] === undefined) {
-      throw new Error(`invalid mime type ${mimeType}`)
-    }
-    this.toBackend.push(data)
-    this.toBackend.push({ type: 'WriteFile', publicKey, secretKey, mimeType })
-    return toHyperfileUrl(hyperfileId)
-  }
+  //   if (mime.extensions[mimeType] === undefined) {
+  //     throw new Error(`invalid mime type ${mimeType}`)
+  //   }
+  //   this.toBackend.push(data)
+  //   this.toBackend.push({ type: 'WriteFile', publicKey, secretKey, mimeType })
+  //   return toHyperfileUrl(hyperfileId)
+  // }
 
-  readFile = <T>(url: HyperfileUrl, cb: (data: Uint8Array, mimeType: string) => void): void => {
-    const id = validateFileURL(url)
-    this.readFiles.add(id, cb)
-    this.toBackend.push({ type: 'ReadFile', id })
-  }
+  // readFile = <T>(url: HyperfileUrl, cb: (data: Uint8Array, mimeType: string) => void): void => {
+  //   const id = validateFileURL(url)
+  //   this.readFiles.add(id, cb)
+  //   this.toBackend.push({ type: 'ReadFile', id })
+  // }
 
   fork = (url: DocUrl): DocUrl => {
     validateDocURL(url)

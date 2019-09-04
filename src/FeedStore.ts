@@ -29,8 +29,8 @@ export default class FeedStore {
   private storage: FeedStorageFn
   private feeds: Map<FeedId, Feed<Block>> = new Map()
 
-  constructor(storageFn: DiscoveryStorageFn) {
-    this.storage = (feedId: FeedId) => storageFn(discoveryId(feedId))
+  constructor(storageFn: FeedStorageFn) {
+    this.storage = storageFn // correct: (feedId: FeedId) => storageFn(discoveryId(feedId))
   }
 
   /**

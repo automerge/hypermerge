@@ -23,12 +23,13 @@ export default class FileServer {
 
   private onConnection = (req: IncomingMessage, res: ServerResponse) => {
     const { path } = parse(req.url!)
-    const url = path!.slice(0)
+    const url = path!.slice(1)
 
     switch (url) {
       case 'upload':
         return this.upload(req, res)
       default:
+        console.log('handling url', url)
         if (isHyperfileUrl(url)) {
           return this.stream(url, res)
         } else {
@@ -47,6 +48,8 @@ export default class FileServer {
   }
 
   private async stream(url: HyperfileUrl, res: ServerResponse) {
+    console.log('streaming', url)
+
     const header = await this.store.header(url)
 
     res.writeHead(200, {
