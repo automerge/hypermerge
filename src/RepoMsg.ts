@@ -160,5 +160,5 @@ export interface ActorBlockDownloadedMsg {
 
 export interface FileServerReadyMsg {
   type: 'FileServerReadyMsg'
-  host: string
+  path: string
 }

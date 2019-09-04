@@ -44,7 +44,7 @@ export class Repo {
     const { serverPath, ...backendOptions } = opts
     this.back = new RepoBackend(backendOptions)
     this.back.startFileServer(serverPath)
-    this.front = new RepoFrontend(serverPath)
+    this.front = new RepoFrontend()
     this.front.subscribe(this.back.receive)
     this.back.subscribe(this.front.receive)
     this.id = this.back.id

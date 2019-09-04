@@ -93,7 +93,7 @@ export class RepoBackend {
     this.fileServer.listen(path)
     this.toFrontend.push({
       type: 'FileServerReadyMsg',
-      host: path,
+      path: path,
     })
   }
 

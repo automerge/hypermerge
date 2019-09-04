@@ -42,11 +42,8 @@ export class RepoFrontend {
   msgcb: Map<number, (patch: Patch) => void> = new Map()
   readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void> = new MapSet()
   file?: Uint8Array
-  private backendServerPath: string
-
-  constructor(backendServerPath: string) {
-    this.backendServerPath = backendServerPath
-  }
+  private fileServerRequestQueue: Queue<Function> = new Queue()
+  private fileServerPath?: string
 
   create = <T>(init?: T): DocUrl => {
     const { publicKey, secretKey } = Keys.create()
@@ -111,8 +108,21 @@ export class RepoFrontend {
 
   writeFile(data: Readable, size: number, mimeType: string): Promise<HyperfileUrl> {
     return new Promise((resolve, reject) => {
+      this.fileServerRequestQueue.push(async () => {
+        try {
+          const res = await this._writeFile(data, size, mimeType)
+          resolve(res)
+        } catch (e) {
+          reject(e)
+        }
+      })
+    })
+  }
+
+  private _writeFile(data: Readable, size: number, mimeType: string): Promise<HyperfileUrl> {
+    return new Promise((resolve, reject) => {
       const options = {
-        socketPath: this.backendServerPath,
+        socketPath: this.fileServerPath,
         path: '/upload',
         method: 'POST',
         headers: {
@@ -141,10 +151,23 @@ export class RepoFrontend {
     })
   }
 
-  readFile = (url: HyperfileUrl): Promise<[Readable, string]> => {
+  readFile(url: HyperfileUrl): Promise<[Readable, string]> {
+    return new Promise((resolve, reject) => {
+      this.fileServerRequestQueue.push(async () => {
+        try {
+          const res = await this._readFile(url)
+          resolve(res)
+        } catch (e) {
+          reject(e)
+        }
+      })
+    })
+  }
+
+  private _readFile = (url: HyperfileUrl): Promise<[Readable, string]> => {
     return new Promise((resolve, reject) => {
       const options = {
-        socketPath: this.backendServerPath,
+        socketPath: this.fileServerPath,
         path: '/' + url,
       }
       http.get(options, (response) => {
@@ -339,6 +362,11 @@ export class RepoFrontend {
           doc.messaged(msg.contents)
         }
         break
+      }
+      case 'FileServerReadyMsg': {
+        const fileServerPath = msg.path
+        this.fileServerPath = fileServerPath
+        this.fileServerRequestQueue.subscribe((f) => f())
       }
     }
   }
