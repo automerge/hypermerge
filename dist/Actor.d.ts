@@ -2,43 +2,44 @@
  * Actors provide an interface over the data replication scheme.
  * For dat, this means the actor abstracts over the hypercore and its peers.
  */
-import { Feed, Peer } from "./hypercore";
-import { Change } from "automerge/backend";
-import * as Keys from "./Keys";
+import { Feed, Peer } from './hypercore';
+import { Change } from 'automerge/backend';
+import { ActorId, DiscoveryId } from './Misc';
+import * as Keys from './Keys';
 export declare type FeedHead = FeedHeadMetadata | Change;
-export declare type FeedType = "Unknown" | "Automerge" | "File";
+export declare type FeedType = 'Unknown' | 'Automerge' | 'File';
 export declare type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | PeerUpdate | PeerAdd | Download;
 interface FeedHeadMetadata {
-    type: "File";
+    type: 'File';
     bytes: number;
     mimeType: string;
     blockSize: number;
 }
 interface ActorSync {
-    type: "ActorSync";
+    type: 'ActorSync';
     actor: Actor;
 }
 interface ActorFeedReady {
-    type: "ActorFeedReady";
+    type: 'ActorFeedReady';
     actor: Actor;
     writable: boolean;
 }
 interface ActorInitialized {
-    type: "ActorInitialized";
+    type: 'ActorInitialized';
     actor: Actor;
 }
 interface PeerUpdate {
-    type: "PeerUpdate";
+    type: 'PeerUpdate';
     actor: Actor;
     peers: number;
 }
 interface PeerAdd {
-    type: "PeerAdd";
+    type: 'PeerAdd';
     actor: Actor;
     peer: Peer;
 }
 interface Download {
-    type: "Download";
+    type: 'Download';
     actor: Actor;
     time: number;
     size: number;
@@ -50,8 +51,8 @@ interface ActorConfig {
     storage: (path: string) => Function;
 }
 export declare class Actor {
-    id: string;
-    dkString: string;
+    id: ActorId;
+    dkString: DiscoveryId;
     changes: Change[];
     feed: Feed<Uint8Array>;
     peers: Map<string, Peer>;

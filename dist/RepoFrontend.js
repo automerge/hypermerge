@@ -13,50 +13,49 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Queue_1 = __importDefault(require("./Queue"));
 const Base58 = __importStar(require("bs58"));
 const MapSet_1 = __importDefault(require("./MapSet"));
-const crypto = __importStar(require("hypercore/lib/crypto"));
 const Frontend = __importStar(require("automerge/frontend"));
 const DocFrontend_1 = require("./DocFrontend");
 const Clock_1 = require("./Clock");
+const Keys = __importStar(require("./Keys"));
 const debug_1 = __importDefault(require("debug"));
 const Metadata_1 = require("./Metadata");
 const mime_types_1 = __importDefault(require("mime-types"));
+const Misc_1 = require("./Misc");
 debug_1.default.formatters.b = Base58.encode;
-const log = debug_1.default("repo:front");
+const log = debug_1.default('repo:front');
 let msgid = 1;
 class RepoFrontend {
     constructor() {
-        this.toBackend = new Queue_1.default("repo:tobackend");
+        this.toBackend = new Queue_1.default('repo:front:toBackendQ');
         this.docs = new Map();
         this.cb = new Map();
         this.msgcb = new Map();
         this.readFiles = new MapSet_1.default();
         this.create = (init) => {
-            const keys = crypto.keyPair();
-            const publicKey = Base58.encode(keys.publicKey);
-            const secretKey = Base58.encode(keys.secretKey);
+            const { publicKey, secretKey } = Keys.create();
             const docId = publicKey;
-            const actorId = publicKey;
+            const actorId = Misc_1.rootActorId(docId);
             const doc = new DocFrontend_1.DocFrontend(this, { actorId, docId });
             this.docs.set(docId, doc);
-            this.toBackend.push({ type: "CreateMsg", publicKey, secretKey });
+            this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey });
             if (init) {
-                doc.change(state => {
+                doc.change((state) => {
                     for (let key in init) {
                         state[key] = init[key];
                     }
                 });
             }
-            return `hypermerge:/${docId}`;
+            return Misc_1.toDocUrl(docId);
         };
-        this.change = (id, fn) => {
-            this.open(id).change(fn);
+        this.change = (url, fn) => {
+            this.open(url).change(fn);
         };
         this.meta = (url, cb) => {
             const { id, type } = Metadata_1.validateURL(url);
-            this.queryBackend({ type: "MetadataMsg", id }, (meta) => {
+            this.queryBackend({ type: 'MetadataMsg', id: id }, (meta) => {
                 if (meta) {
                     const doc = this.docs.get(id);
-                    if (doc && meta.type === "Document") {
+                    if (doc && meta.type === 'Document') {
                         meta.actor = doc.actorId;
                         meta.history = doc.history;
                         meta.clock = doc.clock;
@@ -73,7 +72,7 @@ class RepoFrontend {
             return {
                 actor: doc.actorId,
                 history: doc.history,
-                clock: doc.clock
+                clock: doc.clock,
             };
         };
         this.merge = (url, target) => {
@@ -81,24 +80,22 @@ class RepoFrontend {
             Metadata_1.validateDocURL(target);
             this.doc(target, (doc, clock) => {
                 const actors = Clock_1.clock2strs(clock);
-                this.toBackend.push({ type: "MergeMsg", id, actors });
+                this.toBackend.push({ type: 'MergeMsg', id, actors });
             });
         };
-        this.writeFile = (data, mimeType) => {
-            const keys = crypto.keyPair();
-            const publicKey = Base58.encode(keys.publicKey);
-            const secretKey = Base58.encode(keys.secretKey);
-            if (mime_types_1.default.extensions[mimeType] === undefined) {
-                throw new Error(`invalid mime type ${mimeType}`);
-            }
+        this.writeFile = (data, inputMimeType) => {
+            const { publicKey, secretKey } = Keys.create();
+            const hyperfileId = publicKey;
+            // "upgrade" whatever junk arrives into something like a real mime-type
+            const mimeType = mime_types_1.default.contentType(inputMimeType) || 'application/octet-stream';
             this.toBackend.push(data);
-            this.toBackend.push({ type: "WriteFile", publicKey, secretKey, mimeType });
-            return `hyperfile:/${publicKey}`;
+            this.toBackend.push({ type: 'WriteFile', publicKey, secretKey, mimeType });
+            return Misc_1.toHyperfileUrl(hyperfileId);
         };
         this.readFile = (url, cb) => {
             const id = Metadata_1.validateFileURL(url);
             this.readFiles.add(id, cb);
-            this.toBackend.push({ type: "ReadFile", id });
+            this.toBackend.push({ type: 'ReadFile', id });
         };
         this.fork = (url) => {
             Metadata_1.validateDocURL(url);
@@ -107,11 +104,11 @@ class RepoFrontend {
             return fork;
         };
         /*
-          follow = (url: string, target: string) => {
-            const id = validateDocURL(url);
-            this.toBackend.push({ type: "FollowMsg", id, target });
-          };
-        */
+        follow = (url: string, target: string) => {
+          const id = validateDocURL(url);
+          this.toBackend.push({ type: "FollowMsg", id, target });
+        };
+      */
         this.watch = (url, cb) => {
             Metadata_1.validateDocURL(url);
             const handle = this.open(url);
@@ -120,11 +117,11 @@ class RepoFrontend {
         };
         this.message = (url, contents) => {
             const id = Metadata_1.validateDocURL(url);
-            this.toBackend.push({ type: "DocumentMessage", id, contents });
+            this.toBackend.push({ type: 'DocumentMessage', id, contents });
         };
         this.doc = (url, cb) => {
             Metadata_1.validateDocURL(url);
-            return new Promise(resolve => {
+            return new Promise((resolve) => {
                 const handle = this.open(url);
                 handle.subscribe((val, clock) => {
                     resolve(val);
@@ -143,7 +140,7 @@ class RepoFrontend {
             if (history < 0 && history >= doc.history) {
                 throw new Error(`Invalid history ${history} for id ${id}`);
             }
-            this.queryBackend({ type: "MaterializeMsg", history, id }, (patch) => {
+            this.queryBackend({ type: 'MaterializeMsg', history, id }, (patch) => {
                 const doc = Frontend.init({ deferActorId: true });
                 cb(Frontend.applyPatch(doc, patch));
             });
@@ -157,13 +154,13 @@ class RepoFrontend {
             this.toBackend.subscribe(subscriber);
         };
         this.close = () => {
-            this.toBackend.push({ type: "CloseMsg" });
-            this.docs.forEach(doc => doc.close());
+            this.toBackend.push({ type: 'CloseMsg' });
+            this.docs.forEach((doc) => doc.close());
             this.docs.clear();
         };
         this.destroy = (url) => {
-            const { id } = Metadata_1.validateURL(url);
-            this.toBackend.push({ type: "DestroyMsg", id });
+            const id = Metadata_1.validateDocURL(url);
+            this.toBackend.push({ type: 'DestroyMsg', id });
             const doc = this.docs.get(id);
             if (doc) {
                 // doc.destroy()
@@ -171,37 +168,37 @@ class RepoFrontend {
             }
         };
         /*
-          handleReply = (id: number, reply: ToFrontendReplyMsg) => {
-            const cb = this.cb.get(id)!
-            switch (reply.type) {
-              case "MaterializeReplyMsg": {
-                cb(reply.patch);
-                break;
-              }
+        handleReply = (id: number, reply: ToFrontendReplyMsg) => {
+          const cb = this.cb.get(id)!
+          switch (reply.type) {
+            case "MaterializeReplyMsg": {
+              cb(reply.patch);
+              break;
             }
-            this.cb.delete(id)
           }
-        */
+          this.cb.delete(id)
+        }
+      */
         this.receive = (msg) => {
             if (msg instanceof Uint8Array) {
                 this.file = msg;
             }
             else {
                 switch (msg.type) {
-                    case "ReadFileReply": {
+                    case 'ReadFileReply': {
                         const cbs = this.readFiles.delete(msg.id);
-                        cbs.forEach(cb => cb(this.file, msg.mimeType));
+                        cbs.forEach((cb) => cb(this.file, msg.mimeType));
                         delete this.file;
                         break;
                     }
-                    case "PatchMsg": {
+                    case 'PatchMsg': {
                         const doc = this.docs.get(msg.id);
                         if (doc) {
                             doc.patch(msg.patch, msg.synced, msg.history);
                         }
                         break;
                     }
-                    case "Reply": {
+                    case 'Reply': {
                         const id = msg.id;
                         //          const reply = msg.reply
                         // this.handleReply(id,reply)
@@ -210,34 +207,34 @@ class RepoFrontend {
                         this.cb.delete(id);
                         break;
                     }
-                    case "ActorIdMsg": {
+                    case 'ActorIdMsg': {
                         const doc = this.docs.get(msg.id);
                         if (doc) {
                             doc.setActorId(msg.actorId);
                         }
                         break;
                     }
-                    case "ReadyMsg": {
+                    case 'ReadyMsg': {
                         const doc = this.docs.get(msg.id);
                         if (doc) {
                             doc.init(msg.synced, msg.actorId, msg.patch, msg.history);
                         }
                         break;
                     }
-                    case "ActorBlockDownloadedMsg": {
+                    case 'ActorBlockDownloadedMsg': {
                         const doc = this.docs.get(msg.id);
                         if (doc) {
                             const progressEvent = {
                                 actor: msg.actorId,
                                 index: msg.index,
                                 size: msg.size,
-                                time: msg.time
+                                time: msg.time,
                             };
                             doc.progress(progressEvent);
                         }
                         break;
                     }
-                    case "DocumentMessage": {
+                    case 'DocumentMessage': {
                         const doc = this.docs.get(msg.id);
                         if (doc) {
                             doc.messaged(msg.contents);
@@ -251,7 +248,7 @@ class RepoFrontend {
         msgid += 1; // global counter
         const id = msgid;
         this.cb.set(id, cb);
-        this.toBackend.push({ type: "Query", id, query });
+        this.toBackend.push({ type: 'Query', id, query });
     }
     debug(url) {
         const id = Metadata_1.validateDocURL(url);
@@ -264,11 +261,11 @@ class RepoFrontend {
             console.log(`doc:frontend id=${short}`);
             console.log(`doc:frontend clock=${Clock_1.clockDebug(doc.clock)}`);
         }
-        this.toBackend.push({ type: "DebugMsg", id });
+        this.toBackend.push({ type: 'DebugMsg', id });
     }
     openDocFrontend(id) {
         const doc = new DocFrontend_1.DocFrontend(this, { docId: id });
-        this.toBackend.push({ type: "OpenMsg", id });
+        this.toBackend.push({ type: 'OpenMsg', id });
         this.docs.set(id, doc);
         return doc;
     }

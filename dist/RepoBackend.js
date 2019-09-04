@@ -32,23 +32,23 @@ const debug_1 = __importDefault(require("debug"));
 const DocumentBroadcast = __importStar(require("./DocumentBroadcast"));
 const Keys = __importStar(require("./Keys"));
 debug_1.default.formatters.b = Base58.encode;
-const HypercoreProtocol = require("hypercore-protocol");
-const log = debug_1.default("repo:backend");
+const HypercoreProtocol = require('hypercore-protocol');
+const log = debug_1.default('repo:backend');
 class RepoBackend {
     constructor(opts) {
         this.joined = new Set();
         this.actors = new Map();
         this.actorsDk = new Map();
         this.docs = new Map();
-        this.toFrontend = new Queue_1.default("repo:toFrontend");
+        this.toFrontend = new Queue_1.default('repo:back:toFrontend');
         /*
-          follow(id: string, target: string) {
-            this.meta.follow(id, target);
-            this.syncReadyActors(this.meta.actors(id));
-          }
-        */
+        follow(id: string, target: string) {
+          this.meta.follow(id, target);
+          this.syncReadyActors(this.meta.actors(id));
+        }
+      */
         this.close = () => {
-            this.actors.forEach(actor => actor.close());
+            this.actors.forEach((actor) => actor.close());
             this.actors.clear();
             const swarm = this.swarm; // FIXME - any is bad
             if (swarm) {
@@ -63,28 +63,28 @@ class RepoBackend {
         };
         this.replicate = (swarm) => {
             if (this.swarm) {
-                throw new Error("replicate called while already swarming");
+                throw new Error('replicate called while already swarming');
             }
             this.swarm = swarm;
             for (let dk of this.joined) {
-                log("swarm.join");
+                log('swarm.join');
                 this.swarm.join(Base58.decode(dk));
             }
         };
         this.join = (actorId) => {
             const dkBuffer = hypercore_1.discoveryKey(Base58.decode(actorId));
-            const dk = Base58.encode(dkBuffer);
+            const dk = Misc_1.encodeDiscoveryId(dkBuffer);
             if (this.swarm && !this.joined.has(dk)) {
-                log("swarm.join", Misc_1.ID(actorId), Misc_1.ID(dk));
+                log('swarm.join', Misc_1.ID(actorId), Misc_1.ID(dk));
                 this.swarm.join(dkBuffer);
             }
             this.joined.add(dk);
         };
         this.leave = (actorId) => {
             const dkBuffer = hypercore_1.discoveryKey(Base58.decode(actorId));
-            const dk = Base58.encode(dkBuffer);
+            const dk = Misc_1.encodeDiscoveryId(dkBuffer);
             if (this.swarm && this.joined.has(dk)) {
-                log("leave", Misc_1.ID(actorId), Misc_1.ID(dk));
+                log('leave', Misc_1.ID(actorId), Misc_1.ID(dk));
                 this.swarm.leave(dkBuffer);
             }
             this.joined.delete(dk);
@@ -104,7 +104,7 @@ class RepoBackend {
         };
         this.storageFn = (path) => {
             return (name) => {
-                return this.storage(this.path + "/" + path + "/" + name);
+                return this.storage(this.path + '/' + path + '/' + name);
             };
         };
         this.syncReadyActors = (ids) => {
@@ -115,101 +115,99 @@ class RepoBackend {
         };
         this.documentNotify = (msg) => {
             switch (msg.type) {
-                case "ReadyMsg": {
+                case 'ReadyMsg': {
                     this.toFrontend.push({
-                        type: "ReadyMsg",
+                        type: 'ReadyMsg',
                         id: msg.id,
                         synced: msg.synced,
                         actorId: msg.actorId,
                         history: msg.history,
-                        patch: msg.patch
+                        patch: msg.patch,
                     });
                     break;
                 }
-                case "ActorIdMsg": {
+                case 'ActorIdMsg': {
                     this.toFrontend.push({
-                        type: "ActorIdMsg",
+                        type: 'ActorIdMsg',
                         id: msg.id,
-                        actorId: msg.actorId
+                        actorId: msg.actorId,
                     });
                     break;
                 }
-                case "RemotePatchMsg": {
+                case 'RemotePatchMsg': {
                     this.toFrontend.push({
-                        type: "PatchMsg",
+                        type: 'PatchMsg',
                         id: msg.id,
                         synced: msg.synced,
                         patch: msg.patch,
-                        history: msg.history
+                        history: msg.history,
                     });
                     break;
                 }
-                case "LocalPatchMsg": {
+                case 'LocalPatchMsg': {
                     this.toFrontend.push({
-                        type: "PatchMsg",
+                        type: 'PatchMsg',
                         id: msg.id,
                         synced: msg.synced,
                         patch: msg.patch,
-                        history: msg.history
+                        history: msg.history,
                     });
                     this.actor(msg.actorId).writeChange(msg.change);
                     break;
                 }
                 default: {
-                    console.log("Unknown message type", msg);
+                    console.log('Unknown message type', msg);
                 }
             }
         };
         this.broadcastNotify = (msg) => {
             switch (msg.type) {
-                case "RemoteMetadata": {
-                    for (let id in msg.clocks) {
-                        const clock = msg.clocks[id];
-                        const doc = this.docs.get(id);
+                case 'RemoteMetadata': {
+                    for (let docId in msg.clocks) {
+                        const clock = msg.clocks[docId];
+                        const doc = this.docs.get(docId);
                         if (clock && doc) {
                             doc.target(clock);
                         }
                     }
                     const _blocks = msg.blocks;
                     this.meta.addBlocks(_blocks);
-                    _blocks.map(block => {
-                        if (block.actors)
+                    _blocks.map((block) => {
+                        if ('actors' in block && block.actors)
                             this.syncReadyActors(block.actors);
-                        if (block.merge)
-                            this.syncReadyActors(Object.keys(block.merge));
+                        if ('merge' in block && block.merge)
+                            this.syncReadyActors(Clock_1.clockActorIds(block.merge));
                         // if (block.follows) block.follows.forEach(id => this.open(id))
                     });
                     break;
                 }
-                case "DocumentMessage": {
+                case 'DocumentMessage': {
                     const { contents, id } = msg;
-                    this.meta.docsWith(id).forEach((doc) => {
-                        this.toFrontend.push({
-                            type: "DocumentMessage",
-                            id,
-                            contents
-                        });
+                    this.toFrontend.push({
+                        type: 'DocumentMessage',
+                        id,
+                        contents,
                     });
                     break;
                 }
-                case "NewMetadata": {
+                case 'NewMetadata': {
                     // TODO: Warn better than this!
-                    console.log("Legacy Metadata message received - better upgrade");
+                    console.log('Legacy Metadata message received - better upgrade');
                     break;
                 }
             }
         };
         this.actorNotify = (msg) => {
             switch (msg.type) {
-                case "ActorFeedReady": {
+                case 'ActorFeedReady': {
                     const actor = msg.actor;
                     // Record whether or not this actor is writable.
                     this.meta.setWritable(actor.id, msg.writable);
                     // Broadcast latest document information to peers.
                     const metadata = this.meta.forActor(actor.id);
                     const clocks = this.allClocks(actor.id);
-                    this.meta.docsWith(actor.id).forEach(documentId => {
-                        const documentActor = this.actor(documentId);
+                    this.meta.docsWith(actor.id).forEach((documentId) => {
+                        const documentActor = this.actor(Misc_1.rootActorId(documentId));
                         if (documentActor) {
                             DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values());
                         }
@@ -217,12 +215,12 @@ class RepoBackend {
                     this.join(actor.id);
                     break;
                 }
-                case "ActorInitialized": {
+                case 'ActorInitialized': {
                     // Swarm on the actor's feed.
                     this.join(msg.actor.id);
                     break;
                 }
-                case "PeerAdd": {
+                case 'PeerAdd': {
                     // Listen for hypermerge extension broadcasts.
                     DocumentBroadcast.listen(msg.peer, this.broadcastNotify);
                     // Broadcast the latest document information to the new peer
@@ -231,19 +229,19 @@ class RepoBackend {
                     DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer]);
                     break;
                 }
-                case "ActorSync":
-                    log("ActorSync", msg.actor.id);
+                case 'ActorSync':
+                    log('ActorSync', msg.actor.id);
                     this.syncChanges(msg.actor);
                     break;
-                case "Download":
-                    this.meta.docsWith(msg.actor.id).forEach((doc) => {
+                case 'Download':
+                    this.meta.docsWith(msg.actor.id).forEach((docId) => {
                         this.toFrontend.push({
-                            type: "ActorBlockDownloadedMsg",
-                            id: doc,
+                            type: 'ActorBlockDownloadedMsg',
+                            id: docId,
                             actorId: msg.actor.id,
                             index: msg.index,
                             size: msg.size,
-                            time: msg.time
+                            time: msg.time,
                         });
                     });
                     break;
@@ -252,7 +250,7 @@ class RepoBackend {
         this.syncChanges = (actor) => {
             const actorId = actor.id;
             const docIds = this.meta.docsWith(actorId);
-            docIds.forEach(docId => {
+            docIds.forEach((docId) => {
                 const doc = this.docs.get(docId);
                 if (doc) {
                     doc.ready.push(() => {
@@ -281,19 +279,19 @@ class RepoBackend {
                 id: this.id,
                 encrypt: false,
                 timeout: 10000,
-                extensions: DocumentBroadcast.SUPPORTED_EXTENSIONS
+                extensions: DocumentBroadcast.SUPPORTED_EXTENSIONS,
             });
             let add = (dk) => {
-                const actor = this.actorsDk.get(Base58.encode(dk));
+                const actor = this.actorsDk.get(Misc_1.encodeDiscoveryId(dk));
                 if (actor) {
-                    log("replicate feed!", Misc_1.ID(Base58.encode(dk)));
+                    log('replicate feed!', Misc_1.ID(Base58.encode(dk)));
                     actor.feed.replicate({
                         stream,
-                        live: true
+                        live: true,
                     });
                 }
             };
-            stream.on("feed", (dk) => add(dk));
+            stream.on('feed', (dk) => add(dk));
             const dk = opts.channel || opts.discoveryKey;
             if (dk)
                 add(dk);
@@ -304,17 +302,20 @@ class RepoBackend {
         };
         this.handleQuery = (id, query) => {
             switch (query.type) {
-                case "MetadataMsg": {
+                case 'MetadataMsg': {
                     this.meta.publicMetadata(query.id, (payload) => {
-                        this.toFrontend.push({ type: "Reply", id, payload });
+                        this.toFrontend.push({ type: 'Reply', id, payload });
                     });
                     break;
                 }
-                case "MaterializeMsg": {
+                case 'MaterializeMsg': {
                     const doc = this.docs.get(query.id);
-                    const changes = doc.back.getIn(['opSet', 'history']).slice(0, query.history).toArray();
+                    const changes = doc.back
+                        .getIn(['opSet', 'history'])
+                        .slice(0, query.history)
+                        .toArray();
                     const [_, patch] = Backend.applyChanges(Backend.init(), changes);
-                    this.toFrontend.push({ type: "Reply", id, payload: patch });
+                    this.toFrontend.push({ type: 'Reply', id, payload: patch });
                     break;
                 }
             }
@@ -325,81 +326,82 @@ class RepoBackend {
             }
             else {
                 switch (msg.type) {
-                    case "NeedsActorIdMsg": {
+                    case 'NeedsActorIdMsg': {
                         const doc = this.docs.get(msg.id);
                         const actorId = this.initActorFeed(doc);
                         doc.initActor(actorId);
                         break;
                     }
-                    case "RequestMsg": {
+                    case 'RequestMsg': {
                         const doc = this.docs.get(msg.id);
                         doc.applyLocalChange(msg.request);
                         break;
                     }
-                    case "WriteFile": {
+                    case 'WriteFile': {
                         const keys = {
                             publicKey: Keys.decode(msg.publicKey),
-                            secretKey: Keys.decode(msg.secretKey)
+                            secretKey: Keys.decode(msg.secretKey),
                         };
-                        log("write file", msg.mimeType);
+                        log('write file', msg.mimeType);
                         this.writeFile(keys, this.file, msg.mimeType);
                         delete this.file;
                         break;
                     }
-                    case "Query": {
+                    case 'Query': {
                         const query = msg.query;
                         const id = msg.id;
                         this.handleQuery(id, query);
                         break;
                     }
-                    case "ReadFile": {
+                    case 'ReadFile': {
                         const id = msg.id;
-                        log("read file", id);
-                        this.readFile(id).then(file => {
+                        log('read file', id);
+                        this.readFile(id).then((file) => {
                             this.toFrontend.push(file.body);
-                            this.toFrontend.push({ type: "ReadFileReply", id, mimeType: file.mimeType });
+                            this.toFrontend.push({ type: 'ReadFileReply', id, mimeType: file.mimeType });
                         });
                         break;
                     }
-                    case "CreateMsg": {
+                    case 'CreateMsg': {
                         const keys = {
                             publicKey: Keys.decode(msg.publicKey),
-                            secretKey: Keys.decode(msg.secretKey)
+                            secretKey: Keys.decode(msg.secretKey),
                         };
                         this.create(keys);
                         break;
                     }
-                    case "MergeMsg": {
+                    case 'MergeMsg': {
                         this.merge(msg.id, Clock_1.strs2clock(msg.actors));
                         break;
                     }
                     /*
-                            case "FollowMsg": {
-                              this.follow(msg.id, msg.target);
-                              break;
-                            }
-                    */
-                    case "OpenMsg": {
+                    case "FollowMsg": {
+                      this.follow(msg.id, msg.target);
+                      break;
+                    }
+            */
+                    case 'OpenMsg': {
                         this.open(msg.id);
                         break;
                     }
-                    case "DocumentMessage": {
+                    case 'DocumentMessage': {
+                        // Note: 'id' is the document id of the document to send the message to.
                         const { id, contents } = msg;
-                        const documentActor = this.actor(id);
+                        const documentActor = this.actor(Misc_1.rootActorId(id));
                         if (documentActor) {
                             DocumentBroadcast.broadcastDocumentMessage(id, contents, documentActor.peers.values());
                         }
                         break;
                     }
-                    case "DestroyMsg": {
+                    case 'DestroyMsg': {
                         this.destroy(msg.id);
                         break;
                     }
-                    case "DebugMsg": {
+                    case 'DebugMsg': {
                         this.debug(msg.id);
                         break;
                     }
-                    case "CloseMsg": {
+                    case 'CloseMsg': {
                         this.close();
                         break;
                     }
@@ -407,13 +409,13 @@ class RepoBackend {
             }
         };
         this.opts = opts;
-        this.path = opts.path || "default";
+        this.path = opts.path || 'default';
         this.storage = opts.storage;
         this.meta = new Metadata_1.Metadata(this.storageFn, this.join, this.leave);
         this.id = this.meta.id;
     }
     writeFile(keys, data, mimeType) {
-        const fileId = Keys.encode(keys.publicKey);
+        const fileId = Misc_1.encodeHyperfileId(keys.publicKey);
         this.meta.addFile(fileId, data.length, mimeType);
         const actor = this.initActor(keys);
         actor.writeFile(data, mimeType);
@@ -422,18 +424,18 @@ class RepoBackend {
         return __awaiter(this, void 0, void 0, function* () {
             //    log("readFile",id, this.meta.forDoc(id))
             if (this.meta.isDoc(id)) {
-                throw new Error("trying to open a document like a file");
+                throw new Error('trying to open a document like a file');
             }
-            const actor = yield this.getReadyActor(id);
+            const actor = yield this.getReadyActor(Misc_1.hyperfileActorId(id));
             return actor.readFile();
         });
     }
     create(keys) {
-        const docId = Keys.encode(keys.publicKey);
-        log("create", docId);
+        const docId = Misc_1.encodeDocId(keys.publicKey);
+        log('create', docId);
         const doc = new DocBackend.DocBackend(docId, this.documentNotify, Backend.init());
         this.docs.set(docId, doc);
-        this.meta.addActor(doc.id, doc.id);
+        this.meta.addActor(doc.id, Misc_1.rootActorId(doc.id));
         this.initActor(keys);
         return doc;
     }
@@ -449,12 +451,12 @@ class RepoBackend {
             const local = this.meta.localActorId(id);
             const actors = this.meta.actors(id);
             const info = actors
-                .map(actor => {
+                .map((actor) => {
                 const nm = actor.substr(0, 5);
                 return local === actor ? `*${nm}` : nm;
             })
                 .sort();
-            console.log(`doc:backend actors=${info.join(",")}`);
+            console.log(`doc:backend actors=${info.join(',')}`);
         }
     }
     destroy(id) {
@@ -466,7 +468,7 @@ class RepoBackend {
         const actors = this.meta.allActors();
         this.actors.forEach((actor, id) => {
             if (!actors.has(id)) {
-                console.log("Orphaned actors - will purge", id);
+                console.log('Orphaned actors - will purge', id);
                 this.actors.delete(id);
                 this.leave(actor.id);
                 actor.destroy();
@@ -477,19 +479,19 @@ class RepoBackend {
     open(docId) {
         //    log("open", docId, this.meta.forDoc(docId));
         if (this.meta.isFile(docId)) {
-            throw new Error("trying to open a file like a document");
+            throw new Error('trying to open a file like a document');
         }
         let doc = this.docs.get(docId) || new DocBackend.DocBackend(docId, this.documentNotify);
         if (!this.docs.has(docId)) {
             this.docs.set(docId, doc);
-            this.meta.addActor(docId, docId);
+            this.meta.addActor(docId, Misc_1.rootActorId(docId));
             this.loadDocument(doc);
         }
         return doc;
     }
     merge(id, clock) {
         this.meta.merge(id, clock);
-        this.syncReadyActors(Object.keys(clock));
+        this.syncReadyActors(Clock_1.clockActorIds(clock));
     }
     allReadyActors(docId) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -502,7 +504,7 @@ class RepoBackend {
             const actors = yield this.allReadyActors(doc.id);
             log(`load document 2 actors=${actors.map((a) => a.id)}`);
             const changes = [];
-            actors.forEach(actor => {
+            actors.forEach((actor) => {
                 const max = this.meta.clockAt(doc.id, actor.id);
                 const slice = actor.changes.slice(0, max);
                 doc.changes.set(actor.id, slice.length);
@@ -512,14 +514,16 @@ class RepoBackend {
             log(`loading doc=${Misc_1.ID(doc.id)} changes=${changes.length}`);
             // Check to see if we already have a local actor id. If so, re-use it.
             const localActorId = this.meta.localActorId(doc.id);
-            const actorId = localActorId ? (yield this.getReadyActor(localActorId)).id : this.initActorFeed(doc);
+            const actorId = localActorId
+                ? (yield this.getReadyActor(localActorId)).id
+                : this.initActorFeed(doc);
             doc.init(changes, actorId);
         });
     }
     initActorFeed(doc) {
-        log("initActorFeed", doc.id);
+        log('initActorFeed', doc.id);
         const keys = crypto.keyPair();
-        const actorId = Keys.encode(keys.publicKey);
+        const actorId = Misc_1.encodeActorId(keys.publicKey);
         this.meta.addActor(doc.id, actorId);
         this.initActor(keys);
         return actorId;
@@ -529,12 +533,12 @@ class RepoBackend {
     }
     docActors(doc) {
         return this.actorIds(doc)
-            .map(id => this.actors.get(id))
+            .map((id) => this.actors.get(id))
             .filter(Misc_1.notEmpty);
     }
     allClocks(actorId) {
         const clocks = {};
-        this.meta.docsWith(actorId).forEach(documentId => {
+        this.meta.docsWith(actorId).forEach((documentId) => {
             const doc = this.docs.get(documentId);
             if (doc) {
                 clocks[documentId] = doc.clock;

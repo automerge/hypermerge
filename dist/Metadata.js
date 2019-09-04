@@ -25,27 +25,30 @@ const hypercore_1 = require("./hypercore");
 const debug_1 = __importDefault(require("debug"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const URL = __importStar(require("url"));
-const log = debug_1.default("repo:metadata");
+const log = debug_1.default('repo:metadata');
 const Clock_1 = require("./Clock");
+const Misc_1 = require("./Misc");
 function validateRemoteMetadata(message) {
-    const result = { type: "RemoteMetadata", clocks: {}, blocks: [] };
-    if (message instanceof Object && message.blocks instanceof Array && message.clocks instanceof Object) {
+    const result = { type: 'RemoteMetadata', clocks: {}, blocks: [] };
+    if (message instanceof Object &&
+        message.blocks instanceof Array &&
+        message.clocks instanceof Object) {
         result.blocks = filterMetadataInputs(message.blocks);
         result.clocks = message.clocks;
         return result;
     }
     else {
-        console.log("WARNING: Metadata Msg is not a well formed object", message);
+        console.log('WARNING: Metadata Msg is not a well formed object', message);
         return result;
     }
 }
 exports.validateRemoteMetadata = validateRemoteMetadata;
 function cleanMetadataInput(input) {
     const id = input.id || input.docId;
-    if (typeof id !== "string")
+    if (typeof id !== 'string')
         return undefined;
     const bytes = input.bytes;
-    if (typeof bytes !== "undefined" && typeof bytes !== "number")
+    if (typeof bytes !== 'undefined' && typeof bytes !== 'number')
         return undefined;
     const actors = input.actors || input.actorIds;
     //  const follows = input.follows;
@@ -63,9 +66,9 @@ function cleanMetadataInput(input) {
     //    if (!follows.every(isValidID)) return undefined;
     //  }
     if (merge !== undefined) {
-        if (typeof merge !== "object")
+        if (typeof merge !== 'object')
             return undefined;
-        if (!Object.keys(merge).every(isValidID))
+        if (!Object.keys(merge).every((id) => isValidID(id)))
             return undefined;
         if (!Object.values(merge).every(isNumber))
             return undefined;
@@ -75,6 +78,9 @@ function cleanMetadataInput(input) {
         return undefined;
     if (meta !== undefined && bytes !== undefined)
         return undefined;
+    // XXX(jeff): This is not technically returning a valid MetadataBlock. It's
+    // returning a union of all possible sub-types, which is a valid type, but not
+    // a valid value.
     return {
         id,
         bytes,
@@ -82,32 +88,31 @@ function cleanMetadataInput(input) {
         actors,
         //    follows,
         merge,
-        deleted
+        deleted,
     };
 }
 exports.cleanMetadataInput = cleanMetadataInput;
 function filterMetadataInputs(input) {
     const metadata = [];
-    input.forEach(i => {
+    input.forEach((i) => {
         const cleaned = cleanMetadataInput(i);
         if (cleaned) {
             metadata.push(cleaned);
         }
         else {
-            log("WARNING: Metadata Input Invalid - ignoring", i);
+            log('WARNING: Metadata Input Invalid - ignoring', i);
         }
     });
     return metadata;
 }
 exports.filterMetadataInputs = filterMetadataInputs;
-// Can I use stuff like this to let ID's be a type other than string?
-//   export function isActorId(id: string) id is ActorId { }
-//   export type ActorId = string & { _: "ActorId" }
-//   export type DocId = string & { _: "ActorId", _2: "DocId" }
-// are try catchs as expensive as I remember?  Not sure - I wrote this logic twice
-function isNumber(n) {
-    return typeof n === "number";
+function isFileBlock(block) {
+    return 'mimeType' in block && typeof block.mimeType === 'string' && block.bytes != undefined;
 }
+function isNumber(n) {
+    return typeof n === 'number';
+}
+// are try catchs as expensive as I remember?  Not sure - I wrote this logic twice
 function isValidID(id) {
     try {
         const buffer = Base58.decode(id);
@@ -127,23 +132,23 @@ function validateID(id) {
     return buffer;
 }
 function validateURL(urlString) {
-    if (urlString.indexOf(":") === -1) {
+    if (!Misc_1.isBaseUrl(urlString)) {
         //    disabled this warning because internal APIs are currently inconsistent in their use
         //    so it's throwing warnings just, like, all the time in normal usage.
         //    console.log("WARNING: `${id}` is deprecated - now use `hypermerge:/${id}`")
         //    throw new Error("WARNING: open(id) is depricated - now use open(`hypermerge:/${id}`)")
         const id = urlString;
         const buffer = validateID(id);
-        return { type: "hypermerge", buffer, id };
+        return { type: 'hypermerge', buffer, id };
     }
     const url = URL.parse(urlString);
     if (!url.path || !url.protocol) {
-        throw new Error("invalid URL: " + urlString);
+        throw new Error('invalid URL: ' + urlString);
     }
     const id = url.path.slice(1);
     const type = url.protocol.slice(0, -1);
     const buffer = validateID(id);
-    if (type !== "hypermerge" && type != "hyperfile") {
+    if (type !== 'hypermerge' && type != 'hyperfile') {
         throw new Error(`protocol must be hypermerge or hyperfile (${type}) (${urlString})`);
     }
     return { id, buffer, type };
@@ -151,16 +156,16 @@ function validateURL(urlString) {
 exports.validateURL = validateURL;
 function validateFileURL(urlString) {
     const info = validateURL(urlString);
-    if (info.type != "hyperfile") {
-        throw new Error("invalid URL - protocol must be hyperfile");
+    if (info.type != 'hyperfile') {
+        throw new Error('invalid URL - protocol must be hyperfile');
     }
     return info.id;
 }
 exports.validateFileURL = validateFileURL;
 function validateDocURL(urlString) {
     const info = validateURL(urlString);
-    if (info.type != "hypermerge") {
-        throw new Error("invalid URL - protocol must be hypermerge");
+    if (info.type != 'hypermerge') {
+        throw new Error('invalid URL - protocol must be hypermerge');
     }
     return info.id;
 }
@@ -174,7 +179,7 @@ class Metadata {
         this.files = new Map();
         this.mimeTypes = new Map();
         this.merges = new Map();
-        this.readyQ = new Queue_1.default(); // FIXME - need a better api for accessing metadata
+        this.readyQ = new Queue_1.default('repo:metadata:readyQ'); // FIXME - need a better api for accessing metadata
         this._clocks = {};
         this._docsWith = new Map();
         this.writable = new Map();
@@ -204,11 +209,11 @@ class Metadata {
             this.replay = [];
             this._clocks = {};
             this._docsWith = new Map();
-            this.readyQ.subscribe(f => f());
+            this.readyQ.subscribe((f) => f());
         };
         // write through caching strategy
         this.writeThrough = (block) => {
-            log("writeThrough", block);
+            log('writeThrough', block);
             if (!this.ready)
                 this.replay.push(block);
             const dirty = this.addBlock(-1, block);
@@ -221,24 +226,24 @@ class Metadata {
         this.append = (block) => {
             this.ledger.append(JsonBuffer.bufferify(block), (err) => {
                 if (err)
-                    console.log("APPEND ERROR", err);
+                    console.log('APPEND ERROR', err);
             });
         };
-        this.ledger = hypercore_1.hypercore(storageFn("ledger"), {});
+        this.ledger = hypercore_1.hypercore(storageFn('ledger'), {});
         this.join = joinFn;
         this.leave = leaveFn;
         this.id = this.ledger.id;
-        log("LEDGER READY (1)");
+        log('LEDGER READY (1)');
         this.ledger.ready(() => {
-            log("LEDGER READY (2)", this.ledger.length);
-            hypercore_1.readFeed("ledger", this.ledger, this.loadLedger);
+            log('LEDGER READY (2)', this.ledger.length);
+            hypercore_1.readFeed('ledger', this.ledger, this.loadLedger);
         });
     }
     hasBlock(block) {
         return false;
     }
     batchAdd(blocks) {
-        log("Batch add", blocks.length);
+        log('Batch add', blocks.length);
         blocks.forEach((block, i) => this.addBlock(i, block));
     }
     addBlock(idx, block) {
@@ -248,38 +253,42 @@ class Metadata {
         let changedFiles = false;
         let changedMerge = false;
         let id = block.id;
-        if (block.actors !== undefined) {
-            changedActors = this.primaryActors.merge(id, block.actors);
+        if ('actors' in block && block.actors !== undefined) {
+            changedActors = this.primaryActors.merge(block.id, block.actors);
         }
         //    if (block.follows !== undefined) {
         //      changedFollow = this.follows.merge(id, block.follows);
         //    }
-        if (block.bytes !== undefined && block.mimeType !== undefined) {
-            if (this.files.get(id) !== block.bytes || this.mimeTypes.get(id) !== block.mimeType) {
+        if (isFileBlock(block)) {
+            if (this.files.get(block.id) !== block.bytes ||
+                this.mimeTypes.get(block.id) !== block.mimeType) {
                 changedFiles = true;
-                this.files.set(id, block.bytes);
-                this.mimeTypes.set(id, block.mimeType);
+                this.files.set(block.id, block.bytes);
+                this.mimeTypes.set(block.id, block.mimeType);
             }
         }
-        if (block.merge !== undefined) {
-            const oldClock = this.merges.get(id) || {};
+        if ('merge' in block && block.merge !== undefined) {
+            const oldClock = this.merges.get(block.id) || {};
             const newClock = Clock_1.union(oldClock, block.merge);
             changedMerge = !Clock_1.equivalent(newClock, oldClock);
             if (changedMerge) {
-                this.merges.set(id, newClock);
+                this.merges.set(block.id, newClock);
             }
         }
         // shit - bug - rethink the whole remote people deleted something
         // i dont care of they deleted it
-        if (block.deleted === true) {
-            if (this.docs.has(id)) {
-                this.docs.delete(id);
+        if ('deleted' in block && block.deleted) {
+            if (this.docs.has(block.id)) {
+                this.docs.delete(block.id);
                 changedDocs = true;
             }
         }
         else {
-            if (!this.docs.has(id)) {
-                this.docs.add(id);
+            // XXX(jeff): I don't think this logic can be correct. This branch will be run
+            // for FileBlocks. That seems bad, but I'm not sure how to fix it.
+            const brokenId = block.id; // HACK: This type not matching is part of why I think it's incorrect
+            if (!this.docs.has(brokenId)) {
+                this.docs.add(brokenId);
                 changedDocs = true;
             }
         }
@@ -312,20 +321,20 @@ class Metadata {
         return Object.keys(this.clock(id));
     }
     /*
-      private actorsSeen(id: string, acc: string[], seen: Set<string>): string[] {
-        const primaryActors = this.primaryActors.get(id)!;
-        const mergeActors = Object.keys(this.merges.get(id) || {});
-        acc.push(...primaryActors);
-        acc.push(...mergeActors);
-        seen.add(id);
-        this.follows.get(id).forEach(follow => {
-          if (!seen.has(follow)) {
-            this.actorsSeen(follow, acc, seen);
-          }
-        });
-        return acc;
-      }
-    */
+    private actorsSeen(id: string, acc: string[], seen: Set<string>): string[] {
+      const primaryActors = this.primaryActors.get(id)!;
+      const mergeActors = Object.keys(this.merges.get(id) || {});
+      acc.push(...primaryActors);
+      acc.push(...mergeActors);
+      seen.add(id);
+      this.follows.get(id).forEach(follow => {
+        if (!seen.has(follow)) {
+          this.actorsSeen(follow, acc, seen);
+        }
+      });
+      return acc;
+    }
+  */
     clockAt(id, actor) {
         return this.clock(id)[actor] || 0;
     }
@@ -336,7 +345,7 @@ class Metadata {
         const actors = this.primaryActors.get(id);
         const merges = this.merges.get(id);
         if (actors)
-            actors.forEach(actor => clock[actor] = Infinity);
+            actors.forEach((actor) => (clock[actor] = Infinity));
         if (merges)
             Clock_1.addTo(clock, merges);
         this._clocks[id] = clock;
@@ -346,14 +355,14 @@ class Metadata {
         // this is probably unnecessary
         const key = `${actor}-${seq}`;
         if (!this._docsWith.has(key)) {
-            const docs = [...this.docs].filter(id => this.has(id, actor, seq));
+            const docs = [...this.docs].filter((id) => this.has(id, actor, seq));
             this._docsWith.set(key, docs);
         }
         return this._docsWith.get(key);
     }
     has(id, actor, seq) {
         if (!(seq >= 1))
-            throw new Error("seq number must be 1 or greater");
+            throw new Error('seq number must be 1 or greater');
         return this.clockAt(id, actor) >= seq;
     }
     merge(id, merge) {
@@ -369,7 +378,7 @@ class Metadata {
         this.addActors(id, [actorId]);
     }
     addBlocks(blocks) {
-        blocks.forEach(block => {
+        blocks.forEach((block) => {
             this.writeThrough(block);
         });
     }
@@ -397,7 +406,7 @@ class Metadata {
         this.readyQ.push(() => {
             if (this.isDoc(id)) {
                 cb({
-                    type: "Document",
+                    type: 'Document',
                     clock: {},
                     history: 0,
                     actor: this.localActorId(id),
@@ -408,9 +417,9 @@ class Metadata {
                 const bytes = this.files.get(id);
                 const mimeType = this.mimeTypes.get(id);
                 cb({
-                    type: "File",
+                    type: 'File',
                     bytes,
-                    mimeType
+                    mimeType,
                 });
             }
             else {
@@ -423,11 +432,11 @@ class Metadata {
             id,
             actors: [...this.primaryActors.get(id)],
             //      follows: [...this.follows.get(id)],
-            merge: this.merges.get(id) || {}
+            merge: this.merges.get(id) || {},
         };
     }
     forActor(actor) {
-        return this.docsWith(actor).map(id => this.forDoc(id));
+        return this.docsWith(actor).map((id) => this.forDoc(id));
     }
 }
 exports.Metadata = Metadata;

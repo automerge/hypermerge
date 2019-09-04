@@ -22,7 +22,7 @@ class MapSet {
     }
     merge(key, vals) {
         const current = this.get(key);
-        const change = vals.some(val => !current.has(val));
+        const change = vals.some((val) => !current.has(val));
         if (change) {
             this.map.set(key, new Set([...current, ...vals]));
         }

@@ -1,39 +1,50 @@
 /// <reference types="node" />
-import Queue from "./Queue";
-import { Clock } from "./Clock";
+import Queue from './Queue';
+import { Clock } from './Clock';
+import { DocUrl, DocId, ActorId, BaseUrl, BaseId, HyperfileId, HyperfileUrl } from './Misc';
 export interface NewMetadata {
-    type: "NewMetadata";
+    type: 'NewMetadata';
     input: Uint8Array;
 }
 export declare function validateRemoteMetadata(message: RemoteMetadata): RemoteMetadata;
 export declare function cleanMetadataInput(input: any): MetadataBlock | undefined;
 export declare function filterMetadataInputs(input: any[]): MetadataBlock[];
 export interface UrlInfo {
-    id: string;
+    id: BaseId;
     buffer: Buffer;
     type: string;
 }
-export interface MetadataBlock {
-    id: string;
-    bytes?: number;
-    mimeType?: string;
-    actors?: string[];
-    merge?: Clock;
-    deleted?: boolean;
+interface ActorsBlock {
+    id: DocId;
+    actors: ActorId[];
 }
-export declare function isValidID(id: any): boolean;
-export declare function validateURL(urlString: string): UrlInfo;
-export declare function validateFileURL(urlString: string): string;
-export declare function validateDocURL(urlString: string): string;
+interface MergeBlock {
+    id: DocId;
+    merge: Clock;
+}
+interface DeletedBlock {
+    id: DocId;
+    deleted: true;
+}
+interface FileBlock {
+    id: HyperfileId;
+    bytes: number;
+    mimeType: string;
+}
+export declare type MetadataBlock = FileBlock | ActorsBlock | MergeBlock | DeletedBlock;
+export declare function isValidID(id: BaseId): id is BaseId;
+export declare function validateURL(urlString: BaseUrl | BaseId): UrlInfo;
+export declare function validateFileURL(urlString: HyperfileUrl | HyperfileId): HyperfileId;
+export declare function validateDocURL(urlString: DocUrl | DocId): DocId;
 export interface RemoteMetadata {
-    type: "RemoteMetadata";
+    type: 'RemoteMetadata';
     clocks: {
-        [id: string]: Clock;
+        [docId: string]: Clock;
     };
     blocks: MetadataBlock[];
 }
 export declare class Metadata {
-    docs: Set<string>;
+    docs: Set<DocId>;
     private primaryActors;
     private files;
     private mimeTypes;
@@ -48,7 +59,7 @@ export declare class Metadata {
     id: Buffer;
     private join;
     private leave;
-    constructor(storageFn: Function, joinFn: (id: string) => void, leaveFn: (id: string) => void);
+    constructor(storageFn: Function, joinFn: (id: ActorId) => void, leaveFn: (id: ActorId) => void);
     private loadLedger;
     private hasBlock;
     private batchAdd;
@@ -56,38 +67,39 @@ export declare class Metadata {
     private append;
     private addBlock;
     allActors(): Set<string>;
-    setWritable(actor: string, writable: boolean): void;
-    localActorId(id: string): string | undefined;
-    actorsAsync(id: string): Promise<string[]>;
-    actors(id: string): string[];
-    clockAt(id: string, actor: string): number;
-    clock(id: string): Clock;
-    docsWith(actor: string, seq?: number): string[];
-    has(id: string, actor: string, seq: number): boolean;
-    merge(id: string, merge: Clock): void;
-    addFile(id: string, bytes: number, mimeType: string): void;
-    delete(id: string): void;
-    addActor(id: string, actorId: string): void;
+    setWritable(actor: ActorId, writable: boolean): void;
+    localActorId(id: DocId): ActorId | undefined;
+    actorsAsync(id: DocId): Promise<ActorId[]>;
+    actors(id: DocId): ActorId[];
+    clockAt(id: DocId, actor: ActorId): number;
+    clock(id: DocId): Clock;
+    docsWith(actor: ActorId, seq?: number): DocId[];
+    has(id: DocId, actor: ActorId, seq: number): boolean;
+    merge(id: DocId, merge: Clock): void;
+    addFile(id: HyperfileId, bytes: number, mimeType: string): void;
+    delete(id: DocId): void;
+    addActor(id: DocId, actorId: ActorId): void;
     addBlocks(blocks: MetadataBlock[]): void;
-    addActors(id: string, actors: string[]): void;
-    isFile(id: string): boolean;
-    isKnown(id: string): boolean;
-    isDoc(id: string): boolean;
+    addActors(id: DocId, actors: ActorId[]): void;
+    isFile(id: HyperfileId | DocId): id is HyperfileId;
+    isKnown(id: DocId | HyperfileId): boolean;
+    isDoc(id: DocId | HyperfileId): id is DocId;
     bench(msg: string, f: () => void): void;
-    publicMetadata(id: string, cb: (meta: PublicMetadata | null) => void): void;
-    forDoc(id: string): MetadataBlock;
-    forActor(actor: string): MetadataBlock[];
+    publicMetadata(id: DocId | HyperfileId, cb: (meta: PublicMetadata | null) => void): void;
+    forDoc(id: DocId): ActorsBlock & MergeBlock;
+    forActor(actor: ActorId): MetadataBlock[];
 }
 export declare type PublicMetadata = PublicDocMetadata | PublicFileMetadata;
 export declare type PublicDocMetadata = {
-    type: "Document";
+    type: 'Document';
     clock: Clock;
     history: number;
-    actor: string | undefined;
-    actors: string[];
+    actor: ActorId | undefined;
+    actors: ActorId[];
 };
 export declare type PublicFileMetadata = {
-    type: "File";
+    type: 'File';
     bytes: number;
     mimeType: string;
 };
+export {};
