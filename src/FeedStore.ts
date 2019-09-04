@@ -1,4 +1,4 @@
-import { Readable } from 'stream'
+import { Readable, Writable } from 'stream'
 import { KeyPair, decodePair, decode } from './Keys'
 import * as Base58 from 'bs58'
 import { hypercore, Feed, discoveryKey } from './hypercore'
@@ -57,6 +57,11 @@ export default class FeedStore {
     })
   }
 
+  async appendStream(feedId: FeedId): Promise<Writable> {
+    const feed = await this.open(feedId)
+    return feed.createWriteStream()
+  }
+
   async read(feedId: FeedId, seq: number): Promise<any> {
     const feed = await this.open(feedId)
     return new Promise((res, rej) => {
@@ -67,7 +72,7 @@ export default class FeedStore {
     })
   }
 
-  async stream(feedId: FeedId, start = 0): Promise<Readable> {
+  async stream(feedId: FeedId, start = 0, end = -1): Promise<Readable> {
     const feed = await this.open(feedId)
     return feed.createReadStream({ start })
   }

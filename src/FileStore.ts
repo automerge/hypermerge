@@ -49,6 +49,31 @@ export default class FileStore {
     return header
   }
 
+  async writeStream(mimeType: string, length: number, stream: Readable): Promise<Header> {
+    const keys = Keys.create()
+    const feedId = await this.store.create(keys)
+    const header: Header = {
+      type: 'File',
+      url: toHyperfileUrl(feedId),
+      bytes: length,
+      mimeType,
+      blockSize: stream.readableHighWaterMark,
+    }
+
+    await this.store.append(feedId, JsonBuffer.bufferify(header))
+    const appendStream = await this.store.appendStream(feedId)
+
+    return new Promise<Header>((res, rej) => {
+      stream
+        .pipe(appendStream)
+        .on('error', (err) => rej(err))
+        .on('finish', () => {
+          this.writeLog.push(header)
+          res(header)
+        })
+    })
+  }
+
   async stream(url: HyperfileUrl): Promise<Readable> {
     const feedId = toFeedId(url)
     return this.store.stream(feedId, 1) // First block is Header
