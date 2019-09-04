@@ -110,13 +110,13 @@ export class RepoFrontend {
     })
   }
 
-  writeFile = <T>(data: Uint8Array, mimeType: string): HyperfileUrl => {
+  writeFile = <T>(data: Uint8Array, inputMimeType: string): HyperfileUrl => {
     const { publicKey, secretKey } = Keys.create()
     const hyperfileId = publicKey as HyperfileId
 
-    if (mime.extensions[mimeType] === undefined) {
-      throw new Error(`invalid mime type ${mimeType}`)
-    }
+    // "upgrade" whatever junk arrives into something like a real mime-type
+    const mimeType = mime.contentType(inputMimeType) || 'application/octet-stream'
+
     this.toBackend.push(data)
     this.toBackend.push({ type: 'WriteFile', publicKey, secretKey, mimeType })
     return toHyperfileUrl(hyperfileId)
