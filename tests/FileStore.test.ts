@@ -5,37 +5,28 @@ import { expectDocs } from './misc'
 import FileStore from '../src/FileStore'
 import FeedStore from '../src/FeedStore'
 import { Readable } from 'stream'
+import { streamToBuffer, bufferToStream } from '../src/Misc'
 
 const ram: any = require('random-access-memory')
+const storageFn = (storage: any) => (path: string) => (name: string) =>
+  storage(`test/${path}/${name}`)
 
 test('FileStore', (t) => {
-  t.plan(1)
-
-  const feeds = new FeedStore(ram)
+  const feeds = new FeedStore(storageFn(ram))
   const files = new FileStore(feeds)
 
   t.test('appendStream', async (t) => {
-    const stream = fakeReadable(1024)
-    const { url } = await files.writeStream('application/octet-stream', 1024, stream)
+    t.plan(1)
+
+    const testBuffer = Buffer.from('coolcool')
+    const testStream = bufferToStream(testBuffer)
+    const { url } = await files.writeStream(
+      'application/octet-stream',
+      testBuffer.length,
+      testStream
+    )
     const output = await files.stream(url)
+    const outputBuffer = await streamToBuffer(output)
+    t.equal(testBuffer.toString(), outputBuffer.toString())
   })
 })
-
-function fakeReadable(length: number) {
-  const buffer = Buffer.alloc(length, 1)
-  const stream = new Readable()
-  stream.push(buffer)
-  stream.push(buffer)
-  stream.push(null)
-  return stream
-}
-
-function streamToBuffer(stream: Readable): Promise<Buffer> {
-  return new Promise((res, rej) => {
-    const buffers: Buffer[] = []
-    stream
-      .on('data', (data) => buffers.push(data))
-      .on('error', (err) => rej(err))
-      .on('end', () => res(Buffer.concat(buffers)))
-  })
-}
