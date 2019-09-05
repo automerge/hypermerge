@@ -1,8 +1,7 @@
 import { Server, createServer, IncomingMessage, ServerResponse, IncomingHttpHeaders } from 'http'
 import { parse } from 'url'
-import { Readable } from 'stream'
 import FileStore, { isHyperfileUrl } from './FileStore'
-import { HyperfileUrl, streamToBuffer } from './Misc'
+import { HyperfileUrl } from './Misc'
 
 export default class FileServer {
   private store: FileStore
@@ -31,7 +30,14 @@ export default class FileServer {
 
     switch (url) {
       case 'upload':
+        if (req.method !== 'POST') {
+          res.writeHead(500, 'Must be POST')
+          res.end()
+          return
+        }
+
         return this.upload(req, res)
+
       default:
         if (isHyperfileUrl(url)) {
           return this.stream(url, res)
