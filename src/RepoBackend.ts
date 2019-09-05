@@ -25,14 +25,8 @@ import * as Keys from './Keys'
 import FeedStore from './FeedStore'
 import FileStore from './FileStore'
 import FileServer from './FileServer'
-import Network from './Network'
+import Network, { Swarm } from './Network'
 import { encodePeerId } from './NetworkPeer'
-
-interface Swarm {
-  join(dk: Buffer): void
-  leave(dk: Buffer): void
-  on: Function
-}
 
 Debug.formatters.b = Base58.encode
 
@@ -435,6 +429,10 @@ export class RepoBackend {
         })
       }
     })
+  }
+
+  setSwarm = (swarm: Swarm) => {
+    return this.network.setSwarm(swarm)
   }
 
   stream = (opts: any): any => {

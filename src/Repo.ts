@@ -6,12 +6,7 @@ import { PublicMetadata } from './Metadata'
 import { Clock } from './Clock'
 import { DocUrl, HyperfileUrl } from './Misc'
 import FileServerClient from './FileServerClient'
-
-interface Swarm {
-  join(dk: Buffer): void
-  leave(dk: Buffer): void
-  on: Function
-}
+import { Swarm } from './Network'
 
 interface RepoOptions extends Options {
   serverPath: string
@@ -26,7 +21,7 @@ export class Repo {
   open: <T>(id: DocUrl) => Handle<T>
   destroy: (id: DocUrl) => void
   //follow: (id: string, target: string) => void;
-  replicate: (swarm: Swarm) => void
+  setSwarm: (swarm: Swarm) => void
 
   message: (url: DocUrl, message: any) => void
 
@@ -62,7 +57,7 @@ export class Repo {
     this.files = this.front.files
     this.watch = this.front.watch
     this.merge = this.front.merge
-    this.replicate = this.back.replicate
+    this.setSwarm = this.back.setSwarm
     this.materialize = this.front.materialize
   }
 }

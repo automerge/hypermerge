@@ -14,8 +14,8 @@ test('Writing and reading files works', async (t) => {
   })
   const pseudoFile = Buffer.from('coolcool')
   const size = pseudoFile.length
-  const url = await repoA.writeFile(bufferToStream(pseudoFile), size, 'application/octet-stream')
-  const [readable, mimeType] = await repoA.readFile(url)
+  const url = await repoA.files.write(bufferToStream(pseudoFile), size, 'application/octet-stream')
+  const [readable, mimeType] = await repoA.files.read(url)
   const buffer = await streamToBuffer(readable)
   t.equal(pseudoFile.toString(), buffer.toString())
   repoA.close()
@@ -45,8 +45,8 @@ test('Share a doc between two repos', (t) => {
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  repoA.replicate(clientA)
-  repoB.replicate(clientB)
+  repoA.setSwarm(clientA)
+  repoB.setSwarm(clientB)
 
   // connect the repos
 
@@ -102,8 +102,8 @@ test("Three way docs don't load until all canges are in", (t) => {
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  repoA.replicate(clientA)
-  repoB.replicate(clientB)
+  repoA.setSwarm(clientA)
+  repoB.setSwarm(clientB)
 
   // connect repos A and B
 
@@ -128,7 +128,7 @@ test("Three way docs don't load until all canges are in", (t) => {
         { a: 1, b: 2 },
         "repoB gets repoA's change and its local changes at once",
         () => {
-          repoC.replicate(clientC)
+          repoC.setSwarm(clientC)
           repoC.doc(id, (doc) => {
             t.deepEqual(doc, { a: 1, b: 2 })
           })
@@ -163,8 +163,8 @@ test('Message about a doc between two repos', (t) => {
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  repoA.replicate(clientA)
-  repoB.replicate(clientB)
+  repoA.setSwarm(clientA)
+  repoB.setSwarm(clientB)
 
   // connect the repos
 

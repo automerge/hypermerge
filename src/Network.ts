@@ -6,7 +6,7 @@ import Peer, { PeerId, decodePeerId } from './NetworkPeer'
 import * as DocumentBroadcast from './DocumentBroadcast'
 import FeedStore, { FeedId, discoveryId } from './FeedStore'
 
-interface Swarm {
+export interface Swarm {
   join(dk: Buffer): void
   leave(dk: Buffer): void
   on: Function
@@ -15,7 +15,7 @@ interface Swarm {
     removeAllListeners(): void
     close(): void
   }
-  peers: any[]
+  peers: Map<any, any>
 }
 
 export default class Network {
