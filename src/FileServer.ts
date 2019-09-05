@@ -20,8 +20,14 @@ export default class FileServer {
     return this.http.listening
   }
 
-  close() {
-    this.http.close()
+  close(): Promise<void> {
+    return new Promise((res) => {
+      if (this.isListening()) {
+        this.http.close(res)
+      } else {
+        res()
+      }
+    })
   }
 
   private onConnection = (req: IncomingMessage, res: ServerResponse) => {

@@ -15,6 +15,16 @@ interface FeedStorageFn {
   (feedId: FeedId): (filename: string) => unknown
 }
 
+/**
+ * Note:
+ * FeedId should really be the discovery key. The public key should be
+ * PublicId. Reading and writing to existing hypercores does not require the
+ * public key; it's saved to disk. In a future refactor, we plan to remove the
+ * reliance on public keys, and instead only provide the public key when
+ * creating a new hypercore, or opening an unknown hypercore. The ledger keeps
+ * track of which hypercores have already been opened.
+ */
+
 export default class FeedStore {
   private storage: FeedStorageFn
   private feeds: Map<FeedId, Feed<Block>> = new Map()
@@ -91,8 +101,8 @@ export default class FeedStore {
   }
 }
 
-export function discoveryId(feedId: FeedId): DiscoveryId {
-  const decoded = Base58.decode(feedId)
+export function discoveryId(id: FeedId): DiscoveryId {
+  const decoded = Base58.decode(id)
   return Base58.encode(discoveryKey(decoded)) as DiscoveryId
 }
 

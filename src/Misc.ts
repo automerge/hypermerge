@@ -1,9 +1,10 @@
 import * as Base58 from 'bs58'
 import { Readable } from 'stream'
+import { FeedId } from './FeedStore'
 
 export type BaseId = string & { id: true }
 export type DocId = BaseId & { docId: true }
-export type ActorId = BaseId & { actorId: true }
+export type ActorId = FeedId & { actorId: true }
 export type HyperfileId = BaseId & { hyperfileId: true }
 export type DiscoveryId = BaseId & { discoveryId: true }
 

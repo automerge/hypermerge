@@ -11,8 +11,6 @@ import * as Keys from './Keys'
 import Debug from 'debug'
 import { PublicMetadata, validateDocURL, validateURL } from './Metadata'
 import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId } from './Misc'
-import { Readable } from 'stream'
-import http from 'http'
 import FileServerClient from './FileServerClient'
 
 Debug.formatters.b = Base58.encode

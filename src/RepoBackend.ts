@@ -4,16 +4,9 @@ import { Actor, ActorMsg } from './Actor'
 import { strs2clock, clockDebug, clockActorIds } from './Clock'
 import * as Base58 from 'bs58'
 import * as crypto from 'hypercore/lib/crypto'
-import { discoveryKey } from './hypercore'
 import * as Backend from 'automerge/backend'
 import { Clock, Change } from 'automerge/backend'
-import {
-  ToBackendQueryMsg,
-  ToBackendRepoMsg,
-  ToFrontendReplyMsg,
-  ToFrontendRepoMsg,
-  DocumentMsg,
-} from './RepoMsg'
+import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg, DocumentMsg } from './RepoMsg'
 import * as DocBackend from './DocBackend'
 import {
   notEmpty,
@@ -30,8 +23,10 @@ import Debug from 'debug'
 import * as DocumentBroadcast from './DocumentBroadcast'
 import * as Keys from './Keys'
 import FeedStore from './FeedStore'
-import FileStore, { Header } from './FileStore'
+import FileStore from './FileStore'
 import FileServer from './FileServer'
+import Network from './Network'
+import { encodePeerId } from './NetworkPeer'
 
 interface Swarm {
   join(dk: Buffer): void
@@ -40,8 +35,6 @@ interface Swarm {
 }
 
 Debug.formatters.b = Base58.encode
-
-const HypercoreProtocol: Function = require('hypercore-protocol')
 
 const log = Debug('repo:backend')
 
@@ -61,16 +54,15 @@ export class RepoBackend {
   storage: Function
   store: FeedStore
   files: FileStore
-  joined: Set<DiscoveryId> = new Set()
   actors: Map<ActorId, Actor> = new Map()
   actorsDk: Map<DiscoveryId, Actor> = new Map()
   docs: Map<DocId, DocBackend.DocBackend> = new Map()
   meta: Metadata
   opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
-  swarm?: Swarm
   id: Buffer
   private fileServer: FileServer
+  private network: Network
 
   constructor(opts: Options) {
     this.opts = opts
@@ -85,6 +77,7 @@ export class RepoBackend {
 
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
     this.id = this.meta.id
+    this.network = new Network(encodePeerId(this.id), this.store)
   }
 
   startFileServer(path: string) {
@@ -93,7 +86,7 @@ export class RepoBackend {
     this.fileServer.listen(path)
     this.toFrontend.push({
       type: 'FileServerReadyMsg',
-      path: path,
+      path,
     })
   }
 
@@ -179,30 +172,7 @@ export class RepoBackend {
     this.actors.forEach((actor) => actor.close())
     this.actors.clear()
 
-    const swarm: any = this.swarm // FIXME - any is bad
-    if (swarm) {
-      try {
-        swarm.discovery.removeAllListeners()
-        swarm.discovery.close()
-        swarm.peers.forEach((p: any) => p.connections.forEach((con: any) => con.destroy()))
-        swarm.removeAllListeners()
-      } catch (error) {}
-    }
-
-    if (this.fileServer.isListening()) {
-      this.fileServer.close()
-    }
-  }
-
-  replicate = (swarm: Swarm) => {
-    if (this.swarm) {
-      throw new Error('replicate called while already swarming')
-    }
-    this.swarm = swarm
-    for (let dk of this.joined) {
-      log('swarm.join')
-      this.swarm.join(Base58.decode(dk))
-    }
+    return Promise.all([this.network.close(), this.fileServer.close()])
   }
 
   private async allReadyActors(docId: DocId): Promise<Actor[]> {
@@ -231,23 +201,11 @@ export class RepoBackend {
   }
 
   join = (actorId: ActorId) => {
-    const dkBuffer = discoveryKey(Base58.decode(actorId))
-    const dk = encodeDiscoveryId(dkBuffer)
-    if (this.swarm && !this.joined.has(dk)) {
-      log('swarm.join', ID(actorId), ID(dk))
-      this.swarm.join(dkBuffer)
-    }
-    this.joined.add(dk)
+    this.network.join(actorId)
   }
 
   leave = (actorId: ActorId) => {
-    const dkBuffer = discoveryKey(Base58.decode(actorId))
-    const dk = encodeDiscoveryId(dkBuffer)
-    if (this.swarm && this.joined.has(dk)) {
-      log('leave', ID(actorId), ID(dk))
-      this.swarm.leave(dkBuffer)
-    }
-    this.joined.delete(dk)
+    this.network.leave(actorId)
   }
 
   private getReadyActor = (actorId: ActorId): Promise<Actor> => {
@@ -480,31 +438,7 @@ export class RepoBackend {
   }
 
   stream = (opts: any): any => {
-    const stream = HypercoreProtocol({
-      live: true,
-      id: this.id,
-      encrypt: false,
-      timeout: 10000,
-      extensions: DocumentBroadcast.SUPPORTED_EXTENSIONS,
-    })
-
-    let add = (dk: Buffer) => {
-      const actor = this.actorsDk.get(encodeDiscoveryId(dk))
-      if (actor) {
-        log('replicate feed!', ID(Base58.encode(dk)))
-        actor.feed.replicate({
-          stream,
-          live: true,
-        })
-      }
-    }
-
-    stream.on('feed', (dk: Buffer) => add(dk))
-
-    const dk = opts.channel || opts.discoveryKey
-    if (dk) add(dk)
-
-    return stream
+    return this.network.onConnect(opts)
   }
 
   subscribe = (subscriber: (message: ToFrontendRepoMsg) => void) => {

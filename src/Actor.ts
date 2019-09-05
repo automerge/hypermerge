@@ -76,7 +76,6 @@ export class Actor {
   private q: Queue<(actor: Actor) => void>
   private notify: (msg: ActorMsg) => void
   private storage: any
-  private pending: Uint8Array[] = []
 
   constructor(config: ActorConfig) {
     const { publicKey, secretKey } = config.keys
