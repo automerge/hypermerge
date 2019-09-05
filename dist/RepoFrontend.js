@@ -168,12 +168,6 @@ class RepoFrontend {
       */
         this.receive = (msg) => {
             switch (msg.type) {
-                case 'ReadFileReply': {
-                    const cbs = this.readFiles.delete(msg.id);
-                    cbs.forEach((cb) => cb(this.file, msg.mimeType));
-                    delete this.file;
-                    break;
-                }
                 case 'PatchMsg': {
                     const doc = this.docs.get(msg.id);
                     if (doc) {
@@ -225,10 +219,13 @@ class RepoFrontend {
                     break;
                 }
                 case 'FileServerReadyMsg':
-                    this.files.serverPath = msg.path;
+                    this.setFileServerPath(msg.path);
                     break;
             }
         };
+    }
+    setFileServerPath(path) {
+        this.files.serverPath = path;
     }
     queryBackend(query, cb) {
         msgid += 1; // global counter

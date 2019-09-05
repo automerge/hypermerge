@@ -54,7 +54,7 @@ export interface RequestMsg {
     id: DocId;
     request: Change;
 }
-export declare type ToFrontendRepoMsg = PatchMsg | ActorBlockDownloadedMsg | ActorIdMsg | ReadyMsg | ReadFileReply | ReplyMsg | DocumentMsg | FileServerReadyMsg;
+export declare type ToFrontendRepoMsg = PatchMsg | ActorBlockDownloadedMsg | ActorIdMsg | ReadyMsg | ReplyMsg | DocumentMsg | FileServerReadyMsg;
 export interface PatchMsg {
     type: 'PatchMsg';
     id: DocId;
@@ -74,11 +74,6 @@ export interface MaterializeReplyMsg {
 export interface MetadataReplyMsg {
     type: 'MetadataReplyMsg';
     metadata: PublicMetadata | null;
-}
-export interface ReadFileReply {
-    type: 'ReadFileReply';
-    id: HyperfileId;
-    mimeType: string;
 }
 export interface ActorIdMsg {
     type: 'ActorIdMsg';
