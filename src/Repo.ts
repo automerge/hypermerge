@@ -5,6 +5,7 @@ import { Handle } from './Handle'
 import { PublicMetadata } from './Metadata'
 import { Clock } from './Clock'
 import { DocUrl, HyperfileUrl } from './Misc'
+import FileServerClient from './FileServerClient'
 
 interface Swarm {
   join(dk: Buffer): void
@@ -34,8 +35,7 @@ export class Repo {
   doc: <T>(url: DocUrl, cb?: (val: T, clock?: Clock) => void) => Promise<T>
   merge: (url: DocUrl, target: DocUrl) => void
   change: <T>(url: DocUrl, fn: (state: T) => void) => void
-  writeFile: (data: Readable, size: number, mimeType: string) => Promise<HyperfileUrl>
-  readFile: (url: HyperfileUrl) => Promise<[Readable, string]>
+  files: FileServerClient
   materialize: <T>(url: DocUrl, seq: number, cb: (val: T) => void) => void
   meta: (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void) => void
   close: () => void
@@ -59,8 +59,7 @@ export class Repo {
     this.fork = this.front.fork
     this.close = this.front.close
     this.change = this.front.change
-    this.readFile = this.front.readFile.bind(this.front)
-    this.writeFile = this.front.writeFile.bind(this.front)
+    this.files = this.front.files
     this.watch = this.front.watch
     this.merge = this.front.merge
     this.replicate = this.back.replicate

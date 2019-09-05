@@ -11,10 +11,9 @@ import * as Keys from './Keys'
 import Debug from 'debug'
 import { PublicMetadata, validateDocURL, validateURL } from './Metadata'
 import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId } from './Misc'
-import { Header } from './FileStore'
 import { Readable } from 'stream'
 import http from 'http'
-import { streamToBuffer } from './Misc'
+import FileServerClient from './FileServerClient'
 
 Debug.formatters.b = Base58.encode
 
@@ -42,8 +41,7 @@ export class RepoFrontend {
   msgcb: Map<number, (patch: Patch) => void> = new Map()
   readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void> = new MapSet()
   file?: Uint8Array
-  private fileServerRequestQueue: Queue<Function> = new Queue()
-  private fileServerPath?: string
+  files = new FileServerClient()
 
   create = <T>(init?: T): DocUrl => {
     const { publicKey, secretKey } = Keys.create()
@@ -103,85 +101,6 @@ export class RepoFrontend {
     this.doc(target, (doc, clock) => {
       const actors = clock2strs(clock!)
       this.toBackend.push({ type: 'MergeMsg', id, actors })
-    })
-  }
-
-  writeFile(data: Readable, size: number, mimeType: string): Promise<HyperfileUrl> {
-    return new Promise((resolve, reject) => {
-      this.fileServerRequestQueue.push(async () => {
-        try {
-          const res = await this._writeFile(data, size, mimeType)
-          resolve(res)
-        } catch (e) {
-          reject(e)
-        }
-      })
-    })
-  }
-
-  private _writeFile(data: Readable, size: number, mimeType: string): Promise<HyperfileUrl> {
-    return new Promise((resolve, reject) => {
-      const options = {
-        socketPath: this.fileServerPath,
-        path: '/upload',
-        method: 'POST',
-        headers: {
-          'Content-Type': mimeType,
-          'Content-Length': size,
-        },
-      }
-      const req = http.request(options, async (response) => {
-        if (response.statusCode !== 200) {
-          reject(
-            new Error(
-              `Server error: ${response.statusCode}, with message: ${response.statusMessage}`
-            )
-          )
-        }
-        const buffer = await streamToBuffer(response)
-        try {
-          const { url } = JSON.parse(buffer.toString()) as Header
-          if (!url) reject(new Error('Invalid response'))
-          resolve(url as HyperfileUrl)
-        } catch (e) {
-          reject(e.message)
-        }
-      })
-      data.pipe(req)
-    })
-  }
-
-  readFile(url: HyperfileUrl): Promise<[Readable, string]> {
-    return new Promise((resolve, reject) => {
-      this.fileServerRequestQueue.push(async () => {
-        try {
-          const res = await this._readFile(url)
-          resolve(res)
-        } catch (e) {
-          reject(e)
-        }
-      })
-    })
-  }
-
-  private _readFile = (url: HyperfileUrl): Promise<[Readable, string]> => {
-    return new Promise((resolve, reject) => {
-      const options = {
-        socketPath: this.fileServerPath,
-        path: '/' + url,
-      }
-      http.get(options, (response) => {
-        if (response.statusCode !== 200) {
-          reject(
-            new Error(`Server error, code=${response.statusCode} message=${response.statusMessage}`)
-          )
-        }
-        const mimeType = response.headers['content-type'] as string
-        if (!mimeType) {
-          reject(new Error('Missing mimetype in FileServer response'))
-        }
-        resolve([response, mimeType])
-      })
     })
   }
 
@@ -363,11 +282,9 @@ export class RepoFrontend {
         }
         break
       }
-      case 'FileServerReadyMsg': {
-        const fileServerPath = msg.path
-        this.fileServerPath = fileServerPath
-        this.fileServerRequestQueue.subscribe((f) => f())
-      }
+      case 'FileServerReadyMsg':
+        this.files.serverPath = msg.path
+        break
     }
   }
 }
