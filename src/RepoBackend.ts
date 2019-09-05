@@ -396,9 +396,7 @@ export class RepoBackend {
   }
 
   private initActor(keys: Keys.KeyBuffer): Actor {
-    const notify = this.actorNotify
-    const storage = this.storageFn
-    const actor = new Actor({ keys, notify, storage })
+    const actor = new Actor({ keys, notify: this.actorNotify, store: this.store })
     this.actors.set(actor.id, actor)
     this.actorsDk.set(actor.dkString, actor)
     return actor

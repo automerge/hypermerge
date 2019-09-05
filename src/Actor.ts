@@ -2,20 +2,16 @@
  * Actors provide an interface over the data replication scheme.
  * For dat, this means the actor abstracts over the hypercore and its peers.
  */
-import { readFeed, hypercore, Feed, Peer, discoveryKey } from './hypercore'
+import { Peer, discoveryKey } from './hypercore'
 import { Change } from 'automerge/backend'
 import { ID, ActorId, DiscoveryId, encodeActorId, encodeDiscoveryId } from './Misc'
 import Queue from './Queue'
 import * as Block from './Block'
 import * as Keys from './Keys'
 import Debug from 'debug'
-
-const fs: any = require('fs')
+import FeedStore, { FeedId, Feed } from './FeedStore'
 
 const log = Debug('repo:actor')
-
-const KB = 1024
-const MB = 1024 * KB
 
 export type ActorMsg =
   | ActorFeedReady
@@ -64,18 +60,17 @@ interface Download {
 interface ActorConfig {
   keys: Keys.KeyBuffer
   notify: (msg: ActorMsg) => void
-  storage: (path: string) => Function
+  store: FeedStore
 }
 
 export class Actor {
   id: ActorId
   dkString: DiscoveryId
   changes: Change[] = []
-  feed: Feed<Uint8Array>
   peers: Map<string, Peer> = new Map()
   private q: Queue<(actor: Actor) => void>
   private notify: (msg: ActorMsg) => void
-  private storage: any
+  private store: FeedStore
 
   constructor(config: ActorConfig) {
     const { publicKey, secretKey } = config.keys
@@ -83,39 +78,48 @@ export class Actor {
     const id = encodeActorId(publicKey)
 
     this.id = id
-    this.storage = config.storage(id)
+    this.store = config.store
     this.notify = config.notify
     this.dkString = encodeDiscoveryId(dk)
-    this.feed = hypercore(this.storage, publicKey, { secretKey })
     this.q = new Queue<(actor: Actor) => void>('repo:actor:Q' + id.slice(0, 4))
-    this.feed.ready(this.onFeedReady)
+
+    this.getOrCreateFeed(Keys.encodePair(config.keys)).then((feed) => {
+      feed.ready(() => this.onFeedReady(feed))
+    })
   }
 
-  onFeedReady = () => {
-    const feed = this.feed
+  getOrCreateFeed = async (keys: Keys.KeyPair) => {
+    let feedId: FeedId
+    if (keys.secretKey) {
+      feedId = await this.store.create(keys as Required<Keys.KeyPair>)
+    } else {
+      feedId = keys.publicKey as FeedId
+    }
+    return this.store.getFeed(feedId)
+  }
 
+  onFeedReady = async (feed: Feed) => {
     this.notify({ type: 'ActorFeedReady', actor: this, writable: feed.writable })
 
     feed.on('peer-remove', this.onPeerRemove)
     feed.on('peer-add', this.onPeerAdd)
     feed.on('download', this.onDownload)
     feed.on('sync', this.onSync)
-
-    readFeed(this.id, feed, this.init) // onReady subscribe begins here
-
     feed.on('close', this.close)
-  }
 
-  init = (rawBlocks: Uint8Array[]) => {
-    log('loaded blocks', ID(this.id), rawBlocks.length)
-    rawBlocks.map(this.parseBlock)
-
-    if (rawBlocks.length > 0) {
-      this.onSync()
-    }
-
-    this.notify({ type: 'ActorInitialized', actor: this })
-    this.q.subscribe((f) => f(this))
+    let hasData = false
+    let sequenceNumber = 0
+    const data = await this.store.stream(this.id)
+    data.on('data', (chunk) => {
+      this.parseBlock(chunk, sequenceNumber)
+      sequenceNumber += 1
+      hasData = true
+    })
+    data.on('end', () => {
+      this.notify({ type: 'ActorInitialized', actor: this })
+      this.q.subscribe((f) => f(this))
+      if (hasData) this.onSync()
+    })
   }
 
   // Note: on Actor ready, not Feed!
@@ -167,32 +171,15 @@ export class Actor {
     log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`)
     this.changes.push(change)
     this.onSync()
-    this.append(Block.pack(change))
-  }
-
-  private append(block: Uint8Array) {
-    this.feed.append(block, (err) => {
-      log('Feed.append', block.length, 'bytes')
-      if (err) {
-        throw new Error('failed to append to feed')
-      }
-    })
+    this.store.append(this.id, Block.pack(change))
   }
 
   close = () => {
-    log('closing feed', this.id)
-    try {
-      this.feed.close((err: Error) => {})
-    } catch (error) {}
+    return this.store.close(this.id)
   }
 
-  destroy = () => {
-    this.feed.close((err: Error) => {
-      const filename = this.storage('').filename
-      if (filename) {
-        const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`
-        fs.rename(filename, newName, (err: Error) => {})
-      }
-    })
+  destroy = async () => {
+    await this.close()
+    this.store.destroy(this.id)
   }
 }

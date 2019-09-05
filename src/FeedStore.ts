@@ -1,9 +1,11 @@
+import fs from 'fs'
 import { Readable, Writable } from 'stream'
 import { KeyPair, decodePair, decode } from './Keys'
 import * as Base58 from 'bs58'
 import { hypercore, Feed, discoveryKey } from './hypercore'
 import { BaseId, DiscoveryId } from './Misc'
 
+export type Feed = Feed<Block>
 export type FeedId = BaseId & { feedId: true }
 export type Block = Uint8Array
 
@@ -75,6 +77,33 @@ export default class FeedStore {
   async stream(feedId: FeedId, start = 0, end = -1): Promise<Readable> {
     const feed = await this.open(feedId)
     return feed.createReadStream({ start })
+  }
+
+  // Note: Do we actually need this?
+  close(feedId: FeedId): Promise<FeedId> {
+    const feed = this.feeds.get(feedId)
+    if (!feed) return Promise.resolve(feedId)
+
+    return new Promise((res, rej) => {
+      feed.close((err) => {
+        if (err) return rej(err)
+        res(feedId)
+      })
+    })
+  }
+
+  destroy(feedId: FeedId): Promise<FeedId> {
+    return new Promise((res, rej) => {
+      const filename = (this.storage(feedId)('') as any).filename
+      console.log(filename)
+      const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`
+      /*
+      fs.rename(filename, newName, (err: Error) => {
+        if (err) return rej(err)
+        res(feedId)
+      })
+      */
+    })
   }
 
   // Junk method used to bridge to Network
