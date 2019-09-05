@@ -11,18 +11,8 @@ export interface ReplicateOptions {
   stream(): void
 }
 
-interface DiscoveryStorageFn {
-  (discoveryId: DiscoveryId): (filename: string) => unknown
-}
-
 interface FeedStorageFn {
   (feedId: FeedId): (filename: string) => unknown
-}
-
-// TODO(jeff): probably shouldn't be in this module
-function discoveryId(feedId: FeedId): DiscoveryId {
-  const decoded = Base58.decode(feedId)
-  return Base58.encode(discoveryKey(decoded)) as DiscoveryId
 }
 
 export default class FeedStore {
@@ -30,7 +20,7 @@ export default class FeedStore {
   private feeds: Map<FeedId, Feed<Block>> = new Map()
 
   constructor(storageFn: FeedStorageFn) {
-    this.storage = storageFn // correct: (feedId: FeedId) => storageFn(discoveryId(feedId))
+    this.storage = storageFn
   }
 
   /**
@@ -99,6 +89,11 @@ export default class FeedStore {
       feed.ready(() => res([feedId, feed]))
     })
   }
+}
+
+export function discoveryId(feedId: FeedId): DiscoveryId {
+  const decoded = Base58.decode(feedId)
+  return Base58.encode(discoveryKey(decoded)) as DiscoveryId
 }
 
 /**
