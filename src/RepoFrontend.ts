@@ -38,8 +38,11 @@ export class RepoFrontend {
   cb: Map<number, (reply: any) => void> = new Map()
   msgcb: Map<number, (patch: Patch) => void> = new Map()
   readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void> = new MapSet()
-  file?: Uint8Array
   files = new FileServerClient()
+
+  setFileServerPath(path: string) {
+    this.files.serverPath = path
+  }
 
   create = <T>(init?: T): DocUrl => {
     const { publicKey, secretKey } = Keys.create()
@@ -224,12 +227,6 @@ export class RepoFrontend {
 
   receive = (msg: ToFrontendRepoMsg) => {
     switch (msg.type) {
-      case 'ReadFileReply': {
-        const cbs = this.readFiles.delete(msg.id)
-        cbs.forEach((cb) => cb(this.file!, msg.mimeType))
-        delete this.file
-        break
-      }
       case 'PatchMsg': {
         const doc = this.docs.get(msg.id)
         if (doc) {
@@ -281,7 +278,7 @@ export class RepoFrontend {
         break
       }
       case 'FileServerReadyMsg':
-        this.files.serverPath = msg.path
+        this.setFileServerPath(msg.path)
         break
     }
   }
