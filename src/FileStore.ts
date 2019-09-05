@@ -7,15 +7,15 @@ import * as JsonBuffer from './JsonBuffer'
 import Queue from './Queue'
 
 const KB = 1024
-const MB = 1024 * KB
-const BLOCK_SIZE = 1 * MB // TODO(jeff): This is likely too large.
+// const MB = 1024 * KB
+const BLOCK_SIZE = 64 * KB
+const FIRST_DATA_BLOCK = 1
 
 export interface Header {
   type: 'File'
   url: HyperfileUrl
   bytes: number
   mimeType: string
-  blockSize: number
 }
 
 export default class FileStore {
@@ -31,25 +31,12 @@ export default class FileStore {
     return this.store.read(toFeedId(url), 0).then(JsonBuffer.parse)
   }
 
-  async write(mimeType: string, data: Buffer): Promise<Header> {
-    const keys = Keys.create()
-    const feedId = await this.store.create(keys)
-    const header: Header = {
-      type: 'File',
-      url: toHyperfileUrl(feedId),
-      bytes: data.length,
-      mimeType,
-      blockSize: BLOCK_SIZE,
-    }
-
-    await this.store.append(feedId, JsonBuffer.bufferify(header))
-
-    await this.store.append(feedId, ...chunkBuffer(data, header.blockSize))
-    this.writeLog.push(header)
-    return header
+  async read(url: HyperfileUrl): Promise<Readable> {
+    const feedId = toFeedId(url)
+    return this.store.stream(feedId, FIRST_DATA_BLOCK)
   }
 
-  async writeStream(mimeType: string, length: number, stream: Readable): Promise<Header> {
+  async write(mimeType: string, length: number, stream: Readable): Promise<Header> {
     const keys = Keys.create()
     const feedId = await this.store.create(keys)
     const header: Header = {
@@ -57,7 +44,6 @@ export default class FileStore {
       url: toHyperfileUrl(feedId),
       bytes: length,
       mimeType,
-      blockSize: stream.readableHighWaterMark,
     }
 
     await this.store.append(feedId, JsonBuffer.bufferify(header))
@@ -72,11 +58,6 @@ export default class FileStore {
           res(header)
         })
     })
-  }
-
-  async stream(url: HyperfileUrl): Promise<Readable> {
-    const feedId = toFeedId(url)
-    return this.store.stream(feedId, 1) // First block is Header
   }
 }
 
