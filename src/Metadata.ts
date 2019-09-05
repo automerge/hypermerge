@@ -135,6 +135,10 @@ function isFileBlock(block: MetadataBlock): block is FileBlock {
   return 'mimeType' in block && typeof block.mimeType === 'string' && block.bytes != undefined
 }
 
+function isDeletedBlock(block: MetadataBlock): block is DeletedBlock {
+  return 'deleted' in block
+}
+
 function isNumber(n: any): n is number {
   return typeof n === 'number'
 }
@@ -264,6 +268,7 @@ export class Metadata {
     this.replay = []
     this._clocks = {}
     this._docsWith = new Map()
+    this.allActors().forEach((actorId: string) => this.join(actorId as ActorId))
     this.readyQ.subscribe((f) => f())
   }
 
@@ -287,6 +292,14 @@ export class Metadata {
       this.append(block)
       this._clocks = {}
       this._docsWith.clear()
+
+      if (isFileBlock(block)) {
+        this.join(block.id as ActorId)
+      } else if (isDeletedBlock(block)) {
+        this.actors(block.id).forEach(this.leave)
+      } else {
+        this.actors(block.id).forEach(this.join)
+      }
     }
   }
 
