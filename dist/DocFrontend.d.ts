@@ -1,16 +1,18 @@
-import { Patch, ChangeFn } from "automerge/frontend";
-import { RepoFrontend, ProgressEvent } from "./RepoFrontend";
-import { Clock } from "./Clock";
-import { Handle } from "./Handle";
+import { Patch, ChangeFn } from 'automerge/frontend';
+import { RepoFrontend, ProgressEvent } from './RepoFrontend';
+import { Clock } from './Clock';
+import { Handle } from './Handle';
+import { ActorId, DocId } from './Misc';
 export declare type Patch = Patch;
 interface Config {
-    docId: string;
-    actorId?: string;
+    docId: DocId;
+    actorId?: ActorId;
 }
 export declare class DocFrontend<T> {
     private docId;
+    private docUrl;
     ready: boolean;
-    actorId?: string;
+    actorId?: ActorId;
     history: number;
     private changeQ;
     private front;
@@ -26,8 +28,8 @@ export declare class DocFrontend<T> {
     fork: () => string;
     change: (fn: ChangeFn<T>) => void;
     release: () => void;
-    setActorId: (actorId: string) => void;
-    init: (synced: boolean, actorId?: string | undefined, patch?: Patch | undefined, history?: number | undefined) => void;
+    setActorId: (actorId: ActorId) => void;
+    init: (synced: boolean, actorId?: ActorId | undefined, patch?: Patch | undefined, history?: number | undefined) => void;
     private enableWrites;
     private updateClockChange;
     private updateClockPatch;

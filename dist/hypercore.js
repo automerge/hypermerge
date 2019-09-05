@@ -3,10 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-let _hypercore = require("hypercore");
+let _hypercore = require('hypercore');
 const debug_1 = __importDefault(require("debug"));
 const Misc_1 = require("./Misc");
-const log = debug_1.default("repo:hypermerge");
+const log = debug_1.default('repo:hypermerge');
 function discoveryKey(buf) {
     return _hypercore.discoveryKey(buf);
 }

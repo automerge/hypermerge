@@ -7,8 +7,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const brotli = require("iltorb");
-const BROTLI = "BR";
+const brotli = require('iltorb');
+const BROTLI = 'BR';
 const BROTLI_MODE_TEXT = 1;
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 function pack(obj) {

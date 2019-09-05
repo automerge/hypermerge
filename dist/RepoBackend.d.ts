@@ -1,17 +1,16 @@
 /// <reference types="node" />
-import Queue from "./Queue";
-import { Metadata } from "./Metadata";
-import { Actor } from "./Actor";
-import { Clock, Change } from "automerge/backend";
-import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from "./RepoMsg";
-import * as DocBackend from "./DocBackend";
-interface Swarm {
-    join(dk: Buffer): void;
-    leave(dk: Buffer): void;
-    on: Function;
-}
+import Queue from './Queue';
+import { Metadata } from './Metadata';
+import { Actor } from './Actor';
+import { Clock, Change } from 'automerge/backend';
+import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg';
+import * as DocBackend from './DocBackend';
+import { ActorId, DiscoveryId, DocId } from './Misc';
+import FeedStore from './FeedStore';
+import FileStore from './FileStore';
+import { Swarm } from './Network';
 export interface FeedData {
-    actorId: string;
+    actorId: ActorId;
     writable: Boolean;
     changes: Change[];
 }
@@ -22,48 +21,47 @@ export interface Options {
 export declare class RepoBackend {
     path?: string;
     storage: Function;
-    joined: Set<string>;
-    actors: Map<string, Actor>;
-    actorsDk: Map<string, Actor>;
-    docs: Map<string, DocBackend.DocBackend>;
+    store: FeedStore;
+    files: FileStore;
+    actors: Map<ActorId, Actor>;
+    actorsDk: Map<DiscoveryId, Actor>;
+    docs: Map<DocId, DocBackend.DocBackend>;
     meta: Metadata;
     opts: Options;
     toFrontend: Queue<ToFrontendRepoMsg>;
-    swarm?: Swarm;
     id: Buffer;
-    file?: Uint8Array;
+    private fileServer;
+    private network;
     constructor(opts: Options);
-    private writeFile;
-    private readFile;
+    startFileServer(path: string): void;
     private create;
     private debug;
     private destroy;
     private open;
-    merge(id: string, clock: Clock): void;
-    close: () => void;
-    replicate: (swarm: Swarm) => void;
+    merge(id: DocId, clock: Clock): void;
+    close: () => Promise<[void, void]>;
     private allReadyActors;
     private loadDocument;
-    join: (actorId: string) => void;
-    leave: (actorId: string) => void;
+    join: (actorId: ActorId) => void;
+    leave: (actorId: ActorId) => void;
     private getReadyActor;
-    storageFn: (path: string) => Function;
-    initActorFeed(doc: DocBackend.DocBackend): string;
-    actorIds(doc: DocBackend.DocBackend): string[];
+    storageFn: (path: string) => (name: string) => any;
+    initActorFeed(doc: DocBackend.DocBackend): ActorId;
+    actorIds(doc: DocBackend.DocBackend): ActorId[];
     docActors(doc: DocBackend.DocBackend): Actor[];
-    syncReadyActors: (ids: string[]) => void;
-    allClocks(actorId: string): {
-        [id: string]: Clock;
+    syncReadyActors: (ids: ActorId[]) => void;
+    allClocks(actorId: ActorId): {
+        [docId: string]: Clock;
     };
     private documentNotify;
     private broadcastNotify;
     private actorNotify;
     private initActor;
     syncChanges: (actor: Actor) => void;
+    setSwarm: (swarm: Swarm) => void;
     stream: (opts: any) => any;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;
     handleQuery: (id: number, query: ToBackendQueryMsg) => void;
     receive: (msg: ToBackendRepoMsg) => void;
-    actor(id: string): Actor | undefined;
+    actor(id: ActorId): Actor | undefined;
 }
-export {};

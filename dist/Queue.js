@@ -5,10 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const debug_1 = __importDefault(require("debug"));
 class Queue {
-    constructor(name = "unknown") {
+    constructor(name = 'unknown') {
         this.queue = [];
         this.enqueue = (item) => {
-            this.log("queued", item);
+            this.log('queued', item);
             this.queue.push(item);
         };
         this.log = debug_1.default(`queue:${name}`);
@@ -21,9 +21,9 @@ class Queue {
     }
     subscribe(subscriber) {
         if (this.subscription) {
-            throw new Error("only one subscriber at a time to a queue");
+            throw new Error('only one subscriber at a time to a queue');
         }
-        this.log("subscribe");
+        this.log('subscribe');
         this.subscription = subscriber;
         // this is so push(), unsubscribe(), re-subscribe() will processing the backlog
         while (this.subscription === subscriber) {
@@ -36,7 +36,7 @@ class Queue {
         }
     }
     unsubscribe() {
-        this.log("unsubscribe");
+        this.log('unsubscribe');
         this.subscription = undefined;
         this.push = this.enqueue;
     }

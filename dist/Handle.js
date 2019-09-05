@@ -1,13 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class Handle {
-    constructor(repo, id) {
-        this.id = "";
+    constructor(repo, url) {
         this.state = null;
         this.clock = null;
         this.counter = 0;
         this.message = (contents) => {
-            this.repo.message(this.id, contents);
+            this.repo.message(this.url, contents);
             return this;
         };
         this.push = (item, clock) => {
@@ -17,12 +16,12 @@ class Handle {
                 this.subscription(item, clock, this.counter++);
             }
         };
-        this.pushProgress = (progress) => {
+        this.receiveProgressEvent = (progress) => {
             if (this.progressSubscription) {
                 this.progressSubscription(progress);
             }
         };
-        this.pushMessage = (contents) => {
+        this.receiveDocumentMessage = (contents) => {
             if (this.messageSubscription) {
                 this.messageSubscription(contents);
             }
@@ -36,7 +35,7 @@ class Handle {
         };
         this.subscribe = (subscriber) => {
             if (this.subscription) {
-                throw new Error("only one subscriber for a doc handle");
+                throw new Error('only one subscriber for a doc handle');
             }
             this.subscription = subscriber;
             if (this.state != null && this.clock != null) {
@@ -46,14 +45,14 @@ class Handle {
         };
         this.subscribeProgress = (subscriber) => {
             if (this.progressSubscription) {
-                throw new Error("only one progress subscriber for a doc handle");
+                throw new Error('only one progress subscriber for a doc handle');
             }
             this.progressSubscription = subscriber;
             return this;
         };
         this.subscribeMessage = (subscriber) => {
             if (this.messageSubscription) {
-                throw new Error("only one progress subscriber for a doc handle");
+                throw new Error('only one document message subscriber for a doc handle');
             }
             this.messageSubscription = subscriber;
             return this;
@@ -72,24 +71,24 @@ class Handle {
             return this;
         };
         this.repo = repo;
-        this.id = id;
+        this.url = url;
     }
     fork() {
-        return this.repo.fork(this.id);
+        return this.repo.fork(this.url);
     }
     /*
-      follow() {
-        const id = this.repo.create();
-        this.repo.follow(id, this.id);
-        return id;
-      }
-    */
+    follow() {
+      const id = this.repo.create();
+      this.repo.follow(id, this.id);
+      return id;
+    }
+  */
     merge(other) {
-        this.repo.merge(this.id, other.id);
+        this.repo.merge(this.url, other.url);
         return this;
     }
     debug() {
-        this.repo.debug(this.id);
+        this.repo.debug(this.url);
     }
 }
 exports.Handle = Handle;

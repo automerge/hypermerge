@@ -27,7 +27,7 @@ export default class FileServerClient {
     return url
   }
 
-  async read(url: HyperfileUrl): Promise<[Readable, string]> {
+  async read(url: HyperfileUrl): Promise<[Readable, string, number]> {
     if (!this.serverPath) throw new Error('FileServer has not been started on RepoBackend')
 
     const [req, responsePromise] = request({
@@ -43,10 +43,15 @@ export default class FileServerClient {
       throw new Error(`Server error, code=${response.statusCode} message=${response.statusMessage}`)
     }
     const mimeType = response.headers['content-type']
+    const contentLength = response.headers['content-length']
 
     if (!mimeType) throw new Error('Missing mimeType in FileServer response')
+    if (!contentLength) throw new Error('Missing content-length in FileServer response')
 
-    return [response, mimeType]
+    const size = parseInt(contentLength, 10)
+    if (isNaN(size)) throw new Error('Invalid content-length in FileServer response')
+
+    return [response, mimeType, size]
   }
 }
 
