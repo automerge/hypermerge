@@ -45,8 +45,7 @@ export default class FileServer {
 
   private async upload(req: IncomingMessage, res: ServerResponse) {
     const info = uploadInfo(req.headers)
-    const data = await streamToBuffer(req)
-    const header = await this.store.write(info.mimeType, data)
+    const header = await this.store.write(info.mimeType, info.bytes, req)
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(header))
   }
@@ -61,7 +60,7 @@ export default class FileServer {
       'Content-Length': header.bytes,
     })
 
-    const stream = await this.store.stream(url)
+    const stream = await this.store.read(url)
     stream.pipe(res)
   }
 }

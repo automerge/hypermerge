@@ -20,12 +20,8 @@ test('FileStore', (t) => {
 
     const testBuffer = Buffer.from('coolcool')
     const testStream = bufferToStream(testBuffer)
-    const { url } = await files.writeStream(
-      'application/octet-stream',
-      testBuffer.length,
-      testStream
-    )
-    const output = await files.stream(url)
+    const { url } = await files.write('application/octet-stream', testBuffer.length, testStream)
+    const output = await files.read(url)
     const outputBuffer = await streamToBuffer(output)
     t.equal(testBuffer.toString(), outputBuffer.toString())
   })
