@@ -30,11 +30,12 @@ export default class FileServerClient {
   async read(url: HyperfileUrl): Promise<[Readable, string]> {
     if (!this.serverPath) throw new Error('FileServer has not been started on RepoBackend')
 
-    const [, responsePromise] = request({
+    const [req, responsePromise] = request({
       socketPath: this.serverPath,
       path: '/' + url,
       method: 'GET',
     })
+    req.end()
 
     const response = await responsePromise
 
