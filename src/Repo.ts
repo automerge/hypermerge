@@ -1,16 +1,11 @@
-import { Readable } from 'stream'
 import { Options, RepoBackend } from './RepoBackend'
-import { RepoFrontend, DocMetadata } from './RepoFrontend'
+import { RepoFrontend } from './RepoFrontend'
 import { Handle } from './Handle'
 import { PublicMetadata } from './Metadata'
 import { Clock } from './Clock'
 import { DocUrl, HyperfileUrl } from './Misc'
 import FileServerClient from './FileServerClient'
 import { Swarm } from './Network'
-
-interface RepoOptions extends Options {
-  serverPath: string
-}
 
 export class Repo {
   front: RepoFrontend
@@ -22,6 +17,7 @@ export class Repo {
   destroy: (id: DocUrl) => void
   //follow: (id: string, target: string) => void;
   setSwarm: (swarm: Swarm) => void
+  startFileServer: (fileServerPath: string) => void
 
   message: (url: DocUrl, message: any) => void
 
@@ -35,10 +31,8 @@ export class Repo {
   meta: (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void) => void
   close: () => void
 
-  constructor(opts: RepoOptions) {
-    const { serverPath, ...backendOptions } = opts
-    this.back = new RepoBackend(backendOptions)
-    this.back.startFileServer(serverPath)
+  constructor(opts: Options) {
+    this.back = new RepoBackend(opts)
     this.front = new RepoFrontend()
     this.front.subscribe(this.back.receive)
     this.back.subscribe(this.front.receive)
@@ -58,6 +52,7 @@ export class Repo {
     this.watch = this.front.watch
     this.merge = this.front.merge
     this.setSwarm = this.back.setSwarm
+    this.startFileServer = this.back.startFileServer
     this.materialize = this.front.materialize
   }
 }

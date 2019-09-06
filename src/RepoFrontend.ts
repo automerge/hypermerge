@@ -40,10 +40,6 @@ export class RepoFrontend {
   readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void> = new MapSet()
   files = new FileServerClient()
 
-  setFileServerPath(path: string) {
-    this.files.serverPath = path
-  }
-
   create = <T>(init?: T): DocUrl => {
     const { publicKey, secretKey } = Keys.create()
     const docId = publicKey as DocId
@@ -278,7 +274,7 @@ export class RepoFrontend {
         break
       }
       case 'FileServerReadyMsg':
-        this.setFileServerPath(msg.path)
+        this.files.setServerPath(msg.path)
         break
     }
   }

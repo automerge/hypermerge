@@ -1,12 +1,12 @@
 import test from 'tape'
 import { Repo, RepoBackend, RepoFrontend } from '../src'
 import { Clock, union, cmp, gte } from '../src/Clock'
-import { expectDocs, generateServerPath } from './misc'
+import { expectDocs } from './misc'
 
 const ram: Function = require('random-access-memory')
 
 test('Simple create doc and make a change', (t) => {
-  const repo = new Repo({ storage: ram, serverPath: generateServerPath() })
+  const repo = new Repo({ storage: ram })
   const url = repo.create()
   repo.watch<any>(
     url,
@@ -44,7 +44,7 @@ test('Create a doc backend - then wire it up to a frontend - make a change', (t)
 
 test('Test document forking...', (t) => {
   t.plan(0)
-  const repo = new Repo({ storage: ram, serverPath: generateServerPath() })
+  const repo = new Repo({ storage: ram })
   const id = repo.create({ foo: 'bar' })
   repo.watch<any>(id, expectDocs(t, [[{ foo: 'bar' }, 'init val']]))
   const id2 = repo.fork(id)
@@ -70,7 +70,7 @@ test('Test document forking...', (t) => {
 
 test('Test materialize...', (t) => {
   t.plan(1)
-  const repo = new Repo({ storage: ram, serverPath: generateServerPath() })
+  const repo = new Repo({ storage: ram })
   const url = repo.create({ foo: 'bar0' })
   repo.watch<any>(
     url,
@@ -106,7 +106,7 @@ test('Test materialize...', (t) => {
 
 test('Test meta...', (t) => {
   t.plan(2)
-  const repo = new Repo({ storage: ram, serverPath: generateServerPath() })
+  const repo = new Repo({ storage: ram })
   const id = repo.create({ foo: 'bar0' })
   repo.watch<any>(id, (state, clock, index) => {
     repo.meta(id, (meta) => {

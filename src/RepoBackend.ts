@@ -74,7 +74,7 @@ export class RepoBackend {
     this.network = new Network(encodePeerId(this.id), this.store)
   }
 
-  startFileServer(path: string) {
+  startFileServer = (path: string) => {
     if (this.fileServer.isListening()) return
 
     this.fileServer.listen(path)

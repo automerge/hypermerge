@@ -2,7 +2,7 @@ import { Server, createServer, IncomingMessage, ServerResponse, IncomingHttpHead
 import { parse } from 'url'
 import fs from 'fs'
 import FileStore, { isHyperfileUrl } from './FileStore'
-import { HyperfileUrl } from './Misc'
+import { HyperfileUrl, toIpcPath } from './Misc'
 
 export default class FileServer {
   private store: FileStore
@@ -14,14 +14,15 @@ export default class FileServer {
   }
 
   listen(path: string) {
+    const ipcPath = toIpcPath(path)
     // For some reason, the non-sync version doesn't work :shrugging-man:
     // fs.unlink(path, (err) => {
     //   this.http.listen(path)
     // })
     try {
-      fs.unlinkSync(path)
+      fs.unlinkSync(ipcPath)
     } catch {}
-    this.http.listen(path)
+    this.http.listen(ipcPath)
   }
 
   isListening(): boolean {

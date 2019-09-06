@@ -1,10 +1,14 @@
 import * as http from 'http'
 import { Readable } from 'stream'
-import { HyperfileUrl, streamToBuffer } from './Misc'
+import { HyperfileUrl, streamToBuffer, toIpcPath } from './Misc'
 import * as JsonBuffer from './JsonBuffer'
 
 export default class FileServerClient {
   serverPath?: string
+
+  setServerPath(path: string) {
+    this.serverPath = toIpcPath(path)
+  }
 
   async write(data: Readable, size: number, mimeType: string): Promise<HyperfileUrl> {
     if (!this.serverPath) throw new Error('FileServer has not been started on RepoBackend')

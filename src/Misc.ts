@@ -79,3 +79,16 @@ export function bufferToStream(buffer: Buffer): Readable {
     },
   })
 }
+
+// Windows uses named pipes:
+// https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
+export function toIpcPath(path: string): string {
+  return process.platform === 'win32' ? toWindowsNamedPipe(path) : path
+}
+
+// Inspired by node-ipc
+// https://github.com/RIAEvangelist/node-ipc/blob/70e03c119b4902d3e74de1f683ab39dd2f634807/dao/socketServer.js#L309
+function toWindowsNamedPipe(path: string): string {
+  const sanitizedPath = path.replace(/^\//, '').replace(/\//g, '-')
+  return `\\\\.\\pipe\\${sanitizedPath}`
+}
