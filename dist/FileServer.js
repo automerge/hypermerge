@@ -7,9 +7,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const http_1 = require("http");
 const url_1 = require("url");
+const fs_1 = __importDefault(require("fs"));
 const FileStore_1 = require("./FileStore");
 class FileServer {
     constructor(store) {
@@ -38,6 +42,14 @@ class FileServer {
         this.http = http_1.createServer(this.onConnection);
     }
     listen(path) {
+        // For some reason, the non-sync version doesn't work :shrugging-man:
+        // fs.unlink(path, (err) => {
+        //   this.http.listen(path)
+        // })
+        try {
+            fs_1.default.unlinkSync(path);
+        }
+        catch (_a) { }
         this.http.listen(path);
     }
     isListening() {

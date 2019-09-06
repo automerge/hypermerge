@@ -1,5 +1,6 @@
 import { Server, createServer, IncomingMessage, ServerResponse, IncomingHttpHeaders } from 'http'
 import { parse } from 'url'
+import fs from 'fs'
 import FileStore, { isHyperfileUrl } from './FileStore'
 import { HyperfileUrl } from './Misc'
 
@@ -13,6 +14,13 @@ export default class FileServer {
   }
 
   listen(path: string) {
+    // For some reason, the non-sync version doesn't work :shrugging-man:
+    // fs.unlink(path, (err) => {
+    //   this.http.listen(path)
+    // })
+    try {
+      fs.unlinkSync(path)
+    } catch {}
     this.http.listen(path)
   }
 
