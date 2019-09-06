@@ -16,7 +16,6 @@ import {
   DocId,
   encodeDocId,
   rootActorId,
-  encodeDiscoveryId,
   encodeActorId,
 } from './Misc'
 import Debug from 'debug'

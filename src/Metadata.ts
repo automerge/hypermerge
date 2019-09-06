@@ -5,9 +5,10 @@ import { hypercore, readFeed, Feed } from './hypercore'
 import Debug from 'debug'
 import * as JsonBuffer from './JsonBuffer'
 import * as URL from 'url'
+import { hyperfileActorId } from './Misc'
 const log = Debug('repo:metadata')
 
-import { Clock, equivalent, addTo, union, intersection } from './Clock'
+import { Clock, equivalent, addTo, union } from './Clock'
 import {
   DocUrl,
   DocId,
@@ -294,7 +295,7 @@ export class Metadata {
       this._docsWith.clear()
 
       if (isFileBlock(block)) {
-        this.join(block.id as ActorId)
+        this.join(hyperfileActorId(block.id))
       } else if (isDeletedBlock(block)) {
         this.actors(block.id).forEach(this.leave)
       } else {
