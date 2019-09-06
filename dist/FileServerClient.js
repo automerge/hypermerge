@@ -19,6 +19,9 @@ const http = __importStar(require("http"));
 const Misc_1 = require("./Misc");
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 class FileServerClient {
+    setServerPath(path) {
+        this.serverPath = Misc_1.toIpcPath(path);
+    }
     write(data, size, mimeType) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.serverPath)

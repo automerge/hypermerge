@@ -15,6 +15,7 @@ const http_1 = require("http");
 const url_1 = require("url");
 const fs_1 = __importDefault(require("fs"));
 const FileStore_1 = require("./FileStore");
+const Misc_1 = require("./Misc");
 class FileServer {
     constructor(store) {
         this.onConnection = (req, res) => {
@@ -42,15 +43,16 @@ class FileServer {
         this.http = http_1.createServer(this.onConnection);
     }
     listen(path) {
+        const ipcPath = Misc_1.toIpcPath(path);
         // For some reason, the non-sync version doesn't work :shrugging-man:
         // fs.unlink(path, (err) => {
         //   this.http.listen(path)
         // })
         try {
-            fs_1.default.unlinkSync(path);
+            fs_1.default.unlinkSync(ipcPath);
         }
         catch (_a) { }
-        this.http.listen(path);
+        this.http.listen(ipcPath);
     }
     isListening() {
         return this.http.listening;

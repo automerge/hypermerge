@@ -7,9 +7,6 @@ import { Clock } from './Clock';
 import { DocUrl, HyperfileUrl } from './Misc';
 import FileServerClient from './FileServerClient';
 import { Swarm } from './Network';
-interface RepoOptions extends Options {
-    serverPath: string;
-}
 export declare class Repo {
     front: RepoFrontend;
     back: RepoBackend;
@@ -19,6 +16,7 @@ export declare class Repo {
     open: <T>(id: DocUrl) => Handle<T>;
     destroy: (id: DocUrl) => void;
     setSwarm: (swarm: Swarm) => void;
+    startFileServer: (fileServerPath: string) => void;
     message: (url: DocUrl, message: any) => void;
     fork: (url: DocUrl) => DocUrl;
     watch: <T>(url: DocUrl, cb: (val: T, clock?: Clock, index?: number) => void) => Handle<T>;
@@ -29,6 +27,5 @@ export declare class Repo {
     materialize: <T>(url: DocUrl, seq: number, cb: (val: T) => void) => void;
     meta: (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void) => void;
     close: () => void;
-    constructor(opts: RepoOptions);
+    constructor(opts: Options);
 }
-export {};

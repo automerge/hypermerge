@@ -43,6 +43,15 @@ class RepoBackend {
         this.actorsDk = new Map();
         this.docs = new Map();
         this.toFrontend = new Queue_1.default('repo:back:toFrontend');
+        this.startFileServer = (path) => {
+            if (this.fileServer.isListening())
+                return;
+            this.fileServer.listen(path);
+            this.toFrontend.push({
+                type: 'FileServerReadyMsg',
+                path,
+            });
+        };
         /*
         follow(id: string, target: string) {
           this.meta.follow(id, target);
@@ -349,15 +358,6 @@ class RepoBackend {
         this.meta = new Metadata_1.Metadata(this.storageFn, this.join, this.leave);
         this.id = this.meta.id;
         this.network = new Network_1.default(NetworkPeer_1.encodePeerId(this.id), this.store);
-    }
-    startFileServer(path) {
-        if (this.fileServer.isListening())
-            return;
-        this.fileServer.listen(path);
-        this.toFrontend.push({
-            type: 'FileServerReadyMsg',
-            path,
-        });
     }
     create(keys) {
         const docId = Misc_1.encodeDocId(keys.publicKey);

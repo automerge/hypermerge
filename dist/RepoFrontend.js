@@ -219,13 +219,10 @@ class RepoFrontend {
                     break;
                 }
                 case 'FileServerReadyMsg':
-                    this.setFileServerPath(msg.path);
+                    this.files.setServerPath(msg.path);
                     break;
             }
         };
-    }
-    setFileServerPath(path) {
-        this.files.serverPath = path;
     }
     queryBackend(query, cb) {
         msgid += 1; // global counter

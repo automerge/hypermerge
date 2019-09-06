@@ -1,21 +1,10 @@
 "use strict";
-var __rest = (this && this.__rest) || function (s, e) {
-    var t = {};
-    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-        t[p] = s[p];
-    if (s != null && typeof Object.getOwnPropertySymbols === "function")
-        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) if (e.indexOf(p[i]) < 0)
-            t[p[i]] = s[p[i]];
-    return t;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const RepoBackend_1 = require("./RepoBackend");
 const RepoFrontend_1 = require("./RepoFrontend");
 class Repo {
     constructor(opts) {
-        const { serverPath } = opts, backendOptions = __rest(opts, ["serverPath"]);
-        this.back = new RepoBackend_1.RepoBackend(backendOptions);
-        this.back.startFileServer(serverPath);
+        this.back = new RepoBackend_1.RepoBackend(opts);
         this.front = new RepoFrontend_1.RepoFrontend();
         this.front.subscribe(this.back.receive);
         this.back.subscribe(this.front.receive);
@@ -35,6 +24,7 @@ class Repo {
         this.watch = this.front.watch;
         this.merge = this.front.merge;
         this.setSwarm = this.back.setSwarm;
+        this.startFileServer = this.back.startFileServer;
         this.materialize = this.front.materialize;
     }
 }

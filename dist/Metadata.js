@@ -25,9 +25,10 @@ const hypercore_1 = require("./hypercore");
 const debug_1 = __importDefault(require("debug"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const URL = __importStar(require("url"));
+const Misc_1 = require("./Misc");
 const log = debug_1.default('repo:metadata');
 const Clock_1 = require("./Clock");
-const Misc_1 = require("./Misc");
+const Misc_2 = require("./Misc");
 function validateRemoteMetadata(message) {
     const result = { type: 'RemoteMetadata', clocks: {}, blocks: [] };
     if (message instanceof Object &&
@@ -135,7 +136,7 @@ function validateID(id) {
     return buffer;
 }
 function validateURL(urlString) {
-    if (!Misc_1.isBaseUrl(urlString)) {
+    if (!Misc_2.isBaseUrl(urlString)) {
         //    disabled this warning because internal APIs are currently inconsistent in their use
         //    so it's throwing warnings just, like, all the time in normal usage.
         //    console.log("WARNING: `${id}` is deprecated - now use `hypermerge:/${id}`")
@@ -226,7 +227,7 @@ class Metadata {
                 this._clocks = {};
                 this._docsWith.clear();
                 if (isFileBlock(block)) {
-                    this.join(block.id);
+                    this.join(Misc_1.hyperfileActorId(block.id));
                 }
                 else if (isDeletedBlock(block)) {
                     this.actors(block.id).forEach(this.leave);

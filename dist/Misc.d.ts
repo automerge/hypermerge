@@ -10,7 +10,7 @@ export declare type DocId = BaseId & {
 export declare type ActorId = FeedId & {
     actorId: true;
 };
-export declare type HyperfileId = ActorId & {
+export declare type HyperfileId = BaseId & {
     hyperfileId: true;
 };
 export declare type DiscoveryId = BaseId & {
@@ -39,3 +39,4 @@ export declare function ID(_id: string): string;
 export declare function notEmpty<TValue>(value: TValue | null | undefined): value is TValue;
 export declare function streamToBuffer(stream: Readable): Promise<Buffer>;
 export declare function bufferToStream(buffer: Buffer): Readable;
+export declare function toIpcPath(path: string): string;

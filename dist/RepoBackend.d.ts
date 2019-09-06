@@ -33,7 +33,7 @@ export declare class RepoBackend {
     private fileServer;
     private network;
     constructor(opts: Options);
-    startFileServer(path: string): void;
+    startFileServer: (path: string) => void;
     private create;
     private debug;
     private destroy;

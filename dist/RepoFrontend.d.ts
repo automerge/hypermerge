@@ -25,7 +25,6 @@ export declare class RepoFrontend {
     msgcb: Map<number, (patch: Patch) => void>;
     readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void>;
     files: FileServerClient;
-    setFileServerPath(path: string): void;
     create: <T>(init?: T | undefined) => DocUrl;
     change: <T>(url: DocUrl, fn: (state: T) => void) => void;
     meta: (url: DocUrl | HyperfileUrl, cb: (meta: import("./Metadata").PublicDocMetadata | import("./Metadata").PublicFileMetadata | undefined) => void) => void;
