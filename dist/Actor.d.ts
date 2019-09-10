@@ -3,7 +3,7 @@
  * For dat, this means the actor abstracts over the hypercore and its peers.
  */
 import { Feed, Peer } from './hypercore';
-import { Change } from 'automerge/backend';
+import { Change } from 'automerge';
 import { ActorId, DiscoveryId } from './Misc';
 import * as Keys from './Keys';
 export declare type FeedHead = FeedHeadMetadata | Change;

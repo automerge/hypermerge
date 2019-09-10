@@ -2,7 +2,7 @@
 import Queue from './Queue';
 import { Metadata } from './Metadata';
 import { Actor } from './Actor';
-import { Clock, Change } from 'automerge/backend';
+import { Clock, Change } from 'automerge';
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg';
 import * as DocBackend from './DocBackend';
 import { ActorId, DiscoveryId, DocId } from './Misc';

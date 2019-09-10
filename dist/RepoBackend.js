@@ -26,7 +26,7 @@ const Clock_1 = require("./Clock");
 const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
 const hypercore_1 = require("./hypercore");
-const Backend = __importStar(require("automerge/backend"));
+const automerge_1 = require("automerge");
 const DocBackend = __importStar(require("./DocBackend"));
 const Misc_1 = require("./Misc");
 const debug_1 = __importDefault(require("debug"));
@@ -315,7 +315,7 @@ class RepoBackend {
                         .getIn(['opSet', 'history'])
                         .slice(0, query.history)
                         .toArray();
-                    const [_, patch] = Backend.applyChanges(Backend.init(), changes);
+                    const [_, patch] = automerge_1.Backend.applyChanges(automerge_1.Backend.init(), changes);
                     this.toFrontend.push({ type: 'Reply', id, payload: patch });
                     break;
                 }
@@ -434,7 +434,7 @@ class RepoBackend {
     create(keys) {
         const docId = Misc_1.encodeDocId(keys.publicKey);
         log('create', docId);
-        const doc = new DocBackend.DocBackend(docId, this.documentNotify, Backend.init());
+        const doc = new DocBackend.DocBackend(docId, this.documentNotify, automerge_1.Backend.init());
         this.docs.set(docId, doc);
         this.meta.addActor(doc.id, Misc_1.rootActorId(doc.id));
         this.initActor(keys);
