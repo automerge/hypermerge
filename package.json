@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/inkandswitch/hypermerge#readme",
   "dependencies": {
-    "automerge": "^0.10.1",
+    "automerge": "^0.12.1",
     "bs58": "^4.0.1",
     "debug": "^4.1.1",
     "hypercore": "^6.24.0",

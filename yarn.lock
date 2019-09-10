@@ -109,15 +109,15 @@ atomic-batcher@^1.0.2:
   resolved "https://registry.yarnpkg.com/atomic-batcher/-/atomic-batcher-1.0.2.tgz#d16901d10ccec59516c197b9ccd8930689b813b4"
   integrity sha1-0WkB0QzOxZUWwZe5zNiTBom4E7Q=
 
-automerge@^0.10.1:
-  version "0.10.1"
-  resolved "https://registry.yarnpkg.com/automerge/-/automerge-0.10.1.tgz#a0a66b9aafc7597c7e98b29625b257f9a8fe4562"
-  integrity sha512-X7k6tlpmm/EbOlz84aLRXb8E8DiKI+gF6mNIVb1wqU9zun45v/tG01JuWNBhP6EDTJaGW1lcN2AQzvApm0ABWQ==
+automerge@^0.12.1:
+  version "0.12.1"
+  resolved "https://registry.yarnpkg.com/automerge/-/automerge-0.12.1.tgz#8e8ca23affa888c6376ee19068eab573cfa8ba09"
+  integrity sha512-7JOiRk4b6EP/Uj0AjmZTeYICXJmBRHFkL0U3mlTNXuDlUr3c4v/Wb8v0RXiX4UuVgGjkovcjOdiBMkVmzdu2KQ==
   dependencies:
     immutable "^3.8.2"
     transit-immutable-js "^0.7.0"
     transit-js "^0.8.861"
-    uuid "3.1.0"
+    uuid "3.3.2"
 
 balanced-match@^1.0.0:
   version "1.0.0"
@@ -1902,10 +1902,10 @@ utp-native@^2.1.3:
     timeout-refresh "^1.0.0"
     unordered-set "^2.0.1"
 
-uuid@3.1.0:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.1.0.tgz#3dd3d3e790abc24d7b0d3a034ffababe28ebbc04"
-  integrity sha512-DIWtzUkw04M4k3bf1IcpS2tngXEL26YUD2M0tMDUpnUrz2hgzUBlD55a4FjdLGPvfHxS6uluGWvaVEqgBcVa+g==
+uuid@3.3.2:
+  version "3.3.2"
+  resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.3.2.tgz#1b4af4955eb3077c501c23872fc6513811587131"
+  integrity sha512-yXJmeNaw3DnnKAOKJE51sL/ZaYfWJRl1pK9dr19YFCu0ObS231AB1/LbqTKRAQ5kw8A90rA6fr4riOUpTZvQZA==
 
 validate-npm-package-license@^3.0.1:
   version "3.0.1"
