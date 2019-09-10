@@ -1,6 +1,5 @@
-import { Patch, Doc, Change, ChangeFn } from 'automerge/frontend'
+import { Frontend, Patch, Doc, Change, ChangeFn } from 'automerge'
 import { RepoFrontend, ProgressEvent } from './RepoFrontend'
-import * as Frontend from 'automerge/frontend'
 import { Clock, union } from './Clock'
 import Queue from './Queue'
 import { Handle } from './Handle'
@@ -156,8 +155,8 @@ export class DocFrontend<T> {
   }
 
   private updateClockPatch(patch: Patch) {
-    this.clock = union(this.clock, patch.clock) // dont know which is better - use both??...
-    this.clock = union(this.clock, patch.deps)
+    if (patch.clock) this.clock = union(this.clock, patch.clock) // dont know which is better - use both??...
+    if (patch.deps) this.clock = union(this.clock, patch.deps)
   }
 
   patch = (patch: Patch, synced: boolean, history: number) => {

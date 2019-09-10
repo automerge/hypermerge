@@ -3,7 +3,7 @@
  * For dat, this means the actor abstracts over the hypercore and its peers.
  */
 import { readFeed, hypercore, Feed, Peer, discoveryKey } from './hypercore'
-import { Change } from 'automerge/backend'
+import { Change } from 'automerge'
 import { ID, ActorId, DiscoveryId, encodeActorId, encodeDiscoveryId } from './Misc'
 import Queue from './Queue'
 import * as JsonBuffer from './JsonBuffer'

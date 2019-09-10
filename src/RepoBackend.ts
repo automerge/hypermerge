@@ -5,8 +5,7 @@ import { strs2clock, clockDebug, clockActorIds } from './Clock'
 import * as Base58 from 'bs58'
 import * as crypto from 'hypercore/lib/crypto'
 import { discoveryKey } from './hypercore'
-import * as Backend from 'automerge/backend'
-import { Clock, Change } from 'automerge/backend'
+import { Backend, Clock, Change } from 'automerge'
 import {
   ToBackendQueryMsg,
   ToBackendRepoMsg,
