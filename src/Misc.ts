@@ -1,14 +1,16 @@
 import * as Base58 from 'bs58'
+import { Freeze } from 'automerge'
 
-export type BaseId = string & { id: true }
-export type DocId = BaseId & { docId: true }
-export type ActorId = BaseId & { actorId: true }
-export type HyperfileId = BaseId & { hyperfileId: true }
-export type DiscoveryId = BaseId & { discoveryId: true }
+// Freeze<T> allows the values to be pulled from docs without type errors
+export type BaseId = string & Freeze<{ id: true }>
+export type DocId = BaseId & Freeze<{ docId: true }>
+export type ActorId = BaseId & Freeze<{ actorId: true }>
+export type HyperfileId = BaseId & Freeze<{ hyperfileId: true }>
+export type DiscoveryId = BaseId & Freeze<{ discoveryId: true }>
 
-export type BaseUrl = string & { url: true }
-export type DocUrl = BaseUrl & { docUrl: true }
-export type HyperfileUrl = BaseUrl & { hyperfileUrl: true }
+export type BaseUrl = string & Freeze<{ url: true }>
+export type DocUrl = BaseUrl & Freeze<{ docUrl: true }>
+export type HyperfileUrl = BaseUrl & Freeze<{ hyperfileUrl: true }>
 
 export function encodeDocId(actorKey: Buffer): DocId {
   return Base58.encode(actorKey) as DocId
