@@ -17,6 +17,10 @@ test('Simple create doc and make a change', (t) => {
     ])
   )
 
+  repo.change<any>(url, (state: any) => {
+    state.foo = 'bar'
+  })
+
   test.onFinish(() => repo.close())
 })
 
