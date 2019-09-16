@@ -1,28 +1,29 @@
 /// <reference types="node" />
-export declare type BaseId = string & {
+import { Freeze } from 'automerge';
+export declare type BaseId = string & Freeze<{
     id: true;
-};
-export declare type DocId = BaseId & {
+}>;
+export declare type DocId = BaseId & Freeze<{
     docId: true;
-};
-export declare type ActorId = BaseId & {
+}>;
+export declare type ActorId = BaseId & Freeze<{
     actorId: true;
-};
-export declare type HyperfileId = BaseId & {
+}>;
+export declare type HyperfileId = BaseId & Freeze<{
     hyperfileId: true;
-};
-export declare type DiscoveryId = BaseId & {
+}>;
+export declare type DiscoveryId = BaseId & Freeze<{
     discoveryId: true;
-};
-export declare type BaseUrl = string & {
+}>;
+export declare type BaseUrl = string & Freeze<{
     url: true;
-};
-export declare type DocUrl = BaseUrl & {
+}>;
+export declare type DocUrl = BaseUrl & Freeze<{
     docUrl: true;
-};
-export declare type HyperfileUrl = BaseUrl & {
+}>;
+export declare type HyperfileUrl = BaseUrl & Freeze<{
     hyperfileUrl: true;
-};
+}>;
 export declare function encodeDocId(actorKey: Buffer): DocId;
 export declare function encodeActorId(actorKey: Buffer): ActorId;
 export declare function encodeDiscoveryId(discoveryKey: Buffer): DiscoveryId;
