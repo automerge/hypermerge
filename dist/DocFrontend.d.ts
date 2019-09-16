@@ -1,4 +1,4 @@
-import { Patch, ChangeFn } from 'automerge/frontend';
+import { Patch, ChangeFn } from 'automerge';
 import { RepoFrontend, ProgressEvent } from './RepoFrontend';
 import { Clock } from './Clock';
 import { Handle } from './Handle';

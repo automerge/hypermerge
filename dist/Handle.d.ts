@@ -1,4 +1,4 @@
-import { Clock, Doc, ChangeFn } from 'automerge/frontend';
+import { Clock, Doc, ChangeFn } from 'automerge';
 import { RepoFrontend, ProgressEvent } from './RepoFrontend';
 import { DocUrl } from './Misc';
 export declare class Handle<T> {
@@ -14,11 +14,11 @@ export declare class Handle<T> {
     fork(): DocUrl;
     merge(other: Handle<T>): this;
     message: (contents: any) => this;
-    push: (item: Doc<T>, clock: Clock) => void;
+    push: (item: import("automerge").FreezeObject<T>, clock: Clock) => void;
     receiveProgressEvent: (progress: ProgressEvent) => void;
     receiveDocumentMessage: (contents: any) => void;
-    once: (subscriber: (doc: Doc<T>, clock?: Clock | undefined, index?: number | undefined) => void) => this;
-    subscribe: (subscriber: (doc: Doc<T>, clock?: Clock | undefined, index?: number | undefined) => void) => this;
+    once: (subscriber: (doc: import("automerge").FreezeObject<T>, clock?: Clock | undefined, index?: number | undefined) => void) => this;
+    subscribe: (subscriber: (doc: import("automerge").FreezeObject<T>, clock?: Clock | undefined, index?: number | undefined) => void) => this;
     subscribeProgress: (subscriber: (event: ProgressEvent) => void) => this;
     subscribeMessage: (subscriber: (event: any) => void) => this;
     close: () => void;

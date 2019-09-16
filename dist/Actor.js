@@ -1,9 +1,10 @@
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -25,46 +26,38 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const hypercore_1 = require("./hypercore");
 const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
+const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Block = __importStar(require("./Block"));
-const Keys = __importStar(require("./Keys"));
 const debug_1 = __importDefault(require("debug"));
+const fs = require('fs');
 const log = debug_1.default('repo:actor');
+const KB = 1024;
+const MB = 1024 * KB;
 class Actor {
     constructor(config) {
         this.changes = [];
         this.peers = new Map();
-        this.getOrCreateFeed = (keys) => __awaiter(this, void 0, void 0, function* () {
-            let feedId;
-            if (keys.secretKey) {
-                feedId = yield this.store.create(keys);
-            }
-            else {
-                feedId = keys.publicKey;
-            }
-            return this.store.getFeed(feedId);
-        });
-        this.onFeedReady = (feed) => __awaiter(this, void 0, void 0, function* () {
+        this.data = [];
+        this.pending = [];
+        this.onFeedReady = () => {
+            const feed = this.feed;
             this.notify({ type: 'ActorFeedReady', actor: this, writable: feed.writable });
             feed.on('peer-remove', this.onPeerRemove);
             feed.on('peer-add', this.onPeerAdd);
             feed.on('download', this.onDownload);
             feed.on('sync', this.onSync);
+            hypercore_1.readFeed(this.id, feed, this.init); // onReady subscribe begins here
             feed.on('close', this.close);
-            let hasData = false;
-            let sequenceNumber = 0;
-            const data = yield this.store.stream(this.id);
-            data.on('data', (chunk) => {
-                this.parseBlock(chunk, sequenceNumber);
-                sequenceNumber += 1;
-                hasData = true;
-            });
-            data.on('end', () => {
-                this.notify({ type: 'ActorInitialized', actor: this });
-                this.q.subscribe((f) => f(this));
-                if (hasData)
-                    this.onSync();
-            });
-        });
+        };
+        this.init = (rawBlocks) => {
+            log('loaded blocks', Misc_1.ID(this.id), rawBlocks.length);
+            rawBlocks.map(this.parseBlock);
+            if (rawBlocks.length > 0) {
+                this.onSync();
+            }
+            this.notify({ type: 'ActorInitialized', actor: this });
+            this.q.subscribe((f) => f(this));
+        };
         // Note: on Actor ready, not Feed!
         this.onReady = (cb) => {
             this.q.push(cb);
@@ -96,28 +89,73 @@ class Actor {
             this.close();
         };
         this.parseBlock = (data, index) => {
-            const change = Block.unpack(data); // no validation of Change
-            this.changes[index] = change;
-            log(`block xxx idx=${index} actor=${Misc_1.ID(change.actor)} seq=${change.seq}`);
+            if (this.type === 'Unknown') {
+                if (index === 0) {
+                    this.parseHeaderBlock(data);
+                }
+                else {
+                    this.pending[index] = data;
+                }
+            }
+            else {
+                this.parseDataBlock(data, index);
+            }
         };
         this.close = () => {
-            return this.store.close(this.id);
+            log('closing feed', this.id);
+            try {
+                this.feed.close((err) => { });
+            }
+            catch (error) { }
         };
-        this.destroy = () => __awaiter(this, void 0, void 0, function* () {
-            yield this.close();
-            this.store.destroy(this.id);
-        });
+        this.destroy = () => {
+            this.feed.close((err) => {
+                const filename = this.storage('').filename;
+                if (filename) {
+                    const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`;
+                    fs.rename(filename, newName, (err) => { });
+                }
+            });
+        };
         const { publicKey, secretKey } = config.keys;
         const dk = hypercore_1.discoveryKey(publicKey);
         const id = Misc_1.encodeActorId(publicKey);
+        this.type = 'Unknown';
         this.id = id;
-        this.store = config.store;
+        this.storage = config.storage(id);
         this.notify = config.notify;
         this.dkString = Misc_1.encodeDiscoveryId(dk);
+        this.feed = hypercore_1.hypercore(this.storage, publicKey, { secretKey });
         this.q = new Queue_1.default('repo:actor:Q' + id.slice(0, 4));
-        this.getOrCreateFeed(Keys.encodePair(config.keys)).then((feed) => {
-            feed.ready(() => this.onFeedReady(feed));
-        });
+        this.feed.ready(this.onFeedReady);
+    }
+    parseHeaderBlock(data) {
+        const header = Block.unpack(data); // no validation of head
+        if (header.hasOwnProperty('type')) {
+            this.type = 'File';
+            this.fileMetadata = header;
+        }
+        else {
+            this.type = 'Automerge';
+            this.parseBlock(data, 0);
+            this.pending.map(this.parseBlock);
+            this.pending = [];
+        }
+    }
+    parseDataBlock(data, index) {
+        switch (this.type) {
+            case 'Automerge':
+                const change = Block.unpack(data); // no validation of Change
+                this.changes[index] = change;
+                log(`block xxx idx=${index} actor=${Misc_1.ID(change.actor)} seq=${change.seq}`);
+                break;
+            case 'File':
+                this.data[index - 1] = data;
+                break;
+            default:
+                throw new Error("cant handle block if we don't know the type");
+                break;
+        }
     }
     writeChange(change) {
         const feedLength = this.changes.length;
@@ -125,7 +163,92 @@ class Actor {
         log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`);
         this.changes.push(change);
         this.onSync();
-        this.store.append(this.id, Block.pack(change));
+        this.append(Block.pack(change));
+    }
+    writeFile(data, mimeType) {
+        log('writing file');
+        this.onReady(() => {
+            log('writing file', data.length, 'bytes', mimeType);
+            if (this.data.length > 0 || this.changes.length > 0)
+                throw new Error('writeFile called on existing feed');
+            const blockSize = 1 * MB;
+            this.fileMetadata = {
+                type: 'File',
+                bytes: data.length,
+                mimeType,
+                blockSize,
+            };
+            this.append(Buffer.from(JSON.stringify(this.fileMetadata)));
+            for (let i = 0; i < data.length; i += blockSize) {
+                const block = data.slice(i, i + blockSize);
+                this.data.push(block);
+                this.append(block);
+            }
+        });
+    }
+    readFile() {
+        return __awaiter(this, void 0, void 0, function* () {
+            log('reading file...');
+            const head = yield this.fileHead();
+            const body = yield this.fileBody(head);
+            return {
+                body,
+                mimeType: head.mimeType,
+            };
+        });
+    }
+    fileHead() {
+        return new Promise((resolve, reject) => {
+            if (this.fileMetadata) {
+                resolve(this.fileMetadata);
+            }
+            else {
+                this.feed.get(0, { wait: true }, (err, data) => {
+                    if (err)
+                        reject(new Error(`error reading feed head ${this.id}`));
+                    const head = JsonBuffer.parse(data);
+                    this.fileMetadata = head; //Yikes
+                    resolve(head);
+                });
+            }
+        });
+    }
+    fileBody(head) {
+        return new Promise((resolve, reject) => {
+            const blockSize = head.blockSize || 1 * MB; // old feeds dont have this
+            const blocks = Math.ceil(head.bytes / blockSize);
+            const file = Buffer.concat(this.data);
+            if (file.length === head.bytes) {
+                resolve(file);
+            }
+            else {
+                if (blocks === 1) {
+                    this.feed.get(1, { wait: true }, (err, file) => {
+                        if (err)
+                            reject(new Error(`error reading feed body ${this.id}`));
+                        this.data = [file];
+                        resolve(file);
+                    });
+                }
+                else {
+                    this.feed.getBatch(1, blocks, { wait: true }, (err, data) => {
+                        if (err)
+                            reject(new Error(`error reading feed body ${this.id}`));
+                        this.data = data;
+                        const file = Buffer.concat(this.data);
+                        resolve(file);
+                    });
+                }
+            }
+        });
+    }
+    append(block) {
+        this.feed.append(block, (err) => {
+            log('Feed.append', block.length, 'bytes');
+            if (err) {
+                throw new Error('failed to append to feed');
+            }
+        });
     }
 }
 exports.Actor = Actor;

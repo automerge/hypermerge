@@ -3,8 +3,7 @@ import * as Base58 from 'bs58'
 import MapSet from './MapSet'
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg'
 import { Handle } from './Handle'
-import { Doc, Patch } from 'automerge/frontend'
-import * as Frontend from 'automerge/frontend'
+import { Doc, Patch, Frontend, ChangeFn } from 'automerge'
 import { DocFrontend } from './DocFrontend'
 import { clock2strs, Clock, clockDebug } from './Clock'
 import * as Keys from './Keys'
@@ -44,22 +43,20 @@ export class RepoFrontend {
     const { publicKey, secretKey } = Keys.create()
     const docId = publicKey as DocId
     const actorId = rootActorId(docId)
-    const doc = new DocFrontend(this, { actorId, docId })
+    const doc = new DocFrontend<T>(this, { actorId, docId })
 
     this.docs.set(docId, doc)
     this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey: secretKey! })
 
     if (init) {
       doc.change((state) => {
-        for (let key in init) {
-          state[key] = init[key]
-        }
+        Object.assign(state, init)
       })
     }
     return toDocUrl(docId)
   }
 
-  change = <T>(url: DocUrl, fn: (state: T) => void) => {
+  change = <T>(url: DocUrl, fn: ChangeFn<T>) => {
     this.open<T>(url).change(fn)
   }
 
@@ -115,7 +112,7 @@ export class RepoFrontend {
   };
 */
 
-  watch = <T>(url: DocUrl, cb: (val: T, clock?: Clock, index?: number) => void): Handle<T> => {
+  watch = <T>(url: DocUrl, cb: (val: Doc<T>, clock?: Clock, index?: number) => void): Handle<T> => {
     validateDocURL(url)
     const handle = this.open<T>(url)
     handle.subscribe(cb)
@@ -127,7 +124,7 @@ export class RepoFrontend {
     this.toBackend.push({ type: 'DocumentMessage', id, contents })
   }
 
-  doc = <T>(url: DocUrl, cb?: (val: T, clock?: Clock) => void): Promise<T> => {
+  doc = <T>(url: DocUrl, cb?: (val: Doc<T>, clock?: Clock) => void): Promise<Doc<T>> => {
     validateDocURL(url)
     return new Promise((resolve) => {
       const handle = this.open<T>(url)
@@ -139,7 +136,7 @@ export class RepoFrontend {
     })
   }
 
-  materialize = <T>(url: DocUrl, history: number, cb: (val: T) => void) => {
+  materialize = <T>(url: DocUrl, history: number, cb: (val: Doc<T>) => void) => {
     const id = validateDocURL(url)
     const doc = this.docs.get(id)
     if (doc === undefined) {

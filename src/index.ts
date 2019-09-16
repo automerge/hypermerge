@@ -1,4 +1,4 @@
-export { Patch, Doc, EditDoc, ChangeFn } from 'automerge/frontend'
+export { Patch, Doc, Proxy, Proxy as EditDoc, ChangeFn } from 'automerge'
 
 export { Repo } from './Repo'
 export { Handle } from './Handle'

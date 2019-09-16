@@ -8,7 +8,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const Base58 = __importStar(require("bs58"));
-const stream_1 = require("stream");
 function encodeDocId(actorKey) {
     return Base58.encode(actorKey);
 }
@@ -58,35 +57,4 @@ function notEmpty(value) {
     return value !== null && value !== undefined;
 }
 exports.notEmpty = notEmpty;
-function streamToBuffer(stream) {
-    return new Promise((res, rej) => {
-        const buffers = [];
-        stream
-            .on('data', (data) => buffers.push(data))
-            .on('error', (err) => rej(err))
-            .on('end', () => res(Buffer.concat(buffers)));
-    });
-}
-exports.streamToBuffer = streamToBuffer;
-function bufferToStream(buffer) {
-    return new stream_1.Readable({
-        read() {
-            this.push(buffer);
-            this.push(null);
-        },
-    });
-}
-exports.bufferToStream = bufferToStream;
-// Windows uses named pipes:
-// https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
-function toIpcPath(path) {
-    return process.platform === 'win32' ? toWindowsNamedPipe(path) : path;
-}
-exports.toIpcPath = toIpcPath;
-// Inspired by node-ipc
-// https://github.com/RIAEvangelist/node-ipc/blob/70e03c119b4902d3e74de1f683ab39dd2f634807/dao/socketServer.js#L309
-function toWindowsNamedPipe(path) {
-    const sanitizedPath = path.replace(/^\//, '').replace(/\//g, '-');
-    return `\\\\.\\pipe\\${sanitizedPath}`;
-}
 //# sourceMappingURL=Misc.js.map

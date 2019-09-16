@@ -1,7 +1,7 @@
 import test from 'tape'
 import { Repo } from '../src'
 import Client from 'discovery-cloud-client'
-import { expectDocs, generateServerPath } from './misc'
+import { expectDocs } from './misc'
 
 const ram: Function = require('random-access-memory')
 
@@ -10,8 +10,8 @@ const cycles = 100
 test(`Create ${cycles} docs and share one`, (t) => {
   t.plan(0)
 
-  const repoA = new Repo({ storage: ram, serverPath: generateServerPath() })
-  const repoB = new Repo({ storage: ram, serverPath: generateServerPath() })
+  const repoA = new Repo({ storage: ram })
+  const repoB = new Repo({ storage: ram })
 
   const clientA = new Client({
     id: repoA.id,
@@ -25,8 +25,8 @@ test(`Create ${cycles} docs and share one`, (t) => {
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  repoA.replicate(clientA)
-  repoB.replicate(clientB)
+  repoA.setSwarm(clientA)
+  repoB.setSwarm(clientB)
 
   // connect the repos
 
@@ -36,7 +36,7 @@ test(`Create ${cycles} docs and share one`, (t) => {
   })
   const url = repoA.create({ a: 1 })
 
-  repoB.change<any>(url, (doc) => {
+  repoB.change<any>(url, (doc: any) => {
     doc.b = 2
   })
 

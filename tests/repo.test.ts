@@ -16,9 +16,7 @@ test('Simple create doc and make a change', (t) => {
       [{ foo: 'bar' }, 'change final'],
     ])
   )
-  repo.change<any>(url, (state) => {
-    state.foo = 'bar'
-  })
+
   test.onFinish(() => repo.close())
 })
 
@@ -56,7 +54,7 @@ test('Test document forking...', (t) => {
         { foo: 'bar' },
         'init val',
         () => {
-          repo.change<any>(id2, (state) => {
+          repo.change<any>(id2, (state: any) => {
             state.bar = 'foo'
           })
         },
@@ -92,13 +90,14 @@ test('Test materialize...', (t) => {
       ],
     ])
   )
-  repo.change<any>(url, (state) => {
+
+  repo.change<any>(url, (state: any) => {
     state.foo = 'bar1'
   })
-  repo.change<any>(url, (state) => {
+  repo.change<any>(url, (state: any) => {
     state.foo = 'bar2'
   })
-  repo.change<any>(url, (state) => {
+  repo.change<any>(url, (state: any) => {
     state.foo = 'bar3'
   })
   test.onFinish(() => repo.close())
@@ -126,11 +125,11 @@ test('Test meta...', (t) => {
     })
   })
 
-  repo.change<any>(id, (state) => {
+  repo.change<any>(id, (state: any) => {
     state.foo = 'bar1'
   })
 
-  repo.change<any>(id, (state) => {
+  repo.change<any>(id, (state: any) => {
     state.foo = 'bar2'
   })
 

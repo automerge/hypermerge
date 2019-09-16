@@ -1,16 +1,9 @@
 "use strict";
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const Backend = __importStar(require("automerge/backend"));
+const automerge_1 = require("automerge");
 const Queue_1 = __importDefault(require("./Queue"));
 const debug_1 = __importDefault(require("debug"));
 const Clock_1 = require("./Clock");
@@ -64,7 +57,7 @@ class DocBackend {
             this.bench('init', () => {
                 //console.log("CHANGES MAX",changes[changes.length - 1])
                 //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
-                const [back, patch] = Backend.applyChanges(Backend.init(), changes);
+                const [back, patch] = automerge_1.Backend.applyChanges(automerge_1.Backend.init(), changes);
                 this.actorId = this.actorId || actorId;
                 this.back = back;
                 this.updateClock(changes);
@@ -115,7 +108,7 @@ class DocBackend {
     subscribeToRemoteChanges() {
         this.remoteChangesQ.subscribe((changes) => {
             this.bench('applyRemoteChanges', () => {
-                const [back, patch] = Backend.applyChanges(this.back, changes);
+                const [back, patch] = automerge_1.Backend.applyChanges(this.back, changes);
                 this.back = back;
                 this.updateClock(changes);
                 const history = this.back.getIn(['opSet', 'history']).size;
@@ -132,7 +125,7 @@ class DocBackend {
     subscribeToLocalChanges() {
         this.localChangeQ.subscribe((change) => {
             this.bench(`applyLocalChange seq=${change.seq}`, () => {
-                const [back, patch] = Backend.applyLocalChange(this.back, change);
+                const [back, patch] = automerge_1.Backend.applyLocalChange(this.back, change);
                 this.back = back;
                 this.updateClock([change]);
                 const history = this.back.getIn(['opSet', 'history']).size;

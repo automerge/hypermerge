@@ -2,13 +2,15 @@
 import Queue from './Queue';
 import { Metadata } from './Metadata';
 import { Actor } from './Actor';
-import { Clock, Change } from 'automerge/backend';
+import { Clock, Change } from 'automerge';
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg';
 import * as DocBackend from './DocBackend';
 import { ActorId, DiscoveryId, DocId } from './Misc';
-import FeedStore from './FeedStore';
-import FileStore from './FileStore';
-import { Swarm } from './Network';
+interface Swarm {
+    join(dk: Buffer): void;
+    leave(dk: Buffer): void;
+    on: Function;
+}
 export interface FeedData {
     actorId: ActorId;
     writable: Boolean;
@@ -21,31 +23,32 @@ export interface Options {
 export declare class RepoBackend {
     path?: string;
     storage: Function;
-    store: FeedStore;
-    files: FileStore;
+    joined: Set<DiscoveryId>;
     actors: Map<ActorId, Actor>;
     actorsDk: Map<DiscoveryId, Actor>;
     docs: Map<DocId, DocBackend.DocBackend>;
     meta: Metadata;
     opts: Options;
     toFrontend: Queue<ToFrontendRepoMsg>;
+    swarm?: Swarm;
     id: Buffer;
-    private fileServer;
-    private network;
+    file?: Uint8Array;
     constructor(opts: Options);
-    startFileServer: (path: string) => void;
+    private writeFile;
+    private readFile;
     private create;
     private debug;
     private destroy;
     private open;
     merge(id: DocId, clock: Clock): void;
-    close: () => Promise<[void, void]>;
+    close: () => void;
+    replicate: (swarm: Swarm) => void;
     private allReadyActors;
     private loadDocument;
     join: (actorId: ActorId) => void;
     leave: (actorId: ActorId) => void;
     private getReadyActor;
-    storageFn: (path: string) => (name: string) => any;
+    storageFn: (path: string) => Function;
     initActorFeed(doc: DocBackend.DocBackend): ActorId;
     actorIds(doc: DocBackend.DocBackend): ActorId[];
     docActors(doc: DocBackend.DocBackend): Actor[];
@@ -58,10 +61,10 @@ export declare class RepoBackend {
     private actorNotify;
     private initActor;
     syncChanges: (actor: Actor) => void;
-    setSwarm: (swarm: Swarm) => void;
     stream: (opts: any) => any;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;
     handleQuery: (id: number, query: ToBackendQueryMsg) => void;
     receive: (msg: ToBackendRepoMsg) => void;
     actor(id: ActorId): Actor | undefined;
 }
+export {};

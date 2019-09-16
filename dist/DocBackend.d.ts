@@ -1,6 +1,4 @@
-import * as Backend from 'automerge/backend';
-import { Change, BackDoc } from 'automerge/backend';
-import * as Frontend from 'automerge/frontend';
+import { Change, BackendState as BackDoc, Patch } from 'automerge';
 import Queue from './Queue';
 import { Clock } from './Clock';
 import { ActorId, DocId } from './Misc';
@@ -11,7 +9,7 @@ interface ReadyMsg {
     synced: boolean;
     actorId?: ActorId;
     history?: number;
-    patch?: Frontend.Patch;
+    patch?: Patch;
 }
 interface ActorIdMsg {
     type: 'ActorIdMsg';
@@ -23,7 +21,7 @@ interface RemotePatchMsg {
     id: DocId;
     actorId?: ActorId;
     synced: boolean;
-    patch: Frontend.Patch;
+    patch: Patch;
     change?: Change;
     history: number;
 }
@@ -32,7 +30,7 @@ interface LocalPatchMsg {
     id: DocId;
     actorId: ActorId;
     synced: boolean;
-    patch: Frontend.Patch;
+    patch: Patch;
     change: Change;
     history: number;
 }
@@ -51,11 +49,11 @@ export declare class DocBackend {
     constructor(documentId: DocId, notify: (msg: DocBackendMessage) => void, back?: BackDoc);
     testForSync: () => void;
     target: (clock: Clock) => void;
-    applyRemoteChanges: (changes: Backend.Change[]) => void;
-    applyLocalChange: (change: Backend.Change) => void;
+    applyRemoteChanges: (changes: Change[]) => void;
+    applyLocalChange: (change: Change) => void;
     initActor: (actorId: ActorId) => void;
     updateClock(changes: Change[]): void;
-    init: (changes: Backend.Change[], actorId?: ActorId | undefined) => void;
+    init: (changes: Change[], actorId?: ActorId | undefined) => void;
     subscribeToRemoteChanges(): void;
     subscribeToLocalChanges(): void;
     private bench;

@@ -46,7 +46,7 @@ test('Share a doc between two repos', (t) => {
 
   const id = repoA.create({ a: 1 })
 
-  repoB.change<any>(id, (doc) => {
+  repoB.change<any>(id, (doc: any) => {
     doc.b = 2
   })
 
@@ -103,7 +103,7 @@ test("Three way docs don't load until all canges are in", (t) => {
 
   const id = repoA.create({ a: 1 })
 
-  repoB.change<any>(id, (doc) => {
+  repoB.change<any>(id, (doc: any) => {
     doc.b = 2
   })
 
@@ -123,6 +123,7 @@ test("Three way docs don't load until all canges are in", (t) => {
         "repoB gets repoA's change and its local changes at once",
         () => {
           repoC.setSwarm(clientC)
+
           repoC.doc(id, (doc) => {
             t.deepEqual(doc, { a: 1, b: 2 })
           })

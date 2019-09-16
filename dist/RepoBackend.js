@@ -1,9 +1,10 @@
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -24,34 +25,23 @@ const Actor_1 = require("./Actor");
 const Clock_1 = require("./Clock");
 const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
-const Backend = __importStar(require("automerge/backend"));
+const hypercore_1 = require("./hypercore");
+const automerge_1 = require("automerge");
 const DocBackend = __importStar(require("./DocBackend"));
 const Misc_1 = require("./Misc");
 const debug_1 = __importDefault(require("debug"));
 const DocumentBroadcast = __importStar(require("./DocumentBroadcast"));
 const Keys = __importStar(require("./Keys"));
-const FeedStore_1 = __importDefault(require("./FeedStore"));
-const FileStore_1 = __importDefault(require("./FileStore"));
-const FileServer_1 = __importDefault(require("./FileServer"));
-const Network_1 = __importDefault(require("./Network"));
-const NetworkPeer_1 = require("./NetworkPeer");
 debug_1.default.formatters.b = Base58.encode;
+const HypercoreProtocol = require('hypercore-protocol');
 const log = debug_1.default('repo:backend');
 class RepoBackend {
     constructor(opts) {
+        this.joined = new Set();
         this.actors = new Map();
         this.actorsDk = new Map();
         this.docs = new Map();
         this.toFrontend = new Queue_1.default('repo:back:toFrontend');
-        this.startFileServer = (path) => {
-            if (this.fileServer.isListening())
-                return;
-            this.fileServer.listen(path);
-            this.toFrontend.push({
-                type: 'FileServerReadyMsg',
-                path,
-            });
-        };
         /*
         follow(id: string, target: string) {
           this.meta.follow(id, target);
@@ -61,13 +51,44 @@ class RepoBackend {
         this.close = () => {
             this.actors.forEach((actor) => actor.close());
             this.actors.clear();
-            return Promise.all([this.network.close(), this.fileServer.close()]);
+            const swarm = this.swarm; // FIXME - any is bad
+            if (swarm) {
+                try {
+                    swarm.discovery.removeAllListeners();
+                    swarm.discovery.close();
+                    swarm.peers.forEach((p) => p.connections.forEach((con) => con.destroy()));
+                    swarm.removeAllListeners();
+                }
+                catch (error) { }
+            }
+        };
+        this.replicate = (swarm) => {
+            if (this.swarm) {
+                throw new Error('replicate called while already swarming');
+            }
+            this.swarm = swarm;
+            for (let dk of this.joined) {
+                log('swarm.join');
+                this.swarm.join(Base58.decode(dk));
+            }
         };
         this.join = (actorId) => {
-            this.network.join(actorId);
+            const dkBuffer = hypercore_1.discoveryKey(Base58.decode(actorId));
+            const dk = Misc_1.encodeDiscoveryId(dkBuffer);
+            if (this.swarm && !this.joined.has(dk)) {
+                log('swarm.join', Misc_1.ID(actorId), Misc_1.ID(dk));
+                this.swarm.join(dkBuffer);
+            }
+            this.joined.add(dk);
         };
         this.leave = (actorId) => {
-            this.network.leave(actorId);
+            const dkBuffer = hypercore_1.discoveryKey(Base58.decode(actorId));
+            const dk = Misc_1.encodeDiscoveryId(dkBuffer);
+            if (this.swarm && this.joined.has(dk)) {
+                log('leave', Misc_1.ID(actorId), Misc_1.ID(dk));
+                this.swarm.leave(dkBuffer);
+            }
+            this.joined.delete(dk);
         };
         this.getReadyActor = (actorId) => {
             const publicKey = Base58.decode(actorId);
@@ -253,11 +274,29 @@ class RepoBackend {
                 }
             });
         };
-        this.setSwarm = (swarm) => {
-            return this.network.setSwarm(swarm);
-        };
         this.stream = (opts) => {
-            return this.network.onConnect(opts);
+            const stream = HypercoreProtocol({
+                live: true,
+                id: this.id,
+                encrypt: false,
+                timeout: 10000,
+                extensions: DocumentBroadcast.SUPPORTED_EXTENSIONS,
+            });
+            let add = (dk) => {
+                const actor = this.actorsDk.get(Misc_1.encodeDiscoveryId(dk));
+                if (actor) {
+                    log('replicate feed!', Misc_1.ID(Base58.encode(dk)));
+                    actor.feed.replicate({
+                        stream,
+                        live: true,
+                    });
+                }
+            };
+            stream.on('feed', (dk) => add(dk));
+            const dk = opts.channel || opts.discoveryKey;
+            if (dk)
+                add(dk);
+            return stream;
         };
         this.subscribe = (subscriber) => {
             this.toFrontend.subscribe(subscriber);
@@ -276,93 +315,126 @@ class RepoBackend {
                         .getIn(['opSet', 'history'])
                         .slice(0, query.history)
                         .toArray();
-                    const [_, patch] = Backend.applyChanges(Backend.init(), changes);
+                    const [_, patch] = automerge_1.Backend.applyChanges(automerge_1.Backend.init(), changes);
                     this.toFrontend.push({ type: 'Reply', id, payload: patch });
                     break;
                 }
             }
         };
         this.receive = (msg) => {
-            switch (msg.type) {
-                case 'NeedsActorIdMsg': {
-                    const doc = this.docs.get(msg.id);
-                    const actorId = this.initActorFeed(doc);
-                    doc.initActor(actorId);
-                    break;
-                }
-                case 'RequestMsg': {
-                    const doc = this.docs.get(msg.id);
-                    doc.applyLocalChange(msg.request);
-                    break;
-                }
-                case 'Query': {
-                    const query = msg.query;
-                    const id = msg.id;
-                    this.handleQuery(id, query);
-                    break;
-                }
-                case 'CreateMsg': {
-                    const keys = {
-                        publicKey: Keys.decode(msg.publicKey),
-                        secretKey: Keys.decode(msg.secretKey),
-                    };
-                    this.create(keys);
-                    break;
-                }
-                case 'MergeMsg': {
-                    this.merge(msg.id, Clock_1.strs2clock(msg.actors));
-                    break;
-                }
-                /*
-                  case "FollowMsg": {
-                    this.follow(msg.id, msg.target);
-                    break;
-                  }
-          */
-                case 'OpenMsg': {
-                    this.open(msg.id);
-                    break;
-                }
-                case 'DocumentMessage': {
-                    // Note: 'id' is the document id of the document to send the message to.
-                    const { id, contents } = msg;
-                    const documentActor = this.actor(Misc_1.rootActorId(id));
-                    if (documentActor) {
-                        DocumentBroadcast.broadcastDocumentMessage(id, contents, documentActor.peers.values());
+            if (msg instanceof Uint8Array) {
+                this.file = msg;
+            }
+            else {
+                switch (msg.type) {
+                    case 'NeedsActorIdMsg': {
+                        const doc = this.docs.get(msg.id);
+                        const actorId = this.initActorFeed(doc);
+                        doc.initActor(actorId);
+                        break;
                     }
-                    break;
-                }
-                case 'DestroyMsg': {
-                    this.destroy(msg.id);
-                    break;
-                }
-                case 'DebugMsg': {
-                    this.debug(msg.id);
-                    break;
-                }
-                case 'CloseMsg': {
-                    this.close();
-                    break;
+                    case 'RequestMsg': {
+                        const doc = this.docs.get(msg.id);
+                        doc.applyLocalChange(msg.request);
+                        break;
+                    }
+                    case 'WriteFile': {
+                        const keys = {
+                            publicKey: Keys.decode(msg.publicKey),
+                            secretKey: Keys.decode(msg.secretKey),
+                        };
+                        log('write file', msg.mimeType);
+                        this.writeFile(keys, this.file, msg.mimeType);
+                        delete this.file;
+                        break;
+                    }
+                    case 'Query': {
+                        const query = msg.query;
+                        const id = msg.id;
+                        this.handleQuery(id, query);
+                        break;
+                    }
+                    case 'ReadFile': {
+                        const id = msg.id;
+                        log('read file', id);
+                        this.readFile(id).then((file) => {
+                            this.toFrontend.push(file.body);
+                            this.toFrontend.push({ type: 'ReadFileReply', id, mimeType: file.mimeType });
+                        });
+                        break;
+                    }
+                    case 'CreateMsg': {
+                        const keys = {
+                            publicKey: Keys.decode(msg.publicKey),
+                            secretKey: Keys.decode(msg.secretKey),
+                        };
+                        this.create(keys);
+                        break;
+                    }
+                    case 'MergeMsg': {
+                        this.merge(msg.id, Clock_1.strs2clock(msg.actors));
+                        break;
+                    }
+                    /*
+                    case "FollowMsg": {
+                      this.follow(msg.id, msg.target);
+                      break;
+                    }
+            */
+                    case 'OpenMsg': {
+                        this.open(msg.id);
+                        break;
+                    }
+                    case 'DocumentMessage': {
+                        // Note: 'id' is the document id of the document to send the message to.
+                        const { id, contents } = msg;
+                        const documentActor = this.actor(Misc_1.rootActorId(id));
+                        if (documentActor) {
+                            DocumentBroadcast.broadcastDocumentMessage(id, contents, documentActor.peers.values());
+                        }
+                        break;
+                    }
+                    case 'DestroyMsg': {
+                        this.destroy(msg.id);
+                        break;
+                    }
+                    case 'DebugMsg': {
+                        this.debug(msg.id);
+                        break;
+                    }
+                    case 'CloseMsg': {
+                        this.close();
+                        break;
+                    }
                 }
             }
         };
         this.opts = opts;
         this.path = opts.path || 'default';
         this.storage = opts.storage;
-        this.store = new FeedStore_1.default(this.storageFn);
-        this.files = new FileStore_1.default(this.store);
-        this.files.writeLog.subscribe((header) => {
-            this.meta.addFile(header.url, header.bytes, header.mimeType);
-        });
-        this.fileServer = new FileServer_1.default(this.files);
         this.meta = new Metadata_1.Metadata(this.storageFn, this.join, this.leave);
         this.id = this.meta.id;
-        this.network = new Network_1.default(NetworkPeer_1.encodePeerId(this.id), this.store);
+    }
+    writeFile(keys, data, mimeType) {
+        const fileId = Misc_1.encodeHyperfileId(keys.publicKey);
+        this.meta.addFile(fileId, data.length, mimeType);
+        const actor = this.initActor(keys);
+        actor.writeFile(data, mimeType);
+    }
+    readFile(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            //    log("readFile",id, this.meta.forDoc(id))
+            if (this.meta.isDoc(id)) {
+                throw new Error('trying to open a document like a file');
+            }
+            const actor = yield this.getReadyActor(Misc_1.hyperfileActorId(id));
+            return actor.readFile();
+        });
     }
     create(keys) {
         const docId = Misc_1.encodeDocId(keys.publicKey);
         log('create', docId);
-        const doc = new DocBackend.DocBackend(docId, this.documentNotify, Backend.init());
+        const doc = new DocBackend.DocBackend(docId, this.documentNotify, automerge_1.Backend.init());
         this.docs.set(docId, doc);
         this.meta.addActor(doc.id, Misc_1.rootActorId(doc.id));
         this.initActor(keys);
@@ -476,7 +548,9 @@ class RepoBackend {
         return clocks;
     }
     initActor(keys) {
-        const actor = new Actor_1.Actor({ keys, notify: this.actorNotify, store: this.store });
+        const notify = this.actorNotify;
+        const storage = this.storageFn;
+        const actor = new Actor_1.Actor({ keys, notify, storage });
         this.actors.set(actor.id, actor);
         this.actorsDk.set(actor.dkString, actor);
         return actor;
