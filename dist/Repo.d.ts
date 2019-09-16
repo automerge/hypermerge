@@ -5,12 +5,9 @@ import { Handle } from './Handle';
 import { PublicMetadata } from './Metadata';
 import { Clock } from './Clock';
 import { DocUrl, HyperfileUrl } from './Misc';
+import FileServerClient from './FileServerClient';
+import { Swarm } from './Network';
 import { Doc, Proxy } from 'automerge';
-interface Swarm {
-    join(dk: Buffer): void;
-    leave(dk: Buffer): void;
-    on: Function;
-}
 export declare class Repo {
     front: RepoFrontend;
     back: RepoBackend;
@@ -19,18 +16,17 @@ export declare class Repo {
     create: <T>(init?: T) => DocUrl;
     open: <T>(id: DocUrl) => Handle<T>;
     destroy: (id: DocUrl) => void;
-    replicate: (swarm: Swarm) => void;
+    setSwarm: (swarm: Swarm) => void;
     message: (url: DocUrl, message: any) => void;
+    files: FileServerClient;
+    startFileServer: (fileServerPath: string) => void;
     fork: (url: DocUrl) => DocUrl;
     watch: <T>(url: DocUrl, cb: (val: Doc<T>, clock?: Clock, index?: number) => void) => Handle<T>;
     doc: <T>(url: DocUrl, cb?: (val: Doc<T>, clock?: Clock) => void) => Promise<Doc<T>>;
     merge: (url: DocUrl, target: DocUrl) => void;
     change: <T>(url: DocUrl, fn: (state: Proxy<T>) => void) => void;
-    writeFile: (data: Uint8Array, mimeType: string) => HyperfileUrl;
-    readFile: (url: HyperfileUrl, cb: (data: Uint8Array, mimeType: string) => void) => void;
     materialize: <T>(url: DocUrl, seq: number, cb: (val: Doc<T>) => void) => void;
     meta: (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void) => void;
     close: () => void;
     constructor(opts: Options);
 }
-export {};

@@ -10,13 +10,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
 function create() {
-    const keys = crypto.keyPair();
-    return {
-        publicKey: encode(keys.publicKey),
-        secretKey: encode(keys.secretKey),
-    };
+    return encodePair(crypto.keyPair());
 }
 exports.create = create;
+function decodePair(keys) {
+    return {
+        publicKey: decode(keys.publicKey),
+        secretKey: keys.secretKey ? decode(keys.secretKey) : undefined,
+    };
+}
+exports.decodePair = decodePair;
+function encodePair(keys) {
+    return {
+        publicKey: encode(keys.publicKey),
+        secretKey: keys.secretKey ? encode(keys.secretKey) : undefined,
+    };
+}
+exports.encodePair = encodePair;
 function decode(key) {
     return Base58.decode(key);
 }

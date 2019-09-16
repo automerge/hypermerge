@@ -76,7 +76,7 @@ export declare class Metadata {
     docsWith(actor: ActorId, seq?: number): DocId[];
     has(id: DocId, actor: ActorId, seq: number): boolean;
     merge(id: DocId, merge: Clock): void;
-    addFile(id: HyperfileId, bytes: number, mimeType: string): void;
+    addFile(hyperfileUrl: HyperfileUrl, bytes: number, mimeType: string): void;
     delete(id: DocId): void;
     addActor(id: DocId, actorId: ActorId): void;
     addBlocks(blocks: MetadataBlock[]): void;

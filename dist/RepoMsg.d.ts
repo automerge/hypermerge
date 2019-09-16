@@ -3,7 +3,7 @@ import { PublicMetadata } from './Metadata';
 import { DocId, HyperfileId, ActorId } from './Misc';
 export declare type ToBackendQueryMsg = MaterializeMsg | MetadataMsg;
 export declare type ToFrontendReplyMsg = MaterializeReplyMsg | MetadataReplyMsg;
-export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DocumentMsg | DestroyMsg | DebugMsg | WriteFile | ReadFile | QueryMsg | Uint8Array;
+export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DocumentMsg | DestroyMsg | DebugMsg | QueryMsg;
 export interface QueryMsg {
     type: 'Query';
     id: number;
@@ -27,16 +27,6 @@ export interface CreateMsg {
     type: 'CreateMsg';
     publicKey: string;
     secretKey: string;
-}
-export interface WriteFile {
-    type: 'WriteFile';
-    publicKey: string;
-    secretKey: string;
-    mimeType: string;
-}
-export interface ReadFile {
-    type: 'ReadFile';
-    id: HyperfileId;
 }
 export interface MergeMsg {
     type: 'MergeMsg';
@@ -64,7 +54,7 @@ export interface RequestMsg {
     id: DocId;
     request: Change;
 }
-export declare type ToFrontendRepoMsg = PatchMsg | ActorBlockDownloadedMsg | ActorIdMsg | ReadyMsg | ReadFileReply | ReplyMsg | DocumentMsg | Uint8Array;
+export declare type ToFrontendRepoMsg = PatchMsg | ActorBlockDownloadedMsg | ActorIdMsg | ReadyMsg | ReplyMsg | DocumentMsg | FileServerReadyMsg;
 export interface PatchMsg {
     type: 'PatchMsg';
     id: DocId;
@@ -84,11 +74,6 @@ export interface MaterializeReplyMsg {
 export interface MetadataReplyMsg {
     type: 'MetadataReplyMsg';
     metadata: PublicMetadata | null;
-}
-export interface ReadFileReply {
-    type: 'ReadFileReply';
-    id: HyperfileId;
-    mimeType: string;
 }
 export interface ActorIdMsg {
     type: 'ActorIdMsg';
@@ -113,4 +98,8 @@ export interface ActorBlockDownloadedMsg {
     index: number;
     size: number;
     time: number;
+}
+export interface FileServerReadyMsg {
+    type: 'FileServerReadyMsg';
+    path: string;
 }

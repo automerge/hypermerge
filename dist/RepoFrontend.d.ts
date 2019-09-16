@@ -6,6 +6,7 @@ import { Patch, ChangeFn } from 'automerge';
 import { DocFrontend } from './DocFrontend';
 import { Clock } from './Clock';
 import { DocUrl, DocId, ActorId, HyperfileId, HyperfileUrl } from './Misc';
+import FileServerClient from './FileServerClient';
 export interface DocMetadata {
     clock: Clock;
     history: number;
@@ -23,14 +24,12 @@ export declare class RepoFrontend {
     cb: Map<number, (reply: any) => void>;
     msgcb: Map<number, (patch: Patch) => void>;
     readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void>;
-    file?: Uint8Array;
+    files: FileServerClient;
     create: <T>(init?: T | undefined) => DocUrl;
     change: <T>(url: DocUrl, fn: ChangeFn<T>) => void;
     meta: (url: DocUrl | HyperfileUrl, cb: (meta: import("./Metadata").PublicDocMetadata | import("./Metadata").PublicFileMetadata | undefined) => void) => void;
     meta2: (url: DocUrl | HyperfileUrl) => DocMetadata | undefined;
     merge: (url: DocUrl, target: DocUrl) => void;
-    writeFile: <T>(data: Uint8Array, inputMimeType: string) => HyperfileUrl;
-    readFile: <T>(url: HyperfileUrl, cb: (data: Uint8Array, mimeType: string) => void) => void;
     fork: (url: DocUrl) => DocUrl;
     watch: <T>(url: DocUrl, cb: (val: import("automerge").FreezeObject<T>, clock?: Clock | undefined, index?: number | undefined) => void) => Handle<T>;
     message: (url: DocUrl, contents: any) => void;
