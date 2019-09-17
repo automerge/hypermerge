@@ -79,10 +79,9 @@ export default class FeedStore {
     return feed.createReadStream({ start })
   }
 
-  // Note: Do we actually need this?
   close(feedId: FeedId): Promise<FeedId> {
     const feed = this.feeds.get(feedId)
-    if (!feed) return Promise.resolve(feedId)
+    if (!feed) return Promise.reject(new Error(`Can't close feed ${feedId}, feed not open`))
 
     return new Promise((res, rej) => {
       feed.close((err) => {
@@ -95,14 +94,11 @@ export default class FeedStore {
   destroy(feedId: FeedId): Promise<FeedId> {
     return new Promise((res, rej) => {
       const filename = (this.storage(feedId)('') as any).filename
-      console.log(filename)
       const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`
-      /*
       fs.rename(filename, newName, (err: Error) => {
         if (err) return rej(err)
         res(feedId)
       })
-      */
     })
   }
 
