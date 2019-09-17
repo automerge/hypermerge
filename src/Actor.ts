@@ -1,7 +1,3 @@
-/**
- * Actors provide an interface over the data replication scheme.
- * For dat, this means the actor abstracts over the hypercore and its peers.
- */
 import { Peer, discoveryKey } from './hypercore'
 import { Change } from 'automerge'
 import { ID, ActorId, DiscoveryId, encodeActorId, encodeDiscoveryId } from './Misc'
