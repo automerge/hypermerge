@@ -73,7 +73,7 @@ export class Actor {
   private store: FeedStore
 
   constructor(config: ActorConfig) {
-    const { publicKey, secretKey } = config.keys
+    const { publicKey } = config.keys
     const dk = discoveryKey(publicKey)
     const id = encodeActorId(publicKey)
 
@@ -88,7 +88,30 @@ export class Actor {
     })
   }
 
-  getOrCreateFeed = async (keys: Keys.KeyPair) => {
+  // Note: on Actor ready, not Feed!
+  onReady = (cb: (actor: Actor) => void) => {
+    this.q.push(cb)
+  }
+
+  writeChange(change: Change) {
+    const feedLength = this.changes.length
+    const ok = feedLength + 1 === change.seq
+    log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`)
+    this.changes.push(change)
+    this.onSync()
+    this.store.append(this.id, Block.pack(change))
+  }
+
+  close() {
+    return this.store.close(this.id)
+  }
+
+  async destroy() {
+    await this.close()
+    this.store.destroy(this.id)
+  }
+
+  private async getOrCreateFeed(keys: Keys.KeyPair) {
     let feedId: FeedId
     if (keys.secretKey) {
       feedId = await this.store.create(keys as Required<Keys.KeyPair>)
@@ -98,14 +121,14 @@ export class Actor {
     return this.store.getFeed(feedId)
   }
 
-  onFeedReady = async (feed: Feed) => {
+  private onFeedReady = async (feed: Feed) => {
     this.notify({ type: 'ActorFeedReady', actor: this, writable: feed.writable })
 
     feed.on('peer-remove', this.onPeerRemove)
     feed.on('peer-add', this.onPeerAdd)
     feed.on('download', this.onDownload)
     feed.on('sync', this.onSync)
-    feed.on('close', this.close)
+    feed.on('close', this.onClose)
 
     let hasData = false
     let sequenceNumber = 0
@@ -122,12 +145,7 @@ export class Actor {
     })
   }
 
-  // Note: on Actor ready, not Feed!
-  onReady = (cb: (actor: Actor) => void) => {
-    this.q.push(cb)
-  }
-
-  onPeerAdd = (peer: Peer) => {
+  private onPeerAdd = (peer: Peer) => {
     log('peer-add feed', ID(this.id), peer.remoteId)
     // peer-add is called multiple times. Noop if we already know about this peer.
     if (this.peers.has(peer.remoteId.toString())) return
@@ -137,12 +155,12 @@ export class Actor {
     this.notify({ type: 'PeerUpdate', actor: this, peers: this.peers.size })
   }
 
-  onPeerRemove = (peer: Peer) => {
+  private onPeerRemove = (peer: Peer) => {
     this.peers.delete(peer.remoteId.toString())
     this.notify({ type: 'PeerUpdate', actor: this, peers: this.peers.size })
   }
 
-  onDownload = (index: number, data: Uint8Array) => {
+  private onDownload = (index: number, data: Uint8Array) => {
     this.parseBlock(data, index)
     const time = Date.now()
     const size = data.byteLength
@@ -150,36 +168,18 @@ export class Actor {
     this.notify({ type: 'Download', actor: this, index, size, time })
   }
 
-  onSync = () => {
+  private onSync = () => {
     log('sync feed', ID(this.id))
     this.notify({ type: 'ActorSync', actor: this })
   }
 
-  onClose = () => {
+  private onClose = () => {
     this.close()
   }
 
-  parseBlock = (data: Uint8Array, index: number) => {
+  private parseBlock(data: Uint8Array, index: number) {
     const change: Change = Block.unpack(data) // no validation of Change
     this.changes[index] = change
     log(`block xxx idx=${index} actor=${ID(change.actor)} seq=${change.seq}`)
-  }
-
-  writeChange(change: Change) {
-    const feedLength = this.changes.length
-    const ok = feedLength + 1 === change.seq
-    log(`write actor=${this.id} seq=${change.seq} feed=${feedLength} ok=${ok}`)
-    this.changes.push(change)
-    this.onSync()
-    this.store.append(this.id, Block.pack(change))
-  }
-
-  close = () => {
-    return this.store.close(this.id)
-  }
-
-  destroy = async () => {
-    await this.close()
-    this.store.destroy(this.id)
   }
 }
