@@ -16,9 +16,12 @@ test('Simple create doc and make a change', (t) => {
       [{ foo: 'bar' }, 'change final'],
     ])
   )
+
   repo.change<any>(url, (state: any) => {
     state.foo = 'bar'
   })
+
+  test.onFinish(() => repo.close())
 })
 
 test('Create a doc backend - then wire it up to a frontend - make a change', (t) => {
@@ -91,6 +94,7 @@ test('Test materialize...', (t) => {
       ],
     ])
   )
+
   repo.change<any>(url, (state: any) => {
     state.foo = 'bar1'
   })

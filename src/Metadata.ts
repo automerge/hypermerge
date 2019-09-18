@@ -5,9 +5,10 @@ import { hypercore, readFeed, Feed } from './hypercore'
 import Debug from 'debug'
 import * as JsonBuffer from './JsonBuffer'
 import * as URL from 'url'
+import { hyperfileActorId } from './Misc'
 const log = Debug('repo:metadata')
 
-import { Clock, equivalent, addTo, union, intersection } from './Clock'
+import { Clock, equivalent, addTo, union } from './Clock'
 import {
   DocUrl,
   DocId,
@@ -133,6 +134,10 @@ export type MetadataBlock = FileBlock | ActorsBlock | MergeBlock | DeletedBlock
 
 function isFileBlock(block: MetadataBlock): block is FileBlock {
   return 'mimeType' in block && typeof block.mimeType === 'string' && block.bytes != undefined
+}
+
+function isDeletedBlock(block: MetadataBlock): block is DeletedBlock {
+  return 'deleted' in block
 }
 
 function isNumber(n: any): n is number {
@@ -264,6 +269,7 @@ export class Metadata {
     this.replay = []
     this._clocks = {}
     this._docsWith = new Map()
+    this.allActors().forEach((actorId: string) => this.join(actorId as ActorId))
     this.readyQ.subscribe((f) => f())
   }
 
@@ -287,6 +293,14 @@ export class Metadata {
       this.append(block)
       this._clocks = {}
       this._docsWith.clear()
+
+      if (isFileBlock(block)) {
+        this.join(hyperfileActorId(block.id))
+      } else if (isDeletedBlock(block)) {
+        this.actors(block.id).forEach(this.leave)
+      } else {
+        this.actors(block.id).forEach(this.join)
+      }
     }
   }
 
@@ -438,7 +452,8 @@ export class Metadata {
     this.writeThrough({ id, merge })
   }
 
-  addFile(id: HyperfileId, bytes: number, mimeType: string) {
+  addFile(hyperfileUrl: HyperfileUrl, bytes: number, mimeType: string) {
+    const id = validateFileURL(hyperfileUrl)
     this.writeThrough({ id, bytes, mimeType })
   }
 

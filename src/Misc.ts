@@ -1,8 +1,10 @@
 import * as Base58 from 'bs58'
+import { Readable } from 'stream'
+import { FeedId } from './FeedStore'
 
 export type BaseId = string & { id: true }
 export type DocId = BaseId & { docId: true }
-export type ActorId = BaseId & { actorId: true }
+export type ActorId = FeedId & { actorId: true }
 export type HyperfileId = BaseId & { hyperfileId: true }
 export type DiscoveryId = BaseId & { discoveryId: true }
 
@@ -57,4 +59,36 @@ export function ID(_id: string): string {
 
 export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
   return value !== null && value !== undefined
+}
+
+export function streamToBuffer(stream: Readable): Promise<Buffer> {
+  return new Promise((res, rej) => {
+    const buffers: Buffer[] = []
+    stream
+      .on('data', (data: Buffer) => buffers.push(data))
+      .on('error', (err: any) => rej(err))
+      .on('end', () => res(Buffer.concat(buffers)))
+  })
+}
+
+export function bufferToStream(buffer: Buffer): Readable {
+  return new Readable({
+    read() {
+      this.push(buffer)
+      this.push(null)
+    },
+  })
+}
+
+// Windows uses named pipes:
+// https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
+export function toIpcPath(path: string): string {
+  return process.platform === 'win32' ? toWindowsNamedPipe(path) : path
+}
+
+// Inspired by node-ipc
+// https://github.com/RIAEvangelist/node-ipc/blob/70e03c119b4902d3e74de1f683ab39dd2f634807/dao/socketServer.js#L309
+function toWindowsNamedPipe(path: string): string {
+  const sanitizedPath = path.replace(/^\//, '').replace(/\//g, '-')
+  return `\\\\.\\pipe\\${sanitizedPath}`
 }

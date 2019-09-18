@@ -32,6 +32,7 @@
     "hypercore": "^6.24.0",
     "hypercore-protocol": "^6.12.0",
     "iltorb": "^2.4.3",
+    "js-sha1": "^0.6.0",
     "mime-types": "^2.1.24"
   },
   "devDependencies": {
@@ -39,6 +40,8 @@
     "@types/mime-types": "^2.1.0",
     "@types/node": "^10.12.2",
     "@types/tape": "^4.2.32",
+    "@types/uuid": "^3.4.5",
+    "@types/ws": "^6.0.3",
     "dat-swarm-defaults": "^1.0.2",
     "discovery-cloud-client": "https://github.com/orionz/discovery-cloud-client",
     "discovery-swarm": "^6.0.0",
@@ -48,7 +51,8 @@
     "random-access-memory": "^2.4.0",
     "tape": "^4.11.0",
     "ts-node": "^8.3.0",
-    "typescript": "^3.6.2"
+    "typescript": "^3.6.2",
+    "uuid": "^3.3.3"
   },
   "resolutions": {
     "sodium-native": "^2.4.6"

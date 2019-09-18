@@ -4,6 +4,7 @@ let _hypercore = require('hypercore')
 
 import Debug from 'debug'
 import { ID, ActorId } from './Misc'
+import { Readable, Writable } from 'stream'
 const log = Debug('repo:hypermerge')
 
 type Key = string | Buffer
@@ -51,7 +52,7 @@ export interface Feed<T> {
   writable: boolean
   ready: Function
   append(data: T): void
-  append(data: T, cb: (err: Error | null) => void): void
+  append(data: T, cb: (err: Error | null, seq: number) => void): void
   clear(index: number, cb: () => void): void
   clear(start: number, end: number, cb: () => void): void
   downloaded(): number
@@ -67,6 +68,8 @@ export interface Feed<T> {
   get(index: number, config: any, cb: (err: Error, data: T) => void): void
   getBatch(start: number, end: number, cb: (Err: any, data: T[]) => void): void
   getBatch(start: number, end: number, config: any, cb: (Err: any, data: T[]) => void): void
+  createReadStream(opts: any): Readable
+  createWriteStream(): Writable
   discoveryKey: Buffer
   id: Buffer
   length: number

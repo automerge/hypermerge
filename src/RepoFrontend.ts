@@ -8,18 +8,9 @@ import { DocFrontend } from './DocFrontend'
 import { clock2strs, Clock, clockDebug } from './Clock'
 import * as Keys from './Keys'
 import Debug from 'debug'
-import { PublicMetadata, validateDocURL, validateFileURL, validateURL } from './Metadata'
-import mime from 'mime-types'
-import {
-  DocUrl,
-  DocId,
-  ActorId,
-  toDocUrl,
-  HyperfileId,
-  HyperfileUrl,
-  rootActorId,
-  toHyperfileUrl,
-} from './Misc'
+import { PublicMetadata, validateDocURL, validateURL } from './Metadata'
+import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId } from './Misc'
+import FileServerClient from './FileServerClient'
 
 Debug.formatters.b = Base58.encode
 
@@ -46,7 +37,7 @@ export class RepoFrontend {
   cb: Map<number, (reply: any) => void> = new Map()
   msgcb: Map<number, (patch: Patch) => void> = new Map()
   readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void> = new MapSet()
-  file?: Uint8Array
+  files = new FileServerClient()
 
   create = <T>(init?: T): DocUrl => {
     const { publicKey, secretKey } = Keys.create()
@@ -55,7 +46,7 @@ export class RepoFrontend {
     const doc = new DocFrontend<T>(this, { actorId, docId })
 
     this.docs.set(docId, doc)
-    this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey })
+    this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey: secretKey! })
 
     if (init) {
       doc.change((state) => {
@@ -105,24 +96,6 @@ export class RepoFrontend {
       const actors = clock2strs(clock!)
       this.toBackend.push({ type: 'MergeMsg', id, actors })
     })
-  }
-
-  writeFile = <T>(data: Uint8Array, inputMimeType: string): HyperfileUrl => {
-    const { publicKey, secretKey } = Keys.create()
-    const hyperfileId = publicKey as HyperfileId
-
-    // "upgrade" whatever junk arrives into something like a real mime-type
-    const mimeType = mime.contentType(inputMimeType) || 'application/octet-stream'
-
-    this.toBackend.push(data)
-    this.toBackend.push({ type: 'WriteFile', publicKey, secretKey, mimeType })
-    return toHyperfileUrl(hyperfileId)
-  }
-
-  readFile = <T>(url: HyperfileUrl, cb: (data: Uint8Array, mimeType: string) => void): void => {
-    const id = validateFileURL(url)
-    this.readFiles.add(id, cb)
-    this.toBackend.push({ type: 'ReadFile', id })
   }
 
   fork = (url: DocUrl): DocUrl => {
@@ -246,66 +219,60 @@ export class RepoFrontend {
 */
 
   receive = (msg: ToFrontendRepoMsg) => {
-    if (msg instanceof Uint8Array) {
-      this.file = msg
-    } else {
-      switch (msg.type) {
-        case 'ReadFileReply': {
-          const cbs = this.readFiles.delete(msg.id)
-          cbs.forEach((cb) => cb(this.file!, msg.mimeType))
-          delete this.file
-          break
+    switch (msg.type) {
+      case 'PatchMsg': {
+        const doc = this.docs.get(msg.id)
+        if (doc) {
+          doc.patch(msg.patch, msg.synced, msg.history)
         }
-        case 'PatchMsg': {
-          const doc = this.docs.get(msg.id)
-          if (doc) {
-            doc.patch(msg.patch, msg.synced, msg.history)
-          }
-          break
-        }
-        case 'Reply': {
-          const id = msg.id
-          //          const reply = msg.reply
-          // this.handleReply(id,reply)
-          const cb = this.cb.get(id)!
-          cb(msg.payload)
-          this.cb.delete(id)!
-          break
-        }
-        case 'ActorIdMsg': {
-          const doc = this.docs.get(msg.id)
-          if (doc) {
-            doc.setActorId(msg.actorId)
-          }
-          break
-        }
-        case 'ReadyMsg': {
-          const doc = this.docs.get(msg.id)
-          if (doc) {
-            doc.init(msg.synced, msg.actorId, msg.patch, msg.history)
-          }
-          break
-        }
-        case 'ActorBlockDownloadedMsg': {
-          const doc = this.docs.get(msg.id)
-          if (doc) {
-            const progressEvent = {
-              actor: msg.actorId,
-              index: msg.index,
-              size: msg.size,
-              time: msg.time,
-            }
-            doc.progress(progressEvent)
-          }
-          break
-        }
-        case 'DocumentMessage': {
-          const doc = this.docs.get(msg.id)
-          if (doc) {
-            doc.messaged(msg.contents)
-          }
-        }
+        break
       }
+      case 'Reply': {
+        const id = msg.id
+        //          const reply = msg.reply
+        // this.handleReply(id,reply)
+        const cb = this.cb.get(id)!
+        cb(msg.payload)
+        this.cb.delete(id)!
+        break
+      }
+      case 'ActorIdMsg': {
+        const doc = this.docs.get(msg.id)
+        if (doc) {
+          doc.setActorId(msg.actorId)
+        }
+        break
+      }
+      case 'ReadyMsg': {
+        const doc = this.docs.get(msg.id)
+        if (doc) {
+          doc.init(msg.synced, msg.actorId, msg.patch, msg.history)
+        }
+        break
+      }
+      case 'ActorBlockDownloadedMsg': {
+        const doc = this.docs.get(msg.id)
+        if (doc) {
+          const progressEvent = {
+            actor: msg.actorId,
+            index: msg.index,
+            size: msg.size,
+            time: msg.time,
+          }
+          doc.progress(progressEvent)
+        }
+        break
+      }
+      case 'DocumentMessage': {
+        const doc = this.docs.get(msg.id)
+        if (doc) {
+          doc.messaged(msg.contents)
+        }
+        break
+      }
+      case 'FileServerReadyMsg':
+        this.files.setServerPath(msg.path)
+        break
     }
   }
 }

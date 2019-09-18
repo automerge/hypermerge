@@ -19,8 +19,8 @@ const Clock_1 = require("./Clock");
 const Keys = __importStar(require("./Keys"));
 const debug_1 = __importDefault(require("debug"));
 const Metadata_1 = require("./Metadata");
-const mime_types_1 = __importDefault(require("mime-types"));
 const Misc_1 = require("./Misc");
+const FileServerClient_1 = __importDefault(require("./FileServerClient"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default('repo:front');
 let msgid = 1;
@@ -31,13 +31,14 @@ class RepoFrontend {
         this.cb = new Map();
         this.msgcb = new Map();
         this.readFiles = new MapSet_1.default();
+        this.files = new FileServerClient_1.default();
         this.create = (init) => {
             const { publicKey, secretKey } = Keys.create();
             const docId = publicKey;
             const actorId = Misc_1.rootActorId(docId);
             const doc = new DocFrontend_1.DocFrontend(this, { actorId, docId });
             this.docs.set(docId, doc);
-            this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey });
+            this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey: secretKey });
             if (init) {
                 doc.change((state) => {
                     Object.assign(state, init);
@@ -80,20 +81,6 @@ class RepoFrontend {
                 const actors = Clock_1.clock2strs(clock);
                 this.toBackend.push({ type: 'MergeMsg', id, actors });
             });
-        };
-        this.writeFile = (data, inputMimeType) => {
-            const { publicKey, secretKey } = Keys.create();
-            const hyperfileId = publicKey;
-            // "upgrade" whatever junk arrives into something like a real mime-type
-            const mimeType = mime_types_1.default.contentType(inputMimeType) || 'application/octet-stream';
-            this.toBackend.push(data);
-            this.toBackend.push({ type: 'WriteFile', publicKey, secretKey, mimeType });
-            return Misc_1.toHyperfileUrl(hyperfileId);
-        };
-        this.readFile = (url, cb) => {
-            const id = Metadata_1.validateFileURL(url);
-            this.readFiles.add(id, cb);
-            this.toBackend.push({ type: 'ReadFile', id });
         };
         this.fork = (url) => {
             Metadata_1.validateDocURL(url);
@@ -178,67 +165,60 @@ class RepoFrontend {
         }
       */
         this.receive = (msg) => {
-            if (msg instanceof Uint8Array) {
-                this.file = msg;
-            }
-            else {
-                switch (msg.type) {
-                    case 'ReadFileReply': {
-                        const cbs = this.readFiles.delete(msg.id);
-                        cbs.forEach((cb) => cb(this.file, msg.mimeType));
-                        delete this.file;
-                        break;
+            switch (msg.type) {
+                case 'PatchMsg': {
+                    const doc = this.docs.get(msg.id);
+                    if (doc) {
+                        doc.patch(msg.patch, msg.synced, msg.history);
                     }
-                    case 'PatchMsg': {
-                        const doc = this.docs.get(msg.id);
-                        if (doc) {
-                            doc.patch(msg.patch, msg.synced, msg.history);
-                        }
-                        break;
-                    }
-                    case 'Reply': {
-                        const id = msg.id;
-                        //          const reply = msg.reply
-                        // this.handleReply(id,reply)
-                        const cb = this.cb.get(id);
-                        cb(msg.payload);
-                        this.cb.delete(id);
-                        break;
-                    }
-                    case 'ActorIdMsg': {
-                        const doc = this.docs.get(msg.id);
-                        if (doc) {
-                            doc.setActorId(msg.actorId);
-                        }
-                        break;
-                    }
-                    case 'ReadyMsg': {
-                        const doc = this.docs.get(msg.id);
-                        if (doc) {
-                            doc.init(msg.synced, msg.actorId, msg.patch, msg.history);
-                        }
-                        break;
-                    }
-                    case 'ActorBlockDownloadedMsg': {
-                        const doc = this.docs.get(msg.id);
-                        if (doc) {
-                            const progressEvent = {
-                                actor: msg.actorId,
-                                index: msg.index,
-                                size: msg.size,
-                                time: msg.time,
-                            };
-                            doc.progress(progressEvent);
-                        }
-                        break;
-                    }
-                    case 'DocumentMessage': {
-                        const doc = this.docs.get(msg.id);
-                        if (doc) {
-                            doc.messaged(msg.contents);
-                        }
-                    }
+                    break;
                 }
+                case 'Reply': {
+                    const id = msg.id;
+                    //          const reply = msg.reply
+                    // this.handleReply(id,reply)
+                    const cb = this.cb.get(id);
+                    cb(msg.payload);
+                    this.cb.delete(id);
+                    break;
+                }
+                case 'ActorIdMsg': {
+                    const doc = this.docs.get(msg.id);
+                    if (doc) {
+                        doc.setActorId(msg.actorId);
+                    }
+                    break;
+                }
+                case 'ReadyMsg': {
+                    const doc = this.docs.get(msg.id);
+                    if (doc) {
+                        doc.init(msg.synced, msg.actorId, msg.patch, msg.history);
+                    }
+                    break;
+                }
+                case 'ActorBlockDownloadedMsg': {
+                    const doc = this.docs.get(msg.id);
+                    if (doc) {
+                        const progressEvent = {
+                            actor: msg.actorId,
+                            index: msg.index,
+                            size: msg.size,
+                            time: msg.time,
+                        };
+                        doc.progress(progressEvent);
+                    }
+                    break;
+                }
+                case 'DocumentMessage': {
+                    const doc = this.docs.get(msg.id);
+                    if (doc) {
+                        doc.messaged(msg.contents);
+                    }
+                    break;
+                }
+                case 'FileServerReadyMsg':
+                    this.files.setServerPath(msg.path);
+                    break;
             }
         };
     }

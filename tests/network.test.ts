@@ -1,9 +1,25 @@
 import test from 'tape'
 import { Repo } from '../src'
 import Client from 'discovery-cloud-client'
-import { expectDocs } from './misc'
+import { expectDocs, generateServerPath } from './misc'
+import { streamToBuffer, bufferToStream } from '../src/Misc'
 
 const ram: Function = require('random-access-memory')
+
+test('Writing and reading files works', async (t) => {
+  t.plan(1)
+  const repoA = new Repo({
+    storage: ram,
+  })
+  repoA.startFileServer(generateServerPath())
+  const pseudoFile = Buffer.from('coolcool')
+  const size = pseudoFile.length
+  const url = await repoA.files.write(bufferToStream(pseudoFile), size, 'application/octet-stream')
+  const [readable, mimeType] = await repoA.files.read(url)
+  const buffer = await streamToBuffer(readable)
+  t.equal(pseudoFile.toString(), buffer.toString())
+  repoA.close()
+})
 
 test('Share a doc between two repos', (t) => {
   t.plan(0)
@@ -23,8 +39,8 @@ test('Share a doc between two repos', (t) => {
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  repoA.replicate(clientA)
-  repoB.replicate(clientB)
+  repoA.setSwarm(clientA)
+  repoB.setSwarm(clientB)
 
   // connect the repos
 
@@ -80,8 +96,8 @@ test("Three way docs don't load until all canges are in", (t) => {
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  repoA.replicate(clientA)
-  repoB.replicate(clientB)
+  repoA.setSwarm(clientA)
+  repoB.setSwarm(clientB)
 
   // connect repos A and B
 
@@ -106,7 +122,8 @@ test("Three way docs don't load until all canges are in", (t) => {
         { a: 1, b: 2 },
         "repoB gets repoA's change and its local changes at once",
         () => {
-          repoC.replicate(clientC)
+          repoC.setSwarm(clientC)
+
           repoC.doc(id, (doc) => {
             t.deepEqual(doc, { a: 1, b: 2 })
           })
@@ -141,8 +158,8 @@ test('Message about a doc between two repos', (t) => {
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  repoA.replicate(clientA)
-  repoB.replicate(clientB)
+  repoA.setSwarm(clientA)
+  repoB.setSwarm(clientB)
 
   // connect the repos
 
