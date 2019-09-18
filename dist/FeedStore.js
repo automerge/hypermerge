@@ -8,6 +8,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -16,6 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const fs_1 = __importDefault(require("fs"));
 const Keys_1 = require("./Keys");
 const Base58 = __importStar(require("bs58"));
 const hypercore_1 = require("./hypercore");
@@ -82,11 +86,10 @@ class FeedStore {
             return feed.createReadStream({ start });
         });
     }
-    // Note: Do we actually need this?
     close(feedId) {
         const feed = this.feeds.get(feedId);
         if (!feed)
-            return Promise.resolve(feedId);
+            return Promise.reject(new Error(`Can't close feed ${feedId}, feed not open`));
         return new Promise((res, rej) => {
             feed.close((err) => {
                 if (err)
@@ -98,14 +101,12 @@ class FeedStore {
     destroy(feedId) {
         return new Promise((res, rej) => {
             const filename = this.storage(feedId)('').filename;
-            console.log(filename);
             const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`;
-            /*
-            fs.rename(filename, newName, (err: Error) => {
-              if (err) return rej(err)
-              res(feedId)
-            })
-            */
+            fs_1.default.rename(filename, newName, (err) => {
+                if (err)
+                    return rej(err);
+                res(feedId);
+            });
         });
     }
     // Junk method used to bridge to Network

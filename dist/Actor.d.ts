@@ -1,7 +1,3 @@
-/**
- * Actors provide an interface over the data replication scheme.
- * For dat, this means the actor abstracts over the hypercore and its peers.
- */
 import { Peer } from './hypercore';
 import { Change } from 'automerge';
 import { ActorId, DiscoveryId } from './Misc';
@@ -52,17 +48,17 @@ export declare class Actor {
     private notify;
     private store;
     constructor(config: ActorConfig);
-    getOrCreateFeed: (keys: Keys.KeyPair) => Promise<import("./hypercore").Feed<Uint8Array>>;
-    onFeedReady: (feed: import("./hypercore").Feed<Uint8Array>) => Promise<void>;
     onReady: (cb: (actor: Actor) => void) => void;
-    onPeerAdd: (peer: Peer) => void;
-    onPeerRemove: (peer: Peer) => void;
-    onDownload: (index: number, data: Uint8Array) => void;
-    onSync: () => void;
-    onClose: () => void;
-    parseBlock: (data: Uint8Array, index: number) => void;
     writeChange(change: Change): void;
-    close: () => Promise<FeedId>;
-    destroy: () => Promise<void>;
+    close(): Promise<FeedId>;
+    destroy(): Promise<void>;
+    private getOrCreateFeed;
+    private onFeedReady;
+    private onPeerAdd;
+    private onPeerRemove;
+    private onDownload;
+    private onSync;
+    private onClose;
+    private parseBlock;
 }
 export {};

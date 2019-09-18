@@ -19,10 +19,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-/**
- * Actors provide an interface over the data replication scheme.
- * For dat, this means the actor abstracts over the hypercore and its peers.
- */
 const hypercore_1 = require("./hypercore");
 const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
@@ -34,23 +30,17 @@ class Actor {
     constructor(config) {
         this.changes = [];
         this.peers = new Map();
-        this.getOrCreateFeed = (keys) => __awaiter(this, void 0, void 0, function* () {
-            let feedId;
-            if (keys.secretKey) {
-                feedId = yield this.store.create(keys);
-            }
-            else {
-                feedId = keys.publicKey;
-            }
-            return this.store.getFeed(feedId);
-        });
+        // Note: on Actor ready, not Feed!
+        this.onReady = (cb) => {
+            this.q.push(cb);
+        };
         this.onFeedReady = (feed) => __awaiter(this, void 0, void 0, function* () {
             this.notify({ type: 'ActorFeedReady', actor: this, writable: feed.writable });
             feed.on('peer-remove', this.onPeerRemove);
             feed.on('peer-add', this.onPeerAdd);
             feed.on('download', this.onDownload);
             feed.on('sync', this.onSync);
-            feed.on('close', this.close);
+            feed.on('close', this.onClose);
             let hasData = false;
             let sequenceNumber = 0;
             const data = yield this.store.stream(this.id);
@@ -66,10 +56,6 @@ class Actor {
                     this.onSync();
             });
         });
-        // Note: on Actor ready, not Feed!
-        this.onReady = (cb) => {
-            this.q.push(cb);
-        };
         this.onPeerAdd = (peer) => {
             log('peer-add feed', Misc_1.ID(this.id), peer.remoteId);
             // peer-add is called multiple times. Noop if we already know about this peer.
@@ -96,19 +82,7 @@ class Actor {
         this.onClose = () => {
             this.close();
         };
-        this.parseBlock = (data, index) => {
-            const change = Block.unpack(data); // no validation of Change
-            this.changes[index] = change;
-            log(`block xxx idx=${index} actor=${Misc_1.ID(change.actor)} seq=${change.seq}`);
-        };
-        this.close = () => {
-            return this.store.close(this.id);
-        };
-        this.destroy = () => __awaiter(this, void 0, void 0, function* () {
-            yield this.close();
-            this.store.destroy(this.id);
-        });
-        const { publicKey, secretKey } = config.keys;
+        const { publicKey } = config.keys;
         const dk = hypercore_1.discoveryKey(publicKey);
         const id = Misc_1.encodeActorId(publicKey);
         this.id = id;
@@ -127,6 +101,32 @@ class Actor {
         this.changes.push(change);
         this.onSync();
         this.store.append(this.id, Block.pack(change));
+    }
+    close() {
+        return this.store.close(this.id);
+    }
+    destroy() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.close();
+            this.store.destroy(this.id);
+        });
+    }
+    getOrCreateFeed(keys) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let feedId;
+            if (keys.secretKey) {
+                feedId = yield this.store.create(keys);
+            }
+            else {
+                feedId = keys.publicKey;
+            }
+            return this.store.getFeed(feedId);
+        });
+    }
+    parseBlock(data, index) {
+        const change = Block.unpack(data); // no validation of Change
+        this.changes[index] = change;
+        log(`block xxx idx=${index} actor=${Misc_1.ID(change.actor)} seq=${change.seq}`);
     }
 }
 exports.Actor = Actor;
