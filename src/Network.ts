@@ -1,43 +1,39 @@
-import { Duplex } from 'stream'
 import * as Base58 from 'bs58'
 import HypercoreProtocol from 'hypercore-protocol'
 import { DiscoveryId, encodeDiscoveryId } from './Misc'
 import Peer, { PeerId, decodePeerId } from './NetworkPeer'
 import * as DocumentBroadcast from './DocumentBroadcast'
 import FeedStore, { FeedId, discoveryId } from './FeedStore'
-
-export interface Swarm {
-  join(dk: Buffer): void
-  leave(dk: Buffer): void
-  on: Function
-  removeAllListeners(): void
-  discovery: {
-    removeAllListeners(): void
-    close(): void
-  }
-  peers: Map<any, any>
-}
+import { Swarm, JoinOptions, Socket } from './SwarmInterface'
 
 export default class Network {
   selfId: PeerId
   joined: Map<DiscoveryId, FeedId>
+  pending: Set<FeedId>
   store: FeedStore
   peers: Map<PeerId, Peer>
   swarm?: Swarm
+  joinOptions?: JoinOptions
 
   constructor(selfId: PeerId, store: FeedStore) {
     this.selfId = selfId
     this.store = store
     this.joined = new Map()
+    this.pending = new Set()
     this.peers = new Map()
   }
 
   join(feedId: FeedId): void {
-    const id = discoveryId(feedId)
-    if (this.joined.has(id)) return
-    if (this.swarm) this.swarm.join(decodeId(id))
+    if (this.swarm) {
+      const id = discoveryId(feedId)
+      if (this.joined.has(id)) return
 
-    this.joined.set(id, feedId)
+      this.swarm.join(decodeId(id), this.joinOptions)
+      this.joined.set(id, feedId)
+      this.pending.delete(feedId)
+    } else {
+      this.pending.add(feedId)
+    }
   }
 
   leave(feedId: FeedId): void {
@@ -47,28 +43,30 @@ export default class Network {
     this.joined.delete(id)
   }
 
-  setSwarm(swarm: Swarm): void {
+  setSwarm(swarm: Swarm, joinOptions?: JoinOptions): void {
     if (this.swarm) throw new Error('Swarm already exists!')
 
+    this.joinOptions = joinOptions
     this.swarm = swarm
 
-    for (let id of this.joined.keys()) {
-      this.swarm.join(decodeId(id))
+    for (let id of this.pending.keys()) {
+      this.join(id)
     }
   }
 
   close(): Promise<void> {
     return new Promise((res) => {
       if (!this.swarm) return res()
-      this.swarm.discovery.removeAllListeners()
-      this.swarm.discovery.close()
-      this.swarm.peers.forEach((p: any) => p.connections.forEach((con: any) => con.destroy()))
+
+      // this.swarm.discovery.removeAllListeners()
+      // this.swarm.discovery.close()
+      // this.swarm.peers.forEach((p: any) => p.connections.forEach((con: any) => con.destroy()))
       this.swarm.removeAllListeners()
       res()
     })
   }
 
-  onConnect = (peerInfo: any) => {
+  onConnection = (socket: Socket) => {
     const protocol = HypercoreProtocol({
       live: true,
       id: decodePeerId(this.selfId),
