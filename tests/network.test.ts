@@ -1,6 +1,6 @@
 import test from 'tape'
 import { Repo } from '../src'
-import Client from 'discovery-cloud-client'
+import Hyperswarm from 'hyperswarm'
 import { expectDocs, generateServerPath } from './misc'
 import { streamToBuffer, bufferToStream } from '../src/Misc'
 
@@ -27,20 +27,20 @@ test('Share a doc between two repos', (t) => {
   const repoA = new Repo({ storage: ram })
   const repoB = new Repo({ storage: ram })
 
-  const clientA = new Client({
-    id: repoA.id,
-    stream: repoA.stream,
-    url: 'wss://discovery-cloud.herokuapp.com',
+  const clientA = Hyperswarm({
+    // id: repoA.id,
+    // stream: repoA.stream,
+    // url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  const clientB = new Client({
-    id: repoB.id,
-    stream: repoB.stream,
-    url: 'wss://discovery-cloud.herokuapp.com',
+  const clientB = Hyperswarm({
+    // id: repoB.id,
+    // stream: repoB.stream,
+    // url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  repoA.setSwarm(clientA)
-  repoB.setSwarm(clientB)
+  repoA.setSwarm(clientA, { announce: true, lookup: true })
+  repoB.setSwarm(clientB, { announce: true, lookup: true })
 
   // connect the repos
 
@@ -78,22 +78,22 @@ test("Three way docs don't load until all canges are in", (t) => {
   const repoB = new Repo({ storage: ram })
   const repoC = new Repo({ storage: ram })
 
-  const clientA = new Client({
-    id: repoA.id,
-    stream: repoA.stream,
-    url: 'wss://discovery-cloud.herokuapp.com',
+  const clientA = Hyperswarm({
+    // id: repoA.id,
+    // stream: repoA.stream,
+    // url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  const clientB = new Client({
-    id: repoB.id,
-    stream: repoB.stream,
-    url: 'wss://discovery-cloud.herokuapp.com',
+  const clientB = Hyperswarm({
+    // id: repoB.id,
+    // stream: repoB.stream,
+    // url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  const clientC = new Client({
-    id: repoC.id,
-    stream: repoC.stream,
-    url: 'wss://discovery-cloud.herokuapp.com',
+  const clientC = Hyperswarm({
+    // id: repoC.id,
+    // stream: repoC.stream,
+    // url: 'wss://discovery-cloud.herokuapp.com',
   })
 
   repoA.setSwarm(clientA)
@@ -146,16 +146,16 @@ test('Message about a doc between two repos', (t) => {
   const repoA = new Repo({ storage: ram })
   const repoB = new Repo({ storage: ram })
 
-  const clientA = new Client({
-    id: repoA.id,
-    stream: repoA.stream,
-    url: 'wss://discovery-cloud.herokuapp.com',
+  const clientA = Hyperswarm({
+    // id: repoA.id,
+    // stream: repoA.stream,
+    // url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  const clientB = new Client({
-    id: repoB.id,
-    stream: repoB.stream,
-    url: 'wss://discovery-cloud.herokuapp.com',
+  const clientB = Hyperswarm({
+    // id: repoB.id,
+    // stream: repoB.stream,
+    // url: 'wss://discovery-cloud.herokuapp.com',
   })
 
   repoA.setSwarm(clientA)

@@ -19,6 +19,7 @@ import {
   HyperfileId,
   HyperfileUrl,
 } from './Misc'
+import { randomBytes } from 'crypto'
 
 export interface NewMetadata {
   type: 'NewMetadata'
@@ -247,7 +248,7 @@ export class Metadata {
     this.ledger = hypercore(storageFn('ledger'), {})
     this.join = joinFn
     this.leave = leaveFn
-    this.id = this.ledger.id
+    this.id = randomBytes(32)
     log('LEDGER READY (1)')
     this.ledger.ready(() => {
       log('LEDGER READY (2)', this.ledger.length)

@@ -1,9 +1,10 @@
 import fs from 'fs'
 import { Readable, Writable } from 'stream'
 import { KeyPair, decodePair, decode } from './Keys'
-import * as Base58 from 'bs58'
 import { hypercore, Feed, discoveryKey } from './hypercore'
-import { BaseId, DiscoveryId } from './Misc'
+import { BaseId, getOrCreate, DiscoveryId, toDiscoveryId, encodeDiscoveryId } from './Misc'
+import { PeerConnection } from './NetworkPeer'
+import HypercoreProtocol from 'hypercore-protocol'
 
 export type Feed = Feed<Block>
 export type FeedId = BaseId & { feedId: true }
@@ -30,9 +31,11 @@ interface FeedStorageFn {
 export default class FeedStore {
   private storage: FeedStorageFn
   private feeds: Map<FeedId, Feed<Block>> = new Map()
+  private discoveryIds: Map<DiscoveryId, FeedId>
 
   constructor(storageFn: FeedStorageFn) {
     this.storage = storageFn
+    this.discoveryIds = new Map()
   }
 
   /**
@@ -102,9 +105,59 @@ export default class FeedStore {
     })
   }
 
+  onConnection = (conn: PeerConnection): void => {
+    const protocol = new HypercoreProtocol(conn.isClient, {
+      timeout: 10000,
+      ondiscoverykey: (key: Buffer) => {
+        console.log('ondiscoverykey', key)
+      },
+      // extensions: DocumentBroadcast.SUPPORTED_EXTENSIONS,
+    })
+
+    conn.socket.pipe(protocol)
+    protocol.pipe(conn.socket)
+    const busKey = Buffer.from('deadbeefdeadbeefdeadbeefdeadbeef', 'hex')
+    const busDiscoveryId = encodeDiscoveryId(discoveryKey(busKey))
+    const bus = protocol.open(busKey, {
+      onextension: (ext: 0, data: Buffer) => {
+        console.log(data.toString())
+      },
+    })
+
+    bus.options({
+      extensions: ['hypermerge-network'],
+      ack: false,
+    })
+
+    bus.extension(0, Buffer.from('hi there'))
+
+    const onFeedRequested = async (discoveryId: DiscoveryId) => {
+      if (discoveryId === busDiscoveryId) return
+
+      const feedId = this.getFeedId(discoveryId)
+      const feed = await this.getFeed(feedId)
+
+      feed.replicate(protocol, {
+        live: true,
+      })
+    }
+
+    protocol.on('discovery-key', (discoveryKey: Buffer) =>
+      onFeedRequested(encodeDiscoveryId(discoveryKey))
+    )
+
+    conn.discoveryQ.subscribe(onFeedRequested)
+  }
+
   // Junk method used to bridge to Network
   async getFeed(feedId: FeedId): Promise<Feed<Block>> {
     return this.open(feedId)
+  }
+
+  private getFeedId(discoveryId: DiscoveryId): FeedId {
+    const feedId = this.discoveryIds.get(discoveryId)
+    if (!feedId) throw new Error(`Unknown feed: ${discoveryId}`)
+    return feedId
   }
 
   private async open(feedId: FeedId) {
@@ -118,17 +171,17 @@ export default class FeedStore {
 
       const feed = getOrCreate(this.feeds, feedId, () => {
         const { publicKey, secretKey } = decodePair(keys)
+
+        // TODO: Use DiscoveryId as FeedId:
+        const discoveryId = toDiscoveryId(feedId)
+        this.discoveryIds.set(discoveryId, feedId)
+
         return hypercore(this.storage(feedId), publicKey, { secretKey })
       })
 
       feed.ready(() => res([feedId, feed]))
     })
   }
-}
-
-export function discoveryId(id: FeedId): DiscoveryId {
-  const decoded = Base58.decode(id)
-  return Base58.encode(discoveryKey(decoded)) as DiscoveryId
 }
 
 /**
@@ -153,16 +206,3 @@ function createMultiPromise<T>(
     factory(res, rej)
   })
 }
-
-function getOrCreate<K, V>(map: Map<K, V>, key: K, create: (key: K) => V): V {
-  const existing = map.get(key)
-  if (existing) return existing
-
-  const created = create(key)
-  map.set(key, created)
-  return created
-}
-
-// function encodeFeedId(key: Buffer): FeedId {
-//   return Keys.
-// }

@@ -16,15 +16,17 @@ import {
   encodeDocId,
   rootActorId,
   encodeActorId,
+  toDiscoveryId,
 } from './Misc'
 import Debug from 'debug'
 import * as DocumentBroadcast from './DocumentBroadcast'
 import * as Keys from './Keys'
-import FeedStore from './FeedStore'
+import FeedStore, { FeedId } from './FeedStore'
 import FileStore from './FileStore'
 import FileServer from './FileServer'
-import Network, { Swarm } from './Network'
+import Network from './Network'
 import { encodePeerId } from './NetworkPeer'
+import { Swarm, JoinOptions } from './SwarmInterface'
 
 Debug.formatters.b = Base58.encode
 
@@ -69,7 +71,7 @@ export class RepoBackend {
 
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
     this.id = this.meta.id
-    this.network = new Network(encodePeerId(this.id), this.store)
+    this.network = new Network(encodePeerId(this.id))
   }
 
   startFileServer = (path: string) => {
@@ -193,11 +195,11 @@ export class RepoBackend {
   }
 
   join = (actorId: ActorId) => {
-    this.network.join(actorId)
+    this.network.join(toDiscoveryId(actorId), this.store.onConnection)
   }
 
   leave = (actorId: ActorId) => {
-    this.network.leave(actorId)
+    this.network.leave(toDiscoveryId(actorId))
   }
 
   private getReadyActor = (actorId: ActorId): Promise<Actor> => {
@@ -427,13 +429,13 @@ export class RepoBackend {
     })
   }
 
-  setSwarm = (swarm: Swarm) => {
-    return this.network.setSwarm(swarm)
+  setSwarm = (swarm: Swarm, joinOptions?: JoinOptions) => {
+    this.network.setSwarm(swarm, joinOptions)
   }
 
-  stream = (opts: any): any => {
-    return this.network.onConnect(opts)
-  }
+  // stream = (opts: any): any => {
+  //   return this.network.onConnection(opts)
+  // }
 
   subscribe = (subscriber: (message: ToFrontendRepoMsg) => void) => {
     this.toFrontend.subscribe(subscriber)

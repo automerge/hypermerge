@@ -71,7 +71,7 @@ export interface Feed<T> {
   createReadStream(opts: any): Readable
   createWriteStream(): Writable
   discoveryKey: Buffer
-  id: Buffer
+  key: Buffer
   length: number
 }
 
