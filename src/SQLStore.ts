@@ -1,8 +1,11 @@
 import sqlite from 'sqlite'
 import { SQLStatement } from 'sql-template-strings'
 import path from 'path'
+import Debug from 'debug'
 
 export { default as SQL } from 'sql-template-strings'
+
+const log = Debug('hypermerge:SQLStore')
 
 // Migration path will default to the INIT_CWD/migrations, which will
 // not be what we want when using hypermerge as a dependency of another
@@ -14,8 +17,15 @@ export default class SQLStore {
 
   constructor(storage: string) {
     this.dbPromise = Promise.resolve()
-      .then(() => sqlite.open(storage))
-      .then((db) => db.migrate({ force: 'last', migrationsPath }))
+      .then(() => {
+        log('opening database...')
+        return sqlite.open(storage)
+      })
+      .then((db) => {
+        log('migrating database...')
+        return db.migrate({ force: 'last', migrationsPath })
+      })
+      .then(effect(() => log('database ready')))
   }
 
   async get(sql: SQLStatement) {
@@ -35,11 +45,20 @@ export default class SQLStore {
 
   async close() {
     const db = await this.dbPromise
-    db.close()
+    await db.close()
+    log('database closed')
   }
 }
 
 // Join multiple statements with a delimiter.
 export function joinStatements(statements: SQLStatement[], delimiter: string) {
   return statements.reduce((stmt, curr) => stmt.append(delimiter).append(curr))
+}
+
+function effect(effectFn: Function) {
+  // TODO: multiple args!
+  return function<T>(arg: T): T {
+    effectFn()
+    return arg
+  }
 }
