@@ -1,7 +1,9 @@
 -- Up
 CREATE TABLE IF NOT EXISTS DocumentClock (
-    documentId TEXT PRIMARY KEY,
-    clock TEXT
+    documentId TEXT,
+    feedId TEXT,
+    clockValue INTEGER,
+    PRIMARY KEY (documentId, feedId)
 ) WITHOUT ROWID;
 
 -- Down

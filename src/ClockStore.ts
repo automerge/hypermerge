@@ -1,5 +1,5 @@
 import { DocId } from './Misc'
-import SQLStore, { SQL } from './SQLStore'
+import SQLStore, { SQL, joinStatements } from './SQLStore'
 
 export interface Clock {
   [feedId: string /*FeedId*/]: number
@@ -11,9 +11,6 @@ interface ClockRow {
   clockValue: number
 }
 
-// Note: We store clocks as serialized JSON. This has several downsides compared to a more
-// traditional m2m schema, but has the upside of allowing us to easily set the entire
-//
 export default class ClockStore {
   store: SQLStore
   table = 'DocumentClock'
@@ -22,15 +19,18 @@ export default class ClockStore {
   }
 
   async get(documentId: DocId): Promise<Clock> {
-    const result = await this.store.get(
-      SQL`SELECT clock FROM DocumentClock WHERE documentId=${documentId}`
+    const clockRows = await this.store.all(
+      SQL`SELECT * FROM DocumentClock WHERE documentId=${documentId}`
     )
-    return JSON.parse(result.clock)
+    return rowsToClock(clockRows)
   }
-
   async set(documentId: DocId, clock: Clock): Promise<[DocId, Clock]> {
-    const clockValue = JSON.stringify(clock)
-    const sql = SQL`INSERT INTO DocumentClock (documentId, clock) VALUES (${documentId}, ${clockValue}) ON CONFLICT (documentId) DO UPDATE SET clock=excluded.clock`
+    const sql = SQL`INSERT INTO DocumentClock (documentId, feedId, clockValue) VALUES `
+    const valueStatements = Object.entries(clock).map(
+      ([feedId, clockValue]) => SQL`(${documentId}, ${feedId}, ${clockValue})`
+    )
+    sql.append(joinStatements(valueStatements, ', '))
+    sql.append(SQL`ON CONFLICT(documentId, feedId) DO UPDATE SET clockValue=excluded.clockValue`)
     await this.store.run(sql)
     return [documentId, clock]
   }
