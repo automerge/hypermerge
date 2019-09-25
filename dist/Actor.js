@@ -38,9 +38,11 @@ class Actor {
             this.notify({ type: 'ActorFeedReady', actor: this, writable: feed.writable });
             feed.on('peer-remove', this.onPeerRemove);
             feed.on('peer-add', this.onPeerAdd);
-            feed.on('download', this.onDownload);
-            feed.on('sync', this.onSync);
             feed.on('close', this.onClose);
+            if (!feed.writable) {
+                feed.on('download', this.onDownload);
+                feed.on('sync', this.onSync);
+            }
             let hasData = false;
             let sequenceNumber = 0;
             const data = yield this.store.stream(this.id);

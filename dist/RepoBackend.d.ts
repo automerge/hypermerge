@@ -2,13 +2,16 @@
 import Queue from './Queue';
 import { Metadata } from './Metadata';
 import { Actor } from './Actor';
+import { Clock } from './Clock';
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg';
-import { Clock, Change } from 'automerge';
+import { Change } from 'automerge';
 import * as DocBackend from './DocBackend';
 import { ActorId, DiscoveryId, DocId } from './Misc';
 import FeedStore from './FeedStore';
 import FileStore from './FileStore';
 import { Swarm } from './Network';
+import ClockStore from './ClockStore';
+import SQLStore from './SQLStore';
 export interface FeedData {
     actorId: ActorId;
     writable: Boolean;
@@ -16,13 +19,16 @@ export interface FeedData {
 }
 export interface Options {
     path?: string;
+    db?: string;
     storage: Function;
 }
 export declare class RepoBackend {
     path?: string;
     storage: Function;
+    sqlStore: SQLStore;
     store: FeedStore;
     files: FileStore;
+    clocks: ClockStore;
     actors: Map<ActorId, Actor>;
     actorsDk: Map<DiscoveryId, Actor>;
     docs: Map<DocId, DocBackend.DocBackend>;
@@ -50,9 +56,6 @@ export declare class RepoBackend {
     actorIds(doc: DocBackend.DocBackend): ActorId[];
     docActors(doc: DocBackend.DocBackend): Actor[];
     syncReadyActors: (ids: ActorId[]) => void;
-    allClocks(actorId: ActorId): {
-        [docId: string]: Clock;
-    };
     private documentNotify;
     private broadcastNotify;
     private actorNotify;

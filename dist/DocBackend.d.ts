@@ -42,13 +42,13 @@ export declare class DocBackend {
     changes: Map<string, number>;
     ready: Queue<Function>;
     private notify;
-    private remoteClock?;
-    private synced;
+    private minimumClock?;
+    private minimumClockSatisfied;
     private localChangeQ;
     private remoteChangesQ;
     constructor(documentId: DocId, notify: (msg: DocBackendMessage) => void, back?: BackDoc);
     testForSync: () => void;
-    target: (clock: Clock) => void;
+    updateMinimumClock: (clock: Clock) => void;
     applyRemoteChanges: (changes: Change[]) => void;
     applyLocalChange: (change: Change) => void;
     initActor: (actorId: ActorId) => void;

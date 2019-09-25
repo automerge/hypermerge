@@ -27,6 +27,7 @@ const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
 const automerge_1 = require("automerge");
 const DocBackend = __importStar(require("./DocBackend"));
+const path_1 = __importDefault(require("path"));
 const Misc_1 = require("./Misc");
 const debug_1 = __importDefault(require("debug"));
 const DocumentBroadcast = __importStar(require("./DocumentBroadcast"));
@@ -36,6 +37,8 @@ const FileStore_1 = __importDefault(require("./FileStore"));
 const FileServer_1 = __importDefault(require("./FileServer"));
 const Network_1 = __importDefault(require("./Network"));
 const NetworkPeer_1 = require("./NetworkPeer");
+const ClockStore_1 = __importDefault(require("./ClockStore"));
+const SQLStore_1 = __importDefault(require("./SQLStore"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default('repo:backend');
 class RepoBackend {
@@ -123,6 +126,10 @@ class RepoBackend {
                         patch: msg.patch,
                         history: msg.history,
                     });
+                    const doc = this.docs.get(msg.id);
+                    if (doc /*&& msg.synced*/) {
+                        this.clocks.set(msg.id, doc.clock);
+                    }
                     break;
                 }
                 case 'LocalPatchMsg': {
@@ -134,6 +141,10 @@ class RepoBackend {
                         history: msg.history,
                     });
                     this.actor(msg.actorId).writeChange(msg.change);
+                    const doc = this.docs.get(msg.id);
+                    if (doc /*&& msg.synced*/) {
+                        this.clocks.set(msg.id, doc.clock);
+                    }
                     break;
                 }
                 default: {
@@ -148,7 +159,7 @@ class RepoBackend {
                         const clock = msg.clocks[docId];
                         const doc = this.docs.get(docId);
                         if (clock && doc) {
-                            doc.target(clock);
+                            doc.updateMinimumClock(clock);
                         }
                     }
                     const _blocks = msg.blocks;
@@ -178,22 +189,23 @@ class RepoBackend {
                 }
             }
         };
-        this.actorNotify = (msg) => {
+        this.actorNotify = (msg) => __awaiter(this, void 0, void 0, function* () {
             switch (msg.type) {
                 case 'ActorFeedReady': {
                     const actor = msg.actor;
                     // Record whether or not this actor is writable.
                     this.meta.setWritable(actor.id, msg.writable);
+                    this.join(actor.id);
                     // Broadcast latest document information to peers.
                     const metadata = this.meta.forActor(actor.id);
-                    const clocks = this.allClocks(actor.id);
-                    this.meta.docsWith(actor.id).forEach((documentId) => {
+                    const docs = this.meta.docsWith(actor.id);
+                    const clocks = yield this.clocks.getMultiple(docs);
+                    docs.forEach((documentId) => {
                         const documentActor = this.actor(Misc_1.rootActorId(documentId));
                         if (documentActor) {
                             DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values());
                         }
                     });
-                    this.join(actor.id);
                     break;
                 }
                 case 'ActorInitialized': {
@@ -206,7 +218,8 @@ class RepoBackend {
                     DocumentBroadcast.listen(msg.peer, this.broadcastNotify);
                     // Broadcast the latest document information to the new peer
                     const metadata = this.meta.forActor(msg.actor.id);
-                    const clocks = this.allClocks(msg.actor.id);
+                    const docs = this.meta.docsWith(msg.actor.id);
+                    const clocks = yield this.clocks.getMultiple(docs);
                     DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer]);
                     break;
                 }
@@ -227,7 +240,7 @@ class RepoBackend {
                     });
                     break;
             }
-        };
+        });
         this.syncChanges = (actor) => {
             const actorId = actor.id;
             const docIds = this.meta.docsWith(actorId);
@@ -350,6 +363,8 @@ class RepoBackend {
         this.opts = opts;
         this.path = opts.path || 'default';
         this.storage = opts.storage;
+        this.sqlStore = new SQLStore_1.default(opts.db || path_1.default.resolve(this.path, 'sqlstore'));
+        this.clocks = new ClockStore_1.default(this.sqlStore);
         this.store = new FeedStore_1.default(this.storageFn);
         this.files = new FileStore_1.default(this.store);
         this.files.writeLog.subscribe((header) => {
@@ -465,16 +480,6 @@ class RepoBackend {
         return this.actorIds(doc)
             .map((id) => this.actors.get(id))
             .filter(Misc_1.notEmpty);
-    }
-    allClocks(actorId) {
-        const clocks = {};
-        this.meta.docsWith(actorId).forEach((documentId) => {
-            const doc = this.docs.get(documentId);
-            if (doc) {
-                clocks[documentId] = doc.clock;
-            }
-        });
-        return clocks;
     }
     initActor(keys) {
         const actor = new Actor_1.Actor({ keys, notify: this.actorNotify, store: this.store });
