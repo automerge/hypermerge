@@ -1,12 +1,13 @@
 import Queue from './Queue'
 import { Metadata } from './Metadata'
 import { Actor, ActorMsg } from './Actor'
-import { strs2clock, clockDebug, clockActorIds } from './Clock'
+import { Clock, strs2clock, clockDebug, clockActorIds } from './Clock'
 import * as Base58 from 'bs58'
 import * as crypto from 'hypercore/lib/crypto'
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg, DocumentMsg } from './RepoMsg'
-import { Backend, Clock, Change } from 'automerge'
+import { Backend, Change } from 'automerge'
 import * as DocBackend from './DocBackend'
+import path from 'path'
 import {
   notEmpty,
   ID,
@@ -25,6 +26,8 @@ import FileStore from './FileStore'
 import FileServer from './FileServer'
 import Network, { Swarm } from './Network'
 import { encodePeerId } from './NetworkPeer'
+import ClockStore, { ClockMap } from './ClockStore'
+import SQLStore from './SQLStore'
 
 Debug.formatters.b = Base58.encode
 
@@ -38,14 +41,17 @@ export interface FeedData {
 
 export interface Options {
   path?: string
+  db?: string
   storage: Function
 }
 
 export class RepoBackend {
   path?: string
   storage: Function
+  sqlStore: SQLStore
   store: FeedStore
   files: FileStore
+  clocks: ClockStore
   actors: Map<ActorId, Actor> = new Map()
   actorsDk: Map<DiscoveryId, Actor> = new Map()
   docs: Map<DocId, DocBackend.DocBackend> = new Map()
@@ -60,6 +66,8 @@ export class RepoBackend {
     this.opts = opts
     this.path = opts.path || 'default'
     this.storage = opts.storage
+    this.sqlStore = new SQLStore(opts.db || path.resolve(this.path, 'sqlstore'))
+    this.clocks = new ClockStore(this.sqlStore)
     this.store = new FeedStore(this.storageFn)
     this.files = new FileStore(this.store)
     this.files.writeLog.subscribe((header) => {
@@ -245,17 +253,6 @@ export class RepoBackend {
     })
   }
 
-  allClocks(actorId: ActorId): { [docId: string]: Clock } {
-    const clocks: { [docId: string]: Clock } = {}
-    this.meta.docsWith(actorId).forEach((documentId) => {
-      const doc = this.docs.get(documentId)
-      if (doc) {
-        clocks[documentId] = doc.clock
-      }
-    })
-    return clocks
-  }
-
   private documentNotify = (msg: DocBackend.DocBackendMessage) => {
     switch (msg.type) {
       case 'ReadyMsg': {
@@ -285,6 +282,10 @@ export class RepoBackend {
           patch: msg.patch,
           history: msg.history,
         })
+        const doc = this.docs.get(msg.id)
+        if (doc /*&& msg.synced*/) {
+          this.clocks.set(msg.id, doc.clock)
+        }
         break
       }
       case 'LocalPatchMsg': {
@@ -296,6 +297,10 @@ export class RepoBackend {
           history: msg.history,
         })
         this.actor(msg.actorId)!.writeChange(msg.change)
+        const doc = this.docs.get(msg.id)
+        if (doc /*&& msg.synced*/) {
+          this.clocks.set(msg.id, doc.clock)
+        }
         break
       }
       default: {
@@ -311,7 +316,7 @@ export class RepoBackend {
           const clock = msg.clocks[docId]
           const doc = this.docs.get(docId as DocId)
           if (clock && doc) {
-            doc.target(clock)
+            doc.updateMinimumClock(clock)
           }
         }
         const _blocks = msg.blocks
@@ -340,23 +345,23 @@ export class RepoBackend {
     }
   }
 
-  private actorNotify = (msg: ActorMsg) => {
+  private actorNotify = async (msg: ActorMsg) => {
     switch (msg.type) {
       case 'ActorFeedReady': {
         const actor = msg.actor
         // Record whether or not this actor is writable.
         this.meta.setWritable(actor.id, msg.writable)
+        this.join(actor.id)
         // Broadcast latest document information to peers.
         const metadata = this.meta.forActor(actor.id)
-        const clocks = this.allClocks(actor.id)
-        this.meta.docsWith(actor.id).forEach((documentId) => {
-          const documentActor = this.actor(rootActorId(documentId))
+        const docs = this.meta.docsWith(actor.id)
+        const clocks = await this.clocks.getMultiple(docs)
+        docs.forEach((documentId) => {
+          const documentActor = this.actor(rootActorId(documentId as DocId))
           if (documentActor) {
             DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values())
           }
         })
-
-        this.join(actor.id)
         break
       }
       case 'ActorInitialized': {
@@ -370,7 +375,8 @@ export class RepoBackend {
 
         // Broadcast the latest document information to the new peer
         const metadata = this.meta.forActor(msg.actor.id)
-        const clocks = this.allClocks(msg.actor.id)
+        const docs = this.meta.docsWith(msg.actor.id)
+        const clocks = await this.clocks.getMultiple(docs)
         DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer])
         break
       }

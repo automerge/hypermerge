@@ -7,6 +7,9 @@ export { default as SQL } from 'sql-template-strings'
 
 const log = Debug('hypermerge:SQLStore')
 
+// Sqlite accepts ':memory:' as a filename and will create an in-memory database.
+export const IN_MEMORY_DB = ':memory:'
+
 // Migration path will default to the INIT_CWD/migrations, which will
 // not be what we want when using hypermerge as a dependency of another
 // project.

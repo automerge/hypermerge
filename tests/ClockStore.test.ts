@@ -1,9 +1,9 @@
 import test from 'tape'
 import SQLStore from '../src/SQLStore'
-import ClockStore from '../src/CLockStore'
+import ClockStore from '../src/ClockStore'
 import { DocId } from '../src/Misc'
 
-test('SQLStore', (t) => {
+test('ClockStore', (t) => {
   t.test('read and write', async (t) => {
     t.plan(1)
     const sqlStore = new SQLStore(':memory:')

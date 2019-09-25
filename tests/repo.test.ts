@@ -1,12 +1,15 @@
 import test from 'tape'
-import { Repo, RepoBackend, RepoFrontend } from '../src'
-import { Clock, union, cmp, gte } from '../src/Clock'
-import { expectDocs } from './misc'
+import { RepoBackend, RepoFrontend } from '../src'
+import { expect, expectDocs, generateServerPath, testRepo } from './misc'
+import { IN_MEMORY_DB } from '../src/SQLStore'
+import { streamToBuffer, bufferToStream } from '../src/Misc'
+import { validateDocURL } from '../src/Metadata'
+import { Clock } from '../src/Clock'
 
 const ram: Function = require('random-access-memory')
 
 test('Simple create doc and make a change', (t) => {
-  const repo = new Repo({ storage: ram })
+  const repo = testRepo()
   const url = repo.create()
   repo.watch<any>(
     url,
@@ -25,7 +28,7 @@ test('Simple create doc and make a change', (t) => {
 })
 
 test('Create a doc backend - then wire it up to a frontend - make a change', (t) => {
-  const back = new RepoBackend({ storage: ram })
+  const back = new RepoBackend({ storage: ram, db: IN_MEMORY_DB })
   const front = new RepoFrontend()
   back.subscribe(front.receive)
   front.subscribe(back.receive)
@@ -46,7 +49,7 @@ test('Create a doc backend - then wire it up to a frontend - make a change', (t)
 
 test('Test document forking...', (t) => {
   t.plan(0)
-  const repo = new Repo({ storage: ram })
+  const repo = testRepo()
   const id = repo.create({ foo: 'bar' })
   repo.watch<any>(id, expectDocs(t, [[{ foo: 'bar' }, 'init val']]))
   const id2 = repo.fork(id)
@@ -72,7 +75,7 @@ test('Test document forking...', (t) => {
 
 test('Test materialize...', (t) => {
   t.plan(1)
-  const repo = new Repo({ storage: ram })
+  const repo = testRepo()
   const url = repo.create({ foo: 'bar0' })
   repo.watch<any>(
     url,
@@ -109,7 +112,7 @@ test('Test materialize...', (t) => {
 
 test('Test meta...', (t) => {
   t.plan(2)
-  const repo = new Repo({ storage: ram })
+  const repo = testRepo()
   const id = repo.create({ foo: 'bar0' })
   repo.watch<any>(id, (state, clock, index) => {
     repo.meta(id, (meta) => {
@@ -139,3 +142,54 @@ test('Test meta...', (t) => {
 
   test.onFinish(() => repo.close())
 })
+
+test('Writing and reading files works', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  repo.startFileServer(generateServerPath())
+  const pseudoFile = Buffer.from('coolcool')
+  const size = pseudoFile.length
+  const url = await repo.files.write(bufferToStream(pseudoFile), size, 'application/octet-stream')
+  const [readable] = await repo.files.read(url)
+  const buffer = await streamToBuffer(readable)
+  t.equal(pseudoFile.toString(), buffer.toString())
+  repo.close()
+})
+
+test('Changing a document updates the clock store', async (t) => {
+  t.plan(2)
+  const repo = testRepo()
+  const url = repo.create()
+  const docId = validateDocURL(url)
+
+  // We'll make one change
+  const expectedClock = { [docId]: 1 }
+
+  // Clock is stored in ClockStore and matches expected value
+  // NOTE: this will fire twice because we have a bug which
+  // applies change twice.
+  repo.back.clocks.updateLog.subscribe(([docId, clock]) => {
+    t.deepEqual(expectedClock, clock)
+  })
+
+  // Clock passed to `watch` matches expected clock.
+  repo.watch<any>(
+    url,
+    expect<Clock>(t, arg2, [
+      [{}, 'empty state'],
+      [expectedClock, 'change preview'],
+      [expectedClock, 'change final'],
+    ])
+  )
+
+  repo.change<any>(url, (state: any) => {
+    state.foo = 'bar'
+  })
+})
+
+function arg1<T>(arg1: T): T {
+  return arg1
+}
+function arg2<T>(arg1: unknown, arg2: T): T {
+  return arg2
+}
