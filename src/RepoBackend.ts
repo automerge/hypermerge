@@ -171,6 +171,7 @@ export class RepoBackend {
   close = () => {
     this.actors.forEach((actor) => actor.close())
     this.actors.clear()
+    this.sqlStore.close()
 
     return Promise.all([this.network.close(), this.fileServer.close()])
   }
