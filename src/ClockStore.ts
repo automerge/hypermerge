@@ -1,5 +1,4 @@
-import { DocId } from './Misc'
-import { FeedId } from './FeedStore'
+import { DocId, ActorId } from './Misc'
 import SqlStore from './SqlStore'
 import { Clock } from './Clock'
 import Queue from './Queue'
@@ -13,11 +12,11 @@ export type ClockUpdate = [DocId, Clock]
 
 interface ClockRow {
   documentId: string
-  feedId: string
+  actorId: string
   seq: number
 }
 
-type ClockEntry = [FeedId, number]
+type ClockEntry = [ActorId, number]
 
 // NOTE: Joshua Wise (maintainer of better-sqlite3) suggests using multiple
 // prepared statements rather than batch inserts and selects :shrugging-man:.
@@ -26,19 +25,19 @@ export default class ClockStore {
   store: SqlStore
   updateLog: Queue<ClockUpdate> = new Queue()
   private preparedGet: Statement<DocId>
-  private preparedInsert: Statement<[DocId, FeedId, number]>
+  private preparedInsert: Statement<[DocId, ActorId, number]>
   private preparedDelete: Statement<DocId>
   constructor(store: SqlStore) {
     this.store = store
 
-    this.preparedGet = this.store.db.prepare('SELECT * FROM DocumentClock WHERE documentId=?')
+    this.preparedGet = this.store.db.prepare(`SELECT * FROM Clock WHERE documentId=?`)
     this.preparedInsert = this.store.db.prepare(
-      `INSERT INTO DocumentClock (documentId, feedId, seq) 
+      `INSERT INTO Clock (documentId, actorId, seq) 
        VALUES (?, ?, ?) 
-       ON CONFLICT (documentId, feedId) 
+       ON CONFLICT (documentId, actorId) 
        DO UPDATE SET seq=excluded.seq WHERE excluded.seq > seq`
     )
-    this.preparedDelete = this.store.db.prepare('DELETE FROM DocumentClock WHERE documentId=?')
+    this.preparedDelete = this.store.db.prepare('DELETE FROM Clock WHERE documentId=?')
   }
 
   /**
@@ -103,7 +102,7 @@ export default class ClockStore {
 
 function rowsToClock(rows: ClockRow[]): Clock {
   return rows.reduce((clock: Clock, row: ClockRow) => {
-    clock[row.feedId] = row.seq
+    clock[row.actorId] = row.seq
     return clock
   }, {})
 }
@@ -111,7 +110,7 @@ function rowsToClock(rows: ClockRow[]): Clock {
 function rowsToClockMap(rows: ClockRow[]): ClockMap {
   return rows.reduce((clockMap: ClockMap, row: ClockRow) => {
     const clock = clockMap[row.documentId] || {}
-    clock[row.feedId] = row.seq
+    clock[row.actorId] = row.seq
     clockMap[row.documentId] = clock
     return clockMap
   }, {})

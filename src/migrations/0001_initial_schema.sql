@@ -1,6 +1,6 @@
-CREATE TABLE IF NOT EXISTS DocumentClock (
+CREATE TABLE IF NOT EXISTS Clock (
     documentId TEXT,
-    feedId TEXT,
+    actorId TEXT,
     seq INTEGER,
-    PRIMARY KEY (documentId, feedId)
+    PRIMARY KEY (documentId, actorId)
 ) WITHOUT ROWID;
