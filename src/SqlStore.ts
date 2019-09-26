@@ -18,7 +18,7 @@ export default class SqlStore {
   }
   migrate() {
     log('migrating...')
-    const migration = fs.readFileSync(migrationsPath, { encoding: 'utf8' })
+    const migration = fs.readFileSync(migrationsPath, { encoding: 'utf-8' })
     this.db.exec(migration)
     log('migration complete')
   }
