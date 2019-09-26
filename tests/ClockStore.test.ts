@@ -1,12 +1,12 @@
 import test from 'tape'
-import SQLStore, { IN_MEMORY_DB } from '../src/SQLStore'
+import SqlStore, { IN_MEMORY_DB } from '../src/SqlStore'
 import ClockStore from '../src/ClockStore'
 import { DocId } from '../src/Misc'
 
 test('ClockStore', (t) => {
   t.test('read and write', async (t) => {
     t.plan(1)
-    const sqlStore = new SQLStore(IN_MEMORY_DB)
+    const sqlStore = new SqlStore(IN_MEMORY_DB)
     const clockStore = new ClockStore(sqlStore)
 
     const docId = 'abc123' as DocId
@@ -20,7 +20,7 @@ test('ClockStore', (t) => {
 
   t.test('upsert', async (t) => {
     t.plan(1)
-    const sqlStore = new SQLStore(IN_MEMORY_DB)
+    const sqlStore = new SqlStore(IN_MEMORY_DB)
     const clockStore = new ClockStore(sqlStore)
 
     const docId = 'abc123' as DocId
@@ -35,7 +35,7 @@ test('ClockStore', (t) => {
 
   t.test('set', async (t) => {
     t.plan(1)
-    const sqlStore = new SQLStore(IN_MEMORY_DB)
+    const sqlStore = new SqlStore(IN_MEMORY_DB)
     const clockStore = new ClockStore(sqlStore)
 
     const docId = 'abc123' as DocId
@@ -65,7 +65,7 @@ test('ClockStore', (t) => {
 
   t.test('get multiple', async (t) => {
     t.plan(1)
-    const sqlStore = new SQLStore(IN_MEMORY_DB)
+    const sqlStore = new SqlStore(IN_MEMORY_DB)
     const clockStore = new ClockStore(sqlStore)
 
     const docId = 'abc123' as DocId

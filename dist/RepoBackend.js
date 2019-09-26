@@ -38,7 +38,7 @@ const FileServer_1 = __importDefault(require("./FileServer"));
 const Network_1 = __importDefault(require("./Network"));
 const NetworkPeer_1 = require("./NetworkPeer");
 const ClockStore_1 = __importDefault(require("./ClockStore"));
-const SQLStore_1 = __importDefault(require("./SQLStore"));
+const SqlStore_1 = __importDefault(require("./SqlStore"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default('repo:backend');
 class RepoBackend {
@@ -363,7 +363,7 @@ class RepoBackend {
         this.opts = opts;
         this.path = opts.path || 'default';
         this.storage = opts.storage;
-        this.sqlStore = new SQLStore_1.default(opts.db || path_1.default.resolve(this.path, 'sqlstore'));
+        this.sqlStore = new SqlStore_1.default(opts.db || path_1.default.resolve(this.path, 'sqlstore'));
         this.clocks = new ClockStore_1.default(this.sqlStore);
         this.store = new FeedStore_1.default(this.storageFn);
         this.files = new FileStore_1.default(this.store);

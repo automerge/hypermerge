@@ -1,5 +1,5 @@
 import { DocId } from './Misc';
-import SQLStore from './SQLStore';
+import SqlStore from './SqlStore';
 import { Clock } from './Clock';
 import Queue from './Queue';
 export interface ClockMap {
@@ -7,12 +7,12 @@ export interface ClockMap {
 }
 export declare type ClockUpdate = [DocId, Clock];
 export default class ClockStore {
-    store: SQLStore;
+    store: SqlStore;
     updateLog: Queue<ClockUpdate>;
     private preparedGet;
     private preparedInsert;
     private preparedDelete;
-    constructor(store: SQLStore);
+    constructor(store: SqlStore);
     /**
      * TODO: handle missing clocks better. Currently returns an empty clock (i.e. an empty object)
      * @param documentId

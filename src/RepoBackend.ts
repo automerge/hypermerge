@@ -26,8 +26,8 @@ import FileStore from './FileStore'
 import FileServer from './FileServer'
 import Network, { Swarm } from './Network'
 import { encodePeerId } from './NetworkPeer'
-import ClockStore, { ClockMap } from './ClockStore'
-import SQLStore from './SQLStore'
+import ClockStore from './ClockStore'
+import SqlStore from './SqlStore'
 
 Debug.formatters.b = Base58.encode
 
@@ -48,7 +48,7 @@ export interface Options {
 export class RepoBackend {
   path?: string
   storage: Function
-  sqlStore: SQLStore
+  sqlStore: SqlStore
   store: FeedStore
   files: FileStore
   clocks: ClockStore
@@ -66,7 +66,7 @@ export class RepoBackend {
     this.opts = opts
     this.path = opts.path || 'default'
     this.storage = opts.storage
-    this.sqlStore = new SQLStore(opts.db || path.resolve(this.path, 'sqlstore'))
+    this.sqlStore = new SqlStore(opts.db || path.resolve(this.path, 'sqlstore'))
     this.clocks = new ClockStore(this.sqlStore)
     this.store = new FeedStore(this.storageFn)
     this.files = new FileStore(this.store)

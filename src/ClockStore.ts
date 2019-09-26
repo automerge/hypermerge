@@ -1,6 +1,6 @@
 import { DocId } from './Misc'
 import { FeedId } from './FeedStore'
-import SQLStore from './SQLStore'
+import SqlStore from './SqlStore'
 import { Clock } from './Clock'
 import Queue from './Queue'
 import { Statement } from 'better-sqlite3'
@@ -23,12 +23,12 @@ type ClockEntry = [FeedId, number]
 // prepared statements rather than batch inserts and selects :shrugging-man:.
 // We'll see if this becomes an issue.
 export default class ClockStore {
-  store: SQLStore
+  store: SqlStore
   updateLog: Queue<ClockUpdate> = new Queue()
   private preparedGet: Statement<DocId>
   private preparedInsert: Statement<[DocId, FeedId, number]>
   private preparedDelete: Statement<DocId>
-  constructor(store: SQLStore) {
+  constructor(store: SqlStore) {
     this.store = store
 
     this.preparedGet = this.store.db.prepare('SELECT * FROM DocumentClock WHERE documentId=?')

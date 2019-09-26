@@ -3,13 +3,13 @@ import Debug from 'debug'
 import sqlite3 from 'better-sqlite3'
 import fs from 'fs'
 
-const log = Debug('hypermerge:SQLStore')
+const log = Debug('hypermerge:SqlStore')
 
 export const IN_MEMORY_DB = ':memory:'
 const migrationsPath = path.resolve(__dirname, './migrations/0001_initial_schema.sql')
 
 // TODO: more robust migrations
-export default class SQLStore {
+export default class SqlStore {
   db: sqlite3.Database
 
   constructor(storage: string) {
