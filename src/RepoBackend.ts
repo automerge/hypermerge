@@ -345,23 +345,23 @@ export class RepoBackend {
     }
   }
 
-  private actorNotify = async (msg: ActorMsg) => {
+  private actorNotify = (msg: ActorMsg) => {
     switch (msg.type) {
       case 'ActorFeedReady': {
         const actor = msg.actor
         // Record whether or not this actor is writable.
         this.meta.setWritable(actor.id, msg.writable)
-        this.join(actor.id)
         // Broadcast latest document information to peers.
         const metadata = this.meta.forActor(actor.id)
         const docs = this.meta.docsWith(actor.id)
-        const clocks = await this.clocks.getMultiple(docs)
+        const clocks = this.clocks.getMultiple(docs)
         docs.forEach((documentId) => {
           const documentActor = this.actor(rootActorId(documentId as DocId))
           if (documentActor) {
             DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values())
           }
         })
+        this.join(actor.id)
         break
       }
       case 'ActorInitialized': {
@@ -376,7 +376,7 @@ export class RepoBackend {
         // Broadcast the latest document information to the new peer
         const metadata = this.meta.forActor(msg.actor.id)
         const docs = this.meta.docsWith(msg.actor.id)
-        const clocks = await this.clocks.getMultiple(docs)
+        const clocks = this.clocks.getMultiple(docs)
         DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer])
         break
       }

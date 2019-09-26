@@ -1,7 +1,7 @@
 import test from 'tape'
 import { RepoBackend, RepoFrontend } from '../src'
 import { expect, expectDocs, generateServerPath, testRepo } from './misc'
-import { IN_MEMORY_DB } from '../src/SQLStore'
+import { IN_MEMORY_DB } from '../src/SqlStore'
 import { streamToBuffer, bufferToStream } from '../src/Misc'
 import { validateDocURL } from '../src/Metadata'
 import { Clock } from '../src/Clock'

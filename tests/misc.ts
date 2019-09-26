@@ -1,7 +1,7 @@
 import test from 'tape'
 import uuid from 'uuid/v4'
 import { Repo } from '../src'
-import { IN_MEMORY_DB } from '../src/SQLStore'
+import { IN_MEMORY_DB } from '../src/SqlStore'
 const ram: Function = require('random-access-memory')
 
 type DocMsg = [any, string]

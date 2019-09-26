@@ -189,23 +189,24 @@ class RepoBackend {
                 }
             }
         };
-        this.actorNotify = (msg) => __awaiter(this, void 0, void 0, function* () {
+        this.actorNotify = (msg) => {
             switch (msg.type) {
                 case 'ActorFeedReady': {
                     const actor = msg.actor;
                     // Record whether or not this actor is writable.
                     this.meta.setWritable(actor.id, msg.writable);
-                    this.join(actor.id);
                     // Broadcast latest document information to peers.
                     const metadata = this.meta.forActor(actor.id);
                     const docs = this.meta.docsWith(actor.id);
-                    const clocks = yield this.clocks.getMultiple(docs);
+                    const clocks = this.clocks.getMultiple(docs);
+                    console.log(clocks);
                     docs.forEach((documentId) => {
                         const documentActor = this.actor(Misc_1.rootActorId(documentId));
                         if (documentActor) {
                             DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values());
                         }
                     });
+                    this.join(actor.id);
                     break;
                 }
                 case 'ActorInitialized': {
@@ -219,7 +220,7 @@ class RepoBackend {
                     // Broadcast the latest document information to the new peer
                     const metadata = this.meta.forActor(msg.actor.id);
                     const docs = this.meta.docsWith(msg.actor.id);
-                    const clocks = yield this.clocks.getMultiple(docs);
+                    const clocks = this.clocks.getMultiple(docs);
                     DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer]);
                     break;
                 }
@@ -240,7 +241,7 @@ class RepoBackend {
                     });
                     break;
             }
-        });
+        };
         this.syncChanges = (actor) => {
             const actorId = actor.id;
             const docIds = this.meta.docsWith(actorId);

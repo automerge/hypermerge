@@ -48,21 +48,6 @@ test('ClockStore', (t) => {
     sqlStore.close()
   })
 
-  // t.test('absolutely sets clock', async (t) => {
-  //   t.plan(1)
-  //   const sqlStore = new SQLStore(':memory:')
-  //   const clockStore = new ClockStore(sqlStore)
-
-  //   const docId = 'abc123' as DocId
-  //   const clock = { abc123: 1, def456: 0 }
-  //   await clockStore.set(docId, clock)
-  //   const updatedClock = { abc123: 2 }
-  //   await clockStore.set(docId, updatedClock)
-  //   const readClock = await clockStore.get(docId)
-  //   t.deepEqual(readClock, { abc123: 2 })
-  //   sqlStore.close()
-  // })
-
   t.test('get multiple', async (t) => {
     t.plan(1)
     const sqlStore = new SqlStore(IN_MEMORY_DB)
