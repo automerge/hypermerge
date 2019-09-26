@@ -15,10 +15,6 @@ export default class SqlStore {
   constructor(storage: string) {
     this.db = sqlite3(storage, { memory: storage === IN_MEMORY_DB })
     this.migrate()
-    process.on('exit', () => this.close())
-    // process.on('SIGHUP', () => process.exit(128 + 1));
-    // process.on('SIGINT', () => process.exit(128 + 2));
-    // process.on('SIGTERM', () => process.exit(128 + 15));
   }
   migrate() {
     log('migrating...')
