@@ -1,67 +1,32 @@
-import sqlite from 'sqlite'
-import { SQLStatement } from 'sql-template-strings'
 import path from 'path'
 import Debug from 'debug'
-
-export { default as SQL } from 'sql-template-strings'
+import sqlite3 from 'better-sqlite3'
+import fs from 'fs'
 
 const log = Debug('hypermerge:SQLStore')
 
-// Sqlite accepts ':memory:' as a filename and will create an in-memory database.
 export const IN_MEMORY_DB = ':memory:'
+const migrationsPath = path.resolve(__dirname, './migrations/0001_initial_schema.sql')
 
-// Migration path will default to the INIT_CWD/migrations, which will
-// not be what we want when using hypermerge as a dependency of another
-// project.
-const migrationsPath = path.resolve(__dirname, '../migrations')
-
+// TODO: more robust migrations
 export default class SQLStore {
-  private dbPromise: Promise<sqlite.Database>
+  db: sqlite3.Database
 
   constructor(storage: string) {
-    this.dbPromise = Promise.resolve()
-      .then(() => {
-        log('opening database...')
-        return sqlite.open(storage)
-      })
-      .then((db) => {
-        log('migrating database...')
-        return db.migrate({ force: 'last', migrationsPath })
-      })
-      .then(effect(() => log('database ready')))
+    this.db = sqlite3(storage, { memory: storage === IN_MEMORY_DB })
+    this.migrate()
+    process.on('exit', () => this.close())
+    // process.on('SIGHUP', () => process.exit(128 + 1));
+    // process.on('SIGINT', () => process.exit(128 + 2));
+    // process.on('SIGTERM', () => process.exit(128 + 15));
   }
-
-  async get(sql: SQLStatement) {
-    const db = await this.dbPromise
-    return db.get(sql)
+  migrate() {
+    log('migrating...')
+    const migration = fs.readFileSync(migrationsPath, { encoding: 'utf8' })
+    this.db.exec(migration)
+    log('migration complete')
   }
-
-  async run(sql: SQLStatement) {
-    const db = await this.dbPromise
-    return db.run(sql)
-  }
-
-  async all(sql: SQLStatement) {
-    const db = await this.dbPromise
-    return db.all(sql)
-  }
-
-  async close() {
-    const db = await this.dbPromise
-    await db.close()
-    log('database closed')
-  }
-}
-
-// Join multiple statements with a delimiter.
-export function joinStatements(statements: SQLStatement[], delimiter: string) {
-  return statements.reduce((stmt, curr) => stmt.append(delimiter).append(curr))
-}
-
-function effect(effectFn: Function) {
-  // TODO: multiple args!
-  return function<T>(arg: T): T {
-    effectFn()
-    return arg
+  close() {
+    this.db.close()
   }
 }

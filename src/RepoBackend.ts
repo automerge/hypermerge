@@ -284,7 +284,7 @@ export class RepoBackend {
         })
         const doc = this.docs.get(msg.id)
         if (doc /*&& msg.synced*/) {
-          this.clocks.set(msg.id, doc.clock)
+          this.clocks.update(msg.id, doc.clock)
         }
         break
       }
@@ -299,7 +299,7 @@ export class RepoBackend {
         this.actor(msg.actorId)!.writeChange(msg.change)
         const doc = this.docs.get(msg.id)
         if (doc /*&& msg.synced*/) {
-          this.clocks.set(msg.id, doc.clock)
+          this.clocks.update(msg.id, doc.clock)
         }
         break
       }

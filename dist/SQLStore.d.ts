@@ -1,13 +1,8 @@
-import sqlite from 'sqlite';
-import { SQLStatement } from 'sql-template-strings';
-export { default as SQL } from 'sql-template-strings';
+import sqlite3 from 'better-sqlite3';
 export declare const IN_MEMORY_DB = ":memory:";
 export default class SQLStore {
-    private dbPromise;
+    db: sqlite3.Database;
     constructor(storage: string);
-    get(sql: SQLStatement): Promise<any>;
-    run(sql: SQLStatement): Promise<sqlite.Statement>;
-    all(sql: SQLStatement): Promise<any[]>;
-    close(): Promise<void>;
+    migrate(): void;
+    close(): void;
 }
-export declare function joinStatements(statements: SQLStatement[], delimiter: string): SQLStatement;
