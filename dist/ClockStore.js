@@ -11,12 +11,12 @@ class ClockStore {
     constructor(store) {
         this.updateLog = new Queue_1.default();
         this.store = store;
-        this.preparedGet = this.store.db.prepare('SELECT * FROM DocumentClock WHERE documentId=?');
-        this.preparedInsert = this.store.db.prepare(`INSERT INTO DocumentClock (documentId, feedId, seq) 
+        this.preparedGet = this.store.db.prepare(`SELECT * FROM Clock WHERE documentId=?`);
+        this.preparedInsert = this.store.db.prepare(`INSERT INTO Clock (documentId, actorId, seq) 
        VALUES (?, ?, ?) 
-       ON CONFLICT (documentId, feedId) 
+       ON CONFLICT (documentId, actorId) 
        DO UPDATE SET seq=excluded.seq WHERE excluded.seq > seq`);
-        this.preparedDelete = this.store.db.prepare('DELETE FROM DocumentClock WHERE documentId=?');
+        this.preparedDelete = this.store.db.prepare('DELETE FROM Clock WHERE documentId=?');
     }
     /**
      * TODO: handle missing clocks better. Currently returns an empty clock (i.e. an empty object)
@@ -78,14 +78,14 @@ class ClockStore {
 exports.default = ClockStore;
 function rowsToClock(rows) {
     return rows.reduce((clock, row) => {
-        clock[row.feedId] = row.seq;
+        clock[row.actorId] = row.seq;
         return clock;
     }, {});
 }
 function rowsToClockMap(rows) {
     return rows.reduce((clockMap, row) => {
         const clock = clockMap[row.documentId] || {};
-        clock[row.feedId] = row.seq;
+        clock[row.actorId] = row.seq;
         clockMap[row.documentId] = clock;
         return clockMap;
     }, {});

@@ -15,14 +15,10 @@ class SqlStore {
     constructor(storage) {
         this.db = better_sqlite3_1.default(storage, { memory: storage === exports.IN_MEMORY_DB });
         this.migrate();
-        process.on('exit', () => this.close());
-        // process.on('SIGHUP', () => process.exit(128 + 1));
-        // process.on('SIGINT', () => process.exit(128 + 2));
-        // process.on('SIGTERM', () => process.exit(128 + 15));
     }
     migrate() {
         log('migrating...');
-        const migration = fs_1.default.readFileSync(migrationsPath, { encoding: 'utf8' });
+        const migration = fs_1.default.readFileSync(migrationsPath, { encoding: 'utf-8' });
         this.db.exec(migration);
         log('migration complete');
     }

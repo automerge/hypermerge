@@ -65,6 +65,7 @@ class RepoBackend {
         this.close = () => {
             this.actors.forEach((actor) => actor.close());
             this.actors.clear();
+            this.sqlStore.close();
             return Promise.all([this.network.close(), this.fileServer.close()]);
         };
         this.join = (actorId) => {
@@ -199,7 +200,6 @@ class RepoBackend {
                     const metadata = this.meta.forActor(actor.id);
                     const docs = this.meta.docsWith(actor.id);
                     const clocks = this.clocks.getMultiple(docs);
-                    console.log(clocks);
                     docs.forEach((documentId) => {
                         const documentActor = this.actor(Misc_1.rootActorId(documentId));
                         if (documentActor) {
