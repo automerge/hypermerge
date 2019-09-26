@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "postbuild": "copyfiles -f src/migrations/*.sql dist/migrations",
     "format": "prettier --write 'src/**/*.ts'",
     "peek": "ts-node --files tools/Peek.ts $1 $2 $3",
     "cp": "ts-node --files tools/Cp.ts $1 $2 $3",
@@ -31,6 +32,7 @@
     "automerge": "^0.12.1",
     "better-sqlite3": "^5.4.3",
     "bs58": "^4.0.1",
+    "copyfiles": "^2.1.1",
     "debug": "^4.1.1",
     "hypercore": "^6.24.0",
     "hypercore-protocol": "^6.12.0",
