@@ -1,12 +1,18 @@
-import Queue from './Queue'
-import { Metadata, sanitizeRemoteMetadata } from './Metadata'
-import { Actor, ActorMsg } from './Actor'
-import { strs2clock, clockDebug, clockActorIds } from './Clock'
-import * as Base58 from 'bs58'
-import * as crypto from 'hypercore/lib/crypto'
-import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg, DocumentMsg } from './RepoMsg'
-import { Backend, Clock, Change } from 'automerge'
-import * as DocBackend from './DocBackend'
+import Queue from "./Queue"
+import { Metadata, sanitizeRemoteMetadata } from "./Metadata"
+import { Actor, ActorMsg } from "./Actor"
+import { Clock, strs2clock, clockDebug, clockActorIds } from "./Clock"
+import * as Base58 from "bs58"
+import * as crypto from "hypercore/lib/crypto"
+import {
+  ToBackendQueryMsg,
+  ToBackendRepoMsg,
+  ToFrontendRepoMsg,
+  DocumentMsg,
+} from "./RepoMsg"
+import { Backend, Change } from "automerge"
+import * as DocBackend from "./DocBackend"
+import path from "path"
 import {
   notEmpty,
   ID,
@@ -16,20 +22,24 @@ import {
   rootActorId,
   encodeActorId,
   toDiscoveryId,
-} from './Misc'
-import Debug from 'debug'
-import * as Keys from './Keys'
-import FeedStore from './FeedStore'
-import FileStore from './FileStore'
-import FileServer from './FileServer'
-import Network, { DiscoveryRequest } from './Network'
-import { encodePeerId } from './NetworkPeer'
-import { Swarm, JoinOptions } from './SwarmInterface'
-import { PeerMsg } from './PeerMsg'
+} from "./Misc"
+import Debug from "debug"
+import * as Keys from "./Keys"
+import FeedStore from "./FeedStore"
+import FileStore from "./FileStore"
+import FileServer from "./FileServer"
+import Network, { DiscoveryRequest } from "./Network"
+import { encodePeerId } from "./NetworkPeer"
+import { Swarm, JoinOptions } from "./SwarmInterface"
+import { PeerMsg } from "./PeerMsg"
+import ClockStore from "./ClockStore"
+import * as SqlDatabase from "./SqlDatabase"
+import ram from "random-access-memory"
+import raf from "random-access-file"
 
 Debug.formatters.b = Base58.encode
 
-const log = Debug('repo:backend')
+const log = Debug("repo:backend")
 
 export interface FeedData {
   actorId: ActorId
@@ -39,7 +49,7 @@ export interface FeedData {
 
 export interface Options {
   path?: string
-  storage: Function
+  memory?: boolean
 }
 
 export class RepoBackend {
@@ -47,22 +57,29 @@ export class RepoBackend {
   storage: Function
   feeds: FeedStore
   files: FileStore
+  clocks: ClockStore
   actors: Map<ActorId, Actor> = new Map()
   docs: Map<DocId, DocBackend.DocBackend> = new Map()
   meta: Metadata
   opts: Options
-  toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
+  toFrontend: Queue<ToFrontendRepoMsg> = new Queue("repo:back:toFrontend")
   id: Buffer
   network: Network<PeerMsg>
+  private db: SqlDatabase.Database
   private fileServer: FileServer
 
   constructor(opts: Options) {
     this.opts = opts
-    this.path = opts.path || 'default'
-    this.storage = opts.storage
+    this.path = opts.path || "default"
     this.feeds = new FeedStore(this.storageFn)
     this.files = new FileStore(this.feeds)
-    this.files.writeLog.subscribe((header) => {
+    this.storage = opts.memory ? ram : raf
+    this.db = SqlDatabase.open(
+      path.resolve(this.path, "hypermerge.db"),
+      opts.memory || false,
+    )
+    this.clocks = new ClockStore(this.db)
+    this.files.writeLog.subscribe(header => {
       this.meta.addFile(header.url, header.bytes, header.mimeType)
     })
     this.fileServer = new FileServer(this.files)
@@ -79,15 +96,19 @@ export class RepoBackend {
 
     this.fileServer.listen(path)
     this.toFrontend.push({
-      type: 'FileServerReadyMsg',
+      type: "FileServerReadyMsg",
       path,
     })
   }
 
   private create(keys: Keys.KeyBuffer): DocBackend.DocBackend {
     const docId = encodeDocId(keys.publicKey)
-    log('create', docId)
-    const doc = new DocBackend.DocBackend(docId, this.documentNotify, Backend.init())
+    log("create", docId)
+    const doc = new DocBackend.DocBackend(
+      docId,
+      this.documentNotify,
+      Backend.init(),
+    )
 
     this.docs.set(docId, doc)
 
@@ -109,12 +130,12 @@ export class RepoBackend {
       const local = this.meta.localActorId(id)
       const actors = this.meta.actors(id)
       const info = actors
-        .map((actor) => {
+        .map(actor => {
           const nm = actor.substr(0, 5)
           return local === actor ? `*${nm}` : nm
         })
         .sort()
-      console.log(`doc:backend actors=${info.join(',')}`)
+      console.log(`doc:backend actors=${info.join(",")}`)
     }
   }
 
@@ -127,7 +148,7 @@ export class RepoBackend {
     const actors = this.meta.allActors()
     this.actors.forEach((actor, id) => {
       if (!actors.has(id)) {
-        console.log('Orphaned actors - will purge', id)
+        console.log("Orphaned actors - will purge", id)
         this.actors.delete(id)
         this.leave(actor.id)
         actor.destroy()
@@ -139,9 +160,11 @@ export class RepoBackend {
   private open(docId: DocId): DocBackend.DocBackend {
     //    log("open", docId, this.meta.forDoc(docId));
     if (this.meta.isFile(docId)) {
-      throw new Error('trying to open a file like a document')
+      throw new Error("trying to open a file like a document")
     }
-    let doc = this.docs.get(docId) || new DocBackend.DocBackend(docId, this.documentNotify)
+    let doc =
+      this.docs.get(docId) ||
+      new DocBackend.DocBackend(docId, this.documentNotify)
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc)
       this.meta.addActor(docId, rootActorId(docId))
@@ -163,8 +186,9 @@ export class RepoBackend {
 */
 
   close = () => {
-    this.actors.forEach((actor) => actor.close())
+    this.actors.forEach(actor => actor.close())
     this.actors.clear()
+    this.db.close()
 
     return Promise.all([this.network.close(), this.fileServer.close()])
   }
@@ -176,9 +200,9 @@ export class RepoBackend {
 
   private async loadDocument(doc: DocBackend.DocBackend) {
     const actors = await this.allReadyActors(doc.id)
-    log(`load document 2 actors=${actors.map((a) => a.id)}`)
+    log(`load document 2 actors=${actors.map(a => a.id)}`)
     const changes: Change[] = []
-    actors.forEach((actor) => {
+    actors.forEach(actor => {
       const max = this.meta.clockAt(doc.id, actor.id)
       const slice = actor.changes.slice(0, max)
       doc.changes.set(actor.id, slice.length)
@@ -217,12 +241,12 @@ export class RepoBackend {
 
   storageFn = (path: string) => {
     return (name: string) => {
-      return this.storage(this.path + '/' + path + '/' + name)
+      return this.storage(this.path + "/" + path + "/" + name)
     }
   }
 
   initActorFeed(doc: DocBackend.DocBackend): ActorId {
-    log('initActorFeed', doc.id)
+    log("initActorFeed", doc.id)
     const keys = crypto.keyPair()
     const actorId = encodeActorId(keys.publicKey)
     this.meta.addActor(doc.id, actorId)
@@ -236,93 +260,96 @@ export class RepoBackend {
 
   docActors(doc: DocBackend.DocBackend): Actor[] {
     return this.actorIds(doc)
-      .map((id) => this.actors.get(id))
+      .map(id => this.actors.get(id))
       .filter(notEmpty)
   }
 
   syncReadyActors = (ids: ActorId[]) => {
-    ids.forEach(async (id) => {
+    ids.forEach(async id => {
       const actor = await this.getReadyActor(id)
       this.syncChanges(actor)
     })
   }
 
-  allClocks(actorId: ActorId): { [docId: string]: Clock } {
-    const clocks: { [docId: string]: Clock } = {}
-    this.meta.docsWith(actorId).forEach((documentId) => {
-      const doc = this.docs.get(documentId)
-      if (doc) {
-        clocks[documentId] = doc.clock
-      }
-    })
-    return clocks
-  }
-
   private documentNotify = (msg: DocBackend.DocBackendMessage) => {
     switch (msg.type) {
-      case 'ReadyMsg': {
+      case "ReadyMsg": {
         this.toFrontend.push({
-          type: 'ReadyMsg',
+          type: "ReadyMsg",
           id: msg.id,
-          synced: msg.synced,
+          minimumClockSatisfied: msg.minimumClockSatisfied,
           actorId: msg.actorId,
           history: msg.history,
           patch: msg.patch,
         })
         break
       }
-      case 'ActorIdMsg': {
+      case "ActorIdMsg": {
         this.toFrontend.push({
-          type: 'ActorIdMsg',
+          type: "ActorIdMsg",
           id: msg.id,
           actorId: msg.actorId,
         })
         break
       }
-      case 'RemotePatchMsg': {
+      case "RemotePatchMsg": {
         this.toFrontend.push({
-          type: 'PatchMsg',
+          type: "PatchMsg",
           id: msg.id,
-          synced: msg.synced,
+          minimumClockSatisfied: msg.minimumClockSatisfied,
           patch: msg.patch,
           history: msg.history,
         })
+        const doc = this.docs.get(msg.id)
+        if (doc && msg.minimumClockSatisfied) {
+          this.clocks.update(msg.id, doc.clock)
+        }
         break
       }
-      case 'LocalPatchMsg': {
+      case "LocalPatchMsg": {
         this.toFrontend.push({
-          type: 'PatchMsg',
+          type: "PatchMsg",
           id: msg.id,
-          synced: msg.synced,
+          minimumClockSatisfied: msg.minimumClockSatisfied,
           patch: msg.patch,
           history: msg.history,
         })
         this.actor(msg.actorId)!.writeChange(msg.change)
+        const doc = this.docs.get(msg.id)
+        if (doc && msg.minimumClockSatisfied) {
+          this.clocks.update(msg.id, doc.clock)
+        }
         break
       }
       default: {
-        console.log('Unknown message type', msg)
+        console.log("Unknown message type", msg)
       }
     }
   }
 
-  onDiscovery = ({ discoveryId, connection, peer }: DiscoveryRequest<PeerMsg>) => {
+  onDiscovery = ({
+    discoveryId,
+    connection,
+    peer,
+  }: DiscoveryRequest<PeerMsg>) => {
     const feedId = this.feeds.getFeedId(discoveryId)
     if (!feedId) return
 
     const actorId = feedId as ActorId
 
-    this.feeds.getFeed(feedId).then((feed) => {
+    this.feeds.getFeed(feedId).then(feed => {
       feed.replicate(connection.protocol, {
         live: true,
       })
     })
 
     const blocks = this.meta.forActor(actorId)
-    const clocks = this.allClocks(actorId)
+
+    const docs = this.meta.docsWith(actorId)
+    const clocks = this.clocks.getMultiple(docs)
 
     this.network.sendToPeer(peer.id, {
-      type: 'RemoteMetadata',
+      type: "RemoteMetadata",
       clocks,
       blocks,
     })
@@ -330,29 +357,31 @@ export class RepoBackend {
 
   private onMessage = (msg: PeerMsg) => {
     switch (msg.type) {
-      case 'RemoteMetadata': {
+      case "RemoteMetadata": {
         const { blocks, clocks } = sanitizeRemoteMetadata(msg)
 
         for (let docId in clocks) {
           const clock = clocks[docId]
           const doc = this.docs.get(docId as DocId)
           if (clock && doc) {
-            doc.target(clock)
+            doc.updateMinimumClock(clock)
           }
         }
         const _blocks = blocks
         this.meta.addBlocks(_blocks)
-        _blocks.map((block) => {
-          if ('actors' in block && block.actors) this.syncReadyActors(block.actors)
-          if ('merge' in block && block.merge) this.syncReadyActors(clockActorIds(block.merge))
+        _blocks.map(block => {
+          if ("actors" in block && block.actors)
+            this.syncReadyActors(block.actors)
+          if ("merge" in block && block.merge)
+            this.syncReadyActors(clockActorIds(block.merge))
           // if (block.follows) block.follows.forEach(id => this.open(id))
         })
         break
       }
-      case 'DocumentMessage': {
+      case "DocumentMessage": {
         const { contents, id } = msg as DocumentMsg
         this.toFrontend.push({
-          type: 'DocumentMessage',
+          type: "DocumentMessage",
           id,
           contents,
         })
@@ -363,39 +392,37 @@ export class RepoBackend {
 
   private actorNotify = (msg: ActorMsg) => {
     switch (msg.type) {
-      case 'ActorFeedReady': {
+      case "ActorFeedReady": {
         const actor = msg.actor
         // Record whether or not this actor is writable.
         this.meta.setWritable(actor.id, msg.writable)
         // Broadcast latest document information to peers.
         const blocks = this.meta.forActor(actor.id)
-        const clocks = this.allClocks(actor.id)
-
-        this.meta.docsWith(actor.id).forEach((documentId) => {
+        const docs = this.meta.docsWith(actor.id)
+        const clocks = this.clocks.getMultiple(docs)
+        this.meta.docsWith(actor.id).forEach(documentId => {
           this.network.sendToDiscoveryId(toDiscoveryId(documentId), {
-            type: 'RemoteMetadata',
+            type: "RemoteMetadata",
             blocks,
             clocks,
           })
         })
-
         this.join(actor.id)
         break
       }
-      case 'ActorInitialized': {
+      case "ActorInitialized": {
         // Swarm on the actor's feed.
         this.join(msg.actor.id)
-
         break
       }
-      case 'ActorSync':
-        log('ActorSync', msg.actor.id)
+      case "ActorSync":
+        log("ActorSync", msg.actor.id)
         this.syncChanges(msg.actor)
         break
-      case 'Download':
-        this.meta.docsWith(msg.actor.id).forEach((docId) => {
+      case "Download":
+        this.meta.docsWith(msg.actor.id).forEach(docId => {
           this.toFrontend.push({
-            type: 'ActorBlockDownloadedMsg',
+            type: "ActorBlockDownloadedMsg",
             id: docId,
             actorId: msg.actor.id,
             index: msg.index,
@@ -408,7 +435,11 @@ export class RepoBackend {
   }
 
   private initActor(keys: Keys.KeyBuffer): Actor {
-    const actor = new Actor({ keys, notify: this.actorNotify, store: this.feeds })
+    const actor = new Actor({
+      keys,
+      notify: this.actorNotify,
+      store: this.feeds,
+    })
     this.actors.set(actor.id, actor)
     this.feeds.addFeedId(actor.id)
     return actor
@@ -417,7 +448,7 @@ export class RepoBackend {
   syncChanges = (actor: Actor) => {
     const actorId = actor.id
     const docIds = this.meta.docsWith(actorId)
-    docIds.forEach((docId) => {
+    docIds.forEach(docId => {
       const doc = this.docs.get(docId)
       if (doc) {
         doc.ready.push(() => {
@@ -455,20 +486,20 @@ export class RepoBackend {
 
   handleQuery = (id: number, query: ToBackendQueryMsg) => {
     switch (query.type) {
-      case 'MetadataMsg': {
-        this.meta.publicMetadata(query.id, (payload) => {
-          this.toFrontend.push({ type: 'Reply', id, payload })
+      case "MetadataMsg": {
+        this.meta.publicMetadata(query.id, payload => {
+          this.toFrontend.push({ type: "Reply", id, payload })
         })
         break
       }
-      case 'MaterializeMsg': {
+      case "MaterializeMsg": {
         const doc = this.docs.get(query.id)!
         const changes = (doc.back as any)
-          .getIn(['opSet', 'history'])
+          .getIn(["opSet", "history"])
           .slice(0, query.history)
           .toArray()
         const [_, patch] = Backend.applyChanges(Backend.init(), changes)
-        this.toFrontend.push({ type: 'Reply', id, payload: patch })
+        this.toFrontend.push({ type: "Reply", id, payload: patch })
         break
       }
     }
@@ -476,24 +507,24 @@ export class RepoBackend {
 
   receive = (msg: ToBackendRepoMsg) => {
     switch (msg.type) {
-      case 'NeedsActorIdMsg': {
+      case "NeedsActorIdMsg": {
         const doc = this.docs.get(msg.id)!
         const actorId = this.initActorFeed(doc)
         doc.initActor(actorId)
         break
       }
-      case 'RequestMsg': {
+      case "RequestMsg": {
         const doc = this.docs.get(msg.id)!
         doc.applyLocalChange(msg.request)
         break
       }
-      case 'Query': {
+      case "Query": {
         const query = msg.query
         const id = msg.id
         this.handleQuery(id, query)
         break
       }
-      case 'CreateMsg': {
+      case "CreateMsg": {
         const keys = {
           publicKey: Keys.decode(msg.publicKey),
           secretKey: Keys.decode(msg.secretKey),
@@ -501,7 +532,7 @@ export class RepoBackend {
         this.create(keys)
         break
       }
-      case 'MergeMsg': {
+      case "MergeMsg": {
         this.merge(msg.id, strs2clock(msg.actors))
         break
       }
@@ -511,29 +542,29 @@ export class RepoBackend {
           break;
         }
 */
-      case 'OpenMsg': {
+      case "OpenMsg": {
         this.open(msg.id)
         break
       }
-      case 'DocumentMessage': {
+      case "DocumentMessage": {
         // Note: 'id' is the document id of the document to send the message to.
         const { id, contents } = msg
         this.network.sendToDiscoveryId(toDiscoveryId(id), {
-          type: 'DocumentMessage',
+          type: "DocumentMessage",
           id,
           contents,
         })
         break
       }
-      case 'DestroyMsg': {
+      case "DestroyMsg": {
         this.destroy(msg.id)
         break
       }
-      case 'DebugMsg': {
+      case "DebugMsg": {
         this.debug(msg.id)
         break
       }
-      case 'CloseMsg': {
+      case "CloseMsg": {
         this.close()
         break
       }

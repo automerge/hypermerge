@@ -1,5 +1,4 @@
 import { Backend, Change, BackendState as BackDoc, Patch } from 'automerge'
-import { Frontend } from 'automerge'
 import Queue from './Queue'
 import Debug from 'debug'
 import { Clock, cmp, union } from './Clock'
@@ -12,7 +11,7 @@ export type DocBackendMessage = ReadyMsg | ActorIdMsg | RemotePatchMsg | LocalPa
 interface ReadyMsg {
   type: 'ReadyMsg'
   id: DocId
-  synced: boolean
+  minimumClockSatisfied: boolean
   actorId?: ActorId
   history?: number
   patch?: Patch
@@ -28,7 +27,7 @@ interface RemotePatchMsg {
   type: 'RemotePatchMsg'
   id: DocId
   actorId?: ActorId
-  synced: boolean
+  minimumClockSatisfied: boolean
   patch: Patch
   change?: Change
   history: number
@@ -38,7 +37,7 @@ interface LocalPatchMsg {
   type: 'LocalPatchMsg'
   id: DocId
   actorId: ActorId
-  synced: boolean
+  minimumClockSatisfied: boolean
   patch: Patch
   change: Change
   history: number
@@ -52,8 +51,16 @@ export class DocBackend {
   changes: Map<string, number> = new Map()
   ready = new Queue<Function>('doc:back:readyQ')
   private notify: (msg: DocBackendMessage) => void
-  private remoteClock?: Clock = undefined
-  private synced: boolean = false
+
+  // For docs we are newly opening (i.e. from a hypermerge url we've never seen before),
+  // minimumClock is used to prevent rendering all of the incremental updates to a
+  // document resulting in e.g. flashing content updates in a UI. Instead, we wait
+  // until we've received all of the data indicated by the minimumClock, then render
+  // the document at that state.
+  private minimumClock?: Clock = undefined
+  // A shortcut for determing if we've met minimum clock requirements.
+  private minimumClockSatisfied: boolean = false
+
   private localChangeQ = new Queue<Change>('doc:back:localChangeQ')
   private remoteChangesQ = new Queue<Change[]>('doc:back:remoteChangesQ')
 
@@ -65,24 +72,25 @@ export class DocBackend {
       this.back = back
       this.actorId = rootActorId(documentId)
       this.ready.subscribe((f) => f())
-      this.synced = true
+      // If we already have a materialized document, no need to wait for the minimum clock to be satisfied.
+      this.minimumClockSatisfied = true
       this.subscribeToRemoteChanges()
       this.subscribeToLocalChanges()
       const history = (this.back as any).getIn(['opSet', 'history']).size
       this.notify({
         type: 'ReadyMsg',
         id: this.id,
-        synced: this.synced,
+        minimumClockSatisfied: this.minimumClockSatisfied,
         actorId: this.actorId,
         history,
       })
     }
   }
 
-  testForSync = (): void => {
-    if (this.remoteClock) {
-      const test = cmp(this.clock, this.remoteClock)
-      this.synced = test === 'GT' || test === 'EQ'
+  testMinimumClockSatisfied = (): void => {
+    if (this.minimumClock) {
+      const test = cmp(this.clock, this.minimumClock)
+      this.minimumClockSatisfied = test === 'GT' || test === 'EQ'
       //      console.log("TARGET CLOCK", this.id, this.synced)
       //      console.log("this.clock",this.clock)
       //      console.log("this.remoteClock",this.remoteClock)
@@ -91,11 +99,17 @@ export class DocBackend {
     }
   }
 
-  target = (clock: Clock): void => {
+  // We continue to update the minimum clock as we receive updates from peers,
+  // until we have reached the minimum clock at least once e.g. minimumClockSatisfied = true.
+  // Its not clear that this is correct behavior, it would probably be more correct to
+  // use the first clock we recieve as the minimum clock and *not* bump it was we
+  // receive more. Ultimately, we should probably be able to pass a minimum clock
+  // in the constructor - so you can't even create a document without a minimum clock.
+  updateMinimumClock = (clock: Clock): void => {
     //    console.log("Target", clock)
-    if (this.synced) return
-    this.remoteClock = union(clock, this.remoteClock || {})
-    this.testForSync()
+    if (this.minimumClockSatisfied) return
+    this.minimumClock = union(clock, this.minimumClock || {})
+    this.testMinimumClockSatisfied()
   }
 
   applyRemoteChanges = (changes: Change[]): void => {
@@ -124,7 +138,7 @@ export class DocBackend {
       const oldSeq = this.clock[actor] || 0
       this.clock[actor] = Math.max(oldSeq, change.seq)
     })
-    if (!this.synced) this.testForSync()
+    if (!this.minimumClockSatisfied) this.testMinimumClockSatisfied()
   }
 
   init = (changes: Change[], actorId?: ActorId) => {
@@ -135,7 +149,7 @@ export class DocBackend {
       this.actorId = this.actorId || actorId
       this.back = back
       this.updateClock(changes)
-      this.synced = changes.length > 0 // override updateClock
+      this.minimumClockSatisfied = changes.length > 0 // override updateClock
       //console.log("INIT SYNCED", this.synced, changes.length)
       this.ready.subscribe((f) => f())
       this.subscribeToLocalChanges()
@@ -144,7 +158,7 @@ export class DocBackend {
       this.notify({
         type: 'ReadyMsg',
         id: this.id,
-        synced: this.synced,
+        minimumClockSatisfied: this.minimumClockSatisfied,
         actorId: this.actorId,
         patch,
         history,
@@ -162,7 +176,7 @@ export class DocBackend {
         this.notify({
           type: 'RemotePatchMsg',
           id: this.id,
-          synced: this.synced,
+          minimumClockSatisfied: this.minimumClockSatisfied,
           patch,
           history,
         })
@@ -181,7 +195,7 @@ export class DocBackend {
           type: 'LocalPatchMsg',
           id: this.id,
           actorId: this.actorId!,
-          synced: this.synced,
+          minimumClockSatisfied: this.minimumClockSatisfied,
           change: change,
           patch,
           history,

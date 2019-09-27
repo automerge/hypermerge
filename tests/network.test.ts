@@ -1,34 +1,14 @@
 import test from 'tape'
-import { Repo } from '../src'
-import Hyperswarm from 'hyperswarm'
-import { expectDocs, generateServerPath } from './misc'
-import { streamToBuffer, bufferToStream } from '../src/Misc'
-
-const ram: Function = require('random-access-memory')
-
-test('Writing and reading files works', async (t) => {
-  t.plan(1)
-  const repoA = new Repo({
-    storage: ram,
-  })
-  repoA.startFileServer(generateServerPath())
-  const pseudoFile = Buffer.from('coolcool')
-  const size = pseudoFile.length
-  const url = await repoA.files.write(bufferToStream(pseudoFile), size, 'application/octet-stream')
-  const [readable, mimeType] = await repoA.files.read(url)
-  const buffer = await streamToBuffer(readable)
-  t.equal(pseudoFile.toString(), buffer.toString())
-  repoA.close()
-})
+import { expectDocs, testRepo, testSwarm } from './misc'
 
 test('Share a doc between two repos', (t) => {
   t.plan(0)
 
-  const repoA = new Repo({ storage: ram })
-  const repoB = new Repo({ storage: ram })
+  const repoA = testRepo()
+  const repoB = testRepo()
 
-  repoA.setSwarm(createSwarm(repoA), { announce: true, lookup: true })
-  repoB.setSwarm(createSwarm(repoB), { announce: true, lookup: true })
+  repoA.setSwarm(testSwarm(repoA), { announce: true, lookup: true })
+  repoB.setSwarm(testSwarm(repoB), { announce: true, lookup: true })
 
   // connect the repos
 
@@ -62,12 +42,12 @@ test('Share a doc between two repos', (t) => {
 test("Three way docs don't load until all changes are in", (t) => {
   t.plan(1)
 
-  const repoA = new Repo({ storage: ram })
-  const repoB = new Repo({ storage: ram })
-  const repoC = new Repo({ storage: ram })
+  const repoA = testRepo()
+  const repoB = testRepo()
+  const repoC = testRepo()
 
-  repoA.setSwarm(createSwarm(repoA))
-  repoB.setSwarm(createSwarm(repoB))
+  repoA.setSwarm(testSwarm(repoA))
+  repoB.setSwarm(testSwarm(repoB))
 
   // connect repos A and B
 
@@ -92,7 +72,7 @@ test("Three way docs don't load until all changes are in", (t) => {
         { a: 1, b: 2 },
         "repoB gets repoA's change and its local changes at once",
         () => {
-          repoC.setSwarm(createSwarm(repoC))
+          repoC.setSwarm(testSwarm(repoC))
 
           repoC.doc(id, (doc) => {
             t.deepEqual(doc, { a: 1, b: 2 })
@@ -113,11 +93,11 @@ test("Three way docs don't load until all changes are in", (t) => {
 
 test('Message about a doc between two repos', (t) => {
   t.plan(1)
-  const repoA = new Repo({ storage: ram })
-  const repoB = new Repo({ storage: ram })
+  const repoA = testRepo()
+  const repoB = testRepo()
 
-  repoA.setSwarm(createSwarm(repoA))
-  repoB.setSwarm(createSwarm(repoB))
+  repoA.setSwarm(testSwarm(repoA))
+  repoB.setSwarm(testSwarm(repoB))
 
   // connect the repos
 
@@ -140,13 +120,3 @@ test('Message about a doc between two repos', (t) => {
     repoB.close()
   })
 })
-
-function createSwarm(_repo: Repo) {
-  // return new Client({
-  //   id: repo.id,
-  //   stream: repo.stream,
-  //   url: 'wss://discovery-cloud.herokuapp.com',
-  // })
-
-  return Hyperswarm()
-}

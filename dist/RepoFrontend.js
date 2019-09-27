@@ -169,7 +169,7 @@ class RepoFrontend {
                 case 'PatchMsg': {
                     const doc = this.docs.get(msg.id);
                     if (doc) {
-                        doc.patch(msg.patch, msg.synced, msg.history);
+                        doc.patch(msg.patch, msg.minimumClockSatisfied, msg.history);
                     }
                     break;
                 }
@@ -192,7 +192,7 @@ class RepoFrontend {
                 case 'ReadyMsg': {
                     const doc = this.docs.get(msg.id);
                     if (doc) {
-                        doc.init(msg.synced, msg.actorId, msg.patch, msg.history);
+                        doc.init(msg.minimumClockSatisfied, msg.actorId, msg.patch, msg.history);
                     }
                     break;
                 }

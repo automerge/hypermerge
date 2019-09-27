@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "postbuild": "copyfiles -f src/migrations/*.sql dist/migrations",
     "format": "prettier --write 'src/**/*.ts'",
     "peek": "ts-node --files tools/Peek.ts $1 $2 $3",
     "cp": "ts-node --files tools/Cp.ts $1 $2 $3",
@@ -12,7 +13,8 @@
     "serve": "ts-node --files tools/Serve.ts $1 $2 $3",
     "meta": "ts-node --files tools/Meta.ts $1 $2 $3",
     "cat": "ts-node --files tools/Cat.ts $1 $2 $3",
-    "tape": "ts-node --files node_modules/tape/bin/tape tests/network.test.ts",
+    "tape": "ts-node --files node_modules/tape/bin/tape tests/*.test.ts",
+    "tape-only": "ts-node --files node_modules/tape/bin/tape",
     "tape-inspect": "node --inspect -r ts-node/register/transpile-only node_modules/tape/bin/tape tests/perf.test.ts"
   },
   "repository": {
@@ -26,14 +28,19 @@
   },
   "homepage": "https://github.com/inkandswitch/hypermerge#readme",
   "dependencies": {
+    "@types/better-sqlite3": "^5.4.0",
     "automerge": "^0.12.1",
+    "better-sqlite3": "^5.4.3",
     "bs58": "^4.0.1",
+    "copyfiles": "^2.1.1",
     "debug": "^4.1.1",
     "hypercore": "^8.0.2",
     "hypercore-protocol": "^7.1.1",
     "iltorb": "^2.4.3",
     "js-sha1": "^0.6.0",
-    "mime-types": "^2.1.24"
+    "mime-types": "^2.1.24",
+    "random-access-file": "^2.1.3",
+    "random-access-memory": "^3.0.0"
   },
   "devDependencies": {
     "@types/debug": "^0.0.31",
@@ -49,7 +56,6 @@
     "hyperswarm": "^2.1.0",
     "prettier": "^1.18.2",
     "pump": "^3.0.0",
-    "random-access-memory": "^2.4.0",
     "tape": "^4.11.0",
     "ts-node": "^8.3.0",
     "typescript": "^3.6.2",

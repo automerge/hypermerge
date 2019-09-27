@@ -102,7 +102,7 @@ export type ToFrontendRepoMsg =
 export interface PatchMsg {
   type: 'PatchMsg'
   id: DocId
-  synced: boolean
+  minimumClockSatisfied: boolean
   patch: Patch
   history: number
 }
@@ -136,7 +136,7 @@ export interface CloseMsg {
 export interface ReadyMsg {
   type: 'ReadyMsg'
   id: DocId
-  synced: boolean
+  minimumClockSatisfied: boolean
   actorId?: ActorId
   patch?: Patch
   history?: number

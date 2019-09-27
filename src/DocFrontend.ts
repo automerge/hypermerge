@@ -118,7 +118,7 @@ export class DocFrontend<T> {
     }
   }
 
-  init = (synced: boolean, actorId?: ActorId, patch?: Patch, history?: number) => {
+  init = (minimumClockSatisfied: boolean, actorId?: ActorId, patch?: Patch, history?: number) => {
     log(
       `init docid=${this.docId} actorId=${actorId} patch=${!!patch} history=${history} mode=${
         this.mode
@@ -129,7 +129,7 @@ export class DocFrontend<T> {
 
     if (actorId) this.setActorId(actorId) // must set before patch
 
-    if (patch) this.patch(patch, synced, history!) // first patch!
+    if (patch) this.patch(patch, minimumClockSatisfied, history!) // first patch!
   }
 
   private enableWrites() {
@@ -159,12 +159,12 @@ export class DocFrontend<T> {
     if (patch.deps) this.clock = union(this.clock, patch.deps)
   }
 
-  patch = (patch: Patch, synced: boolean, history: number) => {
+  patch = (patch: Patch, minimumClockSatisfied: boolean, history: number) => {
     this.bench('patch', () => {
       this.history = history
       this.front = Frontend.applyPatch(this.front, patch)
       this.updateClockPatch(patch)
-      if (patch.diffs.length > 0 && synced) {
+      if (patch.diffs.length > 0 && minimumClockSatisfied) {
         if (this.mode === 'pending') {
           this.mode = 'read'
           if (this.actorId) {
