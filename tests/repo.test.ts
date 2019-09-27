@@ -156,20 +156,13 @@ test('Writing and reading files works', async (t) => {
 })
 
 test('Changing a document updates the clock store', async (t) => {
-  t.plan(2)
+  t.plan(1)
   const repo = testRepo()
   const url = repo.create()
   const docId = validateDocURL(url)
 
   // We'll make one change
   const expectedClock = { [docId]: 1 }
-
-  // Clock is stored in ClockStore and matches expected value
-  // NOTE: this will fire twice because we have a bug which
-  // applies change twice.
-  repo.back.clocks.updateLog.subscribe(([docId, clock]) => {
-    t.deepEqual(expectedClock, clock)
-  })
 
   // Clock passed to `watch` matches expected clock.
   repo.watch<any>(
@@ -184,6 +177,17 @@ test('Changing a document updates the clock store', async (t) => {
   repo.change<any>(url, (state: any) => {
     state.foo = 'bar'
   })
+
+  // Note: the interface of repo.change doesn't guarantee this
+  // won't race - but it doesn't. We should change this test such
+  // that a race can't be introduced.
+  t.deepEqual(expectedClock, repo.back.clocks.get(docId))
+  // Clock is stored in ClockStore and matches expected value
+  // NOTE: this will fire twice because we have a bug which
+  // applies change twice.
+  // repo.back.clocks.updateLog.subscribe(([docId, clock]) => {
+  //   t.deepEqual(expectedClock, clock)
+  // })
 })
 
 function arg1<T>(arg1: T): T {

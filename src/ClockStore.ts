@@ -22,7 +22,6 @@ type ClockEntry = [ActorId, number]
 // We'll see if this becomes an issue.
 export default class ClockStore {
   db: Database
-  updateLog: Queue<ClockUpdate> = new Queue()
   private preparedGet: Statement<DocId>
   private preparedInsert: Statement<[DocId, ActorId, number]>
   private preparedDelete: Statement<DocId>
@@ -79,9 +78,7 @@ export default class ClockStore {
       return this.get(documentId)
     })
     const updatedClock = transaction(Object.entries(clock))
-    const update: ClockUpdate = [documentId, updatedClock]
-    this.updateLog.push(update)
-    return update
+    return [documentId, updatedClock]
   }
 
   /**
