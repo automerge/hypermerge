@@ -11,7 +11,7 @@ export type DocBackendMessage = ReadyMsg | ActorIdMsg | RemotePatchMsg | LocalPa
 interface ReadyMsg {
   type: 'ReadyMsg'
   id: DocId
-  synced: boolean
+  minimumClockSatisfied: boolean
   actorId?: ActorId
   history?: number
   patch?: Patch
@@ -27,7 +27,7 @@ interface RemotePatchMsg {
   type: 'RemotePatchMsg'
   id: DocId
   actorId?: ActorId
-  synced: boolean
+  minimumClockSatisfied: boolean
   patch: Patch
   change?: Change
   history: number
@@ -37,7 +37,7 @@ interface LocalPatchMsg {
   type: 'LocalPatchMsg'
   id: DocId
   actorId: ActorId
-  synced: boolean
+  minimumClockSatisfied: boolean
   patch: Patch
   change: Change
   history: number
@@ -80,14 +80,14 @@ export class DocBackend {
       this.notify({
         type: 'ReadyMsg',
         id: this.id,
-        synced: this.minimumClockSatisfied,
+        minimumClockSatisfied: this.minimumClockSatisfied,
         actorId: this.actorId,
         history,
       })
     }
   }
 
-  testForSync = (): void => {
+  testMinimumClockSatisfied = (): void => {
     if (this.minimumClock) {
       const test = cmp(this.clock, this.minimumClock)
       this.minimumClockSatisfied = test === 'GT' || test === 'EQ'
@@ -109,7 +109,7 @@ export class DocBackend {
     //    console.log("Target", clock)
     if (this.minimumClockSatisfied) return
     this.minimumClock = union(clock, this.minimumClock || {})
-    this.testForSync()
+    this.testMinimumClockSatisfied()
   }
 
   applyRemoteChanges = (changes: Change[]): void => {
@@ -138,7 +138,7 @@ export class DocBackend {
       const oldSeq = this.clock[actor] || 0
       this.clock[actor] = Math.max(oldSeq, change.seq)
     })
-    if (!this.minimumClockSatisfied) this.testForSync()
+    if (!this.minimumClockSatisfied) this.testMinimumClockSatisfied()
   }
 
   init = (changes: Change[], actorId?: ActorId) => {
@@ -158,7 +158,7 @@ export class DocBackend {
       this.notify({
         type: 'ReadyMsg',
         id: this.id,
-        synced: this.minimumClockSatisfied,
+        minimumClockSatisfied: this.minimumClockSatisfied,
         actorId: this.actorId,
         patch,
         history,
@@ -176,7 +176,7 @@ export class DocBackend {
         this.notify({
           type: 'RemotePatchMsg',
           id: this.id,
-          synced: this.minimumClockSatisfied,
+          minimumClockSatisfied: this.minimumClockSatisfied,
           patch,
           history,
         })
@@ -195,7 +195,7 @@ export class DocBackend {
           type: 'LocalPatchMsg',
           id: this.id,
           actorId: this.actorId!,
-          synced: this.minimumClockSatisfied,
+          minimumClockSatisfied: this.minimumClockSatisfied,
           change: change,
           patch,
           history,

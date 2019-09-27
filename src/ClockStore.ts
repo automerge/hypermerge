@@ -58,8 +58,7 @@ export default class ClockStore {
         return clockMap
       }, {})
     })
-    const clockMap = transaction(documentIds)
-    return clockMap
+    return transaction(documentIds)
   }
 
   /**

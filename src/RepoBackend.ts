@@ -28,8 +28,8 @@ import Network, { Swarm } from './Network'
 import { encodePeerId } from './NetworkPeer'
 import ClockStore from './ClockStore'
 import * as SqlDatabase from './SqlDatabase'
-const ram = require('random-access-memory')
-const raf = require('random-access-file')
+import ram from 'random-access-memory'
+import raf from 'random-access-file'
 
 Debug.formatters.b = Base58.encode
 
@@ -261,7 +261,7 @@ export class RepoBackend {
         this.toFrontend.push({
           type: 'ReadyMsg',
           id: msg.id,
-          synced: msg.synced,
+          minimumClockSatisfied: msg.minimumClockSatisfied,
           actorId: msg.actorId,
           history: msg.history,
           patch: msg.patch,
@@ -280,12 +280,12 @@ export class RepoBackend {
         this.toFrontend.push({
           type: 'PatchMsg',
           id: msg.id,
-          synced: msg.synced,
+          minimumClockSatisfied: msg.minimumClockSatisfied,
           patch: msg.patch,
           history: msg.history,
         })
         const doc = this.docs.get(msg.id)
-        if (doc /*&& msg.synced*/) {
+        if (doc && msg.minimumClockSatisfied) {
           this.clocks.update(msg.id, doc.clock)
         }
         break
@@ -294,13 +294,13 @@ export class RepoBackend {
         this.toFrontend.push({
           type: 'PatchMsg',
           id: msg.id,
-          synced: msg.synced,
+          minimumClockSatisfied: msg.minimumClockSatisfied,
           patch: msg.patch,
           history: msg.history,
         })
         this.actor(msg.actorId)!.writeChange(msg.change)
         const doc = this.docs.get(msg.id)
-        if (doc /*&& msg.synced*/) {
+        if (doc && msg.minimumClockSatisfied) {
           this.clocks.update(msg.id, doc.clock)
         }
         break

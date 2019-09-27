@@ -39,8 +39,8 @@ const Network_1 = __importDefault(require("./Network"));
 const NetworkPeer_1 = require("./NetworkPeer");
 const ClockStore_1 = __importDefault(require("./ClockStore"));
 const SqlDatabase = __importStar(require("./SqlDatabase"));
-const ram = require('random-access-memory');
-const raf = require('random-access-file');
+const random_access_memory_1 = __importDefault(require("random-access-memory"));
+const random_access_file_1 = __importDefault(require("random-access-file"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default('repo:backend');
 class RepoBackend {
@@ -106,7 +106,7 @@ class RepoBackend {
                     this.toFrontend.push({
                         type: 'ReadyMsg',
                         id: msg.id,
-                        synced: msg.synced,
+                        minimumClockSatisfied: msg.minimumClockSatisfied,
                         actorId: msg.actorId,
                         history: msg.history,
                         patch: msg.patch,
@@ -125,12 +125,12 @@ class RepoBackend {
                     this.toFrontend.push({
                         type: 'PatchMsg',
                         id: msg.id,
-                        synced: msg.synced,
+                        minimumClockSatisfied: msg.minimumClockSatisfied,
                         patch: msg.patch,
                         history: msg.history,
                     });
                     const doc = this.docs.get(msg.id);
-                    if (doc /*&& msg.synced*/) {
+                    if (doc && msg.minimumClockSatisfied) {
                         this.clocks.update(msg.id, doc.clock);
                     }
                     break;
@@ -139,13 +139,13 @@ class RepoBackend {
                     this.toFrontend.push({
                         type: 'PatchMsg',
                         id: msg.id,
-                        synced: msg.synced,
+                        minimumClockSatisfied: msg.minimumClockSatisfied,
                         patch: msg.patch,
                         history: msg.history,
                     });
                     this.actor(msg.actorId).writeChange(msg.change);
                     const doc = this.docs.get(msg.id);
-                    if (doc /*&& msg.synced*/) {
+                    if (doc && msg.minimumClockSatisfied) {
                         this.clocks.update(msg.id, doc.clock);
                     }
                     break;
@@ -365,7 +365,7 @@ class RepoBackend {
         };
         this.opts = opts;
         this.path = opts.path || 'default';
-        this.storage = opts.memory ? ram : raf;
+        this.storage = opts.memory ? random_access_memory_1.default : random_access_file_1.default;
         this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), opts.memory || false);
         this.clocks = new ClockStore_1.default(this.db);
         this.store = new FeedStore_1.default(this.storageFn);
