@@ -37,7 +37,6 @@ export declare class RepoBackend {
     private fileServer;
     private network;
     constructor(opts: Options);
-    ensurePath: (path: string) => void;
     startFileServer: (path: string) => void;
     private create;
     private debug;

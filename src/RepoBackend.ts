@@ -47,6 +47,10 @@ export interface Options {
   memory?: boolean
 }
 
+function ensureDirectoryExists(path: string) {
+  fs.mkdirSync(path, { recursive: true })
+}
+
 export class RepoBackend {
   path?: string
   storage: Function
@@ -68,7 +72,7 @@ export class RepoBackend {
     this.opts = opts
     this.path = opts.path || 'default'
     if (!opts.memory) {
-      this.ensurePath(this.path)
+      ensureDirectoryExists(this.path)
     }
     this.storage = opts.memory ? ram : raf
     this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
@@ -83,10 +87,6 @@ export class RepoBackend {
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
     this.id = this.meta.id
     this.network = new Network(encodePeerId(this.id), this.store)
-  }
-
-  ensurePath = (path: string) => {
-    fs.mkdirSync(path, { recursive: true })
   }
 
   startFileServer = (path: string) => {

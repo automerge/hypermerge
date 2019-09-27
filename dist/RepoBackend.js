@@ -44,15 +44,15 @@ const random_access_memory_1 = __importDefault(require("random-access-memory"));
 const random_access_file_1 = __importDefault(require("random-access-file"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default('repo:backend');
+function ensureDirectoryExists(path) {
+    fs_1.default.mkdirSync(path, { recursive: true });
+}
 class RepoBackend {
     constructor(opts) {
         this.actors = new Map();
         this.actorsDk = new Map();
         this.docs = new Map();
         this.toFrontend = new Queue_1.default('repo:back:toFrontend');
-        this.ensurePath = (path) => {
-            fs_1.default.mkdirSync(path, { recursive: true });
-        };
         this.startFileServer = (path) => {
             if (this.fileServer.isListening())
                 return;
@@ -370,7 +370,7 @@ class RepoBackend {
         this.opts = opts;
         this.path = opts.path || 'default';
         if (!opts.memory) {
-            this.ensurePath(this.path);
+            ensureDirectoryExists(this.path);
         }
         this.storage = opts.memory ? random_access_memory_1.default : random_access_file_1.default;
         this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), opts.memory || false);
