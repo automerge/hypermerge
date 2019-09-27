@@ -47,10 +47,6 @@ export interface Options {
   memory?: boolean
 }
 
-function ensureDirectoryExists(path: string) {
-  fs.mkdirSync(path, { recursive: true })
-}
-
 export class RepoBackend {
   path?: string
   storage: Function
@@ -544,4 +540,8 @@ export class RepoBackend {
   actor(id: ActorId): Actor | undefined {
     return this.actors.get(id)
   }
+}
+
+function ensureDirectoryExists(path: string) {
+  fs.mkdirSync(path, { recursive: true })
 }

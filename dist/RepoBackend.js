@@ -44,9 +44,6 @@ const random_access_memory_1 = __importDefault(require("random-access-memory"));
 const random_access_file_1 = __importDefault(require("random-access-file"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default('repo:backend');
-function ensureDirectoryExists(path) {
-    fs_1.default.mkdirSync(path, { recursive: true });
-}
 class RepoBackend {
     constructor(opts) {
         this.actors = new Map();
@@ -502,4 +499,7 @@ class RepoBackend {
     }
 }
 exports.RepoBackend = RepoBackend;
+function ensureDirectoryExists(path) {
+    fs_1.default.mkdirSync(path, { recursive: true });
+}
 //# sourceMappingURL=RepoBackend.js.map
