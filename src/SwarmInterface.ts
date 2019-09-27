@@ -9,6 +9,7 @@ export interface Swarm {
   on<K extends keyof SwarmEvents>(name: K, cb: SwarmEvents[K]): this
   off<K extends keyof SwarmEvents>(name: K, cb: SwarmEvents[K]): this
   removeAllListeners(): void
+  destroy(cb: () => void): void
 }
 
 export interface SwarmEvents {

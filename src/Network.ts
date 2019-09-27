@@ -82,15 +82,14 @@ export default class Network<Msg> {
     return getOrCreate(this.peers, peerId, () => new Peer(this.selfId, peerId))
   }
 
-  close(): void {
-    if (!this.swarm) return
-
+  async close(): Promise<void> {
     this.peers.forEach((peer) => {
       peer.close()
     })
 
-    // TODO: this is not enough:
-    this.swarm.removeAllListeners()
+    return new Promise((res) => {
+      this.swarm ? this.swarm.destroy(res) : res()
+    })
   }
 
   private onConnection = async (socket: Socket, details: ConnectionDetails) => {
