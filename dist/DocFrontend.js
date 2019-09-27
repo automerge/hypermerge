@@ -44,21 +44,21 @@ class DocFrontend {
                 this.enableWrites(); // has to be after the queue
             }
         };
-        this.init = (synced, actorId, patch, history) => {
+        this.init = (minimumClockSatisfied, actorId, patch, history) => {
             log(`init docid=${this.docId} actorId=${actorId} patch=${!!patch} history=${history} mode=${this.mode}`);
             if (this.mode !== 'pending')
                 return;
             if (actorId)
                 this.setActorId(actorId); // must set before patch
             if (patch)
-                this.patch(patch, synced, history); // first patch!
+                this.patch(patch, minimumClockSatisfied, history); // first patch!
         };
-        this.patch = (patch, synced, history) => {
+        this.patch = (patch, minimumClockSatisfied, history) => {
             this.bench('patch', () => {
                 this.history = history;
                 this.front = automerge_1.Frontend.applyPatch(this.front, patch);
                 this.updateClockPatch(patch);
-                if (patch.diffs.length > 0 && synced) {
+                if (patch.diffs.length > 0 && minimumClockSatisfied) {
                     if (this.mode === 'pending') {
                         this.mode = 'read';
                         if (this.actorId) {

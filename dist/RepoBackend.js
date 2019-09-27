@@ -28,6 +28,7 @@ const crypto = __importStar(require("hypercore/lib/crypto"));
 const automerge_1 = require("automerge");
 const DocBackend = __importStar(require("./DocBackend"));
 const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const Misc_1 = require("./Misc");
 const debug_1 = __importDefault(require("debug"));
 const DocumentBroadcast = __importStar(require("./DocumentBroadcast"));
@@ -365,6 +366,9 @@ class RepoBackend {
         };
         this.opts = opts;
         this.path = opts.path || 'default';
+        if (!opts.memory) {
+            ensureDirectoryExists(this.path);
+        }
         this.storage = opts.memory ? random_access_memory_1.default : random_access_file_1.default;
         this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), opts.memory || false);
         this.clocks = new ClockStore_1.default(this.db);
@@ -495,4 +499,7 @@ class RepoBackend {
     }
 }
 exports.RepoBackend = RepoBackend;
+function ensureDirectoryExists(path) {
+    fs_1.default.mkdirSync(path, { recursive: true });
+}
 //# sourceMappingURL=RepoBackend.js.map

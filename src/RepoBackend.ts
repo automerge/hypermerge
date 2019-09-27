@@ -8,6 +8,7 @@ import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg, DocumentMsg } f
 import { Backend, Change } from 'automerge'
 import * as DocBackend from './DocBackend'
 import path from 'path'
+import fs from 'fs'
 import {
   notEmpty,
   ID,
@@ -66,6 +67,9 @@ export class RepoBackend {
   constructor(opts: Options) {
     this.opts = opts
     this.path = opts.path || 'default'
+    if (!opts.memory) {
+      ensureDirectoryExists(this.path)
+    }
     this.storage = opts.memory ? ram : raf
     this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
     this.clocks = new ClockStore(this.db)
@@ -536,4 +540,8 @@ export class RepoBackend {
   actor(id: ActorId): Actor | undefined {
     return this.actors.get(id)
   }
+}
+
+function ensureDirectoryExists(path: string) {
+  fs.mkdirSync(path, { recursive: true })
 }
