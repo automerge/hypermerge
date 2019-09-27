@@ -27,6 +27,7 @@ const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
 const automerge_1 = require("automerge");
 const DocBackend = __importStar(require("./DocBackend"));
+const path_1 = __importDefault(require("path"));
 const Misc_1 = require("./Misc");
 const debug_1 = __importDefault(require("debug"));
 const DocumentBroadcast = __importStar(require("./DocumentBroadcast"));
@@ -36,6 +37,10 @@ const FileStore_1 = __importDefault(require("./FileStore"));
 const FileServer_1 = __importDefault(require("./FileServer"));
 const Network_1 = __importDefault(require("./Network"));
 const NetworkPeer_1 = require("./NetworkPeer");
+const ClockStore_1 = __importDefault(require("./ClockStore"));
+const SqlDatabase = __importStar(require("./SqlDatabase"));
+const random_access_memory_1 = __importDefault(require("random-access-memory"));
+const random_access_file_1 = __importDefault(require("random-access-file"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default('repo:backend');
 class RepoBackend {
@@ -62,6 +67,7 @@ class RepoBackend {
         this.close = () => {
             this.actors.forEach((actor) => actor.close());
             this.actors.clear();
+            this.db.close();
             return Promise.all([this.network.close(), this.fileServer.close()]);
         };
         this.join = (actorId) => {
@@ -100,7 +106,7 @@ class RepoBackend {
                     this.toFrontend.push({
                         type: 'ReadyMsg',
                         id: msg.id,
-                        synced: msg.synced,
+                        minimumClockSatisfied: msg.minimumClockSatisfied,
                         actorId: msg.actorId,
                         history: msg.history,
                         patch: msg.patch,
@@ -119,21 +125,29 @@ class RepoBackend {
                     this.toFrontend.push({
                         type: 'PatchMsg',
                         id: msg.id,
-                        synced: msg.synced,
+                        minimumClockSatisfied: msg.minimumClockSatisfied,
                         patch: msg.patch,
                         history: msg.history,
                     });
+                    const doc = this.docs.get(msg.id);
+                    if (doc && msg.minimumClockSatisfied) {
+                        this.clocks.update(msg.id, doc.clock);
+                    }
                     break;
                 }
                 case 'LocalPatchMsg': {
                     this.toFrontend.push({
                         type: 'PatchMsg',
                         id: msg.id,
-                        synced: msg.synced,
+                        minimumClockSatisfied: msg.minimumClockSatisfied,
                         patch: msg.patch,
                         history: msg.history,
                     });
                     this.actor(msg.actorId).writeChange(msg.change);
+                    const doc = this.docs.get(msg.id);
+                    if (doc && msg.minimumClockSatisfied) {
+                        this.clocks.update(msg.id, doc.clock);
+                    }
                     break;
                 }
                 default: {
@@ -148,7 +162,7 @@ class RepoBackend {
                         const clock = msg.clocks[docId];
                         const doc = this.docs.get(docId);
                         if (clock && doc) {
-                            doc.target(clock);
+                            doc.updateMinimumClock(clock);
                         }
                     }
                     const _blocks = msg.blocks;
@@ -186,8 +200,9 @@ class RepoBackend {
                     this.meta.setWritable(actor.id, msg.writable);
                     // Broadcast latest document information to peers.
                     const metadata = this.meta.forActor(actor.id);
-                    const clocks = this.allClocks(actor.id);
-                    this.meta.docsWith(actor.id).forEach((documentId) => {
+                    const docs = this.meta.docsWith(actor.id);
+                    const clocks = this.clocks.getMultiple(docs);
+                    docs.forEach((documentId) => {
                         const documentActor = this.actor(Misc_1.rootActorId(documentId));
                         if (documentActor) {
                             DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values());
@@ -206,7 +221,8 @@ class RepoBackend {
                     DocumentBroadcast.listen(msg.peer, this.broadcastNotify);
                     // Broadcast the latest document information to the new peer
                     const metadata = this.meta.forActor(msg.actor.id);
-                    const clocks = this.allClocks(msg.actor.id);
+                    const docs = this.meta.docsWith(msg.actor.id);
+                    const clocks = this.clocks.getMultiple(docs);
                     DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer]);
                     break;
                 }
@@ -349,7 +365,9 @@ class RepoBackend {
         };
         this.opts = opts;
         this.path = opts.path || 'default';
-        this.storage = opts.storage;
+        this.storage = opts.memory ? random_access_memory_1.default : random_access_file_1.default;
+        this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), opts.memory || false);
+        this.clocks = new ClockStore_1.default(this.db);
         this.store = new FeedStore_1.default(this.storageFn);
         this.files = new FileStore_1.default(this.store);
         this.files.writeLog.subscribe((header) => {
@@ -465,16 +483,6 @@ class RepoBackend {
         return this.actorIds(doc)
             .map((id) => this.actors.get(id))
             .filter(Misc_1.notEmpty);
-    }
-    allClocks(actorId) {
-        const clocks = {};
-        this.meta.docsWith(actorId).forEach((documentId) => {
-            const doc = this.docs.get(documentId);
-            if (doc) {
-                clocks[documentId] = doc.clock;
-            }
-        });
-        return clocks;
     }
     initActor(keys) {
         const actor = new Actor_1.Actor({ keys, notify: this.actorNotify, store: this.store });

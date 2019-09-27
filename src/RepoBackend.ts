@@ -1,12 +1,13 @@
 import Queue from './Queue'
 import { Metadata } from './Metadata'
 import { Actor, ActorMsg } from './Actor'
-import { strs2clock, clockDebug, clockActorIds } from './Clock'
+import { Clock, strs2clock, clockDebug, clockActorIds } from './Clock'
 import * as Base58 from 'bs58'
 import * as crypto from 'hypercore/lib/crypto'
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg, DocumentMsg } from './RepoMsg'
-import { Backend, Clock, Change } from 'automerge'
+import { Backend, Change } from 'automerge'
 import * as DocBackend from './DocBackend'
+import path from 'path'
 import {
   notEmpty,
   ID,
@@ -25,6 +26,10 @@ import FileStore from './FileStore'
 import FileServer from './FileServer'
 import Network, { Swarm } from './Network'
 import { encodePeerId } from './NetworkPeer'
+import ClockStore from './ClockStore'
+import * as SqlDatabase from './SqlDatabase'
+import ram from 'random-access-memory'
+import raf from 'random-access-file'
 
 Debug.formatters.b = Base58.encode
 
@@ -38,7 +43,7 @@ export interface FeedData {
 
 export interface Options {
   path?: string
-  storage: Function
+  memory?: boolean
 }
 
 export class RepoBackend {
@@ -46,6 +51,7 @@ export class RepoBackend {
   storage: Function
   store: FeedStore
   files: FileStore
+  clocks: ClockStore
   actors: Map<ActorId, Actor> = new Map()
   actorsDk: Map<DiscoveryId, Actor> = new Map()
   docs: Map<DocId, DocBackend.DocBackend> = new Map()
@@ -53,13 +59,16 @@ export class RepoBackend {
   opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
   id: Buffer
+  private db: SqlDatabase.Database
   private fileServer: FileServer
   private network: Network
 
   constructor(opts: Options) {
     this.opts = opts
     this.path = opts.path || 'default'
-    this.storage = opts.storage
+    this.storage = opts.memory ? ram : raf
+    this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
+    this.clocks = new ClockStore(this.db)
     this.store = new FeedStore(this.storageFn)
     this.files = new FileStore(this.store)
     this.files.writeLog.subscribe((header) => {
@@ -163,6 +172,7 @@ export class RepoBackend {
   close = () => {
     this.actors.forEach((actor) => actor.close())
     this.actors.clear()
+    this.db.close()
 
     return Promise.all([this.network.close(), this.fileServer.close()])
   }
@@ -245,24 +255,13 @@ export class RepoBackend {
     })
   }
 
-  allClocks(actorId: ActorId): { [docId: string]: Clock } {
-    const clocks: { [docId: string]: Clock } = {}
-    this.meta.docsWith(actorId).forEach((documentId) => {
-      const doc = this.docs.get(documentId)
-      if (doc) {
-        clocks[documentId] = doc.clock
-      }
-    })
-    return clocks
-  }
-
   private documentNotify = (msg: DocBackend.DocBackendMessage) => {
     switch (msg.type) {
       case 'ReadyMsg': {
         this.toFrontend.push({
           type: 'ReadyMsg',
           id: msg.id,
-          synced: msg.synced,
+          minimumClockSatisfied: msg.minimumClockSatisfied,
           actorId: msg.actorId,
           history: msg.history,
           patch: msg.patch,
@@ -281,21 +280,29 @@ export class RepoBackend {
         this.toFrontend.push({
           type: 'PatchMsg',
           id: msg.id,
-          synced: msg.synced,
+          minimumClockSatisfied: msg.minimumClockSatisfied,
           patch: msg.patch,
           history: msg.history,
         })
+        const doc = this.docs.get(msg.id)
+        if (doc && msg.minimumClockSatisfied) {
+          this.clocks.update(msg.id, doc.clock)
+        }
         break
       }
       case 'LocalPatchMsg': {
         this.toFrontend.push({
           type: 'PatchMsg',
           id: msg.id,
-          synced: msg.synced,
+          minimumClockSatisfied: msg.minimumClockSatisfied,
           patch: msg.patch,
           history: msg.history,
         })
         this.actor(msg.actorId)!.writeChange(msg.change)
+        const doc = this.docs.get(msg.id)
+        if (doc && msg.minimumClockSatisfied) {
+          this.clocks.update(msg.id, doc.clock)
+        }
         break
       }
       default: {
@@ -311,7 +318,7 @@ export class RepoBackend {
           const clock = msg.clocks[docId]
           const doc = this.docs.get(docId as DocId)
           if (clock && doc) {
-            doc.target(clock)
+            doc.updateMinimumClock(clock)
           }
         }
         const _blocks = msg.blocks
@@ -348,14 +355,14 @@ export class RepoBackend {
         this.meta.setWritable(actor.id, msg.writable)
         // Broadcast latest document information to peers.
         const metadata = this.meta.forActor(actor.id)
-        const clocks = this.allClocks(actor.id)
-        this.meta.docsWith(actor.id).forEach((documentId) => {
-          const documentActor = this.actor(rootActorId(documentId))
+        const docs = this.meta.docsWith(actor.id)
+        const clocks = this.clocks.getMultiple(docs)
+        docs.forEach((documentId) => {
+          const documentActor = this.actor(rootActorId(documentId as DocId))
           if (documentActor) {
             DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values())
           }
         })
-
         this.join(actor.id)
         break
       }
@@ -370,7 +377,8 @@ export class RepoBackend {
 
         // Broadcast the latest document information to the new peer
         const metadata = this.meta.forActor(msg.actor.id)
-        const clocks = this.allClocks(msg.actor.id)
+        const docs = this.meta.docsWith(msg.actor.id)
+        const clocks = this.clocks.getMultiple(docs)
         DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer])
         break
       }

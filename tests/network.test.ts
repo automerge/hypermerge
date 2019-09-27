@@ -1,31 +1,12 @@
 import test from 'tape'
-import { Repo } from '../src'
 import Client from 'discovery-cloud-client'
-import { expectDocs, generateServerPath } from './misc'
-import { streamToBuffer, bufferToStream } from '../src/Misc'
-
-const ram: Function = require('random-access-memory')
-
-test('Writing and reading files works', async (t) => {
-  t.plan(1)
-  const repoA = new Repo({
-    storage: ram,
-  })
-  repoA.startFileServer(generateServerPath())
-  const pseudoFile = Buffer.from('coolcool')
-  const size = pseudoFile.length
-  const url = await repoA.files.write(bufferToStream(pseudoFile), size, 'application/octet-stream')
-  const [readable, mimeType] = await repoA.files.read(url)
-  const buffer = await streamToBuffer(readable)
-  t.equal(pseudoFile.toString(), buffer.toString())
-  repoA.close()
-})
+import { expectDocs, testRepo } from './misc'
 
 test('Share a doc between two repos', (t) => {
   t.plan(0)
 
-  const repoA = new Repo({ storage: ram })
-  const repoB = new Repo({ storage: ram })
+  const repoA = testRepo()
+  const repoB = testRepo()
 
   const clientA = new Client({
     id: repoA.id,
@@ -74,9 +55,9 @@ test('Share a doc between two repos', (t) => {
 test("Three way docs don't load until all canges are in", (t) => {
   t.plan(1)
 
-  const repoA = new Repo({ storage: ram })
-  const repoB = new Repo({ storage: ram })
-  const repoC = new Repo({ storage: ram })
+  const repoA = testRepo()
+  const repoB = testRepo()
+  const repoC = testRepo()
 
   const clientA = new Client({
     id: repoA.id,
@@ -143,8 +124,8 @@ test("Three way docs don't load until all canges are in", (t) => {
 
 test('Message about a doc between two repos', (t) => {
   t.plan(1)
-  const repoA = new Repo({ storage: ram })
-  const repoB = new Repo({ storage: ram })
+  const repoA = testRepo()
+  const repoB = testRepo()
 
   const clientA = new Client({
     id: repoA.id,

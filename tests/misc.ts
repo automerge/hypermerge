@@ -1,9 +1,16 @@
 import test from 'tape'
 import uuid from 'uuid/v4'
+import { Repo } from '../src'
 
 type DocMsg = [any, string]
 type DocMsgCB = [any, string, any]
 type DocInfo = DocMsg | DocMsgCB
+
+type Expected<T> = [T, string] | [T, string, Function]
+
+export function testRepo() {
+  return new Repo({ memory: true })
+}
 
 export function expectDocs(t: test.Test, docs: DocInfo[]) {
   let i = 0
@@ -18,6 +25,25 @@ export function expectDocs(t: test.Test, docs: DocInfo[]) {
     } else {
       const [expected, msg, cb] = tmp
       t.deepEqual(doc, expected, msg)
+      if (cb) cb()
+    }
+  }
+}
+
+export function expect<T>(t: test.Test, getValue: Function, expected: Expected<T>[]) {
+  let i = 0
+
+  // add to the current planned test length:
+  t.plan(((<any>t)._plan || 0) + expected.length)
+
+  return (...args: any) => {
+    const currentExpected = expected[i++]
+    if (currentExpected === undefined) {
+      t.fail(`Invoked more times than expected. Invoked with: ${JSON.stringify(args)}`)
+    } else {
+      const val = getValue(...args)
+      const [expected, msg, cb] = currentExpected
+      t.deepEqual(val, expected, msg)
       if (cb) cb()
     }
   }
