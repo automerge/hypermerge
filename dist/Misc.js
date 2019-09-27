@@ -9,6 +9,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const Base58 = __importStar(require("bs58"));
 const stream_1 = require("stream");
+const hypercore_1 = require("./hypercore");
 function encodeDocId(actorKey) {
     return Base58.encode(actorKey);
 }
@@ -33,6 +34,14 @@ function toHyperfileUrl(hyperfileId) {
     return `hyperfile:/${hyperfileId}`;
 }
 exports.toHyperfileUrl = toHyperfileUrl;
+function toDiscoveryId(id) {
+    return Base58.encode(toDiscoveryKey(id));
+}
+exports.toDiscoveryId = toDiscoveryId;
+function toDiscoveryKey(id) {
+    return hypercore_1.discoveryKey(Base58.decode(id));
+}
+exports.toDiscoveryKey = toDiscoveryKey;
 function rootActorId(docId) {
     return docId;
 }
@@ -58,6 +67,15 @@ function notEmpty(value) {
     return value !== null && value !== undefined;
 }
 exports.notEmpty = notEmpty;
+function getOrCreate(map, key, create) {
+    const existing = map.get(key);
+    if (existing)
+        return existing;
+    const created = create(key);
+    map.set(key, created);
+    return created;
+}
+exports.getOrCreate = getOrCreate;
 function streamToBuffer(stream) {
     return new Promise((res, rej) => {
         const buffers = [];

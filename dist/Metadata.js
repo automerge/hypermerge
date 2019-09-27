@@ -30,10 +30,11 @@ const Misc_1 = require("./Misc");
 const log = debug_1.default('repo:metadata');
 const Clock_1 = require("./Clock");
 const Misc_2 = require("./Misc");
-function validateRemoteMetadata(message) {
+const crypto_1 = require("crypto");
+function sanitizeRemoteMetadata(message) {
     const result = { type: 'RemoteMetadata', clocks: {}, blocks: [] };
     if (message instanceof Object &&
-        message.blocks instanceof Array &&
+        Array.isArray(message.blocks) &&
         message.clocks instanceof Object) {
         result.blocks = filterMetadataInputs(message.blocks);
         result.clocks = message.clocks;
@@ -44,7 +45,7 @@ function validateRemoteMetadata(message) {
         return result;
     }
 }
-exports.validateRemoteMetadata = validateRemoteMetadata;
+exports.sanitizeRemoteMetadata = sanitizeRemoteMetadata;
 function cleanMetadataInput(input) {
     const id = input.id || input.docId;
     if (typeof id !== 'string')
@@ -112,7 +113,7 @@ function isFileBlock(block) {
     return 'mimeType' in block && typeof block.mimeType === 'string' && block.bytes != undefined;
 }
 function isDeletedBlock(block) {
-    return 'deleted' in block;
+    return 'deleted' in block && block.deleted;
 }
 function isNumber(n) {
     return typeof n === 'number';
@@ -247,7 +248,7 @@ class Metadata {
         this.ledger = hypercore_1.hypercore(storageFn('ledger'), {});
         this.join = joinFn;
         this.leave = leaveFn;
-        this.id = this.ledger.id;
+        this.id = crypto_1.randomBytes(32);
         log('LEDGER READY (1)');
         this.ledger.ready(() => {
             log('LEDGER READY (2)', this.ledger.length);

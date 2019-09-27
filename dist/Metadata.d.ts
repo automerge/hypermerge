@@ -2,11 +2,7 @@
 import Queue from './Queue';
 import { Clock } from './Clock';
 import { DocUrl, DocId, ActorId, BaseUrl, BaseId, HyperfileId, HyperfileUrl } from './Misc';
-export interface NewMetadata {
-    type: 'NewMetadata';
-    input: Uint8Array;
-}
-export declare function validateRemoteMetadata(message: RemoteMetadata): RemoteMetadata;
+export declare function sanitizeRemoteMetadata(message: any): RemoteMetadata;
 export declare function cleanMetadataInput(input: any): MetadataBlock | undefined;
 export declare function filterMetadataInputs(input: any[]): MetadataBlock[];
 export interface UrlInfo {

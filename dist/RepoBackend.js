@@ -30,7 +30,6 @@ const DocBackend = __importStar(require("./DocBackend"));
 const path_1 = __importDefault(require("path"));
 const Misc_1 = require("./Misc");
 const debug_1 = __importDefault(require("debug"));
-const DocumentBroadcast = __importStar(require("./DocumentBroadcast"));
 const Keys = __importStar(require("./Keys"));
 const FeedStore_1 = __importDefault(require("./FeedStore"));
 const FileStore_1 = __importDefault(require("./FileStore"));
@@ -46,7 +45,6 @@ const log = debug_1.default('repo:backend');
 class RepoBackend {
     constructor(opts) {
         this.actors = new Map();
-        this.actorsDk = new Map();
         this.docs = new Map();
         this.toFrontend = new Queue_1.default('repo:back:toFrontend');
         this.startFileServer = (path) => {
@@ -71,10 +69,11 @@ class RepoBackend {
             return Promise.all([this.network.close(), this.fileServer.close()]);
         };
         this.join = (actorId) => {
-            this.network.join(actorId);
+            this.feeds.addFeedId(actorId);
+            this.network.join(Misc_1.toDiscoveryId(actorId));
         };
         this.leave = (actorId) => {
-            this.network.leave(actorId);
+            this.network.leave(Misc_1.toDiscoveryId(actorId));
         };
         this.getReadyActor = (actorId) => {
             const publicKey = Base58.decode(actorId);
@@ -155,17 +154,37 @@ class RepoBackend {
                 }
             }
         };
-        this.broadcastNotify = (msg) => {
+        this.onDiscovery = ({ discoveryId, connection, peer }) => {
+            const feedId = this.feeds.getFeedId(discoveryId);
+            if (!feedId)
+                return;
+            const actorId = feedId;
+            this.feeds.getFeed(feedId).then((feed) => {
+                feed.replicate(connection.protocol, {
+                    live: true,
+                });
+            });
+            const blocks = this.meta.forActor(actorId);
+            const docs = this.meta.docsWith(actorId);
+            const clocks = this.clocks.getMultiple(docs);
+            this.network.sendToPeer(peer.id, {
+                type: 'RemoteMetadata',
+                clocks,
+                blocks,
+            });
+        };
+        this.onMessage = (msg) => {
             switch (msg.type) {
                 case 'RemoteMetadata': {
-                    for (let docId in msg.clocks) {
-                        const clock = msg.clocks[docId];
+                    const { blocks, clocks } = Metadata_1.sanitizeRemoteMetadata(msg);
+                    for (let docId in clocks) {
+                        const clock = clocks[docId];
                         const doc = this.docs.get(docId);
                         if (clock && doc) {
                             doc.updateMinimumClock(clock);
                         }
                     }
-                    const _blocks = msg.blocks;
+                    const _blocks = blocks;
                     this.meta.addBlocks(_blocks);
                     _blocks.map((block) => {
                         if ('actors' in block && block.actors)
@@ -185,11 +204,6 @@ class RepoBackend {
                     });
                     break;
                 }
-                case 'NewMetadata': {
-                    // TODO: Warn better than this!
-                    console.log('Legacy Metadata message received - better upgrade');
-                    break;
-                }
             }
         };
         this.actorNotify = (msg) => {
@@ -199,14 +213,15 @@ class RepoBackend {
                     // Record whether or not this actor is writable.
                     this.meta.setWritable(actor.id, msg.writable);
                     // Broadcast latest document information to peers.
-                    const metadata = this.meta.forActor(actor.id);
+                    const blocks = this.meta.forActor(actor.id);
                     const docs = this.meta.docsWith(actor.id);
                     const clocks = this.clocks.getMultiple(docs);
-                    docs.forEach((documentId) => {
-                        const documentActor = this.actor(Misc_1.rootActorId(documentId));
-                        if (documentActor) {
-                            DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values());
-                        }
+                    this.meta.docsWith(actor.id).forEach((documentId) => {
+                        this.network.sendToDiscoveryId(Misc_1.toDiscoveryId(documentId), {
+                            type: 'RemoteMetadata',
+                            blocks,
+                            clocks,
+                        });
                     });
                     this.join(actor.id);
                     break;
@@ -214,16 +229,6 @@ class RepoBackend {
                 case 'ActorInitialized': {
                     // Swarm on the actor's feed.
                     this.join(msg.actor.id);
-                    break;
-                }
-                case 'PeerAdd': {
-                    // Listen for hypermerge extension broadcasts.
-                    DocumentBroadcast.listen(msg.peer, this.broadcastNotify);
-                    // Broadcast the latest document information to the new peer
-                    const metadata = this.meta.forActor(msg.actor.id);
-                    const docs = this.meta.docsWith(msg.actor.id);
-                    const clocks = this.clocks.getMultiple(docs);
-                    DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer]);
                     break;
                 }
                 case 'ActorSync':
@@ -270,12 +275,12 @@ class RepoBackend {
                 }
             });
         };
-        this.setSwarm = (swarm) => {
-            return this.network.setSwarm(swarm);
+        this.setSwarm = (swarm, joinOptions) => {
+            this.network.setSwarm(swarm, joinOptions);
         };
-        this.stream = (opts) => {
-            return this.network.onConnect(opts);
-        };
+        // stream = (opts: any): any => {
+        //   return this.network.onConnection(opts)
+        // }
         this.subscribe = (subscriber) => {
             this.toFrontend.subscribe(subscriber);
         };
@@ -343,10 +348,11 @@ class RepoBackend {
                 case 'DocumentMessage': {
                     // Note: 'id' is the document id of the document to send the message to.
                     const { id, contents } = msg;
-                    const documentActor = this.actor(Misc_1.rootActorId(id));
-                    if (documentActor) {
-                        DocumentBroadcast.broadcastDocumentMessage(id, contents, documentActor.peers.values());
-                    }
+                    this.network.sendToDiscoveryId(Misc_1.toDiscoveryId(id), {
+                        type: 'DocumentMessage',
+                        id,
+                        contents,
+                    });
                     break;
                 }
                 case 'DestroyMsg': {
@@ -365,18 +371,23 @@ class RepoBackend {
         };
         this.opts = opts;
         this.path = opts.path || 'default';
+        this.feeds = new FeedStore_1.default(this.storageFn);
+        this.files = new FileStore_1.default(this.feeds);
         this.storage = opts.memory ? random_access_memory_1.default : random_access_file_1.default;
         this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), opts.memory || false);
         this.clocks = new ClockStore_1.default(this.db);
-        this.store = new FeedStore_1.default(this.storageFn);
-        this.files = new FileStore_1.default(this.store);
         this.files.writeLog.subscribe((header) => {
             this.meta.addFile(header.url, header.bytes, header.mimeType);
         });
         this.fileServer = new FileServer_1.default(this.files);
         this.meta = new Metadata_1.Metadata(this.storageFn, this.join, this.leave);
         this.id = this.meta.id;
-        this.network = new Network_1.default(NetworkPeer_1.encodePeerId(this.id), this.store);
+        this.network = new Network_1.default(NetworkPeer_1.encodePeerId(this.id));
+        this.network.discoveryQ.subscribe(this.onDiscovery);
+        this.network.inboxQ.subscribe(this.onMessage);
+        this.feeds.feedIdQ.subscribe((feedId) => {
+            this.network.join(Misc_1.toDiscoveryId(feedId));
+        });
     }
     create(keys) {
         const docId = Misc_1.encodeDocId(keys.publicKey);
@@ -485,9 +496,13 @@ class RepoBackend {
             .filter(Misc_1.notEmpty);
     }
     initActor(keys) {
-        const actor = new Actor_1.Actor({ keys, notify: this.actorNotify, store: this.store });
+        const actor = new Actor_1.Actor({
+            keys,
+            notify: this.actorNotify,
+            store: this.feeds,
+        });
         this.actors.set(actor.id, actor);
-        this.actorsDk.set(actor.dkString, actor);
+        this.feeds.addFeedId(actor.id);
         return actor;
     }
     actor(id) {

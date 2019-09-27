@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -11,77 +20,90 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const Base58 = __importStar(require("bs58"));
-const hypercore_protocol_1 = __importDefault(require("hypercore-protocol"));
 const Misc_1 = require("./Misc");
-const NetworkPeer_1 = require("./NetworkPeer");
-const DocumentBroadcast = __importStar(require("./DocumentBroadcast"));
-const FeedStore_1 = require("./FeedStore");
+const NetworkPeer_1 = __importStar(require("./NetworkPeer"));
+const MapSet_1 = __importDefault(require("./MapSet"));
+const Queue_1 = __importDefault(require("./Queue"));
 class Network {
-    constructor(selfId, store) {
-        this.onConnect = (peerInfo) => {
-            const protocol = hypercore_protocol_1.default({
-                live: true,
-                id: NetworkPeer_1.decodePeerId(this.selfId),
-                encrypt: false,
-                timeout: 10000,
-                extensions: DocumentBroadcast.SUPPORTED_EXTENSIONS,
-            });
-            const onFeedRequested = (discoveryKey) => {
-                const discoveryId = Misc_1.encodeDiscoveryId(discoveryKey);
-                const feedId = this.joined.get(discoveryId);
-                if (!feedId)
-                    throw new Error(`Unknown feed: ${discoveryId}`);
-                this.store.getFeed(feedId).then((feed) => {
-                    feed.replicate({
-                        stream: protocol,
-                        live: true,
+    constructor(selfId) {
+        this.onConnection = (socket, details) => __awaiter(this, void 0, void 0, function* () {
+            const conn = yield NetworkPeer_1.PeerConnection.fromSocket(socket, this.selfId, details);
+            const peer = this.getOrCreatePeer(conn.peerId);
+            if (peer.addConnection(conn)) {
+                conn.messages.subscribe(this.inboxQ.push);
+                conn.discoveryQ.subscribe((discoveryId) => {
+                    this.join(discoveryId);
+                    this.peerDiscoveryIds.add(discoveryId, peer.id);
+                    this.discoveryQ.push({
+                        discoveryId,
+                        connection: conn,
+                        peer,
                     });
                 });
-            };
-            protocol.on('feed', onFeedRequested);
-            const discoveryKey = peerInfo.channel || peerInfo.discoveryKey;
-            if (discoveryKey)
-                onFeedRequested(discoveryKey);
-            return protocol;
-        };
+            }
+        });
         this.selfId = selfId;
-        this.store = store;
-        this.joined = new Map();
+        this.joined = new Set();
+        this.pending = new Set();
         this.peers = new Map();
+        this.discoveryQ = new Queue_1.default('Network:discoveryQ');
+        this.inboxQ = new Queue_1.default('Network:receiveQ');
+        this.peerDiscoveryIds = new MapSet_1.default();
+        this.joinOptions = { announce: true, lookup: true };
     }
-    join(feedId) {
-        const id = FeedStore_1.discoveryId(feedId);
-        if (this.joined.has(id))
-            return;
-        if (this.swarm)
-            this.swarm.join(decodeId(id));
-        this.joined.set(id, feedId);
-    }
-    leave(feedId) {
-        const id = FeedStore_1.discoveryId(feedId);
-        if (!this.joined.has(id))
-            return;
-        if (this.swarm)
-            this.swarm.leave(decodeId(id));
-        this.joined.delete(id);
-    }
-    setSwarm(swarm) {
-        if (this.swarm)
-            throw new Error('Swarm already exists!');
-        this.swarm = swarm;
-        for (let id of this.joined.keys()) {
-            this.swarm.join(decodeId(id));
+    join(discoveryId) {
+        if (this.swarm) {
+            if (this.joined.has(discoveryId))
+                return;
+            this.joined.add(discoveryId);
+            this.swarm.join(decodeId(discoveryId), this.joinOptions);
+            this.pending.delete(discoveryId);
+        }
+        else {
+            this.pending.add(discoveryId);
         }
     }
+    leave(discoveryId) {
+        this.pending.delete(discoveryId);
+        if (!this.joined.has(discoveryId))
+            return;
+        if (this.swarm)
+            this.swarm.leave(decodeId(discoveryId));
+        this.joined.delete(discoveryId);
+    }
+    sendToDiscoveryId(discoveryId, msg) {
+        this.peerDiscoveryIds.get(discoveryId).forEach((peerId) => {
+            this.sendToPeer(peerId, msg);
+        });
+    }
+    sendToPeer(peerId, msg) {
+        const peer = this.peers.get(peerId);
+        if (peer && peer.connection) {
+            peer.connection.messages.send(msg);
+        }
+    }
+    setSwarm(swarm, joinOptions) {
+        if (this.swarm)
+            throw new Error('Swarm already exists!');
+        if (joinOptions)
+            this.joinOptions = joinOptions;
+        this.swarm = swarm;
+        this.swarm.on('connection', this.onConnection);
+        for (const discoveryId of this.pending) {
+            this.join(discoveryId);
+        }
+    }
+    getOrCreatePeer(peerId) {
+        return Misc_1.getOrCreate(this.peers, peerId, () => new NetworkPeer_1.default(this.selfId, peerId));
+    }
     close() {
-        return new Promise((res) => {
-            if (!this.swarm)
-                return res();
-            this.swarm.discovery.removeAllListeners();
-            this.swarm.discovery.close();
-            this.swarm.peers.forEach((p) => p.connections.forEach((con) => con.destroy()));
-            this.swarm.removeAllListeners();
-            res();
+        return __awaiter(this, void 0, void 0, function* () {
+            this.peers.forEach((peer) => {
+                peer.close();
+            });
+            return new Promise((res) => {
+                this.swarm ? this.swarm.destroy(res) : res();
+            });
         });
     }
 }

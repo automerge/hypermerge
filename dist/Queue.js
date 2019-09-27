@@ -14,6 +14,18 @@ class Queue {
         this.log = debug_1.default(`queue:${name}`);
         this.push = this.enqueue;
     }
+    first() {
+        return new Promise((res) => {
+            this.once(res);
+        });
+    }
+    drain(fn) {
+        while (this.queue.length) {
+            const item = this.queue.shift();
+            if (item !== undefined)
+                fn(item);
+        }
+    }
     once(subscriber) {
         if (this.subscription === undefined) {
             this.subscribe(subscriber);

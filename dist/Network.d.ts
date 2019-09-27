@@ -1,28 +1,30 @@
-/// <reference types="node" />
 import { DiscoveryId } from './Misc';
-import Peer, { PeerId } from './NetworkPeer';
-import FeedStore, { FeedId } from './FeedStore';
-export interface Swarm {
-    join(dk: Buffer): void;
-    leave(dk: Buffer): void;
-    on: Function;
-    removeAllListeners(): void;
-    discovery: {
-        removeAllListeners(): void;
-        close(): void;
-    };
-    peers: Map<any, any>;
+import Peer, { PeerId, PeerConnection } from './NetworkPeer';
+import { Swarm, JoinOptions } from './SwarmInterface';
+import MapSet from './MapSet';
+import Queue from './Queue';
+export interface DiscoveryRequest<Msg> {
+    discoveryId: DiscoveryId;
+    connection: PeerConnection<Msg>;
+    peer: Peer<Msg>;
 }
-export default class Network {
+export default class Network<Msg> {
     selfId: PeerId;
-    joined: Map<DiscoveryId, FeedId>;
-    store: FeedStore;
-    peers: Map<PeerId, Peer>;
+    joined: Set<DiscoveryId>;
+    pending: Set<DiscoveryId>;
+    peers: Map<PeerId, Peer<Msg>>;
+    peerDiscoveryIds: MapSet<DiscoveryId, PeerId>;
+    inboxQ: Queue<Msg>;
+    discoveryQ: Queue<DiscoveryRequest<Msg>>;
     swarm?: Swarm;
-    constructor(selfId: PeerId, store: FeedStore);
-    join(feedId: FeedId): void;
-    leave(feedId: FeedId): void;
-    setSwarm(swarm: Swarm): void;
+    joinOptions?: JoinOptions;
+    constructor(selfId: PeerId);
+    join(discoveryId: DiscoveryId): void;
+    leave(discoveryId: DiscoveryId): void;
+    sendToDiscoveryId(discoveryId: DiscoveryId, msg: Msg): void;
+    sendToPeer(peerId: PeerId, msg: Msg): void;
+    setSwarm(swarm: Swarm, joinOptions?: JoinOptions): void;
+    getOrCreatePeer(peerId: PeerId): Peer<Msg>;
     close(): Promise<void>;
-    onConnect: (peerInfo: any) => any;
+    private onConnection;
 }

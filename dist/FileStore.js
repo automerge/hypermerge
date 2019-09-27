@@ -23,38 +23,38 @@ const Metadata_1 = require("./Metadata");
 const Keys = __importStar(require("./Keys"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Queue_1 = __importDefault(require("./Queue"));
-const KB = 1024;
+// const KB = 1024
 // const MB = 1024 * KB
-const BLOCK_SIZE = 64 * KB;
+// const BLOCK_SIZE = 64 * KB
 const FIRST_DATA_BLOCK = 1;
 class FileStore {
     constructor(store) {
-        this.store = store;
-        this.writeLog = new Queue_1.default();
+        this.feeds = store;
+        this.writeLog = new Queue_1.default('FileStore:writeLog');
     }
     header(url) {
         return __awaiter(this, void 0, void 0, function* () {
-            return this.store.read(toFeedId(url), 0).then(JsonBuffer.parse);
+            return this.feeds.read(toFeedId(url), 0).then(JsonBuffer.parse);
         });
     }
     read(url) {
         return __awaiter(this, void 0, void 0, function* () {
             const feedId = toFeedId(url);
-            return this.store.stream(feedId, FIRST_DATA_BLOCK);
+            return this.feeds.stream(feedId, FIRST_DATA_BLOCK);
         });
     }
     write(mimeType, length, stream) {
         return __awaiter(this, void 0, void 0, function* () {
             const keys = Keys.create();
-            const feedId = yield this.store.create(keys);
+            const feedId = yield this.feeds.create(keys);
             const header = {
                 type: 'File',
                 url: toHyperfileUrl(feedId),
                 bytes: length,
                 mimeType,
             };
-            yield this.store.append(feedId, JsonBuffer.bufferify(header));
-            const appendStream = yield this.store.appendStream(feedId);
+            yield this.feeds.append(feedId, JsonBuffer.bufferify(header));
+            const appendStream = yield this.feeds.appendStream(feedId);
             return new Promise((res, rej) => {
                 stream
                     .pipe(appendStream)

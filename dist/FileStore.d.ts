@@ -10,7 +10,7 @@ export interface Header {
     mimeType: string;
 }
 export default class FileStore {
-    private store;
+    private feeds;
     writeLog: Queue<Header>;
     constructor(store: FeedStore);
     header(url: HyperfileUrl): Promise<Header>;
