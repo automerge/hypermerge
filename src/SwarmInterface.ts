@@ -23,16 +23,19 @@ export interface JoinOptions {
   lookup?: boolean
 }
 
-export interface InitiatedConnectionDetails {
-  // Connection initiated by this node
+export interface BaseConnectionDetails {
   type: SocketType
+  reconnect(shouldReconnect: boolean): void
+}
+
+export interface InitiatedConnectionDetails extends BaseConnectionDetails {
+  // Connection initiated by this node
   client: true
   peer: PeerInfo
 }
 
-export interface ReceivedConnectionDetails {
+export interface ReceivedConnectionDetails extends BaseConnectionDetails {
   // Connection not initiated by this node
-  type: SocketType
   client: false
   peer: null
 }

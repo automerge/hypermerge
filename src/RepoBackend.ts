@@ -1,5 +1,5 @@
 import Queue from './Queue'
-import { Metadata } from './Metadata'
+import { Metadata, sanitizeRemoteMetadata } from './Metadata'
 import { Actor, ActorMsg } from './Actor'
 import { strs2clock, clockDebug, clockActorIds } from './Clock'
 import * as Base58 from 'bs58'
@@ -11,7 +11,6 @@ import {
   notEmpty,
   ID,
   ActorId,
-  DiscoveryId,
   DocId,
   encodeDocId,
   rootActorId,
@@ -19,14 +18,14 @@ import {
   toDiscoveryId,
 } from './Misc'
 import Debug from 'debug'
-import * as DocumentBroadcast from './DocumentBroadcast'
 import * as Keys from './Keys'
-import FeedStore, { FeedId } from './FeedStore'
+import FeedStore from './FeedStore'
 import FileStore from './FileStore'
 import FileServer from './FileServer'
-import Network from './Network'
+import Network, { DiscoveryRequest } from './Network'
 import { encodePeerId } from './NetworkPeer'
 import { Swarm, JoinOptions } from './SwarmInterface'
+import { PeerMsg } from './PeerMsg'
 
 Debug.formatters.b = Base58.encode
 
@@ -46,24 +45,23 @@ export interface Options {
 export class RepoBackend {
   path?: string
   storage: Function
-  store: FeedStore
+  feeds: FeedStore
   files: FileStore
   actors: Map<ActorId, Actor> = new Map()
-  actorsDk: Map<DiscoveryId, Actor> = new Map()
   docs: Map<DocId, DocBackend.DocBackend> = new Map()
   meta: Metadata
   opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
   id: Buffer
+  network: Network<PeerMsg>
   private fileServer: FileServer
-  private network: Network
 
   constructor(opts: Options) {
     this.opts = opts
     this.path = opts.path || 'default'
     this.storage = opts.storage
-    this.store = new FeedStore(this.storageFn)
-    this.files = new FileStore(this.store)
+    this.feeds = new FeedStore(this.storageFn)
+    this.files = new FileStore(this.feeds)
     this.files.writeLog.subscribe((header) => {
       this.meta.addFile(header.url, header.bytes, header.mimeType)
     })
@@ -72,6 +70,8 @@ export class RepoBackend {
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
     this.id = this.meta.id
     this.network = new Network(encodePeerId(this.id))
+    this.network.discoveryQ.subscribe(this.onDiscovery)
+    this.network.inboxQ.subscribe(this.onMessage)
   }
 
   startFileServer = (path: string) => {
@@ -195,7 +195,7 @@ export class RepoBackend {
   }
 
   join = (actorId: ActorId) => {
-    this.network.join(toDiscoveryId(actorId), this.store.onConnection)
+    this.network.join(toDiscoveryId(actorId))
   }
 
   leave = (actorId: ActorId) => {
@@ -306,17 +306,41 @@ export class RepoBackend {
     }
   }
 
-  private broadcastNotify = (msg: DocumentBroadcast.BroadcastMessage) => {
+  onDiscovery = ({ discoveryId, connection, peer }: DiscoveryRequest<PeerMsg>) => {
+    const feedId = this.feeds.getFeedId(discoveryId)
+    if (!feedId) return
+
+    const actorId = feedId as ActorId
+
+    this.feeds.getFeed(feedId).then((feed) => {
+      feed.replicate(connection.protocol, {
+        live: true,
+      })
+    })
+
+    const blocks = this.meta.forActor(actorId)
+    const clocks = this.allClocks(actorId)
+
+    this.network.sendToPeer(peer.id, {
+      type: 'RemoteMetadata',
+      clocks,
+      blocks,
+    })
+  }
+
+  private onMessage = (msg: PeerMsg) => {
     switch (msg.type) {
       case 'RemoteMetadata': {
-        for (let docId in msg.clocks) {
-          const clock = msg.clocks[docId]
+        const { blocks, clocks } = sanitizeRemoteMetadata(msg)
+
+        for (let docId in clocks) {
+          const clock = clocks[docId]
           const doc = this.docs.get(docId as DocId)
           if (clock && doc) {
             doc.target(clock)
           }
         }
-        const _blocks = msg.blocks
+        const _blocks = blocks
         this.meta.addBlocks(_blocks)
         _blocks.map((block) => {
           if ('actors' in block && block.actors) this.syncReadyActors(block.actors)
@@ -334,11 +358,6 @@ export class RepoBackend {
         })
         break
       }
-      case 'NewMetadata': {
-        // TODO: Warn better than this!
-        console.log('Legacy Metadata message received - better upgrade')
-        break
-      }
     }
   }
 
@@ -349,13 +368,15 @@ export class RepoBackend {
         // Record whether or not this actor is writable.
         this.meta.setWritable(actor.id, msg.writable)
         // Broadcast latest document information to peers.
-        const metadata = this.meta.forActor(actor.id)
+        const blocks = this.meta.forActor(actor.id)
         const clocks = this.allClocks(actor.id)
+
         this.meta.docsWith(actor.id).forEach((documentId) => {
-          const documentActor = this.actor(rootActorId(documentId))
-          if (documentActor) {
-            DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values())
-          }
+          this.network.sendToDiscoveryId(toDiscoveryId(documentId), {
+            type: 'RemoteMetadata',
+            blocks,
+            clocks,
+          })
         })
 
         this.join(actor.id)
@@ -364,16 +385,7 @@ export class RepoBackend {
       case 'ActorInitialized': {
         // Swarm on the actor's feed.
         this.join(msg.actor.id)
-        break
-      }
-      case 'PeerAdd': {
-        // Listen for hypermerge extension broadcasts.
-        DocumentBroadcast.listen(msg.peer, this.broadcastNotify)
 
-        // Broadcast the latest document information to the new peer
-        const metadata = this.meta.forActor(msg.actor.id)
-        const clocks = this.allClocks(msg.actor.id)
-        DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer])
         break
       }
       case 'ActorSync':
@@ -396,9 +408,9 @@ export class RepoBackend {
   }
 
   private initActor(keys: Keys.KeyBuffer): Actor {
-    const actor = new Actor({ keys, notify: this.actorNotify, store: this.store })
+    const actor = new Actor({ keys, notify: this.actorNotify, store: this.feeds })
     this.actors.set(actor.id, actor)
-    this.actorsDk.set(actor.dkString, actor)
+    this.feeds.addFeedId(actor.id)
     return actor
   }
 
@@ -506,10 +518,11 @@ export class RepoBackend {
       case 'DocumentMessage': {
         // Note: 'id' is the document id of the document to send the message to.
         const { id, contents } = msg
-        const documentActor = this.actor(rootActorId(id))
-        if (documentActor) {
-          DocumentBroadcast.broadcastDocumentMessage(id, contents, documentActor.peers.values())
-        }
+        this.network.sendToDiscoveryId(toDiscoveryId(id), {
+          type: 'DocumentMessage',
+          id,
+          contents,
+        })
         break
       }
       case 'DestroyMsg': {

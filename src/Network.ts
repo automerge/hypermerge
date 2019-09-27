@@ -1,37 +1,46 @@
 import * as Base58 from 'bs58'
-import { DiscoveryId, encodeDiscoveryId, getOrCreate } from './Misc'
-import Peer, { PeerId, isPeerId, PeerConnection } from './NetworkPeer'
+import { DiscoveryId, getOrCreate, encodeDiscoveryId } from './Misc'
+import Peer, { PeerId, PeerConnection } from './NetworkPeer'
 import { Swarm, JoinOptions, Socket, ConnectionDetails } from './SwarmInterface'
-import { Readable, Writable } from 'stream'
+import MapSet from './MapSet'
+import Queue from './Queue'
 
-export interface OnConnection {
-  (connection: PeerConnection): void
+export interface DiscoveryRequest<Msg> {
+  discoveryId: DiscoveryId
+  connection: PeerConnection<Msg>
+  peer: Peer<Msg>
 }
 
-export default class Network {
+export default class Network<Msg> {
   selfId: PeerId
-  joined: Map<DiscoveryId, OnConnection>
-  pending: Map<DiscoveryId, OnConnection>
-  peers: Map<PeerId, Peer>
+  joined: Set<DiscoveryId>
+  pending: Set<DiscoveryId>
+  peers: Map<PeerId, Peer<Msg>>
+  peerDiscoveryIds: MapSet<DiscoveryId, PeerId>
+  inboxQ: Queue<Msg>
+  discoveryQ: Queue<DiscoveryRequest<Msg>>
   swarm?: Swarm
   joinOptions?: JoinOptions
 
   constructor(selfId: PeerId) {
     this.selfId = selfId
-    this.joined = new Map()
-    this.pending = new Map()
+    this.joined = new Set()
+    this.pending = new Set()
     this.peers = new Map()
+    this.discoveryQ = new Queue('Network:discoveryQ')
+    this.inboxQ = new Queue('Network:receiveQ')
+    this.peerDiscoveryIds = new MapSet()
   }
 
-  join(discoveryId: DiscoveryId, onConnection: OnConnection): void {
+  join(discoveryId: DiscoveryId, opts = this.joinOptions): void {
     if (this.swarm) {
       if (this.joined.has(discoveryId)) return
 
-      this.swarm.join(decodeId(discoveryId), this.joinOptions)
-      this.joined.set(discoveryId, onConnection)
+      this.swarm.join(decodeId(discoveryId), opts)
+      this.joined.add(discoveryId)
       this.pending.delete(discoveryId)
     } else {
-      this.pending.set(discoveryId, onConnection)
+      this.pending.add(discoveryId)
     }
   }
 
@@ -43,6 +52,19 @@ export default class Network {
     this.joined.delete(discoveryId)
   }
 
+  sendToDiscoveryId(discoveryId: DiscoveryId, msg: Msg): void {
+    this.peerDiscoveryIds.get(discoveryId).forEach((peerId) => {
+      this.sendToPeer(peerId, msg)
+    })
+  }
+
+  sendToPeer(peerId: PeerId, msg: Msg): void {
+    const peer = this.peers.get(peerId)
+    if (peer && peer.connection) {
+      peer.connection.messages.send(msg)
+    }
+  }
+
   setSwarm(swarm: Swarm, joinOptions?: JoinOptions): void {
     if (this.swarm) throw new Error('Swarm already exists!')
 
@@ -50,90 +72,45 @@ export default class Network {
     this.swarm = swarm
     this.swarm.on('connection', this.onConnection)
 
-    for (const [discoveryId, onConnection] of this.pending) {
-      this.join(discoveryId, onConnection)
+    for (const discoveryId of this.pending.keys()) {
+      this.join(discoveryId)
     }
   }
 
-  getOrCreatePeer(peerId: PeerId): Peer {
-    return getOrCreate(this.peers, peerId, () => new Peer(peerId))
+  getOrCreatePeer(peerId: PeerId): Peer<Msg> {
+    return getOrCreate(this.peers, peerId, () => new Peer(this.selfId, peerId))
   }
 
   close(): void {
     if (!this.swarm) return
 
-    for (const peer of this.peers.values()) {
+    this.peers.forEach((peer) => {
       peer.close()
-    }
+    })
 
+    // TODO: this is not enough:
     this.swarm.removeAllListeners()
   }
 
   private onConnection = async (socket: Socket, details: ConnectionDetails) => {
-    const localDiscoveryId = details.peer ? encodeDiscoveryId(details.peer.topic) : undefined
+    const conn = await PeerConnection.fromSocket<Msg>(socket, this.selfId, details)
 
-    try {
-      await sendHeader(socket, {
-        peerId: this.selfId,
-        discoveryId: localDiscoveryId,
+    const peer = this.getOrCreatePeer(conn.peerId)
+
+    if (peer.addConnection(conn)) {
+      conn.messages.subscribe(this.inboxQ.push)
+
+      conn.discoveryQ.subscribe((discoveryId) => {
+        this.peerDiscoveryIds.add(discoveryId, peer.id)
+
+        this.discoveryQ.push({
+          discoveryId,
+          connection: conn,
+          peer,
+        })
       })
-
-      const { peerId, discoveryId = localDiscoveryId } = await parseHeader(socket)
-
-      if (!discoveryId) throw new Error('discoveryId missing!')
-      if (!isPeerId(peerId)) throw new Error(`Invalid PeerId: ${peerId}`)
-
-      const onConnection = this.joined.get(discoveryId)
-
-      if (!onConnection) throw new Error(`Connection with unexpected discoveryId: ${discoveryId}`)
-
-      const conn = this.getOrCreatePeer(peerId).addSocket(socket, {
-        type: details.type,
-        discoveryId,
-        isClient: details.client,
-      })
-
-      if (conn) onConnection(conn)
-    } catch (e) {
-      socket.destroy(e)
     }
   }
-}
-
-interface ConnectionHeader {
-  peerId: PeerId
-  discoveryId?: DiscoveryId
-}
-
-async function sendHeader(stream: Writable, header: ConnectionHeader): Promise<void> {
-  return new Promise((res, rej) => {
-    stream.write(`Header:${JSON.stringify(header)}\n\n`, 'utf8', (err) => {
-      if (err) return rej(err)
-      res()
-    })
-  })
-}
-
-async function parseHeader(stream: Readable): Promise<ConnectionHeader> {
-  const [, str] = await matchStream(stream, /^Header:({.+})\n\n/m)
-  return JSON.parse(str)
-}
-
-function matchStream(stream: Readable, regex: RegExp): Promise<RegExpMatchArray> {
-  return new Promise((res, rej) => {
-    stream.once('data', (chunk: Buffer) => {
-      stream.pause()
-      const match = chunk.toString('ascii').match(regex)
-      if (match) {
-        const len = match[0].length
-        stream.unshift(chunk.slice(len))
-        return res(match)
-      }
-
-      stream.unshift(chunk)
-      rej(new Error('No match found in first chunk.'))
-    })
-  })
 }
 
 function decodeId(id: DiscoveryId): Buffer {

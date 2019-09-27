@@ -119,7 +119,7 @@ export class RepoFrontend {
     return handle
   }
 
-  message = (url: DocUrl, contents: any): void => {
+  message = <T>(url: DocUrl, contents: T): void => {
     const id = validateDocURL(url)
     this.toBackend.push({ type: 'DocumentMessage', id, contents })
   }

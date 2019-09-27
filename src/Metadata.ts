@@ -21,16 +21,12 @@ import {
 } from './Misc'
 import { randomBytes } from 'crypto'
 
-export interface NewMetadata {
-  type: 'NewMetadata'
-  input: Uint8Array
-}
-
-export function validateRemoteMetadata(message: RemoteMetadata): RemoteMetadata {
+export function sanitizeRemoteMetadata(message: any): RemoteMetadata {
   const result: RemoteMetadata = { type: 'RemoteMetadata', clocks: {}, blocks: [] }
+
   if (
     message instanceof Object &&
-    message.blocks instanceof Array &&
+    Array.isArray(message.blocks) &&
     message.clocks instanceof Object
   ) {
     result.blocks = filterMetadataInputs(message.blocks)

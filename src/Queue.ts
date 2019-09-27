@@ -11,6 +11,19 @@ export default class Queue<T> {
     this.push = this.enqueue
   }
 
+  first(): Promise<T> {
+    return new Promise((res) => {
+      this.once(res)
+    })
+  }
+
+  drain(fn: (item: T) => void): void {
+    while (this.queue.length) {
+      const item = this.queue.shift()
+      if (item !== undefined) fn(item)
+    }
+  }
+
   once(subscriber: (item: T) => void) {
     if (this.subscription === undefined) {
       this.subscribe(subscriber)

@@ -6,9 +6,9 @@ import * as Keys from './Keys'
 import * as JsonBuffer from './JsonBuffer'
 import Queue from './Queue'
 
-const KB = 1024
+// const KB = 1024
 // const MB = 1024 * KB
-const BLOCK_SIZE = 64 * KB
+// const BLOCK_SIZE = 64 * KB
 const FIRST_DATA_BLOCK = 1
 
 export interface Header {
@@ -19,26 +19,26 @@ export interface Header {
 }
 
 export default class FileStore {
-  private store: FeedStore
+  private feeds: FeedStore
   writeLog: Queue<Header>
 
   constructor(store: FeedStore) {
-    this.store = store
-    this.writeLog = new Queue()
+    this.feeds = store
+    this.writeLog = new Queue('FileStore:writeLog')
   }
 
   async header(url: HyperfileUrl): Promise<Header> {
-    return this.store.read(toFeedId(url), 0).then(JsonBuffer.parse)
+    return this.feeds.read(toFeedId(url), 0).then(JsonBuffer.parse)
   }
 
   async read(url: HyperfileUrl): Promise<Readable> {
     const feedId = toFeedId(url)
-    return this.store.stream(feedId, FIRST_DATA_BLOCK)
+    return this.feeds.stream(feedId, FIRST_DATA_BLOCK)
   }
 
   async write(mimeType: string, length: number, stream: Readable): Promise<Header> {
     const keys = Keys.create()
-    const feedId = await this.store.create(keys)
+    const feedId = await this.feeds.create(keys)
     const header: Header = {
       type: 'File',
       url: toHyperfileUrl(feedId),
@@ -46,8 +46,8 @@ export default class FileStore {
       mimeType,
     }
 
-    await this.store.append(feedId, JsonBuffer.bufferify(header))
-    const appendStream = await this.store.appendStream(feedId)
+    await this.feeds.append(feedId, JsonBuffer.bufferify(header))
+    const appendStream = await this.feeds.appendStream(feedId)
 
     return new Promise<Header>((res, rej) => {
       stream

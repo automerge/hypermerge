@@ -1,4 +1,7 @@
-declare module 'hypercore-protocol'
+declare module 'hypercore-protocol' {
+  export default any
+}
+
 // declare module 'hypercore-protocol' {
 //   interface Handlers {
 //     onauthenticate?(remotePublicKey: Buffer, done: () => void): void // hook to verify the remotes public key

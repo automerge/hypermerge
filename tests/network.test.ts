@@ -27,20 +27,8 @@ test('Share a doc between two repos', (t) => {
   const repoA = new Repo({ storage: ram })
   const repoB = new Repo({ storage: ram })
 
-  const clientA = Hyperswarm({
-    // id: repoA.id,
-    // stream: repoA.stream,
-    // url: 'wss://discovery-cloud.herokuapp.com',
-  })
-
-  const clientB = Hyperswarm({
-    // id: repoB.id,
-    // stream: repoB.stream,
-    // url: 'wss://discovery-cloud.herokuapp.com',
-  })
-
-  repoA.setSwarm(clientA, { announce: true, lookup: true })
-  repoB.setSwarm(clientB, { announce: true, lookup: true })
+  repoA.setSwarm(createSwarm(repoA), { announce: true, lookup: true })
+  repoB.setSwarm(createSwarm(repoB), { announce: true, lookup: true })
 
   // connect the repos
 
@@ -71,33 +59,15 @@ test('Share a doc between two repos', (t) => {
   })
 })
 
-test("Three way docs don't load until all canges are in", (t) => {
+test("Three way docs don't load until all changes are in", (t) => {
   t.plan(1)
 
   const repoA = new Repo({ storage: ram })
   const repoB = new Repo({ storage: ram })
   const repoC = new Repo({ storage: ram })
 
-  const clientA = Hyperswarm({
-    // id: repoA.id,
-    // stream: repoA.stream,
-    // url: 'wss://discovery-cloud.herokuapp.com',
-  })
-
-  const clientB = Hyperswarm({
-    // id: repoB.id,
-    // stream: repoB.stream,
-    // url: 'wss://discovery-cloud.herokuapp.com',
-  })
-
-  const clientC = Hyperswarm({
-    // id: repoC.id,
-    // stream: repoC.stream,
-    // url: 'wss://discovery-cloud.herokuapp.com',
-  })
-
-  repoA.setSwarm(clientA)
-  repoB.setSwarm(clientB)
+  repoA.setSwarm(createSwarm(repoA))
+  repoB.setSwarm(createSwarm(repoB))
 
   // connect repos A and B
 
@@ -122,7 +92,7 @@ test("Three way docs don't load until all canges are in", (t) => {
         { a: 1, b: 2 },
         "repoB gets repoA's change and its local changes at once",
         () => {
-          repoC.setSwarm(clientC)
+          repoC.setSwarm(createSwarm(repoC))
 
           repoC.doc(id, (doc) => {
             t.deepEqual(doc, { a: 1, b: 2 })
@@ -146,20 +116,8 @@ test('Message about a doc between two repos', (t) => {
   const repoA = new Repo({ storage: ram })
   const repoB = new Repo({ storage: ram })
 
-  const clientA = Hyperswarm({
-    // id: repoA.id,
-    // stream: repoA.stream,
-    // url: 'wss://discovery-cloud.herokuapp.com',
-  })
-
-  const clientB = Hyperswarm({
-    // id: repoB.id,
-    // stream: repoB.stream,
-    // url: 'wss://discovery-cloud.herokuapp.com',
-  })
-
-  repoA.setSwarm(clientA)
-  repoB.setSwarm(clientB)
+  repoA.setSwarm(createSwarm(repoA))
+  repoB.setSwarm(createSwarm(repoB))
 
   // connect the repos
 
@@ -183,21 +141,12 @@ test('Message about a doc between two repos', (t) => {
   })
 })
 
-/*
-function expectDocs(t: test.Test, docs: [any, string][]) {
-  let i = 0
+function createSwarm(_repo: Repo) {
+  // return new Client({
+  //   id: repo.id,
+  //   stream: repo.stream,
+  //   url: 'wss://discovery-cloud.herokuapp.com',
+  // })
 
-  // add to the current planned test length:
-  t.plan((<any>t)._plan + docs.length)
-
-  return (doc: any) => {
-    const tmp = docs[i++]
-    if (tmp === undefined) {
-      t.fail(`extrac doc emitted ${JSON.stringify(doc)}`)
-    } else {
-      const [expected, msg] = tmp
-      t.deepEqual(doc, expected, msg)
-    }
-  }
+  return Hyperswarm()
 }
-*/
