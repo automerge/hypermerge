@@ -3,8 +3,7 @@ import { Readable, Writable } from 'stream'
 import { hypercore, Feed } from './hypercore'
 import { KeyPair, decodePair } from './Keys'
 import { BaseId, getOrCreate, DiscoveryId, toDiscoveryId, encodeDiscoveryId } from './Misc'
-import { PeerConnection } from './NetworkPeer'
-import { PeerMsg } from './PeerMsg'
+import Queue from './Queue'
 
 export type Feed = Feed<Block>
 export type FeedId = BaseId & { feedId: true }
@@ -37,11 +36,13 @@ export default class FeedStore {
   private feeds: Map<FeedId, Feed<Block>> = new Map()
   private discoveryIds: Map<DiscoveryId, FeedId>
   private config: Config
+  feedIdQ: Queue<FeedId>
 
   constructor(storageFn: FeedStorageFn, config: Config = {}) {
     this.storage = storageFn
     this.config = config
     this.discoveryIds = new Map()
+    this.feedIdQ = new Queue('FeedStore:idQ')
   }
 
   /**
@@ -113,7 +114,12 @@ export default class FeedStore {
 
   // Only needed until FeedId == DiscoveryId:
   addFeedId(feedId: FeedId): void {
-    this.discoveryIds.set(toDiscoveryId(feedId), feedId)
+    const discoveryId = toDiscoveryId(feedId)
+
+    if (this.discoveryIds.has(discoveryId)) return
+
+    this.discoveryIds.set(discoveryId, feedId)
+    this.feedIdQ.push(feedId)
   }
 
   // Only needed until FeedId == DiscoveryId:
@@ -138,9 +144,7 @@ export default class FeedStore {
       const feed = getOrCreate(this.feeds, feedId, () => {
         const { publicKey, secretKey } = decodePair(keys)
 
-        // TODO: Use DiscoveryId as FeedId:
-        const discoveryId = toDiscoveryId(feedId)
-        this.discoveryIds.set(discoveryId, feedId)
+        this.addFeedId(feedId)
 
         return hypercore(this.storage(feedId), publicKey, {
           secretKey,

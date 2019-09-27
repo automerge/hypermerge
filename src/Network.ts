@@ -30,14 +30,15 @@ export default class Network<Msg> {
     this.discoveryQ = new Queue('Network:discoveryQ')
     this.inboxQ = new Queue('Network:receiveQ')
     this.peerDiscoveryIds = new MapSet()
+    this.joinOptions = { announce: true, lookup: true }
   }
 
-  join(discoveryId: DiscoveryId, opts = this.joinOptions): void {
+  join(discoveryId: DiscoveryId): void {
     if (this.swarm) {
       if (this.joined.has(discoveryId)) return
 
-      this.swarm.join(decodeId(discoveryId), opts)
       this.joined.add(discoveryId)
+      this.swarm.join(decodeId(discoveryId), this.joinOptions)
       this.pending.delete(discoveryId)
     } else {
       this.pending.add(discoveryId)
@@ -68,11 +69,11 @@ export default class Network<Msg> {
   setSwarm(swarm: Swarm, joinOptions?: JoinOptions): void {
     if (this.swarm) throw new Error('Swarm already exists!')
 
-    this.joinOptions = joinOptions
+    if (joinOptions) this.joinOptions = joinOptions
     this.swarm = swarm
     this.swarm.on('connection', this.onConnection)
 
-    for (const discoveryId of this.pending.keys()) {
+    for (const discoveryId of this.pending) {
       this.join(discoveryId)
     }
   }
@@ -101,6 +102,7 @@ export default class Network<Msg> {
       conn.messages.subscribe(this.inboxQ.push)
 
       conn.discoveryQ.subscribe((discoveryId) => {
+        this.join(discoveryId)
         this.peerDiscoveryIds.add(discoveryId, peer.id)
 
         this.discoveryQ.push({

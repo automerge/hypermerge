@@ -7,8 +7,8 @@ test('Share a doc between two repos', (t) => {
   const repoA = testRepo()
   const repoB = testRepo()
 
-  repoA.setSwarm(testSwarm(repoA), { announce: true, lookup: true })
-  repoB.setSwarm(testSwarm(repoB), { announce: true, lookup: true })
+  repoA.setSwarm(testSwarm(repoA))
+  repoB.setSwarm(testSwarm(repoB))
 
   // connect the repos
 
@@ -75,7 +75,7 @@ test("Three way docs don't load until all changes are in", (t) => {
           repoC.setSwarm(testSwarm(repoC))
 
           repoC.doc(id, (doc) => {
-            t.deepEqual(doc, { a: 1, b: 2 })
+            t.deepEqual(doc, { a: 1, b: 2 }, "repoC gets repoA's and repoB's changes")
           })
         },
       ],
