@@ -137,7 +137,7 @@ function isFileBlock(block: MetadataBlock): block is FileBlock {
 }
 
 function isDeletedBlock(block: MetadataBlock): block is DeletedBlock {
-  return 'deleted' in block
+  return 'deleted' in block && block.deleted
 }
 
 function isNumber(n: any): n is number {
