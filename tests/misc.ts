@@ -1,8 +1,6 @@
 import test from 'tape'
 import uuid from 'uuid/v4'
 import { Repo } from '../src'
-import { IN_MEMORY_DB } from '../src/SqlStore'
-const ram: Function = require('random-access-memory')
 
 type DocMsg = [any, string]
 type DocMsgCB = [any, string, any]
@@ -11,7 +9,7 @@ type DocInfo = DocMsg | DocMsgCB
 type Expected<T> = [T, string] | [T, string, Function]
 
 export function testRepo() {
-  return new Repo({ storage: ram, db: IN_MEMORY_DB })
+  return new Repo({ memory: true })
 }
 
 export function expectDocs(t: test.Test, docs: DocInfo[]) {

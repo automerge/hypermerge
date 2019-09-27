@@ -1,8 +1,7 @@
 import { DocId, ActorId } from './Misc'
-import SqlStore from './SqlStore'
 import { Clock } from './Clock'
 import Queue from './Queue'
-import { Statement } from 'better-sqlite3'
+import { Database, Statement } from './SqlDatabase'
 
 export interface ClockMap {
   [documentId: string /*DocId*/]: Clock
@@ -22,22 +21,22 @@ type ClockEntry = [ActorId, number]
 // prepared statements rather than batch inserts and selects :shrugging-man:.
 // We'll see if this becomes an issue.
 export default class ClockStore {
-  store: SqlStore
+  db: Database
   updateLog: Queue<ClockUpdate> = new Queue()
   private preparedGet: Statement<DocId>
   private preparedInsert: Statement<[DocId, ActorId, number]>
   private preparedDelete: Statement<DocId>
-  constructor(store: SqlStore) {
-    this.store = store
+  constructor(db: Database) {
+    this.db = db
 
-    this.preparedGet = this.store.db.prepare(`SELECT * FROM Clock WHERE documentId=?`)
-    this.preparedInsert = this.store.db.prepare(
+    this.preparedGet = this.db.prepare(`SELECT * FROM Clock WHERE documentId=?`)
+    this.preparedInsert = this.db.prepare(
       `INSERT INTO Clock (documentId, actorId, seq) 
        VALUES (?, ?, ?) 
        ON CONFLICT (documentId, actorId) 
        DO UPDATE SET seq=excluded.seq WHERE excluded.seq > seq`
     )
-    this.preparedDelete = this.store.db.prepare('DELETE FROM Clock WHERE documentId=?')
+    this.preparedDelete = this.db.prepare('DELETE FROM Clock WHERE documentId=?')
   }
 
   /**
@@ -55,7 +54,7 @@ export default class ClockStore {
    * @param documentIds
    */
   getMultiple(documentIds: DocId[]): ClockMap {
-    const transaction = this.store.db.transaction((docIds: DocId[]) => {
+    const transaction = this.db.transaction((docIds: DocId[]) => {
       return docIds.reduce((clockMap: ClockMap, docId: DocId) => {
         const clock = this.get(docId)
         if (clock) clockMap[docId] = clock
@@ -73,7 +72,7 @@ export default class ClockStore {
    * @param clock
    */
   update(documentId: DocId, clock: Clock): ClockUpdate {
-    const transaction = this.store.db.transaction((clockEntries) => {
+    const transaction = this.db.transaction((clockEntries) => {
       clockEntries.forEach(([feedId, seq]: ClockEntry) => {
         this.preparedInsert.run(documentId, feedId, seq)
       })
@@ -92,7 +91,7 @@ export default class ClockStore {
    * @param clock
    */
   set(documentId: DocId, clock: Clock): ClockUpdate {
-    const transaction = this.store.db.transaction((documentId, clock) => {
+    const transaction = this.db.transaction((documentId, clock) => {
       this.preparedDelete.run(documentId)
       return this.update(documentId, clock)
     })
@@ -104,14 +103,5 @@ function rowsToClock(rows: ClockRow[]): Clock {
   return rows.reduce((clock: Clock, row: ClockRow) => {
     clock[row.actorId] = row.seq
     return clock
-  }, {})
-}
-
-function rowsToClockMap(rows: ClockRow[]): ClockMap {
-  return rows.reduce((clockMap: ClockMap, row: ClockRow) => {
-    const clock = clockMap[row.documentId] || {}
-    clock[row.actorId] = row.seq
-    clockMap[row.documentId] = clock
-    return clockMap
   }, {})
 }

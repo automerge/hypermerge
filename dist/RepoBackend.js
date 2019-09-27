@@ -38,7 +38,9 @@ const FileServer_1 = __importDefault(require("./FileServer"));
 const Network_1 = __importDefault(require("./Network"));
 const NetworkPeer_1 = require("./NetworkPeer");
 const ClockStore_1 = __importDefault(require("./ClockStore"));
-const SqlStore_1 = __importDefault(require("./SqlStore"));
+const SqlDatabase = __importStar(require("./SqlDatabase"));
+const ram = require('random-access-memory');
+const raf = require('random-access-file');
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default('repo:backend');
 class RepoBackend {
@@ -65,7 +67,7 @@ class RepoBackend {
         this.close = () => {
             this.actors.forEach((actor) => actor.close());
             this.actors.clear();
-            this.sqlStore.close();
+            this.db.close();
             return Promise.all([this.network.close(), this.fileServer.close()]);
         };
         this.join = (actorId) => {
@@ -363,9 +365,9 @@ class RepoBackend {
         };
         this.opts = opts;
         this.path = opts.path || 'default';
-        this.storage = opts.storage;
-        this.sqlStore = new SqlStore_1.default(opts.db || path_1.default.resolve(this.path, 'sqlstore'));
-        this.clocks = new ClockStore_1.default(this.sqlStore);
+        this.storage = opts.memory ? ram : raf;
+        this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), opts.memory || false);
+        this.clocks = new ClockStore_1.default(this.db);
         this.store = new FeedStore_1.default(this.storageFn);
         this.files = new FileStore_1.default(this.store);
         this.files.writeLog.subscribe((header) => {

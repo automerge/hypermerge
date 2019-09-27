@@ -11,7 +11,6 @@ import FeedStore from './FeedStore';
 import FileStore from './FileStore';
 import { Swarm } from './Network';
 import ClockStore from './ClockStore';
-import SqlStore from './SqlStore';
 export interface FeedData {
     actorId: ActorId;
     writable: Boolean;
@@ -19,13 +18,11 @@ export interface FeedData {
 }
 export interface Options {
     path?: string;
-    db?: string;
-    storage: Function;
+    memory?: boolean;
 }
 export declare class RepoBackend {
     path?: string;
     storage: Function;
-    sqlStore: SqlStore;
     store: FeedStore;
     files: FileStore;
     clocks: ClockStore;
@@ -36,6 +33,7 @@ export declare class RepoBackend {
     opts: Options;
     toFrontend: Queue<ToFrontendRepoMsg>;
     id: Buffer;
+    private db;
     private fileServer;
     private network;
     constructor(opts: Options);

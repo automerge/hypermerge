@@ -1,18 +1,19 @@
+/// <reference types="better-sqlite3" />
 import { DocId } from './Misc';
-import SqlStore from './SqlStore';
 import { Clock } from './Clock';
 import Queue from './Queue';
+import { Database } from './SqlDatabase';
 export interface ClockMap {
     [documentId: string]: Clock;
 }
 export declare type ClockUpdate = [DocId, Clock];
 export default class ClockStore {
-    store: SqlStore;
+    db: Database;
     updateLog: Queue<ClockUpdate>;
     private preparedGet;
     private preparedInsert;
     private preparedDelete;
-    constructor(store: SqlStore);
+    constructor(db: Database);
     /**
      * TODO: handle missing clocks better. Currently returns an empty clock (i.e. an empty object)
      * @param documentId

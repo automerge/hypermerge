@@ -27,7 +27,9 @@ import FileServer from './FileServer'
 import Network, { Swarm } from './Network'
 import { encodePeerId } from './NetworkPeer'
 import ClockStore from './ClockStore'
-import SqlStore from './SqlStore'
+import * as SqlDatabase from './SqlDatabase'
+const ram = require('random-access-memory')
+const raf = require('random-access-file')
 
 Debug.formatters.b = Base58.encode
 
@@ -41,14 +43,12 @@ export interface FeedData {
 
 export interface Options {
   path?: string
-  db?: string
-  storage: Function
+  memory?: boolean
 }
 
 export class RepoBackend {
   path?: string
   storage: Function
-  sqlStore: SqlStore
   store: FeedStore
   files: FileStore
   clocks: ClockStore
@@ -59,15 +59,16 @@ export class RepoBackend {
   opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
   id: Buffer
+  private db: SqlDatabase.Database
   private fileServer: FileServer
   private network: Network
 
   constructor(opts: Options) {
     this.opts = opts
     this.path = opts.path || 'default'
-    this.storage = opts.storage
-    this.sqlStore = new SqlStore(opts.db || path.resolve(this.path, 'sqlstore'))
-    this.clocks = new ClockStore(this.sqlStore)
+    this.storage = opts.memory ? ram : raf
+    this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
+    this.clocks = new ClockStore(this.db)
     this.store = new FeedStore(this.storageFn)
     this.files = new FileStore(this.store)
     this.files.writeLog.subscribe((header) => {
@@ -171,7 +172,7 @@ export class RepoBackend {
   close = () => {
     this.actors.forEach((actor) => actor.close())
     this.actors.clear()
-    this.sqlStore.close()
+    this.db.close()
 
     return Promise.all([this.network.close(), this.fileServer.close()])
   }

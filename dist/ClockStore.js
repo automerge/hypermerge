@@ -8,15 +8,15 @@ const Queue_1 = __importDefault(require("./Queue"));
 // prepared statements rather than batch inserts and selects :shrugging-man:.
 // We'll see if this becomes an issue.
 class ClockStore {
-    constructor(store) {
+    constructor(db) {
         this.updateLog = new Queue_1.default();
-        this.store = store;
-        this.preparedGet = this.store.db.prepare(`SELECT * FROM Clock WHERE documentId=?`);
-        this.preparedInsert = this.store.db.prepare(`INSERT INTO Clock (documentId, actorId, seq) 
+        this.db = db;
+        this.preparedGet = this.db.prepare(`SELECT * FROM Clock WHERE documentId=?`);
+        this.preparedInsert = this.db.prepare(`INSERT INTO Clock (documentId, actorId, seq) 
        VALUES (?, ?, ?) 
        ON CONFLICT (documentId, actorId) 
        DO UPDATE SET seq=excluded.seq WHERE excluded.seq > seq`);
-        this.preparedDelete = this.store.db.prepare('DELETE FROM Clock WHERE documentId=?');
+        this.preparedDelete = this.db.prepare('DELETE FROM Clock WHERE documentId=?');
     }
     /**
      * TODO: handle missing clocks better. Currently returns an empty clock (i.e. an empty object)
@@ -32,7 +32,7 @@ class ClockStore {
      * @param documentIds
      */
     getMultiple(documentIds) {
-        const transaction = this.store.db.transaction((docIds) => {
+        const transaction = this.db.transaction((docIds) => {
             return docIds.reduce((clockMap, docId) => {
                 const clock = this.get(docId);
                 if (clock)
@@ -50,7 +50,7 @@ class ClockStore {
      * @param clock
      */
     update(documentId, clock) {
-        const transaction = this.store.db.transaction((clockEntries) => {
+        const transaction = this.db.transaction((clockEntries) => {
             clockEntries.forEach(([feedId, seq]) => {
                 this.preparedInsert.run(documentId, feedId, seq);
             });
@@ -68,7 +68,7 @@ class ClockStore {
      * @param clock
      */
     set(documentId, clock) {
-        const transaction = this.store.db.transaction((documentId, clock) => {
+        const transaction = this.db.transaction((documentId, clock) => {
             this.preparedDelete.run(documentId);
             return this.update(documentId, clock);
         });
@@ -80,14 +80,6 @@ function rowsToClock(rows) {
     return rows.reduce((clock, row) => {
         clock[row.actorId] = row.seq;
         return clock;
-    }, {});
-}
-function rowsToClockMap(rows) {
-    return rows.reduce((clockMap, row) => {
-        const clock = clockMap[row.documentId] || {};
-        clock[row.actorId] = row.seq;
-        clockMap[row.documentId] = clock;
-        return clockMap;
     }, {});
 }
 //# sourceMappingURL=ClockStore.js.map

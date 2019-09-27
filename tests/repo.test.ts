@@ -1,7 +1,6 @@
 import test from 'tape'
 import { RepoBackend, RepoFrontend } from '../src'
 import { expect, expectDocs, generateServerPath, testRepo } from './misc'
-import { IN_MEMORY_DB } from '../src/SqlStore'
 import { streamToBuffer, bufferToStream } from '../src/Misc'
 import { validateDocURL } from '../src/Metadata'
 import { Clock } from '../src/Clock'
@@ -28,7 +27,7 @@ test('Simple create doc and make a change', (t) => {
 })
 
 test('Create a doc backend - then wire it up to a frontend - make a change', (t) => {
-  const back = new RepoBackend({ storage: ram, db: IN_MEMORY_DB })
+  const back = new RepoBackend({ memory: true })
   const front = new RepoFrontend()
   back.subscribe(front.receive)
   front.subscribe(back.receive)
