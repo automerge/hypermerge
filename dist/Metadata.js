@@ -112,7 +112,7 @@ function isFileBlock(block) {
     return 'mimeType' in block && typeof block.mimeType === 'string' && block.bytes != undefined;
 }
 function isDeletedBlock(block) {
-    return 'deleted' in block;
+    return 'deleted' in block && block.deleted;
 }
 function isNumber(n) {
     return typeof n === 'number';
