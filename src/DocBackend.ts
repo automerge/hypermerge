@@ -99,6 +99,12 @@ export class DocBackend {
     }
   }
 
+  // We continue to update the minimum clock as we receive updates from peers,
+  // until we have reached the minimum clock at least once e.g. minimumClockSatisfied = true.
+  // Its not clear that this is correct behavior, it would probably be more correct to
+  // use the first clock we recieve as the minimum clock and *not* bump it was we
+  // receive more. Ultimately, we should probably be able to pass a minimum clock
+  // in the constructor - so you can't even create a document without a minimum clock.
   updateMinimumClock = (clock: Clock): void => {
     //    console.log("Target", clock)
     if (this.minimumClockSatisfied) return
