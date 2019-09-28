@@ -39,7 +39,7 @@ export interface PeerInfo {
     port: number;
     host: string;
     local: boolean;
-    topic: Buffer;
+    topic?: Buffer;
     referrer: null | {
         port: number;
         host: string;

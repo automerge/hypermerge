@@ -112,7 +112,7 @@ class PeerConnection {
                 selfId,
                 isClient: details.client,
             });
-            if (details.peer) {
+            if (details.peer && details.peer.topic) {
                 conn.addDiscoveryId(Misc_1.encodeDiscoveryId(details.peer.topic));
             }
             return conn;

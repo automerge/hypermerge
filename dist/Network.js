@@ -26,10 +26,27 @@ const MapSet_1 = __importDefault(require("./MapSet"));
 const Queue_1 = __importDefault(require("./Queue"));
 class Network {
     constructor(selfId) {
+        this.onDiscovery = (peerInfo) => __awaiter(this, void 0, void 0, function* () {
+            const discoveryId = Misc_1.encodeDiscoveryId(peerInfo.topic);
+            // We want hyperswarm to dedupe without including the topic,
+            // so we delete it here:
+            delete peerInfo.topic;
+            const host = createHost(peerInfo);
+            this.hosts.add(host, discoveryId);
+            const peer = this.peersByHost.get(host);
+            if (peer && peer.connection) {
+                peer.connection.addDiscoveryId(discoveryId);
+            }
+        });
         this.onConnection = (socket, details) => __awaiter(this, void 0, void 0, function* () {
             const conn = yield NetworkPeer_1.PeerConnection.fromSocket(socket, this.selfId, details);
             const peer = this.getOrCreatePeer(conn.peerId);
+            const host = details.peer ? createHost(details.peer) : null;
+            if (host)
+                this.peersByHost.set(host, peer);
             if (peer.addConnection(conn)) {
+                if (host)
+                    conn.addDiscoveryIds(this.hosts.get(host));
                 conn.messages.subscribe(this.inboxQ.push);
                 conn.discoveryQ.subscribe((discoveryId) => {
                     this.join(discoveryId);
@@ -49,6 +66,8 @@ class Network {
         this.discoveryQ = new Queue_1.default('Network:discoveryQ');
         this.inboxQ = new Queue_1.default('Network:receiveQ');
         this.peerDiscoveryIds = new MapSet_1.default();
+        this.hosts = new MapSet_1.default();
+        this.peersByHost = new Map();
         this.joinOptions = { announce: true, lookup: true };
     }
     join(discoveryId) {
@@ -89,6 +108,7 @@ class Network {
             this.joinOptions = joinOptions;
         this.swarm = swarm;
         this.swarm.on('connection', this.onConnection);
+        this.swarm.on('peer', this.onDiscovery);
         for (const discoveryId of this.pending) {
             this.join(discoveryId);
         }
@@ -110,5 +130,8 @@ class Network {
 exports.default = Network;
 function decodeId(id) {
     return Base58.decode(id);
+}
+function createHost({ host, port }) {
+    return `${host}:${port}`;
 }
 //# sourceMappingURL=Network.js.map

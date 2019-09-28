@@ -3,6 +3,9 @@ import Peer, { PeerId, PeerConnection } from './NetworkPeer';
 import { Swarm, JoinOptions } from './SwarmInterface';
 import MapSet from './MapSet';
 import Queue from './Queue';
+export declare type Host = string & {
+    host: true;
+};
 export interface DiscoveryRequest<Msg> {
     discoveryId: DiscoveryId;
     connection: PeerConnection<Msg>;
@@ -14,6 +17,8 @@ export default class Network<Msg> {
     pending: Set<DiscoveryId>;
     peers: Map<PeerId, Peer<Msg>>;
     peerDiscoveryIds: MapSet<DiscoveryId, PeerId>;
+    hosts: MapSet<Host, DiscoveryId>;
+    peersByHost: Map<Host, Peer<Msg>>;
     inboxQ: Queue<Msg>;
     discoveryQ: Queue<DiscoveryRequest<Msg>>;
     swarm?: Swarm;
@@ -26,5 +31,6 @@ export default class Network<Msg> {
     setSwarm(swarm: Swarm, joinOptions?: JoinOptions): void;
     getOrCreatePeer(peerId: PeerId): Peer<Msg>;
     close(): Promise<void>;
+    private onDiscovery;
     private onConnection;
 }
