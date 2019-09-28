@@ -365,12 +365,18 @@ class RepoBackend {
             }
         };
         this.opts = opts;
-        this.path = opts.path || 'default';
-        if (!opts.memory) {
-            ensureDirectoryExists(this.path);
+        // An in-memory repo
+        if (opts.memory) {
+            this.storage = random_access_memory_1.default;
+            this.path = opts.path || 'default'; // Still used for random-access-memory
+            this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), true);
         }
-        this.storage = opts.memory ? random_access_memory_1.default : random_access_file_1.default;
-        this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), opts.memory || false);
+        else {
+            this.storage = random_access_file_1.default;
+            this.path = opts.path;
+            ensureDirectoryExists(this.path);
+            this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), false);
+        }
         this.clocks = new ClockStore_1.default(this.db);
         this.store = new FeedStore_1.default(this.storageFn);
         this.files = new FileStore_1.default(this.store);
