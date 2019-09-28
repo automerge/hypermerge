@@ -124,7 +124,7 @@ export class PeerConnection<Msg> {
       isClient: details.client,
     })
 
-    if (details.peer) {
+    if (details.peer && details.peer.topic) {
       conn.addDiscoveryId(encodeDiscoveryId(details.peer.topic))
     }
 

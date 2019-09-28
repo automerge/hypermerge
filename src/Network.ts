@@ -1,9 +1,11 @@
 import * as Base58 from 'bs58'
 import { DiscoveryId, getOrCreate, encodeDiscoveryId } from './Misc'
 import Peer, { PeerId, PeerConnection } from './NetworkPeer'
-import { Swarm, JoinOptions, Socket, ConnectionDetails } from './SwarmInterface'
+import { Swarm, JoinOptions, Socket, ConnectionDetails, PeerInfo } from './SwarmInterface'
 import MapSet from './MapSet'
 import Queue from './Queue'
+
+export type Host = string & { host: true }
 
 export interface DiscoveryRequest<Msg> {
   discoveryId: DiscoveryId
@@ -17,6 +19,8 @@ export default class Network<Msg> {
   pending: Set<DiscoveryId>
   peers: Map<PeerId, Peer<Msg>>
   peerDiscoveryIds: MapSet<DiscoveryId, PeerId>
+  hosts: MapSet<Host, DiscoveryId>
+  peersByHost: Map<Host, Peer<Msg>>
   inboxQ: Queue<Msg>
   discoveryQ: Queue<DiscoveryRequest<Msg>>
   swarm?: Swarm
@@ -30,6 +34,8 @@ export default class Network<Msg> {
     this.discoveryQ = new Queue('Network:discoveryQ')
     this.inboxQ = new Queue('Network:receiveQ')
     this.peerDiscoveryIds = new MapSet()
+    this.hosts = new MapSet()
+    this.peersByHost = new Map()
     this.joinOptions = { announce: true, lookup: true }
   }
 
@@ -72,6 +78,7 @@ export default class Network<Msg> {
     if (joinOptions) this.joinOptions = joinOptions
     this.swarm = swarm
     this.swarm.on('connection', this.onConnection)
+    this.swarm.on('peer', this.onDiscovery)
 
     for (const discoveryId of this.pending) {
       this.join(discoveryId)
@@ -92,12 +99,33 @@ export default class Network<Msg> {
     })
   }
 
+  private onDiscovery = async (peerInfo: PeerInfo) => {
+    const discoveryId = encodeDiscoveryId(peerInfo.topic!)
+    // We want hyperswarm to dedupe without including the topic,
+    // so we delete it here:
+
+    delete peerInfo.topic
+    const host = createHost(peerInfo)
+    this.hosts.add(host, discoveryId)
+
+    const peer = this.peersByHost.get(host)
+
+    if (peer && peer.connection) {
+      peer.connection.addDiscoveryId(discoveryId)
+    }
+  }
+
   private onConnection = async (socket: Socket, details: ConnectionDetails) => {
     const conn = await PeerConnection.fromSocket<Msg>(socket, this.selfId, details)
 
     const peer = this.getOrCreatePeer(conn.peerId)
+    const host = details.peer ? createHost(details.peer) : null
+
+    if (host) this.peersByHost.set(host, peer)
 
     if (peer.addConnection(conn)) {
+      if (host) conn.addDiscoveryIds(this.hosts.get(host))
+
       conn.messages.subscribe(this.inboxQ.push)
 
       conn.discoveryQ.subscribe((discoveryId) => {
@@ -116,4 +144,8 @@ export default class Network<Msg> {
 
 function decodeId(id: DiscoveryId): Buffer {
   return Base58.decode(id)
+}
+
+function createHost({ host, port }: PeerInfo): Host {
+  return `${host}:${port}` as Host
 }

@@ -47,7 +47,7 @@ export interface PeerInfo {
   port: number
   host: string // IP of peer
   local: boolean // Is the peer on the LAN?
-  topic: Buffer // The identifier which this peer was discovered under.
+  topic?: Buffer // The identifier which this peer was discovered under.
   referrer: null | {
     // Info about the node that informed us of the peer.
     port: number
