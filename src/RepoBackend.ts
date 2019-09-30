@@ -67,7 +67,7 @@ export class RepoBackend {
     this.opts = opts
     this.path = opts.path || 'default'
     this.storage = opts.memory ? ram : raf
-    this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
+    this.db = SqlDatabase.init(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
     this.clocks = new ClockStore(this.db)
     this.store = new FeedStore(this.storageFn)
     this.files = new FileStore(this.store)
