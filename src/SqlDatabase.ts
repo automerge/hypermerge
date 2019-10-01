@@ -38,7 +38,7 @@ function ensureMigrationTable(db: Database) {
     name TEXT UNIQUE NOT NULL, 
     up TEXT NOT NULL, 
     down TEXT NOT NULL
-  )`) // TODO: is sequence autoincrementing as the rowid?
+  )`)
 }
 
 // Undo migrations that exist only in the database but not in the migrations list
