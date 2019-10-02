@@ -14,16 +14,16 @@ export default class KeyValueStore {
   constructor(db: Database) {
     this.db = db
 
-    this.preparedGet = this.db.prepare(`SELECT val FROM KeyValue WHERE key=?`)
+    this.preparedGet = this.db.prepare(`SELECT v FROM KeyValue WHERE k=?`)
     this.preparedSet = this.db.prepare(`
-        INSERT INTO KeyValue (key, val) VALUES (?, ?) 
-        ON CONFLICT (key) DO UPDATE SET val=excluded.val`)
-    this.preparedClear = this.db.prepare(`DELETE FROM KeyValue WHERE key=?`)
+        INSERT INTO KeyValue (k, v) VALUES (?, ?) 
+        ON CONFLICT (k) DO UPDATE SET v=excluded.v`)
+    this.preparedClear = this.db.prepare(`DELETE FROM KeyValue WHERE k=?`)
   }
 
-  get(key: string) {
-    const res = this.preparedGet.get(key)
-    return res.val
+  get(key: string): string | undefined {
+    const val = this.preparedGet.pluck(true).get(key)
+    return val
   }
 
   set(key: string, value: string) {
