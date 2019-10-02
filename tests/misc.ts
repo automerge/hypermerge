@@ -9,7 +9,7 @@ type DocInfo = DocMsg | DocMsgCB
 type Expected<T> = [T, string] | [T, string, Function]
 
 export function testRepo() {
-  return new Repo({ memory: true })
+  return new Repo({ path: uuid().toString(), memory: true })
 }
 
 export function expectDocs(t: test.Test, docs: DocInfo[]) {
