@@ -1,6 +1,12 @@
 CREATE TABLE IF NOT EXISTS Clock (
-    documentId TEXT,
-    actorId TEXT,
-    seq INTEGER,
+    documentId TEXT NOT NULL,
+    actorId TEXT NOT NULL,
+    seq INTEGER NOT NULL,
     PRIMARY KEY (documentId, actorId)
+) WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS Keys (
+    name TEXT PRIMARY KEY,
+    publicKey BLOB NOT NULL,
+    secretKey TEXT
 ) WITHOUT ROWID;
