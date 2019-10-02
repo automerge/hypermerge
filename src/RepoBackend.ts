@@ -26,11 +26,12 @@ import FeedStore from './FeedStore'
 import FileStore from './FileStore'
 import FileServer from './FileServer'
 import Network, { Swarm } from './Network'
-import { encodePeerId } from './NetworkPeer'
+import { PeerId } from './NetworkPeer'
 import ClockStore from './ClockStore'
 import * as SqlDatabase from './SqlDatabase'
 import ram from 'random-access-memory'
 import raf from 'random-access-file'
+import KeyValueStore from './KeyValueStore'
 
 Debug.formatters.b = Base58.encode
 
@@ -50,6 +51,7 @@ export interface Options {
 export class RepoBackend {
   path?: string
   storage: Function
+  kvStore: KeyValueStore
   store: FeedStore
   files: FileStore
   clocks: ClockStore
@@ -59,7 +61,7 @@ export class RepoBackend {
   meta: Metadata
   opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
-  id: Buffer
+  id: string
   private db: SqlDatabase.Database
   private fileServer: FileServer
   private network: Network
@@ -67,11 +69,19 @@ export class RepoBackend {
   constructor(opts: Options) {
     this.opts = opts
     this.path = opts.path || 'default'
+
+    // initialize storage
     if (!opts.memory) {
       ensureDirectoryExists(this.path)
     }
     this.storage = opts.memory ? ram : raf
     this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
+    this.kvStore = new KeyValueStore(this.db)
+
+    // init repo
+    this.id = this.kvStore.get('repo-id') || this.createRepoId()
+
+    // initialize the various stores
     this.clocks = new ClockStore(this.db)
     this.store = new FeedStore(this.storageFn)
     this.files = new FileStore(this.store)
@@ -81,8 +91,7 @@ export class RepoBackend {
     this.fileServer = new FileServer(this.files)
 
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
-    this.id = this.meta.id
-    this.network = new Network(encodePeerId(this.id), this.store)
+    this.network = new Network(this.id as PeerId, this.store)
   }
 
   startFileServer = (path: string) => {
@@ -93,6 +102,13 @@ export class RepoBackend {
       type: 'FileServerReadyMsg',
       path,
     })
+  }
+
+  private createRepoId() {
+    const keys = Keys.create()
+    this.kvStore.set('repo-id', keys.publicKey)
+    this.kvStore.set('repo-id-secret', keys.secretKey)
+    return keys.publicKey
   }
 
   private create(keys: Keys.KeyBuffer): DocBackend.DocBackend {
