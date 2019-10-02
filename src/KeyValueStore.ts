@@ -22,8 +22,7 @@ export default class KeyValueStore {
   }
 
   get(key: string): string | undefined {
-    const val = this.preparedGet.pluck(true).get(key)
-    return val
+    return this.preparedGet.pluck(true).get(key)
   }
 
   set(key: string, value: string) {
