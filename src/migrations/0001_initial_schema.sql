@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS Clock (
 CREATE TABLE IF NOT EXISTS Keys (
     name TEXT PRIMARY KEY,
     publicKey BLOB NOT NULL,
-    secretKey TEXT
+    secretKey BLOB
 ) WITHOUT ROWID;
