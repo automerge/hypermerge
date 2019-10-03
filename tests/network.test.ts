@@ -9,13 +9,13 @@ test('Share a doc between two repos', (t) => {
   const repoB = testRepo()
 
   const clientA = new Client({
-    id: repoA.id,
+    id: repoA.swarmId,
     stream: repoA.stream,
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
   const clientB = new Client({
-    id: repoB.id,
+    id: repoB.swarmId,
     stream: repoB.stream,
     url: 'wss://discovery-cloud.herokuapp.com',
   })
@@ -60,19 +60,19 @@ test("Three way docs don't load until all canges are in", (t) => {
   const repoC = testRepo()
 
   const clientA = new Client({
-    id: repoA.id,
+    id: repoA.swarmId,
     stream: repoA.stream,
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
   const clientB = new Client({
-    id: repoB.id,
+    id: repoB.swarmId,
     stream: repoB.stream,
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
   const clientC = new Client({
-    id: repoC.id,
+    id: repoC.swarmId,
     stream: repoC.stream,
     url: 'wss://discovery-cloud.herokuapp.com',
   })
@@ -128,13 +128,13 @@ test('Message about a doc between two repos', (t) => {
   const repoB = testRepo()
 
   const clientA = new Client({
-    id: repoA.id,
+    id: repoA.swarmId,
     stream: repoA.stream,
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
   const clientB = new Client({
-    id: repoB.id,
+    id: repoB.swarmId,
     stream: repoB.stream,
     url: 'wss://discovery-cloud.herokuapp.com',
   })

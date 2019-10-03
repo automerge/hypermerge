@@ -15,6 +15,8 @@ import {
   ActorId,
   DiscoveryId,
   DocId,
+  RepoId,
+  encodeRepoId,
   encodeDocId,
   rootActorId,
   encodeActorId,
@@ -26,7 +28,7 @@ import FeedStore from './FeedStore'
 import FileStore from './FileStore'
 import FileServer from './FileServer'
 import Network, { Swarm } from './Network'
-import { encodePeerId } from './NetworkPeer'
+import { PeerId } from './NetworkPeer'
 import ClockStore from './ClockStore'
 import * as SqlDatabase from './SqlDatabase'
 import ram from 'random-access-memory'
@@ -61,7 +63,8 @@ export class RepoBackend {
   meta: Metadata
   opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
-  id: Buffer
+  id: RepoId
+  swarmId: Buffer // TODO: Remove this once we no longer use discovery-swarm/discovery-cloud
   private db: SqlDatabase.Database
   private fileServer: FileServer
   private network: Network
@@ -76,11 +79,13 @@ export class RepoBackend {
     }
     this.storage = opts.memory ? ram : raf
     this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
+
     this.keys = new KeyStore(this.db)
 
     // init repo
     const repoKeys = this.keys.get('self.repo') || this.keys.set('self.repo', Keys.createBuffer())
-    this.id = repoKeys.publicKey
+    this.swarmId = repoKeys.publicKey
+    this.id = encodeRepoId(repoKeys.publicKey)
 
     // initialize the various stores
     this.clocks = new ClockStore(this.db)
@@ -92,7 +97,7 @@ export class RepoBackend {
     this.fileServer = new FileServer(this.files)
 
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
-    this.network = new Network(encodePeerId(this.id), this.store)
+    this.network = new Network(toPeerId(this.id), this.store)
   }
 
   startFileServer = (path: string) => {
@@ -300,7 +305,7 @@ export class RepoBackend {
         })
         const doc = this.docs.get(msg.id)
         if (doc && msg.minimumClockSatisfied) {
-          this.clocks.update(msg.id, doc.clock)
+          this.clocks.update(this.id, msg.id, doc.clock)
         }
         break
       }
@@ -315,7 +320,7 @@ export class RepoBackend {
         this.actor(msg.actorId)!.writeChange(msg.change)
         const doc = this.docs.get(msg.id)
         if (doc && msg.minimumClockSatisfied) {
-          this.clocks.update(msg.id, doc.clock)
+          this.clocks.update(this.id, msg.id, doc.clock)
         }
         break
       }
@@ -370,7 +375,7 @@ export class RepoBackend {
         // Broadcast latest document information to peers.
         const metadata = this.meta.forActor(actor.id)
         const docs = this.meta.docsWith(actor.id)
-        const clocks = this.clocks.getMultiple(docs)
+        const clocks = this.clocks.getMultiple(this.id, docs)
         docs.forEach((documentId) => {
           const documentActor = this.actor(rootActorId(documentId as DocId))
           if (documentActor) {
@@ -392,7 +397,7 @@ export class RepoBackend {
         // Broadcast the latest document information to the new peer
         const metadata = this.meta.forActor(msg.actor.id)
         const docs = this.meta.docsWith(msg.actor.id)
-        const clocks = this.clocks.getMultiple(docs)
+        const clocks = this.clocks.getMultiple(this.id, docs)
         DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer])
         break
       }
@@ -554,4 +559,12 @@ export class RepoBackend {
 
 function ensureDirectoryExists(path: string) {
   fs.mkdirSync(path, { recursive: true })
+}
+
+function toPeerId(repoId: RepoId): PeerId {
+  return (repoId as string) as PeerId
+}
+
+function toDiscoveryId(repoId: RepoId): DiscoveryId {
+  return (repoId as string) as DiscoveryId
 }

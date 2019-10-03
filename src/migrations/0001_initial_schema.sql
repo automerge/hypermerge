@@ -1,8 +1,9 @@
-CREATE TABLE IF NOT EXISTS Clock (
+CREATE TABLE IF NOT EXISTS Clocks (
+    repoId TEXT NOT NULL,
     documentId TEXT NOT NULL,
     actorId TEXT NOT NULL,
     seq INTEGER NOT NULL,
-    PRIMARY KEY (documentId, actorId)
+    PRIMARY KEY (repoId, documentId, actorId)
 ) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS Keys (

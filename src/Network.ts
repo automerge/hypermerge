@@ -1,4 +1,3 @@
-import { Duplex } from 'stream'
 import * as Base58 from 'bs58'
 import HypercoreProtocol from 'hypercore-protocol'
 import { DiscoveryId, encodeDiscoveryId } from './Misc'
