@@ -31,6 +31,7 @@ import ClockStore from './ClockStore'
 import * as SqlDatabase from './SqlDatabase'
 import ram from 'random-access-memory'
 import raf from 'random-access-file'
+import KeyStore from './KeyStore'
 
 Debug.formatters.b = Base58.encode
 
@@ -57,6 +58,7 @@ export type Options = MemoryOptions | DiskOptions
 export class RepoBackend {
   path: string
   storage: Function
+  keys: KeyStore
   store: FeedStore
   files: FileStore
   clocks: ClockStore
@@ -85,6 +87,12 @@ export class RepoBackend {
       ensureDirectoryExists(this.path)
       this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), false)
     }
+    this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
+    this.keys = new KeyStore(this.db)
+
+    // init repo
+    const repoKeys = this.keys.get('self.repo') || this.keys.set('self.repo', Keys.createBuffer())
+    this.id = repoKeys.publicKey
 
     this.clocks = new ClockStore(this.db)
     this.store = new FeedStore(this.storageFn)
@@ -95,7 +103,6 @@ export class RepoBackend {
     this.fileServer = new FileServer(this.files)
 
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
-    this.id = this.meta.id
     this.network = new Network(encodePeerId(this.id), this.store)
   }
 

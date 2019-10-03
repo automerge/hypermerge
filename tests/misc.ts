@@ -9,7 +9,12 @@ type DocInfo = DocMsg | DocMsgCB
 type Expected<T> = [T, string] | [T, string, Function]
 
 export function testRepo() {
-  return new Repo({ memory: true })
+  // Note: We must pass a unique path to each test repo instance
+  // to prevent in-memory collisions. If we don't pass a unique
+  // path to each in-memory repo, they will all share a single
+  // in-memory sqlite datbasae - which breaks the tests!
+  const randomPath = uuid().toString()
+  return new Repo({ path: randomPath, memory: true })
 }
 
 export function expectDocs(t: test.Test, docs: DocInfo[]) {

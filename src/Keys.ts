@@ -15,6 +15,10 @@ export function create(): Required<KeyPair> {
   return encodePair(crypto.keyPair()) as Required<KeyPair>
 }
 
+export function createBuffer(): Required<KeyBuffer> {
+  return crypto.keyPair() as Required<KeyBuffer>
+}
+
 export function decodePair(keys: KeyPair): KeyBuffer {
   return {
     publicKey: decode(keys.publicKey),
