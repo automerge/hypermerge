@@ -43,13 +43,20 @@ export interface FeedData {
   changes: Change[]
 }
 
-export interface Options {
+interface MemoryOptions {
   path?: string
-  memory?: boolean
+  memory: true
 }
 
+interface DiskOptions {
+  path: string
+  memory?: false
+}
+
+export type Options = MemoryOptions | DiskOptions
+
 export class RepoBackend {
-  path?: string
+  path: string
   storage: Function
   keys: KeyStore
   store: FeedStore
@@ -68,13 +75,18 @@ export class RepoBackend {
 
   constructor(opts: Options) {
     this.opts = opts
-    this.path = opts.path || 'default'
 
-    // initialize storage
-    if (!opts.memory) {
+    // An in-memory repo
+    if (opts.memory) {
+      this.storage = ram
+      this.path = opts.path || 'default' // Still used for random-access-memory
+      this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), true)
+    } else {
+      this.storage = raf
+      this.path = opts.path
       ensureDirectoryExists(this.path)
+      this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), false)
     }
-    this.storage = opts.memory ? ram : raf
     this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
     this.keys = new KeyStore(this.db)
 
@@ -82,7 +94,6 @@ export class RepoBackend {
     const repoKeys = this.keys.get('self.repo') || this.keys.set('self.repo', Keys.createBuffer())
     this.id = repoKeys.publicKey
 
-    // initialize the various stores
     this.clocks = new ClockStore(this.db)
     this.store = new FeedStore(this.storageFn)
     this.files = new FileStore(this.store)

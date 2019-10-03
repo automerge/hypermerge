@@ -16,12 +16,17 @@ export interface FeedData {
     writable: Boolean;
     changes: Change[];
 }
-export interface Options {
+interface MemoryOptions {
     path?: string;
-    memory?: boolean;
+    memory: true;
 }
+interface DiskOptions {
+    path: string;
+    memory?: false;
+}
+export declare type Options = MemoryOptions | DiskOptions;
 export declare class RepoBackend {
-    path?: string;
+    path: string;
     storage: Function;
     store: FeedStore;
     files: FileStore;
@@ -66,3 +71,4 @@ export declare class RepoBackend {
     receive: (msg: ToBackendRepoMsg) => void;
     actor(id: ActorId): Actor | undefined;
 }
+export {};
