@@ -181,7 +181,7 @@ test('Changing a document updates the clock store', async (t) => {
   // Note: the interface of repo.change doesn't guarantee this
   // won't race - but it doesn't. We should change this test such
   // that a race can't be introduced.
-  t.deepEqual(expectedClock, repo.back.clocks.get(docId))
+  t.deepEqual(expectedClock, repo.back.clocks.get(repo.id, docId))
   // Clock is stored in ClockStore and matches expected value
   // NOTE: this will fire twice because we have a bug which
   // applies change twice.
