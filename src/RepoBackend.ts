@@ -64,7 +64,7 @@ export class RepoBackend {
   opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
   id: RepoId
-  swarmId: Buffer // TODO: Remove this once we no longer use discovery-swarm/discovery-cloud
+  swarmKey: Buffer // TODO: Remove this once we no longer use discovery-swarm/discovery-cloud
   private db: SqlDatabase.Database
   private fileServer: FileServer
   private network: Network
@@ -84,7 +84,7 @@ export class RepoBackend {
 
     // init repo
     const repoKeys = this.keys.get('self.repo') || this.keys.set('self.repo', Keys.createBuffer())
-    this.swarmId = repoKeys.publicKey
+    this.swarmKey = repoKeys.publicKey
     this.id = encodeRepoId(repoKeys.publicKey)
 
     // initialize the various stores

@@ -12,7 +12,7 @@ export class Repo {
   front: RepoFrontend
   back: RepoBackend
   id: RepoId
-  swarmId: Buffer
+  swarmKey: Buffer
   stream: (opts: any) => any
   create: <T>(init?: T) => DocUrl
   open: <T>(id: DocUrl) => Handle<T>
@@ -39,7 +39,7 @@ export class Repo {
     this.front = new RepoFrontend()
     this.front.subscribe(this.back.receive)
     this.back.subscribe(this.front.receive)
-    this.swarmId = this.back.swarmId
+    this.swarmKey = this.back.swarmKey
     this.id = this.back.id
     this.stream = this.back.stream
     this.create = this.front.create
