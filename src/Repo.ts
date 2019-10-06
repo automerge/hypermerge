@@ -3,7 +3,7 @@ import { RepoFrontend } from './RepoFrontend'
 import { Handle } from './Handle'
 import { PublicMetadata } from './Metadata'
 import { Clock } from './Clock'
-import { DocUrl, HyperfileUrl } from './Misc'
+import { DocUrl, HyperfileUrl, RepoId } from './Misc'
 import FileServerClient from './FileServerClient'
 import { Swarm, JoinOptions } from './SwarmInterface'
 import { Doc, Proxy } from 'automerge'
@@ -11,8 +11,8 @@ import { Doc, Proxy } from 'automerge'
 export class Repo {
   front: RepoFrontend
   back: RepoBackend
-  id: Buffer
-  // stream: (opts: any) => any
+
+  id: RepoId
   create: <T>(init?: T) => DocUrl
   open: <T>(id: DocUrl) => Handle<T>
   destroy: (id: DocUrl) => void

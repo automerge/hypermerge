@@ -8,11 +8,14 @@ import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg, DocumentMsg } f
 import { Backend, Change } from 'automerge'
 import * as DocBackend from './DocBackend'
 import path from 'path'
+import fs from 'fs'
 import {
   notEmpty,
   ID,
   ActorId,
   DocId,
+  RepoId,
+  encodeRepoId,
   encodeDocId,
   rootActorId,
   encodeActorId,
@@ -25,7 +28,7 @@ import FeedStore from './FeedStore'
 import FileStore from './FileStore'
 import FileServer from './FileServer'
 import Network, { DiscoveryRequest } from './Network'
-import NetworkPeer, { encodePeerId } from './NetworkPeer'
+import NetworkPeer, { encodePeerId, PeerId } from './NetworkPeer'
 import { Swarm, JoinOptions } from './SwarmInterface'
 import { PeerMsg } from './PeerMsg'
 import ClockStore from './ClockStore'
@@ -33,6 +36,7 @@ import * as SqlDatabase from './SqlDatabase'
 import MessageCenter from './MessageCenter'
 import ram from 'random-access-memory'
 import raf from 'random-access-file'
+import KeyStore from './KeyStore'
 
 Debug.formatters.b = Base58.encode
 
@@ -53,6 +57,7 @@ export class RepoBackend {
   path?: string
   storage: Function
   feeds: FeedStore
+  keys: KeyStore
   files: FileStore
   clocks: ClockStore
   actors: Map<ActorId, Actor> = new Map()
@@ -60,19 +65,34 @@ export class RepoBackend {
   meta: Metadata
   opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
-  id: Buffer
+  id: RepoId
   network: Network
   messages: MessageCenter<PeerMsg>
+  swarmKey: Buffer // TODO: Remove this once we no longer use discovery-swarm/discovery-cloud
   private db: SqlDatabase.Database
   private fileServer: FileServer
 
   constructor(opts: Options) {
     this.opts = opts
     this.path = opts.path || 'default'
-    this.feeds = new FeedStore(this.storageFn)
-    this.files = new FileStore(this.feeds)
+
+    // initialize storage
+    if (!opts.memory) {
+      ensureDirectoryExists(this.path)
+    }
     this.storage = opts.memory ? ram : raf
     this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
+
+    this.keys = new KeyStore(this.db)
+    this.feeds = new FeedStore(this.storageFn)
+    this.files = new FileStore(this.feeds)
+
+    // init repo
+    const repoKeys = this.keys.get('self.repo') || this.keys.set('self.repo', Keys.createBuffer())
+    this.swarmKey = repoKeys.publicKey
+    this.id = encodeRepoId(repoKeys.publicKey)
+
+    // initialize the various stores
     this.clocks = new ClockStore(this.db)
     this.files.writeLog.subscribe((header) => {
       this.meta.addFile(header.url, header.bytes, header.mimeType)
@@ -80,8 +100,7 @@ export class RepoBackend {
     this.fileServer = new FileServer(this.files)
 
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
-    this.id = this.meta.id
-    this.network = new Network(encodePeerId(this.id))
+    this.network = new Network(toPeerId(this.id))
     this.messages = new MessageCenter('HypermergeMessages', this.network)
 
     this.messages.inboxQ.subscribe(this.onMessage)
@@ -299,7 +318,7 @@ export class RepoBackend {
         })
         const doc = this.docs.get(msg.id)
         if (doc && msg.minimumClockSatisfied) {
-          this.clocks.update(msg.id, doc.clock)
+          this.clocks.update(this.id, msg.id, doc.clock)
         }
         break
       }
@@ -314,7 +333,7 @@ export class RepoBackend {
         this.actor(msg.actorId)!.writeChange(msg.change)
         const doc = this.docs.get(msg.id)
         if (doc && msg.minimumClockSatisfied) {
-          this.clocks.update(msg.id, doc.clock)
+          this.clocks.update(this.id, msg.id, doc.clock)
         }
         break
       }
@@ -337,7 +356,7 @@ export class RepoBackend {
     const blocks = this.meta.forActor(actorId)
 
     const docs = this.meta.docsWith(actorId)
-    const clocks = this.clocks.getMultiple(docs)
+    const clocks = this.clocks.getMultiple(this.id, docs)
 
     this.messages.sendToPeer(peer.id, {
       type: 'RemoteMetadata',
@@ -390,7 +409,7 @@ export class RepoBackend {
         // // Broadcast latest document information to peers.
         // const blocks = this.meta.forActor(actor.id)
         // const docs = this.meta.docsWith(actor.id)
-        // const clocks = this.clocks.getMultiple(docs)
+        // const clocks = this.clocks.getMultiple(this.id, docs)
 
         // this.meta.docsWith(actor.id).forEach((documentId) => {
         //   this.messages.sendToDiscoveryId(toDiscoveryId(documentId), {
@@ -570,4 +589,12 @@ export class RepoBackend {
   actor(id: ActorId): Actor | undefined {
     return this.actors.get(id)
   }
+}
+
+function ensureDirectoryExists(path: string) {
+  fs.mkdirSync(path, { recursive: true })
+}
+
+function toPeerId(repoId: RepoId): PeerId {
+  return (repoId as string) as PeerId
 }

@@ -8,6 +8,7 @@ export interface KeyPair {
     secretKey?: string;
 }
 export declare function create(): Required<KeyPair>;
+export declare function createBuffer(): Required<KeyBuffer>;
 export declare function decodePair(keys: KeyPair): KeyBuffer;
 export declare function encodePair(keys: KeyBuffer): KeyPair;
 export declare function decode(key: string): Buffer;

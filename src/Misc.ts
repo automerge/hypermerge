@@ -4,6 +4,7 @@ import { FeedId } from './FeedStore'
 import { discoveryKey } from './hypercore'
 
 export type BaseId = string & { id: true }
+export type RepoId = BaseId & { repoId: true }
 export type DocId = BaseId & { docId: true }
 export type ActorId = FeedId & { actorId: true }
 export type HyperfileId = BaseId & { hyperfileId: true }
@@ -12,6 +13,10 @@ export type DiscoveryId = BaseId & { discoveryId: true }
 export type BaseUrl = string & { url: true }
 export type DocUrl = BaseUrl & { docUrl: true }
 export type HyperfileUrl = BaseUrl & { hyperfileUrl: true }
+
+export function encodeRepoId(repoKey: Buffer): RepoId {
+  return Base58.encode(repoKey) as RepoId
+}
 
 export function encodeDocId(actorKey: Buffer): DocId {
   return Base58.encode(actorKey) as DocId

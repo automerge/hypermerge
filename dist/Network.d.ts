@@ -1,36 +1,33 @@
 import { DiscoveryId } from './Misc';
-import Peer, { PeerId, PeerConnection } from './NetworkPeer';
+import Peer, { PeerId } from './NetworkPeer';
 import { Swarm, JoinOptions } from './SwarmInterface';
 import MapSet from './MapSet';
 import Queue from './Queue';
+import PeerConnection from './PeerConnection';
 export declare type Host = string & {
     host: true;
 };
-export interface DiscoveryRequest<Msg> {
+export interface DiscoveryRequest {
     discoveryId: DiscoveryId;
-    connection: PeerConnection<Msg>;
-    peer: Peer<Msg>;
+    connection: PeerConnection;
+    peer: Peer;
 }
-export default class Network<Msg> {
+export default class Network {
     selfId: PeerId;
     joined: Set<DiscoveryId>;
     pending: Set<DiscoveryId>;
-    peers: Map<PeerId, Peer<Msg>>;
+    peers: Map<PeerId, Peer>;
     peerDiscoveryIds: MapSet<DiscoveryId, PeerId>;
     hosts: MapSet<Host, DiscoveryId>;
-    peersByHost: Map<Host, Peer<Msg>>;
-    inboxQ: Queue<Msg>;
-    discoveryQ: Queue<DiscoveryRequest<Msg>>;
+    discoveryQ: Queue<DiscoveryRequest>;
+    peerQ: Queue<Peer>;
     swarm?: Swarm;
     joinOptions?: JoinOptions;
     constructor(selfId: PeerId);
     join(discoveryId: DiscoveryId): void;
     leave(discoveryId: DiscoveryId): void;
-    sendToDiscoveryId(discoveryId: DiscoveryId, msg: Msg): void;
-    sendToPeer(peerId: PeerId, msg: Msg): void;
     setSwarm(swarm: Swarm, joinOptions?: JoinOptions): void;
-    getOrCreatePeer(peerId: PeerId): Peer<Msg>;
     close(): Promise<void>;
-    private onDiscovery;
+    getOrCreatePeer(peerId: PeerId): Peer;
     private onConnection;
 }

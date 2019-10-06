@@ -30,7 +30,6 @@ const Misc_1 = require("./Misc");
 const log = debug_1.default('repo:metadata');
 const Clock_1 = require("./Clock");
 const Misc_2 = require("./Misc");
-const crypto_1 = require("crypto");
 function sanitizeRemoteMetadata(message) {
     const result = { type: 'RemoteMetadata', clocks: {}, blocks: [] };
     if (message instanceof Object &&
@@ -248,7 +247,6 @@ class Metadata {
         this.ledger = hypercore_1.hypercore(storageFn('ledger'), {});
         this.join = joinFn;
         this.leave = leaveFn;
-        this.id = crypto_1.randomBytes(32);
         log('LEDGER READY (1)');
         this.ledger.ready(() => {
             log('LEDGER READY (2)', this.ledger.length);

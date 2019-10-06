@@ -1,5 +1,6 @@
 export default class Queue<T> {
     push: (item: T) => void;
+    name: string;
     private queue;
     private log;
     private subscription?;

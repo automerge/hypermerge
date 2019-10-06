@@ -13,6 +13,10 @@ function create() {
     return encodePair(crypto.keyPair());
 }
 exports.create = create;
+function createBuffer() {
+    return crypto.keyPair();
+}
+exports.createBuffer = createBuffer;
 function decodePair(keys) {
     return {
         publicKey: decode(keys.publicKey),

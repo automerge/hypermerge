@@ -17,6 +17,7 @@ const hypercore_1 = require("./hypercore");
 const Keys_1 = require("./Keys");
 const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
+const hypercore_protocol_1 = __importDefault(require("hypercore-protocol"));
 /**
  * Note:
  * FeedId should really be the discovery key. The public key should be
@@ -29,6 +30,31 @@ const Queue_1 = __importDefault(require("./Queue"));
 class FeedStore {
     constructor(storageFn, config = {}) {
         this.feeds = new Map();
+        this.onPeer = (peer) => {
+            const stream = peer.connection.openChannel('FeedReplication');
+            const protocol = new hypercore_protocol_1.default(peer.connection.isClient, {
+                encrypt: false,
+            });
+            stream.pipe(protocol).pipe(stream);
+            const replicateFeed = (feedId) => {
+                this.getFeed(feedId).then((feed) => {
+                    feed.replicate(protocol, {
+                        live: true,
+                    });
+                });
+            };
+            protocol.on('discovery-key', (discoveryKey) => {
+                const discoveryId = Misc_1.encodeDiscoveryId(discoveryKey);
+                const feedId = this.getFeedId(discoveryId);
+                if (!feedId)
+                    return;
+                replicateFeed(feedId);
+            });
+            // HACK(jeff): replicating all feeds for now
+            for (const feedId of this.feeds.keys()) {
+                replicateFeed(feedId);
+            }
+        };
         this.storage = storageFn;
         this.config = config;
         this.discoveryIds = new Map();

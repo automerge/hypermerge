@@ -4,6 +4,7 @@ import { Feed } from './hypercore';
 import { KeyPair } from './Keys';
 import { BaseId, DiscoveryId } from './Misc';
 import Queue from './Queue';
+import NetworkPeer from './NetworkPeer';
 export declare type Feed = Feed<Block>;
 export declare type FeedId = BaseId & {
     feedId: true;
@@ -43,6 +44,7 @@ export default class FeedStore {
     appendStream(feedId: FeedId): Promise<Writable>;
     read(feedId: FeedId, seq: number): Promise<any>;
     stream(feedId: FeedId, start?: number): Promise<Readable>;
+    onPeer: (peer: NetworkPeer) => void;
     close(feedId: FeedId): Promise<FeedId>;
     destroy(feedId: FeedId): Promise<FeedId>;
     addFeedId(feedId: FeedId): void;

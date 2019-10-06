@@ -236,7 +236,6 @@ export class Metadata {
   private replay: MetadataBlock[] = []
 
   private ledger: Feed<Uint8Array>
-  public id: Buffer // for the RepoBackend... used in examples (unwisely!) as a Peer ID
   private join: (id: ActorId) => void
   private leave: (id: ActorId) => void
 
@@ -244,7 +243,7 @@ export class Metadata {
     this.ledger = hypercore(storageFn('ledger'), {})
     this.join = joinFn
     this.leave = leaveFn
-    this.id = randomBytes(32)
+
     log('LEDGER READY (1)')
     this.ledger.ready(() => {
       log('LEDGER READY (2)', this.ledger.length)

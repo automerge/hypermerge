@@ -6,13 +6,16 @@ import { Clock } from './Clock';
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg';
 import { Change } from 'automerge';
 import * as DocBackend from './DocBackend';
-import { ActorId, DocId } from './Misc';
+import { ActorId, DocId, RepoId } from './Misc';
 import FeedStore from './FeedStore';
 import FileStore from './FileStore';
 import Network, { DiscoveryRequest } from './Network';
+import NetworkPeer from './NetworkPeer';
 import { Swarm, JoinOptions } from './SwarmInterface';
 import { PeerMsg } from './PeerMsg';
 import ClockStore from './ClockStore';
+import MessageCenter from './MessageCenter';
+import KeyStore from './KeyStore';
 export interface FeedData {
     actorId: ActorId;
     writable: Boolean;
@@ -26,6 +29,7 @@ export declare class RepoBackend {
     path?: string;
     storage: Function;
     feeds: FeedStore;
+    keys: KeyStore;
     files: FileStore;
     clocks: ClockStore;
     actors: Map<ActorId, Actor>;
@@ -33,8 +37,10 @@ export declare class RepoBackend {
     meta: Metadata;
     opts: Options;
     toFrontend: Queue<ToFrontendRepoMsg>;
-    id: Buffer;
-    network: Network<PeerMsg>;
+    id: RepoId;
+    network: Network;
+    messages: MessageCenter<PeerMsg>;
+    swarmKey: Buffer;
     private db;
     private fileServer;
     constructor(opts: Options);
@@ -56,7 +62,8 @@ export declare class RepoBackend {
     docActors(doc: DocBackend.DocBackend): Actor[];
     syncReadyActors: (ids: ActorId[]) => void;
     private documentNotify;
-    onDiscovery: ({ discoveryId, connection, peer }: DiscoveryRequest<PeerMsg>) => void;
+    onPeer: (peer: NetworkPeer) => void;
+    onDiscovery: ({ discoveryId, connection, peer }: DiscoveryRequest) => void;
     private onMessage;
     private actorNotify;
     private initActor;
