@@ -39,6 +39,8 @@
     "iltorb": "^2.4.3",
     "js-sha1": "^0.6.0",
     "mime-types": "^2.1.24",
+    "multiplex": "^6.7.0",
+    "noise-peer": "^1.1.0",
     "random-access-file": "^2.1.3",
     "random-access-memory": "^3.0.0"
   },

@@ -17,6 +17,7 @@ import {
   rootActorId,
   encodeActorId,
   toDiscoveryId,
+  encodeDiscoveryId,
 } from './Misc'
 import Debug from 'debug'
 import * as Keys from './Keys'
@@ -24,11 +25,12 @@ import FeedStore from './FeedStore'
 import FileStore from './FileStore'
 import FileServer from './FileServer'
 import Network, { DiscoveryRequest } from './Network'
-import { encodePeerId } from './NetworkPeer'
+import NetworkPeer, { encodePeerId } from './NetworkPeer'
 import { Swarm, JoinOptions } from './SwarmInterface'
 import { PeerMsg } from './PeerMsg'
 import ClockStore from './ClockStore'
 import * as SqlDatabase from './SqlDatabase'
+import MessageCenter from './MessageCenter'
 import ram from 'random-access-memory'
 import raf from 'random-access-file'
 
@@ -59,7 +61,8 @@ export class RepoBackend {
   opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
   id: Buffer
-  network: Network<PeerMsg>
+  network: Network
+  messages: MessageCenter<PeerMsg>
   private db: SqlDatabase.Database
   private fileServer: FileServer
 
@@ -79,8 +82,12 @@ export class RepoBackend {
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
     this.id = this.meta.id
     this.network = new Network(encodePeerId(this.id))
+    this.messages = new MessageCenter('HypermergeMessages', this.network)
+
+    this.messages.inboxQ.subscribe(this.onMessage)
+
     this.network.discoveryQ.subscribe(this.onDiscovery)
-    this.network.inboxQ.subscribe(this.onMessage)
+    this.network.peerQ.subscribe(this.onPeer)
     this.feeds.feedIdQ.subscribe((feedId) => {
       this.network.join(toDiscoveryId(feedId))
     })
@@ -317,24 +324,22 @@ export class RepoBackend {
     }
   }
 
-  onDiscovery = ({ discoveryId, connection, peer }: DiscoveryRequest<PeerMsg>) => {
+  onPeer = (peer: NetworkPeer): void => {
+    this.feeds.onPeer(peer)
+  }
+
+  onDiscovery = ({ discoveryId, connection, peer }: DiscoveryRequest) => {
     const feedId = this.feeds.getFeedId(discoveryId)
     if (!feedId) return
 
     const actorId = feedId as ActorId
-
-    this.feeds.getFeed(feedId).then((feed) => {
-      feed.replicate(connection.protocol, {
-        live: true,
-      })
-    })
 
     const blocks = this.meta.forActor(actorId)
 
     const docs = this.meta.docsWith(actorId)
     const clocks = this.clocks.getMultiple(docs)
 
-    this.network.sendToPeer(peer.id, {
+    this.messages.sendToPeer(peer.id, {
       type: 'RemoteMetadata',
       clocks,
       blocks,
@@ -380,18 +385,23 @@ export class RepoBackend {
         const actor = msg.actor
         // Record whether or not this actor is writable.
         this.meta.setWritable(actor.id, msg.writable)
-        // Broadcast latest document information to peers.
-        const blocks = this.meta.forActor(actor.id)
-        const docs = this.meta.docsWith(actor.id)
-        const clocks = this.clocks.getMultiple(docs)
-        this.meta.docsWith(actor.id).forEach((documentId) => {
-          this.network.sendToDiscoveryId(toDiscoveryId(documentId), {
-            type: 'RemoteMetadata',
-            blocks,
-            clocks,
-          })
-        })
+
+        // TODO(jeff): This needs to be added back
+        // // Broadcast latest document information to peers.
+        // const blocks = this.meta.forActor(actor.id)
+        // const docs = this.meta.docsWith(actor.id)
+        // const clocks = this.clocks.getMultiple(docs)
+
+        // this.meta.docsWith(actor.id).forEach((documentId) => {
+        //   this.messages.sendToDiscoveryId(toDiscoveryId(documentId), {
+        //     type: 'RemoteMetadata',
+        //     blocks,
+        //     clocks,
+        //   })
+        // })
+
         this.join(actor.id)
+
         break
       }
       case 'ActorInitialized': {
@@ -531,13 +541,15 @@ export class RepoBackend {
         break
       }
       case 'DocumentMessage': {
+        // TODO(jeff): need to find a technique for this
         // Note: 'id' is the document id of the document to send the message to.
-        const { id, contents } = msg
-        this.network.sendToDiscoveryId(toDiscoveryId(id), {
-          type: 'DocumentMessage',
-          id,
-          contents,
-        })
+        // const { id, contents } = msg
+        // this.network.sendToDiscoveryId(toDiscoveryId(id), {
+        //   type: 'DocumentMessage',
+        //   id,
+        //   contents,
+        // })
+
         break
       }
       case 'DestroyMsg': {

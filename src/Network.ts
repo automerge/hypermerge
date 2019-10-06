@@ -1,28 +1,28 @@
 import * as Base58 from 'bs58'
 import { DiscoveryId, getOrCreate, encodeDiscoveryId } from './Misc'
-import Peer, { PeerId, PeerConnection } from './NetworkPeer'
+import Peer, { PeerId } from './NetworkPeer'
 import { Swarm, JoinOptions, Socket, ConnectionDetails, PeerInfo } from './SwarmInterface'
 import MapSet from './MapSet'
 import Queue from './Queue'
+import PeerConnection from './PeerConnection'
 
 export type Host = string & { host: true }
 
-export interface DiscoveryRequest<Msg> {
+export interface DiscoveryRequest {
   discoveryId: DiscoveryId
-  connection: PeerConnection<Msg>
-  peer: Peer<Msg>
+  connection: PeerConnection
+  peer: Peer
 }
 
-export default class Network<Msg> {
+export default class Network {
   selfId: PeerId
   joined: Set<DiscoveryId>
   pending: Set<DiscoveryId>
-  peers: Map<PeerId, Peer<Msg>>
+  peers: Map<PeerId, Peer>
   peerDiscoveryIds: MapSet<DiscoveryId, PeerId>
   hosts: MapSet<Host, DiscoveryId>
-  peersByHost: Map<Host, Peer<Msg>>
-  inboxQ: Queue<Msg>
-  discoveryQ: Queue<DiscoveryRequest<Msg>>
+  discoveryQ: Queue<DiscoveryRequest>
+  peerQ: Queue<Peer>
   swarm?: Swarm
   joinOptions?: JoinOptions
 
@@ -31,11 +31,10 @@ export default class Network<Msg> {
     this.joined = new Set()
     this.pending = new Set()
     this.peers = new Map()
+    this.peerQ = new Queue('Network:peerQ')
     this.discoveryQ = new Queue('Network:discoveryQ')
-    this.inboxQ = new Queue('Network:receiveQ')
     this.peerDiscoveryIds = new MapSet()
     this.hosts = new MapSet()
-    this.peersByHost = new Map()
     this.joinOptions = { announce: true, lookup: true }
   }
 
@@ -59,34 +58,16 @@ export default class Network<Msg> {
     this.joined.delete(discoveryId)
   }
 
-  sendToDiscoveryId(discoveryId: DiscoveryId, msg: Msg): void {
-    this.peerDiscoveryIds.get(discoveryId).forEach((peerId) => {
-      this.sendToPeer(peerId, msg)
-    })
-  }
-
-  sendToPeer(peerId: PeerId, msg: Msg): void {
-    const peer = this.peers.get(peerId)
-    if (peer && peer.connection) {
-      peer.connection.messages.send(msg)
-    }
-  }
-
   setSwarm(swarm: Swarm, joinOptions?: JoinOptions): void {
     if (this.swarm) throw new Error('Swarm already exists!')
 
     if (joinOptions) this.joinOptions = joinOptions
     this.swarm = swarm
     this.swarm.on('connection', this.onConnection)
-    this.swarm.on('peer', this.onDiscovery)
 
     for (const discoveryId of this.pending) {
       this.join(discoveryId)
     }
-  }
-
-  getOrCreatePeer(peerId: PeerId): Peer<Msg> {
-    return getOrCreate(this.peers, peerId, () => new Peer(this.selfId, peerId))
   }
 
   async close(): Promise<void> {
@@ -99,53 +80,44 @@ export default class Network<Msg> {
     })
   }
 
-  private onDiscovery = async (peerInfo: PeerInfo) => {
-    const discoveryId = encodeDiscoveryId(peerInfo.topic!)
-    // We want hyperswarm to dedupe without including the topic,
-    // so we delete it here:
+  getOrCreatePeer(peerId: PeerId) {
+    return getOrCreate(this.peers, peerId, () => {
+      const peer = new Peer(this.selfId, peerId)
 
-    delete peerInfo.topic
-    const host = createHost(peerInfo)
-    this.hosts.add(host, discoveryId)
+      peer.connectionQ.subscribe((_conn) => {
+        this.peerQ.push(peer)
+      })
 
-    const peer = this.peersByHost.get(host)
-
-    if (peer && peer.connection) {
-      peer.connection.addDiscoveryId(discoveryId)
-    }
+      return peer
+    })
   }
 
   private onConnection = async (socket: Socket, details: ConnectionDetails) => {
-    const conn = await PeerConnection.fromSocket<Msg>(socket, this.selfId, details)
+    details.reconnect(false)
 
-    const peer = this.getOrCreatePeer(conn.peerId)
-    const host = details.peer ? createHost(details.peer) : null
+    console.log('onConnection', this.selfId, 'isClient:', details.client)
 
-    if (host) this.peersByHost.set(host, peer)
+    const conn = new PeerConnection(socket, {
+      isClient: details.client,
+      type: details.type,
+    })
 
-    if (peer.addConnection(conn)) {
-      if (host) conn.addDiscoveryIds(this.hosts.get(host))
+    conn.networkChannel.send({
+      type: 'Info',
+      peerId: this.selfId,
+    })
 
-      conn.messages.subscribe(this.inboxQ.push)
+    const firstMsg = await conn.networkChannel.receiveQ.first()
 
-      conn.discoveryQ.subscribe((discoveryId) => {
-        this.join(discoveryId)
-        this.peerDiscoveryIds.add(discoveryId, peer.id)
+    if (firstMsg.type !== 'Info') throw new Error('First message must be Info.')
 
-        this.discoveryQ.push({
-          discoveryId,
-          connection: conn,
-          peer,
-        })
-      })
-    }
+    const { peerId } = firstMsg
+    if (peerId === this.selfId) throw new Error('Connected to self.')
+
+    this.getOrCreatePeer(peerId).addConnection(conn)
   }
 }
 
 function decodeId(id: DiscoveryId): Buffer {
   return Base58.decode(id)
-}
-
-function createHost({ host, port }: PeerInfo): Host {
-  return `${host}:${port}` as Host
 }

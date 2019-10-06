@@ -7,8 +7,8 @@ test('Share a doc between two repos', (t) => {
   const repoA = testRepo()
   const repoB = testRepo()
 
-  repoA.setSwarm(testSwarm(repoA))
-  repoB.setSwarm(testSwarm(repoB))
+  repoA.setSwarm(testSwarm())
+  repoB.setSwarm(testSwarm())
 
   // connect the repos
 
@@ -46,8 +46,8 @@ test("Three way docs don't load until all changes are in", (t) => {
   const repoB = testRepo()
   const repoC = testRepo()
 
-  repoA.setSwarm(testSwarm(repoA))
-  repoB.setSwarm(testSwarm(repoB))
+  repoA.setSwarm(testSwarm())
+  repoB.setSwarm(testSwarm())
 
   // connect repos A and B
 
@@ -72,7 +72,7 @@ test("Three way docs don't load until all changes are in", (t) => {
         { a: 1, b: 2 },
         "repoB gets repoA's change and its local changes at once",
         () => {
-          repoC.setSwarm(testSwarm(repoC))
+          repoC.setSwarm(testSwarm())
 
           repoC.doc(id, (doc) => {
             t.deepEqual(doc, { a: 1, b: 2 }, "repoC gets repoA's and repoB's changes")
@@ -96,8 +96,8 @@ test('Message about a doc between two repos', (t) => {
   const repoA = testRepo()
   const repoB = testRepo()
 
-  repoA.setSwarm(testSwarm(repoA))
-  repoB.setSwarm(testSwarm(repoB))
+  repoA.setSwarm(testSwarm())
+  repoB.setSwarm(testSwarm())
 
   // connect the repos
 

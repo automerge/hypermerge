@@ -4,6 +4,8 @@ import { hypercore, Feed } from './hypercore'
 import { KeyPair, decodePair } from './Keys'
 import { BaseId, getOrCreate, DiscoveryId, toDiscoveryId, encodeDiscoveryId } from './Misc'
 import Queue from './Queue'
+import NetworkPeer from './NetworkPeer'
+import HypercoreProtocol from 'hypercore-protocol'
 
 export type Feed = Feed<Block>
 export type FeedId = BaseId & { feedId: true }
@@ -87,6 +89,37 @@ export default class FeedStore {
   async stream(feedId: FeedId, start = 0): Promise<Readable> {
     const feed = await this.open(feedId)
     return feed.createReadStream({ start })
+  }
+
+  onPeer = (peer: NetworkPeer): void => {
+    const stream = peer.connection.openChannel('FeedReplication')
+
+    const protocol = new HypercoreProtocol(peer.connection.isClient, {
+      encrypt: false,
+    })
+
+    stream.pipe(protocol).pipe(stream)
+
+    const replicateFeed = (feedId: FeedId) => {
+      this.getFeed(feedId).then((feed) => {
+        feed.replicate(protocol, {
+          live: true,
+        })
+      })
+    }
+
+    protocol.on('discovery-key', (discoveryKey: Buffer) => {
+      const discoveryId = encodeDiscoveryId(discoveryKey)
+      const feedId = this.getFeedId(discoveryId)
+
+      if (!feedId) return
+      replicateFeed(feedId)
+    })
+
+    // HACK(jeff): replicating all feeds for now
+    for (const feedId of this.feeds.keys()) {
+      replicateFeed(feedId)
+    }
   }
 
   close(feedId: FeedId): Promise<FeedId> {

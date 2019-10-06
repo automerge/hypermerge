@@ -70,7 +70,17 @@ export function notEmpty<TValue>(value: TValue | null | undefined): value is TVa
   return value !== null && value !== undefined
 }
 
-export function getOrCreate<K, V>(map: Map<K, V>, key: K, create: (key: K) => V): V {
+export function getOrCreate<K extends Object, V>(
+  map: WeakMap<K, V>,
+  key: K,
+  create: (key: K) => V
+): V
+export function getOrCreate<K, V>(map: Map<K, V>, key: K, create: (key: K) => V): V
+export function getOrCreate<K, V>(
+  map: Map<K, V> | WeakMap<K & Object, V>,
+  key: K,
+  create: (key: K) => V
+): V {
   const existing = map.get(key)
   if (existing) return existing
 

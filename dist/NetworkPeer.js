@@ -86,6 +86,8 @@ class PeerConnection {
             const discoveryId = Misc_1.encodeDiscoveryId(dk);
             if (discoveryId === this.messages.discoveryId)
                 return;
+            if (discoveryId === this.networkMessages.discoveryId)
+                return;
             this.addDiscoveryId(discoveryId);
         });
     }
@@ -139,6 +141,8 @@ class PeerConnection {
         this.discoveryQ.push(discoveryId);
     }
     close() {
+        this.networkMessages.close();
+        this.messages.close();
         this.protocol.finalize();
         // this.socket.destroy()
     }

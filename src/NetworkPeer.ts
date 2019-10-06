@@ -1,235 +1,88 @@
 import { DiscoveryId, encodeDiscoveryId } from './Misc'
 import * as Base58 from 'bs58'
-import { Socket } from 'net'
+import PeerConnection from './PeerConnection'
 import Queue from './Queue'
-import { ConnectionDetails } from './SwarmInterface'
-import HypercoreProtocol from 'hypercore-protocol'
-import { discoveryKey } from './hypercore'
-import * as JsonBuffer from './JsonBuffer'
 
 export type PeerId = DiscoveryId & { peerId: true }
-export type SocketType = 'tcp' | 'utp'
 
-export interface SocketInfo {
-  type: SocketType
-  selfId: PeerId
-  peerId: PeerId
-  isClient: boolean
-}
-
-export interface InfoMsg {
-  type: 'Info'
-  peerId: PeerId
-}
-
-export default class NetworkPeer<Msg> {
+export default class NetworkPeer {
   selfId: PeerId
   id: PeerId
-  connection?: PeerConnection<Msg>
+  pendingConnections: Set<PeerConnection>
+  connectionQ: Queue<PeerConnection>
+
+  // A peer always has a connection once it's emitted out of Network.
+  // TODO(jeff): Find a less lazy way to type this that isn't annoying.
+  connection!: PeerConnection
 
   constructor(selfId: PeerId, id: PeerId) {
+    this.pendingConnections = new Set()
+    this.connectionQ = new Queue('NetworkPeer:connectionQ')
     this.selfId = selfId
     this.id = id
   }
 
   get isConnected(): boolean {
     if (!this.connection) return false
-    return this.connection.isOpen
+    return this.connection.isOpen && this.connection.isConfirmed
+  }
+
+  /**
+   * Determines if we are the authority on which connection to use when
+   * duplicate connections are created.
+   *
+   * @remarks
+   * We need to ensure that two peers don't close the other's incoming
+   * connection. Comparing our ids ensures only one of the two peers decides
+   * which connection to close.
+   */
+  get weHaveAuthority(): boolean {
+    return this.selfId > this.id
   }
 
   /**
    * Attempts to add a connection to this peer.
-   * If this connection is a duplicate of an existing connection, we close it
-   * and return `false`.
+   * If this connection is a duplicate of an existing connection, we close it.
+   * If we aren't the authority, and we don't have a confirmed connection, we
+   * add hold onto it and wait for a ConfirmConnection message.
    */
-  addConnection(conn: PeerConnection<Msg>): boolean {
-    const existing = this.connection
+  addConnection(conn: PeerConnection): void {
+    if (this.isConnected) {
+      conn.close()
+      return
+    }
 
-    if (existing) {
-      if (!this.shouldUseNewConnection(existing, conn)) {
-        existing.addDiscoveryIds(conn.discoveryIds)
-        conn.close()
-        return false
+    if (this.weHaveAuthority) {
+      conn.networkChannel.send({ type: 'ConfirmConnection' })
+      this.confirmConnection(conn)
+      return
+    }
+
+    this.pendingConnections.add(conn)
+
+    conn.networkChannel.subscribe((msg) => {
+      if (msg.type === 'ConfirmConnection') {
+        this.confirmConnection(conn)
       }
+    })
+  }
 
-      conn.addDiscoveryIds(existing.discoveryIds)
-      existing.close()
-    }
-
+  confirmConnection(conn: PeerConnection): void {
+    conn.isConfirmed = true
     this.connection = conn
+    this.pendingConnections.delete(conn)
 
-    return true
-  }
-
-  shouldUseNewConnection(existing: PeerConnection<Msg>, other: PeerConnection<Msg>): boolean {
-    if (existing.isClosed) return true
-    if (existing.type === 'utp' && other.type === 'tcp') return true
-
-    // We need to ensure that two peers don't close the other's incoming
-    // connection. Comparing the initiator's id ensures both peers keep
-    // the same connection.
-    return existing.initiatorId > other.initiatorId
-  }
-
-  close(): void {
-    if (this.connection) this.connection.close()
-  }
-}
-
-export class PeerConnection<Msg> {
-  isClient: boolean
-  selfId: PeerId
-  peerId: PeerId
-  type: SocketType
-
-  socket: Socket
-  protocol: HypercoreProtocol
-  networkMessages: MessageBus<InfoMsg>
-  messages: MessageBus<Msg>
-
-  discoveryIds: Set<DiscoveryId>
-  discoveryQ: Queue<DiscoveryId>
-
-  static async fromSocket<Msg>(
-    socket: Socket,
-    selfId: PeerId,
-    details: ConnectionDetails
-  ): Promise<PeerConnection<Msg>> {
-    details.reconnect(false)
-
-    const protocol = new HypercoreProtocol(details.client, {
-      encrypt: true,
-      timeout: 10000,
-    })
-
-    socket.pipe(protocol).pipe(socket)
-
-    const networkBus = new MessageBus<InfoMsg>(protocol, NETWORK_MESSAGE_BUS_KEY)
-
-    networkBus.send({
-      type: 'Info',
-      peerId: selfId,
-    })
-
-    const info = await networkBus.receiveQ.first()
-
-    if (info.type !== 'Info') throw new Error('First message must be InfoMsg.')
-
-    const { peerId } = info
-
-    const conn = new PeerConnection<Msg>(socket, networkBus, {
-      type: details.type,
-      peerId,
-      selfId,
-      isClient: details.client,
-    })
-
-    if (details.peer && details.peer.topic) {
-      conn.addDiscoveryId(encodeDiscoveryId(details.peer.topic))
+    for (const pendingConn of this.pendingConnections) {
+      pendingConn.close()
     }
 
-    return conn
-  }
+    this.pendingConnections.clear()
 
-  constructor(socket: Socket, networkMessages: MessageBus<InfoMsg>, info: SocketInfo) {
-    this.selfId = info.selfId
-    this.peerId = info.peerId
-    this.type = info.type
-    this.isClient = info.isClient
-    this.protocol = networkMessages.protocol
-    this.networkMessages = networkMessages // For messages internal to Network
-    this.messages = new MessageBus<Msg>(this.protocol, GENERIC_MESSAGE_BUS_KEY)
-    this.socket = socket
-    this.discoveryIds = new Set()
-    this.discoveryQ = new Queue('PeerConnection:discoveryQ')
-
-    this.protocol.on('discovery-key', (dk: Buffer) => {
-      const discoveryId = encodeDiscoveryId(dk)
-      if (discoveryId === this.messages.discoveryId) return
-      this.addDiscoveryId(discoveryId)
-    })
-  }
-
-  get isOpen() {
-    return !this.isClosed
-  }
-
-  get isClosed() {
-    return this.socket.destroyed
-  }
-
-  get initiatorId(): PeerId {
-    return this.isClient ? this.peerId : this.selfId
-  }
-
-  addDiscoveryIds(ids: Iterable<DiscoveryId>): void {
-    for (const id of ids) {
-      this.addDiscoveryId(id)
-    }
-  }
-
-  addDiscoveryId(discoveryId: DiscoveryId): void {
-    if (this.discoveryIds.has(discoveryId)) return
-
-    this.discoveryIds.add(discoveryId)
-    this.discoveryQ.push(discoveryId)
+    this.connectionQ.push(conn)
   }
 
   close(): void {
-    this.protocol.finalize()
-    // this.socket.destroy()
-  }
-}
-
-export const NETWORK_MESSAGE_BUS_KEY = Buffer.alloc(32, 1)
-export const GENERIC_MESSAGE_BUS_KEY = Buffer.alloc(32, 2)
-
-export class MessageBus<Msg> {
-  key: Buffer
-  discoveryId: DiscoveryId
-  protocol: HypercoreProtocol
-  channel: any // HypercoreProtocol.Channel
-  sendQ: Queue<Msg>
-  receiveQ: Queue<Msg>
-
-  constructor(protocol: HypercoreProtocol, key: Buffer) {
-    this.key = key
-    this.discoveryId = encodeDiscoveryId(discoveryKey(key))
-    this.sendQ = new Queue('MessageBus:sendQ')
-    this.receiveQ = new Queue('MessageBus:receiveQ')
-    this.protocol = protocol
-    this.channel = protocol.open(this.key, {
-      onextension: (_ext: 0, data: Buffer) => {
-        this.receiveQ.push(JsonBuffer.parse(data))
-      },
-    })
-
-    this.channel.options({
-      extensions: ['hypermerge-message-bus'],
-      ack: false,
-    })
-
-    this.sendQ.subscribe((msg) => {
-      this.channel.extension(0, JsonBuffer.bufferify(msg))
-    })
-  }
-
-  send(msg: Msg): void {
-    this.sendQ.push(msg)
-  }
-
-  subscribe(onMsg: (msg: Msg) => void): void {
-    this.receiveQ.subscribe(onMsg)
-  }
-
-  unsubscribe(): void {
-    this.receiveQ.unsubscribe()
-  }
-
-  close(): void {
-    this.protocol.close(this.key)
-    this.receiveQ.unsubscribe()
-    this.sendQ.unsubscribe()
+    this.connection && this.connection.close()
   }
 }
 

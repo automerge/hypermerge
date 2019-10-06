@@ -13,7 +13,7 @@ export function testRepo() {
   return new Repo({ memory: true })
 }
 
-export function testSwarm(_repo: Repo) {
+export function testSwarm() {
   return Hyperswarm()
 }
 
