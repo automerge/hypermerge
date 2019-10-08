@@ -165,7 +165,7 @@ test('Changing a document updates the clock store', async (t) => {
   // Clock passed to `watch` matches expected clock.
   repo.watch<any>(
     url,
-    expect<Clock>(t, arg2, [
+    expect(t, arg2, [
       [{}, 'empty state'],
       [expectedClock, 'change preview'],
       [expectedClock, 'change final'],

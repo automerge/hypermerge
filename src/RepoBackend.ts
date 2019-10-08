@@ -493,10 +493,6 @@ export class RepoBackend {
     this.network.setSwarm(swarm, joinOptions)
   }
 
-  // stream = (opts: any): any => {
-  //   return this.network.onConnection(opts)
-  // }
-
   subscribe = (subscriber: (message: ToFrontendRepoMsg) => void) => {
     this.toFrontend.subscribe(subscriber)
   }
@@ -600,5 +596,5 @@ function ensureDirectoryExists(path: string) {
 }
 
 function toPeerId(repoId: RepoId): PeerId {
-  return (repoId as string) as PeerId
+  return repoId as PeerId
 }
