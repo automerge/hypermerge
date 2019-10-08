@@ -40,13 +40,17 @@ export function expectDocs(t: test.Test, docs: DocInfo[]) {
   }
 }
 
-export function expect<T>(t: test.Test, getValue: Function, expected: Expected<T>[]) {
+export function expect<T, Args extends any[]>(
+  t: test.Test,
+  getValue: (...args: Args) => T,
+  expected: Expected<T>[]
+) {
   let i = 0
 
   // add to the current planned test length:
   t.plan(((<any>t)._plan || 0) + expected.length)
 
-  return (...args: any) => {
+  return (...args: Args) => {
     const currentExpected = expected[i++]
     if (currentExpected === undefined) {
       t.fail(`Invoked more times than expected. Invoked with: ${JSON.stringify(args)}`)
