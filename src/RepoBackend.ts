@@ -26,7 +26,7 @@ import * as Keys from './Keys'
 import FeedStore from './FeedStore'
 import FileStore from './FileStore'
 import FileServer from './FileServer'
-import Network, { DiscoveryRequest } from './Network'
+import Network from './Network'
 import NetworkPeer, { PeerId } from './NetworkPeer'
 import { Swarm, JoinOptions } from './SwarmInterface'
 import { PeerMsg } from './PeerMsg'
@@ -36,7 +36,7 @@ import MessageCenter, { Routed } from './MessageCenter'
 import ram from 'random-access-memory'
 import raf from 'random-access-file'
 import KeyStore from './KeyStore'
-import ReplicationManager from './ReplicationManager'
+import ReplicationManager, { Discovery } from './ReplicationManager'
 
 Debug.formatters.b = Base58.encode
 
@@ -105,11 +105,15 @@ export class RepoBackend {
     this.network = new Network(toPeerId(this.id))
     this.messages = new MessageCenter('HypermergeMessages')
 
+    this.clocks.getAllRepoIds().forEach((repoId) => {
+      // TODO(jeff): This won't join on repoIds added later
+      this.network.join(toDiscoveryId(repoId))
+    })
     this.messages.inboxQ.subscribe(this.onMessage)
-    this.network.discoveryQ.subscribe(this.onDiscovery)
+    this.replication.discoveryQ.subscribe(this.onDiscovery)
     this.network.peerQ.subscribe(this.onPeer)
     this.feeds.feedIdQ.subscribe((feedId) => {
-      this.network.join(toDiscoveryId(feedId))
+      this.replication.addFeedIds([feedId])
     })
   }
 
@@ -352,10 +356,7 @@ export class RepoBackend {
     this.replication.onPeer(peer)
   }
 
-  onDiscovery = ({ discoveryId, connection, peer }: DiscoveryRequest) => {
-    const feedId = this.replication.getFeedId(discoveryId)
-    if (!feedId) return
-
+  onDiscovery = ({ feedId, peer }: Discovery) => {
     const actorId = feedId as ActorId
 
     const blocks = this.meta.forActor(actorId)
@@ -411,21 +412,18 @@ export class RepoBackend {
         // Record whether or not this actor is writable.
         this.meta.setWritable(actor.id, msg.writable)
 
-        // TODO(jeff): This needs to be added back
-        // // Broadcast latest document information to peers.
-        // const blocks = this.meta.forActor(actor.id)
-        // const docs = this.meta.docsWith(actor.id)
-        // const clocks = this.clocks.getMultiple(this.id, docs)
+        // Broadcast latest document information to peers.
+        const blocks = this.meta.forActor(actor.id)
+        const docs = this.meta.docsWith(actor.id)
+        const clocks = this.clocks.getMultiple(this.id, docs)
+        const discoveryIds = this.meta.docsWith(actor.id).map(toDiscoveryId)
+        const peers = this.replication.getPeersWith(discoveryIds)
 
-        // this.meta.docsWith(actor.id).forEach((documentId) => {
-        //   this.messages.sendToDiscoveryId(toDiscoveryId(documentId), {
-        //     type: 'RemoteMetadata',
-        //     blocks,
-        //     clocks,
-        //   })
-        // })
-
-        this.join(actor.id)
+        this.messages.sendToPeers(peers, {
+          type: 'RemoteMetadata',
+          blocks,
+          clocks,
+        })
 
         break
       }
@@ -460,7 +458,7 @@ export class RepoBackend {
       store: this.feeds,
     })
     this.actors.set(actor.id, actor)
-    this.replication.addFeedId(actor.id)
+    this.replication.addFeedIds([actor.id])
     return actor
   }
 
@@ -566,14 +564,14 @@ export class RepoBackend {
         break
       }
       case 'DocumentMessage': {
-        // TODO(jeff): need to find a technique for this
         // Note: 'id' is the document id of the document to send the message to.
-        // const { id, contents } = msg
-        // this.network.sendToDiscoveryId(toDiscoveryId(id), {
-        //   type: 'DocumentMessage',
-        //   id,
-        //   contents,
-        // })
+        const { id, contents } = msg
+        const peers = this.replication.getPeersWith([toDiscoveryId(id)])
+        this.messages.sendToPeers(peers, {
+          type: 'DocumentMessage',
+          id,
+          contents,
+        })
 
         break
       }

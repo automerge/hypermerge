@@ -25,6 +25,12 @@ export default class MessageCenter<Msg> {
     this.getChannel(peer)
   }
 
+  sendToPeers(peers: Iterable<NetworkPeer>, msg: Msg): void {
+    for (const peer of peers) {
+      this.sendToPeer(peer, msg)
+    }
+  }
+
   sendToPeer(peer: NetworkPeer, msg: Msg): void {
     const channel = this.getChannel(peer)
     channel.send(msg)

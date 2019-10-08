@@ -36,6 +36,21 @@ declare module 'hypercore-protocol' {
      * constructor.
      */
     timeout(): void
+
+    // Stream events
+    close(): void
+    error(err: Error): void
+
+    // Readable events
+    data(chunk: any): void
+    end(): void
+    readable(): void
+
+    // Writable events
+    drain(): void
+    finish(): void
+    pipe(src: Readable): void
+    unpipe(src: Readable): void
   }
 
   /**

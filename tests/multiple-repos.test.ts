@@ -1,5 +1,6 @@
 import test from 'tape'
 import { expectDocs, testRepo, testSwarm } from './misc'
+import { toDiscoveryId } from '../src/Misc'
 
 test('Share a doc between two repos', (t) => {
   t.plan(0)
@@ -9,6 +10,8 @@ test('Share a doc between two repos', (t) => {
 
   repoA.setSwarm(testSwarm())
   repoB.setSwarm(testSwarm())
+
+  // repoA.back.network.join(toDiscoveryId(repoB.id))
 
   const id = repoA.create({ a: 1 })
 

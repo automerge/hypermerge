@@ -25,6 +25,7 @@ export default class ClockStore {
   private preparedGet: Statement<[RepoId, DocId]>
   private preparedInsert: Statement<[RepoId, DocId, ActorId, number]>
   private preparedDelete: Statement<[RepoId, DocId]>
+  private preparedAllRepoIds: Statement<[]>
   private preparedAllDocumentIds: Statement<[RepoId]>
 
   constructor(db: Database) {
@@ -38,6 +39,7 @@ export default class ClockStore {
        DO UPDATE SET seq=excluded.seq WHERE excluded.seq > seq`
     )
     this.preparedDelete = this.db.prepare('DELETE FROM Clocks WHERE repoId=? AND documentId=?')
+    this.preparedAllRepoIds = this.db.prepare('SELECT DISTINCT repoId from Clocks')
     this.preparedAllDocumentIds = this.db.prepare(
       'SELECT DISTINCT documentId from Clocks WHERE repoId=?'
     )
@@ -95,6 +97,10 @@ export default class ClockStore {
 
   getAllDocumentIds(repoId: RepoId): DocId[] {
     return this.preparedAllDocumentIds.all(repoId)
+  }
+
+  getAllRepoIds(): RepoId[] {
+    return this.preparedAllRepoIds.all()
   }
 }
 

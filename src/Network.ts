@@ -1,18 +1,12 @@
 import * as Base58 from 'bs58'
-import { DiscoveryId, getOrCreate, encodeDiscoveryId } from './Misc'
+import { DiscoveryId, getOrCreate } from './Misc'
 import Peer, { PeerId } from './NetworkPeer'
-import { Swarm, JoinOptions, Socket, ConnectionDetails, PeerInfo } from './SwarmInterface'
+import { Swarm, JoinOptions, Socket, ConnectionDetails } from './SwarmInterface'
 import MapSet from './MapSet'
 import Queue from './Queue'
 import PeerConnection from './PeerConnection'
 
 export type Host = string & { host: true }
-
-export interface DiscoveryRequest {
-  discoveryId: DiscoveryId
-  connection: PeerConnection
-  peer: Peer
-}
 
 export default class Network {
   selfId: PeerId
@@ -21,7 +15,6 @@ export default class Network {
   peers: Map<PeerId, Peer>
   peerDiscoveryIds: MapSet<DiscoveryId, PeerId>
   hosts: MapSet<Host, DiscoveryId>
-  discoveryQ: Queue<DiscoveryRequest>
   peerQ: Queue<Peer>
   swarm?: Swarm
   joinOptions?: JoinOptions
@@ -32,7 +25,6 @@ export default class Network {
     this.pending = new Set()
     this.peers = new Map()
     this.peerQ = new Queue('Network:peerQ')
-    this.discoveryQ = new Queue('Network:discoveryQ')
     this.peerDiscoveryIds = new MapSet()
     this.hosts = new MapSet()
     this.joinOptions = { announce: true, lookup: true }
