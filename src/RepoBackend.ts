@@ -20,7 +20,6 @@ import {
   rootActorId,
   encodeActorId,
   toDiscoveryId,
-  encodeDiscoveryId,
 } from './Misc'
 import Debug from 'debug'
 import * as Keys from './Keys'
@@ -28,15 +27,16 @@ import FeedStore from './FeedStore'
 import FileStore from './FileStore'
 import FileServer from './FileServer'
 import Network, { DiscoveryRequest } from './Network'
-import NetworkPeer, { encodePeerId, PeerId } from './NetworkPeer'
+import NetworkPeer, { PeerId } from './NetworkPeer'
 import { Swarm, JoinOptions } from './SwarmInterface'
 import { PeerMsg } from './PeerMsg'
 import ClockStore from './ClockStore'
 import * as SqlDatabase from './SqlDatabase'
-import MessageCenter from './MessageCenter'
+import MessageCenter, { Routed } from './MessageCenter'
 import ram from 'random-access-memory'
 import raf from 'random-access-file'
 import KeyStore from './KeyStore'
+import ReplicationManager from './ReplicationManager'
 
 Debug.formatters.b = Base58.encode
 
@@ -68,6 +68,7 @@ export class RepoBackend {
   id: RepoId
   network: Network
   messages: MessageCenter<PeerMsg>
+  replication: ReplicationManager
   swarmKey: Buffer // TODO: Remove this once we no longer use discovery-swarm/discovery-cloud
   private db: SqlDatabase.Database
   private fileServer: FileServer
@@ -99,12 +100,12 @@ export class RepoBackend {
     })
     this.fileServer = new FileServer(this.files)
 
+    this.replication = new ReplicationManager(this.feeds)
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
     this.network = new Network(toPeerId(this.id))
-    this.messages = new MessageCenter('HypermergeMessages', this.network)
+    this.messages = new MessageCenter('HypermergeMessages')
 
     this.messages.inboxQ.subscribe(this.onMessage)
-
     this.network.discoveryQ.subscribe(this.onDiscovery)
     this.network.peerQ.subscribe(this.onPeer)
     this.feeds.feedIdQ.subscribe((feedId) => {
@@ -205,7 +206,12 @@ export class RepoBackend {
     this.actors.clear()
     this.db.close()
 
-    return Promise.all([this.network.close(), this.fileServer.close()])
+    return Promise.all([
+      this.feeds.close(),
+      this.replication.close(),
+      this.network.close(),
+      this.fileServer.close(),
+    ])
   }
 
   private async allReadyActors(docId: DocId): Promise<Actor[]> {
@@ -234,7 +240,6 @@ export class RepoBackend {
   }
 
   join = (actorId: ActorId) => {
-    this.feeds.addFeedId(actorId)
     this.network.join(toDiscoveryId(actorId))
   }
 
@@ -344,11 +349,11 @@ export class RepoBackend {
   }
 
   onPeer = (peer: NetworkPeer): void => {
-    this.feeds.onPeer(peer)
+    this.replication.onPeer(peer)
   }
 
   onDiscovery = ({ discoveryId, connection, peer }: DiscoveryRequest) => {
-    const feedId = this.feeds.getFeedId(discoveryId)
+    const feedId = this.replication.getFeedId(discoveryId)
     if (!feedId) return
 
     const actorId = feedId as ActorId
@@ -358,14 +363,14 @@ export class RepoBackend {
     const docs = this.meta.docsWith(actorId)
     const clocks = this.clocks.getMultiple(this.id, docs)
 
-    this.messages.sendToPeer(peer.id, {
+    this.messages.sendToPeer(peer, {
       type: 'RemoteMetadata',
       clocks,
       blocks,
     })
   }
 
-  private onMessage = (msg: PeerMsg) => {
+  private onMessage = ({ msg }: Routed<PeerMsg>) => {
     switch (msg.type) {
       case 'RemoteMetadata': {
         const { blocks, clocks } = sanitizeRemoteMetadata(msg)
@@ -386,6 +391,7 @@ export class RepoBackend {
         })
         break
       }
+
       case 'DocumentMessage': {
         const { contents, id } = msg as DocumentMsg
         this.toFrontend.push({
@@ -454,7 +460,7 @@ export class RepoBackend {
       store: this.feeds,
     })
     this.actors.set(actor.id, actor)
-    this.feeds.addFeedId(actor.id)
+    this.replication.addFeedId(actor.id)
     return actor
   }
 

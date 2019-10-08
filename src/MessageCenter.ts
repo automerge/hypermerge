@@ -1,37 +1,46 @@
-import Network from './Network'
 import PeerConnection from './PeerConnection'
 import MessageChannel from './MessageChannel'
-import { PeerId } from './NetworkPeer'
+import NetworkPeer from './NetworkPeer'
 import Queue from './Queue'
 import { getOrCreate } from './Misc'
 
+export interface Routed<Msg> {
+  sender: NetworkPeer
+  channelName: string
+  msg: Msg
+}
+
 export default class MessageCenter<Msg> {
   channelName: string
-  network: Network
   channels: WeakMap<PeerConnection, MessageChannel<Msg>>
-  inboxQ: Queue<Msg>
+  inboxQ: Queue<Routed<Msg>>
 
-  constructor(channelName: string, network: Network) {
+  constructor(channelName: string) {
     this.channelName = channelName
-    this.network = network
     this.channels = new WeakMap()
     this.inboxQ = new Queue('MessageCenter:inboxQ')
   }
 
-  sendToPeer(peerId: PeerId, msg: Msg): void {
-    const channel = this.getChannel(peerId)
+  listenTo(peer: NetworkPeer): void {
+    this.getChannel(peer)
+  }
+
+  sendToPeer(peer: NetworkPeer, msg: Msg): void {
+    const channel = this.getChannel(peer)
     channel.send(msg)
   }
 
-  getChannel(peerId: PeerId): MessageChannel<Msg> {
-    const peer = this.network.peers.get(peerId)
-    if (!peer) throw new Error(`Missing peer: ${peerId}`)
-
+  getChannel(peer: NetworkPeer): MessageChannel<Msg> {
     return getOrCreate(this.channels, peer.connection, (conn) => {
-      const stream = conn.openChannel(this.channelName)
+      const channel = new MessageChannel<Msg>(conn.openChannel(this.channelName))
 
-      const channel = new MessageChannel<Msg>(stream)
-      channel.receiveQ.subscribe(this.inboxQ.push)
+      channel.receiveQ.subscribe((msg) => {
+        this.inboxQ.push({
+          sender: peer,
+          channelName: this.channelName,
+          msg,
+        })
+      })
       return channel
     })
   }

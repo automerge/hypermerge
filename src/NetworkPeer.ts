@@ -1,9 +1,9 @@
-import { DiscoveryId, encodeDiscoveryId } from './Misc'
+import { RepoId, encodeRepoId } from './Misc'
 import * as Base58 from 'bs58'
 import PeerConnection from './PeerConnection'
 import Queue from './Queue'
 
-export type PeerId = DiscoveryId & { peerId: true }
+export type PeerId = RepoId & { peerId: true }
 
 export default class NetworkPeer {
   selfId: PeerId
@@ -91,7 +91,7 @@ export function isPeerId(str: string): str is PeerId {
 }
 
 export function encodePeerId(buffer: Buffer): PeerId {
-  return encodeDiscoveryId(buffer) as PeerId
+  return encodeRepoId(buffer) as PeerId
 }
 
 export function decodePeerId(id: PeerId): Buffer {

@@ -10,8 +10,6 @@ test('Share a doc between two repos', (t) => {
   repoA.setSwarm(testSwarm())
   repoB.setSwarm(testSwarm())
 
-  // connect the repos
-
   const id = repoA.create({ a: 1 })
 
   repoB.change<any>(id, (doc: any) => {

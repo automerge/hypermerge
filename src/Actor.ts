@@ -87,7 +87,7 @@ export class Actor {
   }
 
   close() {
-    return this.store.close(this.id)
+    return this.store.closeFeed(this.id)
   }
 
   async destroy() {

@@ -1,10 +1,7 @@
 import test from 'tape'
-import { testSwarm } from './misc'
-import Network from '../src/Network'
-import * as Keys from '../src/Keys'
+import { testSwarm, testDiscoveryId, testNetwork } from './misc'
 import { PeerId } from '../src/NetworkPeer'
 import MessageChannel from '../src/MessageChannel'
-import { DiscoveryId } from '../src/Misc'
 
 interface TestMsg {
   senderId: PeerId
@@ -45,12 +42,3 @@ test('Network', (t) => {
     netB.close()
   })
 })
-
-function testDiscoveryId(): DiscoveryId {
-  return Keys.create().publicKey as DiscoveryId
-}
-
-function testNetwork(): Network {
-  const selfId = Keys.create().publicKey as PeerId
-  return new Network(selfId)
-}

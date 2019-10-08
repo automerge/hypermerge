@@ -42,6 +42,10 @@ export function toHyperfileUrl(hyperfileId: HyperfileId): HyperfileUrl {
   return `hyperfile:/${hyperfileId}` as HyperfileUrl
 }
 
+export function decodeId(id: BaseId): Buffer {
+  return Base58.decode(id)
+}
+
 export function toDiscoveryId(id: BaseId): DiscoveryId {
   return Base58.encode(toDiscoveryKey(id)) as DiscoveryId
 }
