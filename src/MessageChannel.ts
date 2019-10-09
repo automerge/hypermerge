@@ -13,9 +13,10 @@ export default class MessageChannel<Msg> {
     this.sendQ = new Queue('MessageBus:sendQ')
     this.receiveQ = new Queue('MessageBus:receiveQ')
 
-    this.stream.on('data', this.onData)
-    this.stream.once('close', () => this.close())
-    this.stream.once('error', () => this.close())
+    this.stream
+      .on('data', this.onData)
+      .once('close', () => this.close())
+      .once('error', () => this.close())
 
     this.sendQ.subscribe((msg) => {
       this.stream.write(JsonBuffer.bufferify(msg))

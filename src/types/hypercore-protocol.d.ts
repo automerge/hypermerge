@@ -21,6 +21,8 @@ declare module 'hypercore-protocol' {
 
     /** use this keypair for the stream authentication */
     keyPair?: { publicKey: Buffer; secretKey: Buffer }
+
+    live?: boolean
   }
 
   interface ProtocolEvents {

@@ -1,5 +1,5 @@
 declare module 'multiplex' {
-  import { Duplex } from 'stream'
+  import { Duplex, Readable, Writable } from 'stream'
 
   const multiplex: Multiplex
   export default multiplex
@@ -30,7 +30,7 @@ declare module 'multiplex' {
      * Create a shared stream. If both ends create a shared stream with the same
      * id, writing data on one end will emit the same data on the other end.
      */
-    createSharedStream(id?: string, options?: StreamOptions): SubStream
+    createSharedStream(id?: string, options?: StreamOptions): SharedSubStream
 
     /**
      * Creates a new sub-stream with an optional whole string id (default is the stream channel id).
@@ -46,4 +46,9 @@ declare module 'multiplex' {
   }
 
   export interface SubStream extends Duplex {}
+
+  export interface SharedSubStream extends Duplex {
+    setReadable(readable: Readable): void
+    setWritable(writable: Writable): void
+  }
 }

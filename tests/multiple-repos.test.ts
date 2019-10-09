@@ -108,7 +108,6 @@ test('Message about a doc between two repos', (t) => {
 
   const handle = repoB.open(id)
   handle.subscribeMessage((message) => {
-    console.log('received message', message)
     t.deepEqual(message, expectedMessage)
   })
   setTimeout(() => repoA.message(id, expectedMessage), 1000)

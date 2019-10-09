@@ -84,7 +84,6 @@ export default class ReplicationManager {
     // NOTE(jeff): In the future, we should send a smaller/smarter set.
     const discoveryIds = Array.from(this.discoveryIds.keys())
 
-    console.log('sending', discoveryIds)
     this.messages.sendToPeer(peer, {
       type: 'DiscoveryIds',
       discoveryIds,
@@ -94,18 +93,19 @@ export default class ReplicationManager {
   private replicateWith(peer: NetworkPeer, discoveryIds: DiscoveryId[]): void {
     const protocol = this.getOrCreateProtocol(peer)
     for (const discoveryId of discoveryIds) {
-      // HACK(jeff): The peer has not yet been verified to have this key. They've
-      // only _told_ us that they have it:
-      this.peersByDiscoveryId.add(discoveryId, peer)
-
       const feedId = this.getFeedId(discoveryId)
-      console.log('checking for feedId', discoveryId, feedId)
+
       if (feedId) {
+        // HACK(jeff): The peer has not yet been verified to have this key. They've
+        // only _told_ us that they have it:
+        this.peersByDiscoveryId.add(discoveryId, peer)
         this.discoveryQ.push({ feedId, discoveryId, peer })
+
         this.feeds.getFeed(feedId).then((feed) => {
-          console.log('replicating', feedId)
           feed.replicate(protocol, { live: true })
         })
+      } else {
+        console.log('Missing feed id required for replication', { discoveryId })
       }
     }
   }
@@ -113,12 +113,9 @@ export default class ReplicationManager {
   private onMessage = ({ msg, sender }: Routed<ReplicationMsg>) => {
     switch (msg.type) {
       case 'DiscoveryIds': {
-        const sharedDiscoveryIds = msg.discoveryIds.filter((discoveryId) => {
-          this.peersByDiscoveryId.add(discoveryId, sender)
-          return this.discoveryIds.has(discoveryId)
-        })
-        console.log('got discoveryIds', msg.discoveryIds)
-        console.log({ sharedDiscoveryIds })
+        const sharedDiscoveryIds = msg.discoveryIds.filter((discoveryId) =>
+          this.discoveryIds.has(discoveryId)
+        )
 
         this.replicateWith(sender, sharedDiscoveryIds)
         break
@@ -131,25 +128,22 @@ export default class ReplicationManager {
       const stream = conn.openChannel('FeedReplication')
       const protocol = new HypercoreProtocol(conn.isClient, {
         encrypt: false,
-        onhandshake() {},
+        live: true,
       })
 
-      protocol.once('close', () => this.protocols.delete(conn))
-
-      protocol.on('discovery-key', (discoveryKey) => {
-        const discoveryId = encodeDiscoveryId(discoveryKey)
-
-        // Hypercore verifies that the remote has the feed automatically
-        this.replicateWith(peer, [discoveryId])
-      })
+      protocol
+        .once('close', () => {
+          this.protocols.delete(conn)
+        })
+        .on('discovery-key', (discoveryKey) => {
+          const discoveryId = encodeDiscoveryId(discoveryKey)
+          // Hypercore verifies that the remote has the feed automatically
+          this.replicateWith(peer, [discoveryId])
+        })
 
       pump(stream, protocol, stream)
 
       return protocol
     })
   }
-}
-
-function isNil(x: any): x is undefined | null {
-  return x == null
 }
