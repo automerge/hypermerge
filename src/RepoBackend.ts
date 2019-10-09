@@ -353,6 +353,7 @@ export class RepoBackend {
   }
 
   onPeer = (peer: NetworkPeer): void => {
+    this.messages.listenTo(peer)
     this.replication.onPeer(peer)
   }
 
@@ -383,9 +384,8 @@ export class RepoBackend {
             doc.updateMinimumClock(clock)
           }
         }
-        const _blocks = blocks
-        this.meta.addBlocks(_blocks)
-        _blocks.map((block) => {
+        this.meta.addBlocks(blocks)
+        blocks.map((block) => {
           if ('actors' in block && block.actors) this.syncReadyActors(block.actors)
           if ('merge' in block && block.merge) this.syncReadyActors(clockActorIds(block.merge))
           // if (block.follows) block.follows.forEach(id => this.open(id))
@@ -424,6 +424,8 @@ export class RepoBackend {
           blocks,
           clocks,
         })
+
+        this.join(actor.id)
 
         break
       }

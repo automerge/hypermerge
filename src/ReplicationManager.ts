@@ -53,10 +53,12 @@ export default class ReplicationManager {
       }
     }
 
-    this.messages.sendToPeers(this.peers, {
-      type: 'DiscoveryIds',
-      discoveryIds,
-    })
+    if (discoveryIds.length > 0) {
+      this.messages.sendToPeers(this.peers, {
+        type: 'DiscoveryIds',
+        discoveryIds,
+      })
+    }
   }
 
   getFeedId(discoveryId: DiscoveryId): FeedId | undefined {
@@ -79,15 +81,14 @@ export default class ReplicationManager {
     this.messages.listenTo(peer)
     this.getOrCreateProtocol(peer)
 
-    if (peer.weHaveAuthority) {
-      // NOTE(jeff): In the future, we should send a smaller/smarter set.
-      const discoveryIds = Array.from(this.discoveryIds.keys())
+    // NOTE(jeff): In the future, we should send a smaller/smarter set.
+    const discoveryIds = Array.from(this.discoveryIds.keys())
 
-      this.messages.sendToPeer(peer, {
-        type: 'DiscoveryIds',
-        discoveryIds,
-      })
-    }
+    console.log('sending', discoveryIds)
+    this.messages.sendToPeer(peer, {
+      type: 'DiscoveryIds',
+      discoveryIds,
+    })
   }
 
   private replicateWith(peer: NetworkPeer, discoveryIds: DiscoveryId[]): void {
@@ -98,9 +99,11 @@ export default class ReplicationManager {
       this.peersByDiscoveryId.add(discoveryId, peer)
 
       const feedId = this.getFeedId(discoveryId)
+      console.log('checking for feedId', discoveryId, feedId)
       if (feedId) {
         this.discoveryQ.push({ feedId, discoveryId, peer })
         this.feeds.getFeed(feedId).then((feed) => {
+          console.log('replicating', feedId)
           feed.replicate(protocol, { live: true })
         })
       }
@@ -110,9 +113,12 @@ export default class ReplicationManager {
   private onMessage = ({ msg, sender }: Routed<ReplicationMsg>) => {
     switch (msg.type) {
       case 'DiscoveryIds': {
-        const sharedDiscoveryIds = msg.discoveryIds.filter((discoveryId) =>
-          this.discoveryIds.has(discoveryId)
-        )
+        const sharedDiscoveryIds = msg.discoveryIds.filter((discoveryId) => {
+          this.peersByDiscoveryId.add(discoveryId, sender)
+          return this.discoveryIds.has(discoveryId)
+        })
+        console.log('got discoveryIds', msg.discoveryIds)
+        console.log({ sharedDiscoveryIds })
 
         this.replicateWith(sender, sharedDiscoveryIds)
         break

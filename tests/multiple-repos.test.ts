@@ -1,17 +1,16 @@
 import test from 'tape'
 import { expectDocs, testRepo, testSwarm } from './misc'
-import { toDiscoveryId } from '../src/Misc'
 
 test('Share a doc between two repos', (t) => {
   t.plan(0)
 
   const repoA = testRepo()
   const repoB = testRepo()
+  ;(global as any).repoA = repoA
+  ;(global as any).repoB = repoB
 
   repoA.setSwarm(testSwarm())
   repoB.setSwarm(testSwarm())
-
-  // repoA.back.network.join(toDiscoveryId(repoB.id))
 
   const id = repoA.create({ a: 1 })
 
@@ -22,8 +21,8 @@ test('Share a doc between two repos', (t) => {
   repoA.watch<any>(
     id,
     expectDocs(t, [
-      [{ a: 1 }, 'repoA should have create(doc)'],
-      [{ a: 1, b: 2 }, "repoA should have repoB's change"],
+      [{ a: 1 }, 'repoA has the initial doc'],
+      [{ a: 1, b: 2 }, 'repoA gets change from repoB'],
     ])
   )
 
