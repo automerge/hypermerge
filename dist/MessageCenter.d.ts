@@ -1,14 +1,19 @@
-import Network from './Network';
 import PeerConnection from './PeerConnection';
 import MessageChannel from './MessageChannel';
-import { PeerId } from './NetworkPeer';
+import NetworkPeer from './NetworkPeer';
 import Queue from './Queue';
+export interface Routed<Msg> {
+    sender: NetworkPeer;
+    channelName: string;
+    msg: Msg;
+}
 export default class MessageCenter<Msg> {
     channelName: string;
-    network: Network;
     channels: WeakMap<PeerConnection, MessageChannel<Msg>>;
-    inboxQ: Queue<Msg>;
-    constructor(channelName: string, network: Network);
-    sendToPeer(peerId: PeerId, msg: Msg): void;
-    getChannel(peerId: PeerId): MessageChannel<Msg>;
+    inboxQ: Queue<Routed<Msg>>;
+    constructor(channelName: string);
+    listenTo(peer: NetworkPeer): void;
+    sendToPeers(peers: Iterable<NetworkPeer>, msg: Msg): void;
+    sendToPeer(peer: NetworkPeer, msg: Msg): void;
+    getChannel(peer: NetworkPeer): MessageChannel<Msg>;
 }

@@ -94,7 +94,7 @@ class Actor {
         this.store.append(this.id, Block.pack(change));
     }
     close() {
-        return this.store.close(this.id);
+        return this.store.closeFeed(this.id);
     }
     destroy() {
         return __awaiter(this, void 0, void 0, function* () {

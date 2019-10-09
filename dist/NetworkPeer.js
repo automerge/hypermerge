@@ -80,7 +80,7 @@ function isPeerId(str) {
 }
 exports.isPeerId = isPeerId;
 function encodePeerId(buffer) {
-    return Misc_1.encodeDiscoveryId(buffer);
+    return Misc_1.encodeRepoId(buffer);
 }
 exports.encodePeerId = encodePeerId;
 function decodePeerId(id) {

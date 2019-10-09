@@ -15,58 +15,50 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const noise_peer_1 = __importDefault(require("noise-peer"));
 const multiplex_1 = __importDefault(require("multiplex"));
 const MessageChannel_1 = __importDefault(require("./MessageChannel"));
+const pump_1 = __importDefault(require("pump"));
 class PeerConnection {
     constructor(rawSocket, info) {
         this.isConfirmed = false;
         this.channels = new Map();
+        this.pendingChannels = new Map();
         this.type = info.type;
         this.isClient = info.isClient;
         this.rawSocket = rawSocket;
         this.secureStream = noise_peer_1.default(rawSocket, this.isClient);
         this.multiplex = multiplex_1.default();
-        this.multiplex.on('stream', (_stream, id) => {
-            console.log('new stream', id);
+        this.multiplex.on('stream', (stream, name) => {
+            this.pendingChannels.set(name, stream);
         });
-        // this.rawSocket.once('close', () => this.close())
-        // this.multiplex.once('close', () => this.close())
-        // this.secureStream.once('close', () => this.close())
-        this.secureStream.pipe(this.multiplex).pipe(this.secureStream);
+        pump_1.default(this.secureStream, this.multiplex, this.secureStream);
         this.networkChannel = new MessageChannel_1.default(this.openChannel('NetworkMsg'));
     }
     get isOpen() {
-        return !this.isClosed;
+        return this.rawSocket.writable;
     }
     get isClosed() {
-        return this.rawSocket.destroyed;
+        return !this.isOpen;
     }
     openChannel(name) {
         if (this.isClosed)
             throw new Error('Connection is closed');
         if (this.channels.has(name))
             throw new Error(`Channel already exists on this connection: ${name}`);
-        // NOTE(jeff): Seems to me that this should be createSharedStream(), but it doesn't always work.
-        const channel = this.isClient
-            ? this.multiplex.receiveStream(name)
-            : this.multiplex.createStream(name);
+        const channel = this.multiplex.createSharedStream(name);
+        const pending = this.pendingChannels.get(name);
+        if (pending) {
+            this.pendingChannels.delete(name);
+            // NOTE(jeff): So... this is a hack. When multiplex receives a stream that
+            // we haven't opened, it's not writable. So, we use this hack to connect
+            // the pending stream to our newly created channel.
+            channel.setReadable(pending);
+        }
         this.channels.set(name, channel);
         channel.once('close', () => this.channels.delete(name));
         return channel;
     }
     close() {
         return __awaiter(this, void 0, void 0, function* () {
-            yield Promise.all([...this.channels.values()].map((channel) => new Promise((res) => {
-                channel.end(() => {
-                    res();
-                });
-            })));
-            return new Promise((res) => {
-                this.multiplex.end(() => {
-                    this.secureStream.end(() => {
-                        // this.rawSocket.destroy()
-                        res();
-                    });
-                });
-            });
+            this.rawSocket.destroy();
         });
     }
 }

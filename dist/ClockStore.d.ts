@@ -11,6 +11,8 @@ export default class ClockStore {
     private preparedGet;
     private preparedInsert;
     private preparedDelete;
+    private preparedAllRepoIds;
+    private preparedAllDocumentIds;
     constructor(db: Database);
     /**
      * TODO: handle missing clocks better. Currently returns an empty clock (i.e. an empty object)
@@ -31,4 +33,6 @@ export default class ClockStore {
      * and set explicitly the passed in clock.
      */
     set(repoId: RepoId, documentId: DocId, clock: Clock): ClockUpdate;
+    getAllDocumentIds(repoId: RepoId): DocId[];
+    getAllRepoIds(): RepoId[];
 }

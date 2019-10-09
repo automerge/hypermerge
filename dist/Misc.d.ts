@@ -35,6 +35,7 @@ export declare function encodeDiscoveryId(discoveryKey: Buffer): DiscoveryId;
 export declare function encodeHyperfileId(hyperfileKey: Buffer): HyperfileId;
 export declare function toDocUrl(docId: DocId): DocUrl;
 export declare function toHyperfileUrl(hyperfileId: HyperfileId): HyperfileUrl;
+export declare function decodeId(id: BaseId): Buffer;
 export declare function toDiscoveryId(id: BaseId): DiscoveryId;
 export declare function toDiscoveryKey(id: BaseId): Buffer;
 export declare function rootActorId(docId: DocId): ActorId;

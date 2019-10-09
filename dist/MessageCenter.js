@@ -7,24 +7,33 @@ const MessageChannel_1 = __importDefault(require("./MessageChannel"));
 const Queue_1 = __importDefault(require("./Queue"));
 const Misc_1 = require("./Misc");
 class MessageCenter {
-    constructor(channelName, network) {
+    constructor(channelName) {
         this.channelName = channelName;
-        this.network = network;
         this.channels = new WeakMap();
         this.inboxQ = new Queue_1.default('MessageCenter:inboxQ');
     }
-    sendToPeer(peerId, msg) {
-        const channel = this.getChannel(peerId);
+    listenTo(peer) {
+        this.getChannel(peer);
+    }
+    sendToPeers(peers, msg) {
+        for (const peer of peers) {
+            this.sendToPeer(peer, msg);
+        }
+    }
+    sendToPeer(peer, msg) {
+        const channel = this.getChannel(peer);
         channel.send(msg);
     }
-    getChannel(peerId) {
-        const peer = this.network.peers.get(peerId);
-        if (!peer)
-            throw new Error(`Missing peer: ${peerId}`);
+    getChannel(peer) {
         return Misc_1.getOrCreate(this.channels, peer.connection, (conn) => {
-            const stream = conn.openChannel(this.channelName);
-            const channel = new MessageChannel_1.default(stream);
-            channel.receiveQ.subscribe(this.inboxQ.push);
+            const channel = new MessageChannel_1.default(conn.openChannel(this.channelName));
+            channel.receiveQ.subscribe((msg) => {
+                this.inboxQ.push({
+                    sender: peer,
+                    channelName: this.channelName,
+                    msg,
+                });
+            });
             return channel;
         });
     }

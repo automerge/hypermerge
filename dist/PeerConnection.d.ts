@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { Socket } from 'net';
+import { Duplex } from 'stream';
 import { SubStream } from 'multiplex';
 import MessageChannel from './MessageChannel';
 import { NetworkMsg } from './NetworkMsg';
@@ -12,11 +12,12 @@ export default class PeerConnection {
     isClient: boolean;
     isConfirmed: boolean;
     type: SocketInfo['type'];
-    private channels;
+    pendingChannels: Map<string, SubStream>;
+    channels: Map<string, SubStream>;
     private rawSocket;
     private multiplex;
     private secureStream;
-    constructor(rawSocket: Socket, info: SocketInfo);
+    constructor(rawSocket: Duplex, info: SocketInfo);
     readonly isOpen: boolean;
     readonly isClosed: boolean;
     openChannel(name: string): SubStream;

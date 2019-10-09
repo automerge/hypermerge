@@ -1,8 +1,8 @@
 /// <reference types="node" />
-import { DiscoveryId } from './Misc';
+import { RepoId } from './Misc';
 import PeerConnection from './PeerConnection';
 import Queue from './Queue';
-export declare type PeerId = DiscoveryId & {
+export declare type PeerId = RepoId & {
     peerId: true;
 };
 export default class NetworkPeer {

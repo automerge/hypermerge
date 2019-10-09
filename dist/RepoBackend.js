@@ -42,6 +42,7 @@ const MessageCenter_1 = __importDefault(require("./MessageCenter"));
 const random_access_memory_1 = __importDefault(require("random-access-memory"));
 const random_access_file_1 = __importDefault(require("random-access-file"));
 const KeyStore_1 = __importDefault(require("./KeyStore"));
+const ReplicationManager_1 = __importDefault(require("./ReplicationManager"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default('repo:backend');
 class RepoBackend {
@@ -68,10 +69,14 @@ class RepoBackend {
             this.actors.forEach((actor) => actor.close());
             this.actors.clear();
             this.db.close();
-            return Promise.all([this.network.close(), this.fileServer.close()]);
+            return Promise.all([
+                this.feeds.close(),
+                this.replication.close(),
+                this.network.close(),
+                this.fileServer.close(),
+            ]);
         };
         this.join = (actorId) => {
-            this.feeds.addFeedId(actorId);
             this.network.join(Misc_1.toDiscoveryId(actorId));
         };
         this.leave = (actorId) => {
@@ -157,23 +162,21 @@ class RepoBackend {
             }
         };
         this.onPeer = (peer) => {
-            this.feeds.onPeer(peer);
+            this.messages.listenTo(peer);
+            this.replication.onPeer(peer);
         };
-        this.onDiscovery = ({ discoveryId, connection, peer }) => {
-            const feedId = this.feeds.getFeedId(discoveryId);
-            if (!feedId)
-                return;
+        this.onDiscovery = ({ feedId, peer }) => {
             const actorId = feedId;
             const blocks = this.meta.forActor(actorId);
             const docs = this.meta.docsWith(actorId);
             const clocks = this.clocks.getMultiple(this.id, docs);
-            this.messages.sendToPeer(peer.id, {
+            this.messages.sendToPeer(peer, {
                 type: 'RemoteMetadata',
                 clocks,
                 blocks,
             });
         };
-        this.onMessage = (msg) => {
+        this.onMessage = ({ msg }) => {
             switch (msg.type) {
                 case 'RemoteMetadata': {
                     const { blocks, clocks } = Metadata_1.sanitizeRemoteMetadata(msg);
@@ -184,9 +187,8 @@ class RepoBackend {
                             doc.updateMinimumClock(clock);
                         }
                     }
-                    const _blocks = blocks;
-                    this.meta.addBlocks(_blocks);
-                    _blocks.map((block) => {
+                    this.meta.addBlocks(blocks);
+                    blocks.map((block) => {
                         if ('actors' in block && block.actors)
                             this.syncReadyActors(block.actors);
                         if ('merge' in block && block.merge)
@@ -212,18 +214,17 @@ class RepoBackend {
                     const actor = msg.actor;
                     // Record whether or not this actor is writable.
                     this.meta.setWritable(actor.id, msg.writable);
-                    // TODO(jeff): This needs to be added back
-                    // // Broadcast latest document information to peers.
-                    // const blocks = this.meta.forActor(actor.id)
-                    // const docs = this.meta.docsWith(actor.id)
-                    // const clocks = this.clocks.getMultiple(this.id, docs)
-                    // this.meta.docsWith(actor.id).forEach((documentId) => {
-                    //   this.messages.sendToDiscoveryId(toDiscoveryId(documentId), {
-                    //     type: 'RemoteMetadata',
-                    //     blocks,
-                    //     clocks,
-                    //   })
-                    // })
+                    // Broadcast latest document information to peers.
+                    const blocks = this.meta.forActor(actor.id);
+                    const docs = this.meta.docsWith(actor.id);
+                    const clocks = this.clocks.getMultiple(this.id, docs);
+                    const discoveryIds = this.meta.docsWith(actor.id).map(Misc_1.toDiscoveryId);
+                    const peers = this.replication.getPeersWith(discoveryIds);
+                    this.messages.sendToPeers(peers, {
+                        type: 'RemoteMetadata',
+                        blocks,
+                        clocks,
+                    });
                     this.join(actor.id);
                     break;
                 }
@@ -279,9 +280,6 @@ class RepoBackend {
         this.setSwarm = (swarm, joinOptions) => {
             this.network.setSwarm(swarm, joinOptions);
         };
-        // stream = (opts: any): any => {
-        //   return this.network.onConnection(opts)
-        // }
         this.subscribe = (subscriber) => {
             this.toFrontend.subscribe(subscriber);
         };
@@ -347,14 +345,14 @@ class RepoBackend {
                     break;
                 }
                 case 'DocumentMessage': {
-                    // TODO(jeff): need to find a technique for this
                     // Note: 'id' is the document id of the document to send the message to.
-                    // const { id, contents } = msg
-                    // this.network.sendToDiscoveryId(toDiscoveryId(id), {
-                    //   type: 'DocumentMessage',
-                    //   id,
-                    //   contents,
-                    // })
+                    const { id, contents } = msg;
+                    const peers = this.replication.getPeersWith([Misc_1.toDiscoveryId(id)]);
+                    this.messages.sendToPeers(peers, {
+                        type: 'DocumentMessage',
+                        id,
+                        contents,
+                    });
                     break;
                 }
                 case 'DestroyMsg': {
@@ -392,14 +390,19 @@ class RepoBackend {
             this.meta.addFile(header.url, header.bytes, header.mimeType);
         });
         this.fileServer = new FileServer_1.default(this.files);
+        this.replication = new ReplicationManager_1.default(this.feeds);
         this.meta = new Metadata_1.Metadata(this.storageFn, this.join, this.leave);
         this.network = new Network_1.default(toPeerId(this.id));
-        this.messages = new MessageCenter_1.default('HypermergeMessages', this.network);
+        this.messages = new MessageCenter_1.default('HypermergeMessages');
+        this.clocks.getAllRepoIds().forEach((repoId) => {
+            // TODO(jeff): This won't join on repoIds added later
+            this.network.join(Misc_1.toDiscoveryId(repoId));
+        });
         this.messages.inboxQ.subscribe(this.onMessage);
-        this.network.discoveryQ.subscribe(this.onDiscovery);
+        this.replication.discoveryQ.subscribe(this.onDiscovery);
         this.network.peerQ.subscribe(this.onPeer);
         this.feeds.feedIdQ.subscribe((feedId) => {
-            this.network.join(Misc_1.toDiscoveryId(feedId));
+            this.replication.addFeedIds([feedId]);
         });
     }
     create(keys) {
@@ -515,7 +518,7 @@ class RepoBackend {
             store: this.feeds,
         });
         this.actors.set(actor.id, actor);
-        this.feeds.addFeedId(actor.id);
+        this.replication.addFeedIds([actor.id]);
         return actor;
     }
     actor(id) {

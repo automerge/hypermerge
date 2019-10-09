@@ -9,13 +9,14 @@ import * as DocBackend from './DocBackend';
 import { ActorId, DocId, RepoId } from './Misc';
 import FeedStore from './FeedStore';
 import FileStore from './FileStore';
-import Network, { DiscoveryRequest } from './Network';
+import Network from './Network';
 import NetworkPeer from './NetworkPeer';
 import { Swarm, JoinOptions } from './SwarmInterface';
 import { PeerMsg } from './PeerMsg';
 import ClockStore from './ClockStore';
 import MessageCenter from './MessageCenter';
 import KeyStore from './KeyStore';
+import ReplicationManager, { Discovery } from './ReplicationManager';
 export interface FeedData {
     actorId: ActorId;
     writable: Boolean;
@@ -40,6 +41,7 @@ export declare class RepoBackend {
     id: RepoId;
     network: Network;
     messages: MessageCenter<PeerMsg>;
+    replication: ReplicationManager;
     swarmKey: Buffer;
     private db;
     private fileServer;
@@ -50,7 +52,7 @@ export declare class RepoBackend {
     private destroy;
     private open;
     merge(id: DocId, clock: Clock): void;
-    close: () => Promise<[void, void]>;
+    close: () => Promise<[void, void, void, void]>;
     private allReadyActors;
     private loadDocument;
     join: (actorId: ActorId) => void;
@@ -63,7 +65,7 @@ export declare class RepoBackend {
     syncReadyActors: (ids: ActorId[]) => void;
     private documentNotify;
     onPeer: (peer: NetworkPeer) => void;
-    onDiscovery: ({ discoveryId, connection, peer }: DiscoveryRequest) => void;
+    onDiscovery: ({ feedId, peer }: Discovery) => void;
     private onMessage;
     private actorNotify;
     private initActor;

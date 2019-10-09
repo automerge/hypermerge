@@ -29,7 +29,7 @@ class Network {
     constructor(selfId) {
         this.onConnection = (socket, details) => __awaiter(this, void 0, void 0, function* () {
             details.reconnect(false);
-            console.log('onConnection', this.selfId, 'isClient:', details.client);
+            console.log('onConnection', details.type, this.selfId);
             const conn = new PeerConnection_1.default(socket, {
                 isClient: details.client,
                 type: details.type,
@@ -51,7 +51,6 @@ class Network {
         this.pending = new Set();
         this.peers = new Map();
         this.peerQ = new Queue_1.default('Network:peerQ');
-        this.discoveryQ = new Queue_1.default('Network:discoveryQ');
         this.peerDiscoveryIds = new MapSet_1.default();
         this.hosts = new MapSet_1.default();
         this.joinOptions = { announce: true, lookup: true };

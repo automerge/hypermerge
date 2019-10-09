@@ -17,7 +17,6 @@ const hypercore_1 = require("./hypercore");
 const Keys_1 = require("./Keys");
 const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
-const hypercore_protocol_1 = __importDefault(require("hypercore-protocol"));
 /**
  * Note:
  * FeedId should really be the discovery key. The public key should be
@@ -28,36 +27,9 @@ const hypercore_protocol_1 = __importDefault(require("hypercore-protocol"));
  * track of which hypercores have already been opened.
  */
 class FeedStore {
-    constructor(storageFn, config = {}) {
+    constructor(storageFn) {
         this.feeds = new Map();
-        this.onPeer = (peer) => {
-            const stream = peer.connection.openChannel('FeedReplication');
-            const protocol = new hypercore_protocol_1.default(peer.connection.isClient, {
-                encrypt: false,
-            });
-            stream.pipe(protocol).pipe(stream);
-            const replicateFeed = (feedId) => {
-                this.getFeed(feedId).then((feed) => {
-                    feed.replicate(protocol, {
-                        live: true,
-                    });
-                });
-            };
-            protocol.on('discovery-key', (discoveryKey) => {
-                const discoveryId = Misc_1.encodeDiscoveryId(discoveryKey);
-                const feedId = this.getFeedId(discoveryId);
-                if (!feedId)
-                    return;
-                replicateFeed(feedId);
-            });
-            // HACK(jeff): replicating all feeds for now
-            for (const feedId of this.feeds.keys()) {
-                replicateFeed(feedId);
-            }
-        };
         this.storage = storageFn;
-        this.config = config;
-        this.discoveryIds = new Map();
         this.feedIdQ = new Queue_1.default('FeedStore:idQ');
     }
     /**
@@ -109,7 +81,7 @@ class FeedStore {
             return feed.createReadStream({ start });
         });
     }
-    close(feedId) {
+    closeFeed(feedId) {
         const feed = this.feeds.get(feedId);
         if (!feed)
             return Promise.reject(new Error(`Can't close feed ${feedId}, feed not open`));
@@ -132,17 +104,10 @@ class FeedStore {
             });
         });
     }
-    // Only needed until FeedId == DiscoveryId:
-    addFeedId(feedId) {
-        const discoveryId = Misc_1.toDiscoveryId(feedId);
-        if (this.discoveryIds.has(discoveryId))
-            return;
-        this.discoveryIds.set(discoveryId, feedId);
-        this.feedIdQ.push(feedId);
-    }
-    // Only needed until FeedId == DiscoveryId:
-    getFeedId(discoveryId) {
-        return this.discoveryIds.get(discoveryId);
+    close() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield Promise.all([...this.feeds.keys()].map((feedId) => this.closeFeed(feedId)));
+        });
     }
     // Junk method used to bridge to Network
     getFeed(feedId) {
@@ -161,10 +126,9 @@ class FeedStore {
             const feedId = keys.publicKey;
             const feed = Misc_1.getOrCreate(this.feeds, feedId, () => {
                 const { publicKey, secretKey } = Keys_1.decodePair(keys);
-                this.addFeedId(feedId);
+                this.feedIdQ.push(feedId);
                 return hypercore_1.hypercore(this.storage(feedId), publicKey, {
                     secretKey,
-                    extensions: this.config.extensions,
                 });
             });
             feed.ready(() => res([feedId, feed]));

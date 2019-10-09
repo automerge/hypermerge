@@ -38,6 +38,10 @@ function toHyperfileUrl(hyperfileId) {
     return `hyperfile:/${hyperfileId}`;
 }
 exports.toHyperfileUrl = toHyperfileUrl;
+function decodeId(id) {
+    return Base58.decode(id);
+}
+exports.decodeId = decodeId;
 function toDiscoveryId(id) {
     return Base58.encode(toDiscoveryKey(id));
 }
