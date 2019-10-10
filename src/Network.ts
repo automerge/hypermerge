@@ -1,21 +1,15 @@
-import * as Base58 from 'bs58'
-import { DiscoveryId, getOrCreate } from './Misc'
-import Peer, { PeerId } from './NetworkPeer'
+import { DiscoveryId, getOrCreate, decodeId } from './Misc'
+import NetworkPeer, { PeerId } from './NetworkPeer'
 import { Swarm, JoinOptions, Socket, ConnectionDetails } from './SwarmInterface'
-import MapSet from './MapSet'
 import Queue from './Queue'
 import PeerConnection from './PeerConnection'
-
-export type Host = string & { host: true }
 
 export default class Network {
   selfId: PeerId
   joined: Set<DiscoveryId>
   pending: Set<DiscoveryId>
-  peers: Map<PeerId, Peer>
-  peerDiscoveryIds: MapSet<DiscoveryId, PeerId>
-  hosts: MapSet<Host, DiscoveryId>
-  peerQ: Queue<Peer>
+  peers: Map<PeerId, NetworkPeer>
+  peerQ: Queue<NetworkPeer>
   swarm?: Swarm
   joinOptions?: JoinOptions
 
@@ -25,8 +19,6 @@ export default class Network {
     this.pending = new Set()
     this.peers = new Map()
     this.peerQ = new Queue('Network:peerQ')
-    this.peerDiscoveryIds = new MapSet()
-    this.hosts = new MapSet()
     this.joinOptions = { announce: true, lookup: true }
   }
 
@@ -74,7 +66,7 @@ export default class Network {
 
   getOrCreatePeer(peerId: PeerId) {
     return getOrCreate(this.peers, peerId, () => {
-      const peer = new Peer(this.selfId, peerId)
+      const peer = new NetworkPeer(this.selfId, peerId)
 
       peer.connectionQ.subscribe((_conn) => {
         this.peerQ.push(peer)
@@ -108,8 +100,4 @@ export default class Network {
 
     this.getOrCreatePeer(peerId).addConnection(conn)
   }
-}
-
-function decodeId(id: DiscoveryId): Buffer {
-  return Base58.decode(id)
 }

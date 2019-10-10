@@ -22,12 +22,13 @@ export interface Discovery {
 }
 
 export default class ReplicationManager {
-  private discoveryIds: Map<DiscoveryId, FeedId>
-  private messages: MessageCenter<ReplicationMsg>
-  private peers: Set<NetworkPeer>
-  private peersByDiscoveryId: MapSet<DiscoveryId, NetworkPeer>
   private protocols: WeakMap<PeerConnection, HypercoreProtocol>
   private feeds: FeedStore
+
+  discoveryIds: Map<DiscoveryId, FeedId>
+  messages: MessageCenter<ReplicationMsg>
+  peers: Set<NetworkPeer>
+  peersByDiscoveryId: MapSet<DiscoveryId, NetworkPeer>
 
   discoveryQ: Queue<Discovery>
 
