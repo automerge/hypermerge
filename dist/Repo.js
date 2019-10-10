@@ -8,6 +8,7 @@ class Repo {
         this.front = new RepoFrontend_1.RepoFrontend();
         this.front.subscribe(this.back.receive);
         this.back.subscribe(this.front.receive);
+        this.swarmKey = this.back.swarmKey;
         this.id = this.back.id;
         this.stream = this.back.stream;
         this.create = this.front.create;

@@ -56,7 +56,6 @@ export declare class Metadata {
     private ready;
     private replay;
     private ledger;
-    id: Buffer;
     private join;
     private leave;
     constructor(storageFn: Function, joinFn: (id: ActorId) => void, leaveFn: (id: ActorId) => void);

@@ -4,6 +4,9 @@ import { FeedId } from './FeedStore';
 export declare type BaseId = string & {
     id: true;
 };
+export declare type RepoId = BaseId & {
+    repoId: true;
+};
 export declare type DocId = BaseId & {
     docId: true;
 };
@@ -25,6 +28,7 @@ export declare type DocUrl = BaseUrl & {
 export declare type HyperfileUrl = BaseUrl & {
     hyperfileUrl: true;
 };
+export declare function encodeRepoId(repoKey: Buffer): RepoId;
 export declare function encodeDocId(actorKey: Buffer): DocId;
 export declare function encodeActorId(actorKey: Buffer): ActorId;
 export declare function encodeDiscoveryId(discoveryKey: Buffer): DiscoveryId;

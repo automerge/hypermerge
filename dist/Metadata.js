@@ -247,7 +247,6 @@ class Metadata {
         this.ledger = hypercore_1.hypercore(storageFn('ledger'), {});
         this.join = joinFn;
         this.leave = leaveFn;
-        this.id = this.ledger.id;
         log('LEDGER READY (1)');
         this.ledger.ready(() => {
             log('LEDGER READY (2)', this.ledger.length);

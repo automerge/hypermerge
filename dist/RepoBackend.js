@@ -37,11 +37,11 @@ const FeedStore_1 = __importDefault(require("./FeedStore"));
 const FileStore_1 = __importDefault(require("./FileStore"));
 const FileServer_1 = __importDefault(require("./FileServer"));
 const Network_1 = __importDefault(require("./Network"));
-const NetworkPeer_1 = require("./NetworkPeer");
 const ClockStore_1 = __importDefault(require("./ClockStore"));
 const SqlDatabase = __importStar(require("./SqlDatabase"));
 const random_access_memory_1 = __importDefault(require("random-access-memory"));
 const random_access_file_1 = __importDefault(require("random-access-file"));
+const KeyStore_1 = __importDefault(require("./KeyStore"));
 debug_1.default.formatters.b = Base58.encode;
 const log = debug_1.default('repo:backend');
 class RepoBackend {
@@ -132,7 +132,7 @@ class RepoBackend {
                     });
                     const doc = this.docs.get(msg.id);
                     if (doc && msg.minimumClockSatisfied) {
-                        this.clocks.update(msg.id, doc.clock);
+                        this.clocks.update(this.id, msg.id, doc.clock);
                     }
                     break;
                 }
@@ -147,7 +147,7 @@ class RepoBackend {
                     this.actor(msg.actorId).writeChange(msg.change);
                     const doc = this.docs.get(msg.id);
                     if (doc && msg.minimumClockSatisfied) {
-                        this.clocks.update(msg.id, doc.clock);
+                        this.clocks.update(this.id, msg.id, doc.clock);
                     }
                     break;
                 }
@@ -202,7 +202,7 @@ class RepoBackend {
                     // Broadcast latest document information to peers.
                     const metadata = this.meta.forActor(actor.id);
                     const docs = this.meta.docsWith(actor.id);
-                    const clocks = this.clocks.getMultiple(docs);
+                    const clocks = this.clocks.getMultiple(this.id, docs);
                     docs.forEach((documentId) => {
                         const documentActor = this.actor(Misc_1.rootActorId(documentId));
                         if (documentActor) {
@@ -223,7 +223,7 @@ class RepoBackend {
                     // Broadcast the latest document information to the new peer
                     const metadata = this.meta.forActor(msg.actor.id);
                     const docs = this.meta.docsWith(msg.actor.id);
-                    const clocks = this.clocks.getMultiple(docs);
+                    const clocks = this.clocks.getMultiple(this.id, docs);
                     DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer]);
                     break;
                 }
@@ -366,11 +366,18 @@ class RepoBackend {
         };
         this.opts = opts;
         this.path = opts.path || 'default';
+        // initialize storage
         if (!opts.memory) {
             ensureDirectoryExists(this.path);
         }
         this.storage = opts.memory ? random_access_memory_1.default : random_access_file_1.default;
         this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), opts.memory || false);
+        this.keys = new KeyStore_1.default(this.db);
+        // init repo
+        const repoKeys = this.keys.get('self.repo') || this.keys.set('self.repo', Keys.createBuffer());
+        this.swarmKey = repoKeys.publicKey;
+        this.id = Misc_1.encodeRepoId(repoKeys.publicKey);
+        // initialize the various stores
         this.clocks = new ClockStore_1.default(this.db);
         this.store = new FeedStore_1.default(this.storageFn);
         this.files = new FileStore_1.default(this.store);
@@ -379,8 +386,7 @@ class RepoBackend {
         });
         this.fileServer = new FileServer_1.default(this.files);
         this.meta = new Metadata_1.Metadata(this.storageFn, this.join, this.leave);
-        this.id = this.meta.id;
-        this.network = new Network_1.default(NetworkPeer_1.encodePeerId(this.id), this.store);
+        this.network = new Network_1.default(toPeerId(this.id), this.store);
     }
     create(keys) {
         const docId = Misc_1.encodeDocId(keys.publicKey);
@@ -501,5 +507,11 @@ class RepoBackend {
 exports.RepoBackend = RepoBackend;
 function ensureDirectoryExists(path) {
     fs_1.default.mkdirSync(path, { recursive: true });
+}
+function toPeerId(repoId) {
+    return repoId;
+}
+function toDiscoveryId(repoId) {
+    return repoId;
 }
 //# sourceMappingURL=RepoBackend.js.map

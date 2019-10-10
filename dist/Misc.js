@@ -9,6 +9,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const Base58 = __importStar(require("bs58"));
 const stream_1 = require("stream");
+function encodeRepoId(repoKey) {
+    return Base58.encode(repoKey);
+}
+exports.encodeRepoId = encodeRepoId;
 function encodeDocId(actorKey) {
     return Base58.encode(actorKey);
 }

@@ -6,11 +6,12 @@ import { Clock } from './Clock';
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg';
 import { Change } from 'automerge';
 import * as DocBackend from './DocBackend';
-import { ActorId, DiscoveryId, DocId } from './Misc';
+import { ActorId, DiscoveryId, DocId, RepoId } from './Misc';
 import FeedStore from './FeedStore';
 import FileStore from './FileStore';
 import { Swarm } from './Network';
 import ClockStore from './ClockStore';
+import KeyStore from './KeyStore';
 export interface FeedData {
     actorId: ActorId;
     writable: Boolean;
@@ -23,6 +24,7 @@ export interface Options {
 export declare class RepoBackend {
     path?: string;
     storage: Function;
+    keys: KeyStore;
     store: FeedStore;
     files: FileStore;
     clocks: ClockStore;
@@ -32,7 +34,8 @@ export declare class RepoBackend {
     meta: Metadata;
     opts: Options;
     toFrontend: Queue<ToFrontendRepoMsg>;
-    id: Buffer;
+    id: RepoId;
+    swarmKey: Buffer;
     private db;
     private fileServer;
     private network;
