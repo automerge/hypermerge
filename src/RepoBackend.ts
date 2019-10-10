@@ -105,10 +105,6 @@ export class RepoBackend {
     this.network = new Network(toPeerId(this.id))
     this.messages = new MessageCenter('HypermergeMessages')
 
-    this.clocks.getAllRepoIds().forEach((repoId) => {
-      // TODO(jeff): This won't join on repoIds added later
-      this.network.join(toDiscoveryId(repoId))
-    })
     this.messages.inboxQ.subscribe(this.onMessage)
     this.replication.discoveryQ.subscribe(this.onDiscovery)
     this.network.peerQ.subscribe(this.onPeer)

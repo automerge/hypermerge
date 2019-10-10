@@ -394,10 +394,6 @@ class RepoBackend {
         this.meta = new Metadata_1.Metadata(this.storageFn, this.join, this.leave);
         this.network = new Network_1.default(toPeerId(this.id));
         this.messages = new MessageCenter_1.default('HypermergeMessages');
-        this.clocks.getAllRepoIds().forEach((repoId) => {
-            // TODO(jeff): This won't join on repoIds added later
-            this.network.join(Misc_1.toDiscoveryId(repoId));
-        });
         this.messages.inboxQ.subscribe(this.onMessage);
         this.replication.discoveryQ.subscribe(this.onDiscovery);
         this.network.peerQ.subscribe(this.onPeer);

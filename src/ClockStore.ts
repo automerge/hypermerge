@@ -96,11 +96,11 @@ export default class ClockStore {
   }
 
   getAllDocumentIds(repoId: RepoId): DocId[] {
-    return this.preparedAllDocumentIds.all(repoId)
+    return this.preparedAllDocumentIds.all(repoId).map((row) => row.docId)
   }
 
   getAllRepoIds(): RepoId[] {
-    return this.preparedAllRepoIds.all()
+    return this.preparedAllRepoIds.all().map((row) => row.repoId)
   }
 }
 
