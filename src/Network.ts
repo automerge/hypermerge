@@ -90,6 +90,9 @@ export default class Network {
     const conn = new PeerConnection(socket, {
       isClient: details.client,
       type: details.type,
+      onClose() {
+        details.ban()
+      },
     })
 
     conn.networkBus.send({

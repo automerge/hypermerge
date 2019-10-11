@@ -8,6 +8,7 @@ import pump from 'pump'
 export interface SocketInfo {
   type: 'tcp' | 'utp'
   isClient: boolean
+  onClose?(): void
 }
 
 export default class PeerConnection {
@@ -22,12 +23,14 @@ export default class PeerConnection {
   private rawSocket: Duplex
   private multiplex: MultiplexedStream
   private secureStream: Duplex
+  private onClose?: () => void
 
   constructor(rawSocket: Duplex, info: SocketInfo) {
     this.isConfirmed = false
     this.channels = new Map()
     this.pendingChannels = new Map()
     this.type = info.type
+    this.onClose = info.onClose
     this.isClient = info.isClient
     this.rawSocket = rawSocket
     this.secureStream = noise(rawSocket, this.isClient)
@@ -77,6 +80,7 @@ export default class PeerConnection {
   }
 
   async close(): Promise<void> {
+    this.onClose && this.onClose()
     this.rawSocket.destroy()
   }
 }

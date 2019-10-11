@@ -27,6 +27,7 @@ export interface JoinOptions {
 export interface BaseConnectionDetails {
   type: SocketType
   reconnect(shouldReconnect: boolean): void
+  ban(): void
 }
 
 export interface InitiatedConnectionDetails extends BaseConnectionDetails {
