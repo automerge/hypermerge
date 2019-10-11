@@ -2,15 +2,8 @@
   "compilerOptions": {
     "outDir": "./dist",
     "declaration": true,
-    "typeRoots": [
-      "./src/types",
-      "./node_modules/@types",
-      "./src/node_modules/@types"
-    ],
-    "lib": [
-      "es6",
-      "es2017"
-    ],
+    "typeRoots": ["./src/types", "./node_modules/@types", "./src/node_modules/@types"],
+    "lib": ["es6", "es2017"],
     "sourceMap": true,
     "module": "commonjs",
     "target": "es6",
@@ -19,9 +12,9 @@
     "skipLibCheck": true,
     "strict": true,
     "noFallthroughCasesInSwitch": true,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

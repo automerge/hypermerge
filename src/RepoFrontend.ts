@@ -1,5 +1,4 @@
 import Queue from './Queue'
-import * as Base58 from 'bs58'
 import MapSet from './MapSet'
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg'
 import { Handle } from './Handle'
@@ -7,14 +6,9 @@ import { Doc, Patch, Frontend, ChangeFn } from 'automerge'
 import { DocFrontend } from './DocFrontend'
 import { clock2strs, Clock, clockDebug } from './Clock'
 import * as Keys from './Keys'
-import Debug from 'debug'
 import { PublicMetadata, validateDocURL, validateURL } from './Metadata'
 import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId } from './Misc'
 import FileServerClient from './FileServerClient'
-
-Debug.formatters.b = Base58.encode
-
-const log = Debug('repo:front')
 
 export interface DocMetadata {
   clock: Clock
@@ -61,7 +55,7 @@ export class RepoFrontend {
   }
 
   meta = (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void): void => {
-    const { id, type } = validateURL(url)
+    const { id } = validateURL(url)
     this.queryBackend(
       { type: 'MetadataMsg', id: id as DocId | HyperfileId },
       (meta: PublicMetadata | undefined) => {
@@ -79,7 +73,7 @@ export class RepoFrontend {
   }
 
   meta2 = (url: DocUrl | HyperfileUrl): DocMetadata | undefined => {
-    const { id, type } = validateURL(url)
+    const { id } = validateURL(url)
     const doc = this.docs.get(id as DocId)
     if (!doc) return
     return {
@@ -92,7 +86,7 @@ export class RepoFrontend {
   merge = (url: DocUrl, target: DocUrl) => {
     const id = validateDocURL(url)
     validateDocURL(target)
-    this.doc(target, (doc, clock) => {
+    this.doc(target, (_doc, clock) => {
       const actors = clock2strs(clock!)
       this.toBackend.push({ type: 'MergeMsg', id, actors })
     })

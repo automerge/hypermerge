@@ -11,9 +11,9 @@ export default class MapSet<A, B> {
 
   union(): Set<B> {
     const acc: B[] = []
-    this.map.forEach((val, key) => {
-      acc.push(...[...val])
-    })
+    for (const set of this.map.values()) {
+      acc.push(...set)
+    }
     return new Set(acc)
   }
 

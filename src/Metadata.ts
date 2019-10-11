@@ -19,7 +19,6 @@ import {
   HyperfileId,
   HyperfileUrl,
 } from './Misc'
-import { randomBytes } from 'crypto'
 
 export function sanitizeRemoteMetadata(message: any): RemoteMetadata {
   const result: RemoteMetadata = { type: 'RemoteMetadata', clocks: {}, blocks: [] }
@@ -269,10 +268,6 @@ export class Metadata {
     this.readyQ.subscribe((f) => f())
   }
 
-  private hasBlock(block: MetadataBlock): boolean {
-    return false
-  }
-
   private batchAdd(blocks: MetadataBlock[]) {
     log('Batch add', blocks.length)
     blocks.forEach((block, i) => this.addBlock(i, block))
@@ -306,13 +301,12 @@ export class Metadata {
     })
   }
 
-  private addBlock(idx: number, block: MetadataBlock): boolean {
+  private addBlock(_idx: number, block: MetadataBlock): boolean {
     let changedDocs = false
     let changedActors = false
     //    let changedFollow = false;
     let changedFiles = false
     let changedMerge = false
-    let id = block.id
 
     if ('actors' in block && block.actors !== undefined) {
       changedActors = this.primaryActors.merge(block.id, block.actors)
@@ -381,7 +375,7 @@ export class Metadata {
   }
 
   async actorsAsync(id: DocId): Promise<ActorId[]> {
-    return new Promise<ActorId[]>((resolve, reject) => {
+    return new Promise<ActorId[]>((resolve) => {
       this.readyQ.push(() => {
         resolve(this.actors(id))
       })

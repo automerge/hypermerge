@@ -72,12 +72,3 @@ function toHyperfileUrl(feedId: FeedId): HyperfileUrl {
 function toFeedId(hyperfileUrl: HyperfileUrl): FeedId {
   return (validateFileURL(hyperfileUrl) as string) as FeedId
 }
-
-function chunkBuffer(data: Buffer, blockSize: number): Buffer[] {
-  const chunks = []
-  for (let i = 0; i < data.length; i += blockSize) {
-    const block = data.slice(i, i + blockSize)
-    chunks.push(block)
-  }
-  return chunks
-}

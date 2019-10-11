@@ -509,7 +509,7 @@ export class RepoBackend {
           .getIn(['opSet', 'history'])
           .slice(0, query.history)
           .toArray()
-        const [_, patch] = Backend.applyChanges(Backend.init(), changes)
+        const [, patch] = Backend.applyChanges(Backend.init(), changes)
         this.toFrontend.push({ type: 'Reply', id, payload: patch })
         break
       }

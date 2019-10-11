@@ -1,5 +1,5 @@
 import { RemoteMetadata } from './Metadata'
-import { DocId, DiscoveryId } from './Misc'
+import { DocId } from './Misc'
 
 export type PeerMsg = RemoteMetadata | DocumentMsg
 
