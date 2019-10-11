@@ -15,6 +15,7 @@ const Base58 = __importStar(require("bs58"));
 const Queue_1 = __importDefault(require("./Queue"));
 class NetworkPeer {
     constructor(selfId, id) {
+        this.closedConnectionCount = 0;
         this.pendingConnections = new Set();
         this.connectionQ = new Queue_1.default('NetworkPeer:connectionQ');
         this.selfId = selfId;
@@ -45,7 +46,7 @@ class NetworkPeer {
      */
     addConnection(conn) {
         if (this.isConnected) {
-            conn.close();
+            this.closeConnection(conn);
             return;
         }
         if (this.weHaveAuthority) {
@@ -65,13 +66,17 @@ class NetworkPeer {
         this.connection = conn;
         this.pendingConnections.delete(conn);
         for (const pendingConn of this.pendingConnections) {
-            pendingConn.close();
+            this.closeConnection(pendingConn);
         }
         this.pendingConnections.clear();
         this.connectionQ.push(conn);
     }
+    closeConnection(conn) {
+        conn.close();
+        this.closedConnectionCount += 1;
+    }
     close() {
-        this.connection && this.connection.close();
+        this.connection && this.closeConnection(this.connection);
     }
 }
 exports.default = NetworkPeer;

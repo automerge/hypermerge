@@ -14,6 +14,7 @@ export default class Network {
     join(discoveryId: DiscoveryId): void;
     leave(discoveryId: DiscoveryId): void;
     setSwarm(swarm: Swarm, joinOptions?: JoinOptions): void;
+    readonly closedConnectionCount: number;
     close(): Promise<void>;
     getOrCreatePeer(peerId: PeerId): NetworkPeer;
     private onConnection;

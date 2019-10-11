@@ -63,10 +63,10 @@ class ClockStore {
         return transaction(documentId, clock);
     }
     getAllDocumentIds(repoId) {
-        return this.preparedAllDocumentIds.all(repoId).map((row) => row.docId);
+        return this.preparedAllDocumentIds.pluck().all(repoId);
     }
     getAllRepoIds() {
-        return this.preparedAllRepoIds.all().map((row) => row.repoId);
+        return this.preparedAllRepoIds.pluck().all();
     }
 }
 exports.default = ClockStore;

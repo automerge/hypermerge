@@ -10,6 +10,7 @@ export default class NetworkPeer {
     id: PeerId;
     pendingConnections: Set<PeerConnection>;
     connectionQ: Queue<PeerConnection>;
+    closedConnectionCount: number;
     connection: PeerConnection;
     constructor(selfId: PeerId, id: PeerId);
     readonly isConnected: boolean;
@@ -31,6 +32,7 @@ export default class NetworkPeer {
      */
     addConnection(conn: PeerConnection): void;
     confirmConnection(conn: PeerConnection): void;
+    closeConnection(conn: PeerConnection): void;
     close(): void;
 }
 export declare function isPeerId(str: string): str is PeerId;

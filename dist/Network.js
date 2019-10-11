@@ -75,6 +75,13 @@ class Network {
             this.join(discoveryId);
         }
     }
+    get closedConnectionCount() {
+        let count = 0;
+        for (const peer of this.peers.values()) {
+            count += peer.closedConnectionCount;
+        }
+        return count;
+    }
     close() {
         return __awaiter(this, void 0, void 0, function* () {
             this.peers.forEach((peer) => {
