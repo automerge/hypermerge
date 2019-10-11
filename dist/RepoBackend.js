@@ -38,7 +38,7 @@ const FileServer_1 = __importDefault(require("./FileServer"));
 const Network_1 = __importDefault(require("./Network"));
 const ClockStore_1 = __importDefault(require("./ClockStore"));
 const SqlDatabase = __importStar(require("./SqlDatabase"));
-const MessageCenter_1 = __importDefault(require("./MessageCenter"));
+const MessageRouter_1 = __importDefault(require("./MessageRouter"));
 const random_access_memory_1 = __importDefault(require("random-access-memory"));
 const random_access_file_1 = __importDefault(require("random-access-file"));
 const KeyStore_1 = __importDefault(require("./KeyStore"));
@@ -393,7 +393,7 @@ class RepoBackend {
         this.replication = new ReplicationManager_1.default(this.feeds);
         this.meta = new Metadata_1.Metadata(this.storageFn, this.join, this.leave);
         this.network = new Network_1.default(toPeerId(this.id));
-        this.messages = new MessageCenter_1.default('HypermergeMessages');
+        this.messages = new MessageRouter_1.default('HypermergeMessages');
         this.messages.inboxQ.subscribe(this.onMessage);
         this.replication.discoveryQ.subscribe(this.onDiscovery);
         this.network.peerQ.subscribe(this.onPeer);

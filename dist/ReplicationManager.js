@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const hypercore_protocol_1 = __importDefault(require("hypercore-protocol"));
 const Misc_1 = require("./Misc");
-const MessageCenter_1 = __importDefault(require("./MessageCenter"));
+const MessageRouter_1 = __importDefault(require("./MessageRouter"));
 const pump_1 = __importDefault(require("pump"));
 const MapSet_1 = __importDefault(require("./MapSet"));
 const Queue_1 = __importDefault(require("./Queue"));
@@ -40,7 +40,7 @@ class ReplicationManager {
         this.peersByDiscoveryId = new MapSet_1.default();
         this.discoveryQ = new Queue_1.default('ReplicationManager:discoveryQ');
         this.feeds = feeds;
-        this.messages = new MessageCenter_1.default('ReplicationManager');
+        this.messages = new MessageRouter_1.default('ReplicationManager');
         this.messages.inboxQ.subscribe(this.onMessage);
     }
     addFeedIds(feedIds) {

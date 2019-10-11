@@ -14,7 +14,7 @@ import NetworkPeer from './NetworkPeer';
 import { Swarm, JoinOptions } from './SwarmInterface';
 import { PeerMsg } from './PeerMsg';
 import ClockStore from './ClockStore';
-import MessageCenter from './MessageCenter';
+import MessageRouter from './MessageRouter';
 import KeyStore from './KeyStore';
 import ReplicationManager, { Discovery } from './ReplicationManager';
 export interface FeedData {
@@ -40,7 +40,7 @@ export declare class RepoBackend {
     toFrontend: Queue<ToFrontendRepoMsg>;
     id: RepoId;
     network: Network;
-    messages: MessageCenter<PeerMsg>;
+    messages: MessageRouter<PeerMsg>;
     replication: ReplicationManager;
     swarmKey: Buffer;
     private db;
