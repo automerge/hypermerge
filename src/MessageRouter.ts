@@ -10,7 +10,7 @@ export interface Routed<Msg> {
   msg: Msg
 }
 
-export default class MessageCenter<Msg> {
+export default class MessageRouter<Msg> {
   channelName: string
   buses: WeakMap<PeerConnection, MessageBus<Msg>>
   inboxQ: Queue<Routed<Msg>>

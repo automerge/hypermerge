@@ -32,7 +32,7 @@ import { Swarm, JoinOptions } from './SwarmInterface'
 import { PeerMsg } from './PeerMsg'
 import ClockStore from './ClockStore'
 import * as SqlDatabase from './SqlDatabase'
-import MessageCenter, { Routed } from './MessageCenter'
+import MessageRouter, { Routed } from './MessageRouter'
 import ram from 'random-access-memory'
 import raf from 'random-access-file'
 import KeyStore from './KeyStore'
@@ -67,7 +67,7 @@ export class RepoBackend {
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
   id: RepoId
   network: Network
-  messages: MessageCenter<PeerMsg>
+  messages: MessageRouter<PeerMsg>
   replication: ReplicationManager
   swarmKey: Buffer // TODO: Remove this once we no longer use discovery-swarm/discovery-cloud
   private db: SqlDatabase.Database
@@ -103,7 +103,7 @@ export class RepoBackend {
     this.replication = new ReplicationManager(this.feeds)
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
     this.network = new Network(toPeerId(this.id))
-    this.messages = new MessageCenter('HypermergeMessages')
+    this.messages = new MessageRouter('HypermergeMessages')
 
     this.messages.inboxQ.subscribe(this.onMessage)
     this.replication.discoveryQ.subscribe(this.onDiscovery)

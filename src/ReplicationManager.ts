@@ -3,7 +3,7 @@ import HypercoreProtocol from 'hypercore-protocol'
 import FeedStore, { FeedId } from './FeedStore'
 import PeerConnection from './PeerConnection'
 import { getOrCreate, encodeDiscoveryId, DiscoveryId, toDiscoveryId, joinSets } from './Misc'
-import MessageCenter, { Routed } from './MessageCenter'
+import MessageRouter, { Routed } from './MessageRouter'
 import pump from 'pump'
 import MapSet from './MapSet'
 import Queue from './Queue'
@@ -26,7 +26,7 @@ export default class ReplicationManager {
   private feeds: FeedStore
 
   discoveryIds: Map<DiscoveryId, FeedId>
-  messages: MessageCenter<ReplicationMsg>
+  messages: MessageRouter<ReplicationMsg>
   peers: Set<NetworkPeer>
   peersByDiscoveryId: MapSet<DiscoveryId, NetworkPeer>
 
@@ -39,7 +39,7 @@ export default class ReplicationManager {
     this.peersByDiscoveryId = new MapSet()
     this.discoveryQ = new Queue('ReplicationManager:discoveryQ')
     this.feeds = feeds
-    this.messages = new MessageCenter('ReplicationManager')
+    this.messages = new MessageRouter('ReplicationManager')
     this.messages.inboxQ.subscribe(this.onMessage)
   }
 
