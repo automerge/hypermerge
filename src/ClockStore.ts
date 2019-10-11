@@ -39,10 +39,10 @@ export default class ClockStore {
        DO UPDATE SET seq=excluded.seq WHERE excluded.seq > seq`
     )
     this.preparedDelete = this.db.prepare('DELETE FROM Clocks WHERE repoId=? AND documentId=?')
-    this.preparedAllRepoIds = this.db.prepare('SELECT DISTINCT repoId from Clocks')
-    this.preparedAllDocumentIds = this.db.prepare(
-      'SELECT DISTINCT documentId from Clocks WHERE repoId=?'
-    )
+    this.preparedAllRepoIds = this.db.prepare('SELECT DISTINCT repoId from Clocks').pluck()
+    this.preparedAllDocumentIds = this.db
+      .prepare('SELECT DISTINCT documentId from Clocks WHERE repoId=?')
+      .pluck()
   }
 
   /**
@@ -96,11 +96,11 @@ export default class ClockStore {
   }
 
   getAllDocumentIds(repoId: RepoId): DocId[] {
-    return this.preparedAllDocumentIds.pluck().all(repoId)
+    return this.preparedAllDocumentIds.all(repoId)
   }
 
   getAllRepoIds(): RepoId[] {
-    return this.preparedAllRepoIds.pluck().all()
+    return this.preparedAllRepoIds.all()
   }
 }
 
