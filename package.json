@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "postbuild": "copyfiles -f src/migrations/*.sql dist/migrations",
-    "format": "prettier --write 'src/**/*.ts'",
+    "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "peek": "ts-node --files tools/Peek.ts $1 $2 $3",
     "cp": "ts-node --files tools/Cp.ts $1 $2 $3",
     "watch": "ts-node --files tools/Watch.ts $1 $2 $3",

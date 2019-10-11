@@ -1,18 +1,11 @@
 import test from 'tape'
-import { Repo } from '../src'
-import Client from 'discovery-cloud-client'
-import { expectDocs } from './misc'
+import { testStorageFn } from './misc'
 import FileStore from '../src/FileStore'
 import FeedStore from '../src/FeedStore'
-import { Readable } from 'stream'
 import { streamToBuffer, bufferToStream } from '../src/Misc'
 
-const ram: any = require('random-access-memory')
-const storageFn = (storage: any) => (path: string) => (name: string) =>
-  storage(`test/${path}/${name}`)
-
 test('FileStore', (t) => {
-  const feeds = new FeedStore(storageFn(ram))
+  const feeds = new FeedStore(testStorageFn())
   const files = new FileStore(feeds)
 
   t.test('appendStream', async (t) => {

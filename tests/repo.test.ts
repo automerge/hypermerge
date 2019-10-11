@@ -3,7 +3,6 @@ import { RepoBackend, RepoFrontend } from '../src'
 import { expect, expectDocs, generateServerPath, testRepo } from './misc'
 import { streamToBuffer, bufferToStream } from '../src/Misc'
 import { validateDocURL } from '../src/Metadata'
-import { Clock } from '../src/Clock'
 
 test('Simple create doc and make a change', (t) => {
   const repo = testRepo()
@@ -111,7 +110,7 @@ test('Test meta...', (t) => {
   t.plan(2)
   const repo = testRepo()
   const id = repo.create({ foo: 'bar0' })
-  repo.watch<any>(id, (state, clock, index) => {
+  repo.watch<any>(id, (_state, _clock, index) => {
     repo.meta(id, (meta) => {
       if (meta && meta.type === 'Document') {
         if (index === 1) {
@@ -188,9 +187,6 @@ test('Changing a document updates the clock store', async (t) => {
   // })
 })
 
-function arg1<T>(arg1: T): T {
-  return arg1
-}
-function arg2<T>(arg1: unknown, arg2: T): T {
+function arg2<T>(_arg1: unknown, arg2: T): T {
   return arg2
 }
