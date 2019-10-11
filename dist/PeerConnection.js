@@ -14,7 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const noise_peer_1 = __importDefault(require("noise-peer"));
 const multiplex_1 = __importDefault(require("multiplex"));
-const MessageChannel_1 = __importDefault(require("./MessageChannel"));
+const MessageBus_1 = __importDefault(require("./MessageBus"));
 const pump_1 = __importDefault(require("pump"));
 class PeerConnection {
     constructor(rawSocket, info) {
@@ -30,7 +30,7 @@ class PeerConnection {
             this.pendingChannels.set(name, stream);
         });
         pump_1.default(this.secureStream, this.multiplex, this.secureStream);
-        this.networkChannel = new MessageChannel_1.default(this.openChannel('NetworkMsg'));
+        this.networkBus = new MessageBus_1.default(this.openChannel('NetworkMsg'));
     }
     get isOpen() {
         return this.rawSocket.writable;

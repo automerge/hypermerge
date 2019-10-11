@@ -20,16 +20,15 @@ class Network {
     constructor(selfId) {
         this.onConnection = (socket, details) => __awaiter(this, void 0, void 0, function* () {
             details.reconnect(false);
-            console.log('onConnection', details.type, this.selfId);
             const conn = new PeerConnection_1.default(socket, {
                 isClient: details.client,
                 type: details.type,
             });
-            conn.networkChannel.send({
+            conn.networkBus.send({
                 type: 'Info',
                 peerId: this.selfId,
             });
-            const firstMsg = yield conn.networkChannel.receiveQ.first();
+            const firstMsg = yield conn.networkBus.receiveQ.first();
             if (firstMsg.type !== 'Info')
                 throw new Error('First message must be Info.');
             const { peerId } = firstMsg;

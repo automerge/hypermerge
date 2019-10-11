@@ -12,7 +12,7 @@ const Queue_1 = __importDefault(require("./Queue"));
 class ReplicationManager {
     constructor(feeds) {
         /**
-         * Should be called when a peer connects.
+         * Call this when a peer connects.
          */
         this.onPeer = (peer) => {
             this.peers.add(peer);

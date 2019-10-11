@@ -1,5 +1,5 @@
 import PeerConnection from './PeerConnection';
-import MessageChannel from './MessageChannel';
+import MessageBus from './MessageBus';
 import NetworkPeer from './NetworkPeer';
 import Queue from './Queue';
 export interface Routed<Msg> {
@@ -9,11 +9,11 @@ export interface Routed<Msg> {
 }
 export default class MessageCenter<Msg> {
     channelName: string;
-    channels: WeakMap<PeerConnection, MessageChannel<Msg>>;
+    buses: WeakMap<PeerConnection, MessageBus<Msg>>;
     inboxQ: Queue<Routed<Msg>>;
     constructor(channelName: string);
     listenTo(peer: NetworkPeer): void;
     sendToPeers(peers: Iterable<NetworkPeer>, msg: Msg): void;
     sendToPeer(peer: NetworkPeer, msg: Msg): void;
-    getChannel(peer: NetworkPeer): MessageChannel<Msg>;
+    getBus(peer: NetworkPeer): MessageBus<Msg>;
 }

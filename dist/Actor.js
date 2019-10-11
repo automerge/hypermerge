@@ -35,7 +35,6 @@ class Actor {
         };
         this.onFeedReady = (feed) => __awaiter(this, void 0, void 0, function* () {
             this.notify({ type: 'ActorFeedReady', actor: this, writable: feed.writable, feed });
-            feed.on('peer-add', this.onPeerAdd);
             feed.on('close', this.onClose);
             if (!feed.writable) {
                 feed.on('download', this.onDownload);
@@ -56,10 +55,6 @@ class Actor {
                     this.onSync();
             });
         });
-        this.onPeerAdd = (peer) => {
-            log('peer-add feed', Misc_1.ID(this.id));
-            this.notify({ type: 'PeerAdd', actor: this, peer: peer });
-        };
         this.onDownload = (index, data) => {
             this.parseBlock(data, index);
             const time = Date.now();

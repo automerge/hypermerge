@@ -28,7 +28,7 @@ export default class ReplicationManager {
     getPeersWith(discoveryIds: DiscoveryId[]): Set<NetworkPeer>;
     close(): void;
     /**
-     * Should be called when a peer connects.
+     * Call this when a peer connects.
      */
     onPeer: (peer: NetworkPeer) => void;
     private replicateWith;

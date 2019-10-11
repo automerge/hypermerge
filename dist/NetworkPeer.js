@@ -50,12 +50,12 @@ class NetworkPeer {
             return;
         }
         if (this.weHaveAuthority) {
-            conn.networkChannel.send({ type: 'ConfirmConnection' });
+            conn.networkBus.send({ type: 'ConfirmConnection' });
             this.confirmConnection(conn);
             return;
         }
         this.pendingConnections.add(conn);
-        conn.networkChannel.subscribe((msg) => {
+        conn.networkBus.subscribe((msg) => {
             if (msg.type === 'ConfirmConnection') {
                 this.confirmConnection(conn);
             }
@@ -77,6 +77,9 @@ class NetworkPeer {
     }
     close() {
         this.connection && this.closeConnection(this.connection);
+        for (const pendingConn of this.pendingConnections) {
+            this.closeConnection(pendingConn);
+        }
     }
 }
 exports.default = NetworkPeer;

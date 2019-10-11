@@ -3,17 +3,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const MessageChannel_1 = __importDefault(require("./MessageChannel"));
+const MessageBus_1 = __importDefault(require("./MessageBus"));
 const Queue_1 = __importDefault(require("./Queue"));
 const Misc_1 = require("./Misc");
 class MessageCenter {
     constructor(channelName) {
         this.channelName = channelName;
-        this.channels = new WeakMap();
+        this.buses = new WeakMap();
         this.inboxQ = new Queue_1.default('MessageCenter:inboxQ');
     }
     listenTo(peer) {
-        this.getChannel(peer);
+        this.getBus(peer);
     }
     sendToPeers(peers, msg) {
         for (const peer of peers) {
@@ -21,20 +21,20 @@ class MessageCenter {
         }
     }
     sendToPeer(peer, msg) {
-        const channel = this.getChannel(peer);
-        channel.send(msg);
+        const bus = this.getBus(peer);
+        bus.send(msg);
     }
-    getChannel(peer) {
-        return Misc_1.getOrCreate(this.channels, peer.connection, (conn) => {
-            const channel = new MessageChannel_1.default(conn.openChannel(this.channelName));
-            channel.receiveQ.subscribe((msg) => {
+    getBus(peer) {
+        return Misc_1.getOrCreate(this.buses, peer.connection, (conn) => {
+            const bus = new MessageBus_1.default(conn.openChannel(this.channelName));
+            bus.receiveQ.subscribe((msg) => {
                 this.inboxQ.push({
                     sender: peer,
                     channelName: this.channelName,
                     msg,
                 });
             });
-            return channel;
+            return bus;
         });
     }
 }

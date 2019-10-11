@@ -1,14 +1,14 @@
 /// <reference types="node" />
 import { Duplex } from 'stream';
 import { SubStream } from 'multiplex';
-import MessageChannel from './MessageChannel';
+import MessageBus from './MessageBus';
 import { NetworkMsg } from './NetworkMsg';
 export interface SocketInfo {
     type: 'tcp' | 'utp';
     isClient: boolean;
 }
 export default class PeerConnection {
-    networkChannel: MessageChannel<NetworkMsg>;
+    networkBus: MessageBus<NetworkMsg>;
     isClient: boolean;
     isConfirmed: boolean;
     type: SocketInfo['type'];
