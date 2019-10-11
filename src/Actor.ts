@@ -9,7 +9,7 @@ import FeedStore, { FeedId, Feed } from './FeedStore'
 
 const log = Debug('repo:actor')
 
-export type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | PeerAdd | Download
+export type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | Download
 
 interface ActorSync {
   type: 'ActorSync'
@@ -26,12 +26,6 @@ interface ActorFeedReady {
 interface ActorInitialized {
   type: 'ActorInitialized'
   actor: Actor
-}
-
-interface PeerAdd {
-  type: 'PeerAdd'
-  actor: Actor
-  peer: Peer
 }
 
 interface Download {
@@ -108,7 +102,6 @@ export class Actor {
   private onFeedReady = async (feed: Feed) => {
     this.notify({ type: 'ActorFeedReady', actor: this, writable: feed.writable, feed })
 
-    feed.on('peer-add', this.onPeerAdd)
     feed.on('close', this.onClose)
     if (!feed.writable) {
       feed.on('download', this.onDownload)
@@ -128,11 +121,6 @@ export class Actor {
       this.q.subscribe((f) => f(this))
       if (hasData) this.onSync()
     })
-  }
-
-  private onPeerAdd = (peer: Peer) => {
-    log('peer-add feed', ID(this.id))
-    this.notify({ type: 'PeerAdd', actor: this, peer: peer })
   }
 
   private onDownload = (index: number, data: Uint8Array) => {
