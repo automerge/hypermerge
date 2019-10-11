@@ -2,7 +2,7 @@ import Queue from './Queue'
 import * as JsonBuffer from './JsonBuffer'
 import { Duplex } from 'stream'
 
-export default class MessageChannel<Msg> {
+export default class MessageBus<Msg> {
   stream: Duplex
   sendQ: Queue<Msg>
   receiveQ: Queue<Msg>
@@ -10,8 +10,8 @@ export default class MessageChannel<Msg> {
   constructor(stream: Duplex) {
     this.stream = stream
 
-    this.sendQ = new Queue('MessageChannel:sendQ')
-    this.receiveQ = new Queue('MessageChannel:receiveQ')
+    this.sendQ = new Queue('MessageBus:sendQ')
+    this.receiveQ = new Queue('MessageBus:receiveQ')
 
     this.stream
       .on('data', this.onData)

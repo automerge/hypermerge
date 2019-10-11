@@ -92,12 +92,12 @@ export default class Network {
       type: details.type,
     })
 
-    conn.networkChannel.send({
+    conn.networkBus.send({
       type: 'Info',
       peerId: this.selfId,
     })
 
-    const firstMsg = await conn.networkChannel.receiveQ.first()
+    const firstMsg = await conn.networkBus.receiveQ.first()
 
     if (firstMsg.type !== 'Info') throw new Error('First message must be Info.')
 

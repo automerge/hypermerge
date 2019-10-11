@@ -1,5 +1,5 @@
 import PeerConnection from './PeerConnection'
-import MessageChannel from './MessageChannel'
+import MessageBus from './MessageBus'
 import NetworkPeer from './NetworkPeer'
 import Queue from './Queue'
 import { getOrCreate } from './Misc'
@@ -12,17 +12,17 @@ export interface Routed<Msg> {
 
 export default class MessageCenter<Msg> {
   channelName: string
-  channels: WeakMap<PeerConnection, MessageChannel<Msg>>
+  buses: WeakMap<PeerConnection, MessageBus<Msg>>
   inboxQ: Queue<Routed<Msg>>
 
   constructor(channelName: string) {
     this.channelName = channelName
-    this.channels = new WeakMap()
+    this.buses = new WeakMap()
     this.inboxQ = new Queue('MessageCenter:inboxQ')
   }
 
   listenTo(peer: NetworkPeer): void {
-    this.getChannel(peer)
+    this.getBus(peer)
   }
 
   sendToPeers(peers: Iterable<NetworkPeer>, msg: Msg): void {
@@ -32,22 +32,22 @@ export default class MessageCenter<Msg> {
   }
 
   sendToPeer(peer: NetworkPeer, msg: Msg): void {
-    const channel = this.getChannel(peer)
-    channel.send(msg)
+    const bus = this.getBus(peer)
+    bus.send(msg)
   }
 
-  getChannel(peer: NetworkPeer): MessageChannel<Msg> {
-    return getOrCreate(this.channels, peer.connection, (conn) => {
-      const channel = new MessageChannel<Msg>(conn.openChannel(this.channelName))
+  getBus(peer: NetworkPeer): MessageBus<Msg> {
+    return getOrCreate(this.buses, peer.connection, (conn) => {
+      const bus = new MessageBus<Msg>(conn.openChannel(this.channelName))
 
-      channel.receiveQ.subscribe((msg) => {
+      bus.receiveQ.subscribe((msg) => {
         this.inboxQ.push({
           sender: peer,
           channelName: this.channelName,
           msg,
         })
       })
-      return channel
+      return bus
     })
   }
 }

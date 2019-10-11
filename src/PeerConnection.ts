@@ -1,7 +1,7 @@
 import { Duplex } from 'stream'
 import noise from 'noise-peer'
 import multiplex, { MultiplexedStream, SubStream } from 'multiplex'
-import MessageChannel from './MessageChannel'
+import MessageBus from './MessageBus'
 import { NetworkMsg } from './NetworkMsg'
 import pump from 'pump'
 
@@ -11,7 +11,7 @@ export interface SocketInfo {
 }
 
 export default class PeerConnection {
-  networkChannel: MessageChannel<NetworkMsg>
+  networkBus: MessageBus<NetworkMsg>
   isClient: boolean
   isConfirmed: boolean
   type: SocketInfo['type']
@@ -39,7 +39,7 @@ export default class PeerConnection {
 
     pump(this.secureStream, this.multiplex, this.secureStream)
 
-    this.networkChannel = new MessageChannel<NetworkMsg>(this.openChannel('NetworkMsg'))
+    this.networkBus = new MessageBus<NetworkMsg>(this.openChannel('NetworkMsg'))
   }
 
   get isOpen() {

@@ -75,7 +75,7 @@ export default class ReplicationManager {
   }
 
   /**
-   * Should be called when a peer connects.
+   * Call this when a peer connects.
    */
   onPeer = (peer: NetworkPeer): void => {
     this.peers.add(peer)
