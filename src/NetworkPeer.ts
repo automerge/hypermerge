@@ -10,12 +10,14 @@ export default class NetworkPeer {
   id: PeerId
   pendingConnections: Set<PeerConnection>
   connectionQ: Queue<PeerConnection>
+  closedConnectionCount: number
 
   // A peer always has a connection once it's emitted out of Network.
   // TODO(jeff): Find a less lazy way to type this that isn't annoying.
   connection!: PeerConnection
 
   constructor(selfId: PeerId, id: PeerId) {
+    this.closedConnectionCount = 0
     this.pendingConnections = new Set()
     this.connectionQ = new Queue('NetworkPeer:connectionQ')
     this.selfId = selfId
@@ -48,7 +50,7 @@ export default class NetworkPeer {
    */
   addConnection(conn: PeerConnection): void {
     if (this.isConnected) {
-      conn.close()
+      this.closeConnection(conn)
       return
     }
 
@@ -73,7 +75,7 @@ export default class NetworkPeer {
     this.pendingConnections.delete(conn)
 
     for (const pendingConn of this.pendingConnections) {
-      pendingConn.close()
+      this.closeConnection(pendingConn)
     }
 
     this.pendingConnections.clear()
@@ -81,8 +83,13 @@ export default class NetworkPeer {
     this.connectionQ.push(conn)
   }
 
+  closeConnection(conn: PeerConnection): void {
+    conn.close()
+    this.closedConnectionCount += 1
+  }
+
   close(): void {
-    this.connection && this.connection.close()
+    this.connection && this.closeConnection(this.connection)
   }
 }
 

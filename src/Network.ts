@@ -54,6 +54,14 @@ export default class Network {
     }
   }
 
+  get closedConnectionCount(): number {
+    let count = 0
+    for (const peer of this.peers.values()) {
+      count += peer.closedConnectionCount
+    }
+    return count
+  }
+
   async close(): Promise<void> {
     this.peers.forEach((peer) => {
       peer.close()
