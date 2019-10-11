@@ -186,8 +186,8 @@ atomic-batcher@^1.0.2:
   integrity sha1-0WkB0QzOxZUWwZe5zNiTBom4E7Q=
 
 "automerge@github:automerge/automerge#opaque-strings":
-  version "0.12.1"
-  resolved "https://codeload.github.com/automerge/automerge/tar.gz/90b2fa1666a3d9824e7f9c799dda5b4cddda0da6"
+  version "0.12.2-beta.0"
+  resolved "https://codeload.github.com/automerge/automerge/tar.gz/340ca073b716f28426175e221766352e52d84daf"
   dependencies:
     immutable "^3.8.2"
     transit-immutable-js "^0.7.0"
