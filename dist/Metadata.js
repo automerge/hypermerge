@@ -253,20 +253,16 @@ class Metadata {
             hypercore_1.readFeed('ledger', this.ledger, this.loadLedger);
         });
     }
-    hasBlock(block) {
-        return false;
-    }
     batchAdd(blocks) {
         log('Batch add', blocks.length);
         blocks.forEach((block, i) => this.addBlock(i, block));
     }
-    addBlock(idx, block) {
+    addBlock(_idx, block) {
         let changedDocs = false;
         let changedActors = false;
         //    let changedFollow = false;
         let changedFiles = false;
         let changedMerge = false;
-        let id = block.id;
         if ('actors' in block && block.actors !== undefined) {
             changedActors = this.primaryActors.merge(block.id, block.actors);
         }
@@ -324,7 +320,7 @@ class Metadata {
     }
     actorsAsync(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 this.readyQ.push(() => {
                     resolve(this.actors(id));
                 });

@@ -65,7 +65,7 @@ class Handle {
             this.cleanup();
         };
         this.cleanup = () => { };
-        this.changeFn = (fn) => { };
+        this.changeFn = (_fn) => { };
         this.change = (fn) => {
             this.changeFn(fn);
             return this;

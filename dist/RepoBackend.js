@@ -297,7 +297,7 @@ class RepoBackend {
                         .getIn(['opSet', 'history'])
                         .slice(0, query.history)
                         .toArray();
-                    const [_, patch] = automerge_1.Backend.applyChanges(automerge_1.Backend.init(), changes);
+                    const [, patch] = automerge_1.Backend.applyChanges(automerge_1.Backend.init(), changes);
                     this.toFrontend.push({ type: 'Reply', id, payload: patch });
                     break;
                 }

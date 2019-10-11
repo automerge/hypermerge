@@ -24,6 +24,6 @@ export declare class Handle<T> {
     close: () => void;
     debug(): void;
     cleanup: () => void;
-    changeFn: (fn: ChangeFn<T>) => void;
+    changeFn: (_fn: ChangeFn<T>) => void;
     change: (fn: ChangeFn<T>) => this;
 }

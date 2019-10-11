@@ -78,12 +78,4 @@ function toHyperfileUrl(feedId) {
 function toFeedId(hyperfileUrl) {
     return Metadata_1.validateFileURL(hyperfileUrl);
 }
-function chunkBuffer(data, blockSize) {
-    const chunks = [];
-    for (let i = 0; i < data.length; i += blockSize) {
-        const block = data.slice(i, i + blockSize);
-        chunks.push(block);
-    }
-    return chunks;
-}
 //# sourceMappingURL=FileStore.js.map

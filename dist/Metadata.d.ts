@@ -56,7 +56,6 @@ export declare class Metadata {
     private leave;
     constructor(storageFn: Function, joinFn: (id: ActorId) => void, leaveFn: (id: ActorId) => void);
     private loadLedger;
-    private hasBlock;
     private batchAdd;
     private writeThrough;
     private append;
