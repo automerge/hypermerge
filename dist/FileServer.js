@@ -40,7 +40,7 @@ class FileServer {
                     }
             }
         };
-        this.store = store;
+        this.files = store;
         this.http = http_1.createServer(this.onConnection);
     }
     listen(path) {
@@ -71,19 +71,19 @@ class FileServer {
     upload(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             const info = uploadInfo(req.headers);
-            const header = yield this.store.write(info.mimeType, info.bytes, req);
+            const header = yield this.files.write(info.mimeType, info.bytes, req);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(header));
         });
     }
     stream(url, res) {
         return __awaiter(this, void 0, void 0, function* () {
-            const header = yield this.store.header(url);
+            const header = yield this.files.header(url);
             res.writeHead(200, {
                 'Content-Type': header.mimeType,
                 'Content-Length': header.bytes,
             });
-            const stream = yield this.store.read(url);
+            const stream = yield this.files.read(url);
             stream.pipe(res);
         });
     }

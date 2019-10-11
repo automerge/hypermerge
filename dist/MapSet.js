@@ -12,9 +12,9 @@ class MapSet {
     }
     union() {
         const acc = [];
-        this.map.forEach((val, key) => {
-            acc.push(...[...val]);
-        });
+        for (const set of this.map.values()) {
+            acc.push(...set);
+        }
         return new Set(acc);
     }
     keys() {

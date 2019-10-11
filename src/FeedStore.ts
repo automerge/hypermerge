@@ -1,9 +1,9 @@
 import fs from 'fs'
 import { Readable, Writable } from 'stream'
-import { KeyPair, decodePair, decode } from './Keys'
-import * as Base58 from 'bs58'
-import { hypercore, Feed, discoveryKey } from './hypercore'
-import { BaseId, DiscoveryId } from './Misc'
+import { hypercore, Feed } from './hypercore'
+import { KeyPair, decodePair } from './Keys'
+import { BaseId, getOrCreate } from './Misc'
+import Queue from './Queue'
 
 export type Feed = Feed<Block>
 export type FeedId = BaseId & { feedId: true }
@@ -30,9 +30,11 @@ interface FeedStorageFn {
 export default class FeedStore {
   private storage: FeedStorageFn
   private feeds: Map<FeedId, Feed<Block>> = new Map()
+  feedIdQ: Queue<FeedId>
 
   constructor(storageFn: FeedStorageFn) {
     this.storage = storageFn
+    this.feedIdQ = new Queue('FeedStore:idQ')
   }
 
   /**
@@ -74,12 +76,12 @@ export default class FeedStore {
     })
   }
 
-  async stream(feedId: FeedId, start = 0, end = -1): Promise<Readable> {
+  async stream(feedId: FeedId, start = 0): Promise<Readable> {
     const feed = await this.open(feedId)
     return feed.createReadStream({ start })
   }
 
-  close(feedId: FeedId): Promise<FeedId> {
+  closeFeed(feedId: FeedId): Promise<FeedId> {
     const feed = this.feeds.get(feedId)
     if (!feed) return Promise.reject(new Error(`Can't close feed ${feedId}, feed not open`))
 
@@ -102,6 +104,10 @@ export default class FeedStore {
     })
   }
 
+  async close(): Promise<void> {
+    await Promise.all([...this.feeds.keys()].map((feedId) => this.closeFeed(feedId)))
+  }
+
   // Junk method used to bridge to Network
   async getFeed(feedId: FeedId): Promise<Feed<Block>> {
     return this.open(feedId)
@@ -118,17 +124,17 @@ export default class FeedStore {
 
       const feed = getOrCreate(this.feeds, feedId, () => {
         const { publicKey, secretKey } = decodePair(keys)
-        return hypercore(this.storage(feedId), publicKey, { secretKey })
+
+        this.feedIdQ.push(feedId)
+
+        return hypercore(this.storage(feedId), publicKey, {
+          secretKey,
+        })
       })
 
       feed.ready(() => res([feedId, feed]))
     })
   }
-}
-
-export function discoveryId(id: FeedId): DiscoveryId {
-  const decoded = Base58.decode(id)
-  return Base58.encode(discoveryKey(decoded)) as DiscoveryId
 }
 
 /**
@@ -153,16 +159,3 @@ function createMultiPromise<T>(
     factory(res, rej)
   })
 }
-
-function getOrCreate<K, V>(map: Map<K, V>, key: K, create: (key: K) => V): V {
-  const existing = map.get(key)
-  if (existing) return existing
-
-  const created = create(key)
-  map.set(key, created)
-  return created
-}
-
-// function encodeFeedId(key: Buffer): FeedId {
-//   return Keys.
-// }

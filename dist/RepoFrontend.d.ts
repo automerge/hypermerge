@@ -32,7 +32,7 @@ export declare class RepoFrontend {
     merge: (url: DocUrl, target: DocUrl) => void;
     fork: (url: DocUrl) => DocUrl;
     watch: <T>(url: DocUrl, cb: (val: import("automerge").FreezeObject<T>, clock?: Clock | undefined, index?: number | undefined) => void) => Handle<T>;
-    message: (url: DocUrl, contents: any) => void;
+    message: <T>(url: DocUrl, contents: T) => void;
     doc: <T>(url: DocUrl, cb?: ((val: import("automerge").FreezeObject<T>, clock?: Clock | undefined) => void) | undefined) => Promise<import("automerge").FreezeObject<T>>;
     materialize: <T>(url: DocUrl, history: number, cb: (val: import("automerge").FreezeObject<T>) => void) => void;
     queryBackend(query: ToBackendQueryMsg, cb: (arg: any) => void): void;

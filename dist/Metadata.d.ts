@@ -2,11 +2,7 @@
 import Queue from './Queue';
 import { Clock } from './Clock';
 import { DocUrl, DocId, ActorId, BaseUrl, BaseId, HyperfileId, HyperfileUrl } from './Misc';
-export interface NewMetadata {
-    type: 'NewMetadata';
-    input: Uint8Array;
-}
-export declare function validateRemoteMetadata(message: RemoteMetadata): RemoteMetadata;
+export declare function sanitizeRemoteMetadata(message: any): RemoteMetadata;
 export declare function cleanMetadataInput(input: any): MetadataBlock | undefined;
 export declare function filterMetadataInputs(input: any[]): MetadataBlock[];
 export interface UrlInfo {
@@ -60,7 +56,6 @@ export declare class Metadata {
     private leave;
     constructor(storageFn: Function, joinFn: (id: ActorId) => void, leaveFn: (id: ActorId) => void);
     private loadLedger;
-    private hasBlock;
     private batchAdd;
     private writeThrough;
     private append;

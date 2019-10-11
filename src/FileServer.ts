@@ -5,11 +5,11 @@ import FileStore, { isHyperfileUrl } from './FileStore'
 import { HyperfileUrl, toIpcPath } from './Misc'
 
 export default class FileServer {
-  private store: FileStore
+  private files: FileStore
   private http: Server
 
   constructor(store: FileStore) {
-    this.store = store
+    this.files = store
     this.http = createServer(this.onConnection)
   }
 
@@ -65,20 +65,20 @@ export default class FileServer {
 
   private async upload(req: IncomingMessage, res: ServerResponse) {
     const info = uploadInfo(req.headers)
-    const header = await this.store.write(info.mimeType, info.bytes, req)
+    const header = await this.files.write(info.mimeType, info.bytes, req)
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(header))
   }
 
   private async stream(url: HyperfileUrl, res: ServerResponse) {
-    const header = await this.store.header(url)
+    const header = await this.files.header(url)
 
     res.writeHead(200, {
       'Content-Type': header.mimeType,
       'Content-Length': header.bytes,
     })
 
-    const stream = await this.store.read(url)
+    const stream = await this.files.read(url)
     stream.pipe(res)
   }
 }

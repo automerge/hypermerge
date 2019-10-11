@@ -1,6 +1,6 @@
 import FileStore from './FileStore';
 export default class FileServer {
-    private store;
+    private files;
     private http;
     constructor(store: FileStore);
     listen(path: string): void;

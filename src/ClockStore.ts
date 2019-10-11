@@ -25,17 +25,24 @@ export default class ClockStore {
   private preparedGet: Statement<[RepoId, DocId]>
   private preparedInsert: Statement<[RepoId, DocId, ActorId, number]>
   private preparedDelete: Statement<[RepoId, DocId]>
+  private preparedAllRepoIds: Statement<[]>
+  private preparedAllDocumentIds: Statement<[RepoId]>
+
   constructor(db: Database) {
     this.db = db
 
     this.preparedGet = this.db.prepare(`SELECT * FROM Clocks WHERE repoId=? AND documentId=?`)
     this.preparedInsert = this.db.prepare(
-      `INSERT INTO Clocks (repoId, documentId, actorId, seq) 
-       VALUES (?, ?, ?, ?) 
-       ON CONFLICT (repoId, documentId, actorId) 
+      `INSERT INTO Clocks (repoId, documentId, actorId, seq)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT (repoId, documentId, actorId)
        DO UPDATE SET seq=excluded.seq WHERE excluded.seq > seq`
     )
     this.preparedDelete = this.db.prepare('DELETE FROM Clocks WHERE repoId=? AND documentId=?')
+    this.preparedAllRepoIds = this.db.prepare('SELECT DISTINCT repoId from Clocks').pluck()
+    this.preparedAllDocumentIds = this.db
+      .prepare('SELECT DISTINCT documentId from Clocks WHERE repoId=?')
+      .pluck()
   }
 
   /**
@@ -86,6 +93,14 @@ export default class ClockStore {
       return this.update(repoId, documentId, clock)
     })
     return transaction(documentId, clock)
+  }
+
+  getAllDocumentIds(repoId: RepoId): DocId[] {
+    return this.preparedAllDocumentIds.all(repoId)
+  }
+
+  getAllRepoIds(): RepoId[] {
+    return this.preparedAllRepoIds.all()
   }
 }
 

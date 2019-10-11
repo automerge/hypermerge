@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import { Options, RepoBackend } from './RepoBackend';
 import { RepoFrontend } from './RepoFrontend';
 import { Handle } from './Handle';
@@ -6,18 +5,16 @@ import { PublicMetadata } from './Metadata';
 import { Clock } from './Clock';
 import { DocUrl, HyperfileUrl, RepoId } from './Misc';
 import FileServerClient from './FileServerClient';
-import { Swarm } from './Network';
+import { Swarm, JoinOptions } from './SwarmInterface';
 import { Doc, Proxy } from 'automerge';
 export declare class Repo {
     front: RepoFrontend;
     back: RepoBackend;
     id: RepoId;
-    swarmKey: Buffer;
-    stream: (opts: any) => any;
     create: <T>(init?: T) => DocUrl;
     open: <T>(id: DocUrl) => Handle<T>;
     destroy: (id: DocUrl) => void;
-    setSwarm: (swarm: Swarm) => void;
+    setSwarm: (swarm: Swarm, joinOptions?: JoinOptions) => void;
     message: (url: DocUrl, message: any) => void;
     files: FileServerClient;
     startFileServer: (fileServerPath: string) => void;

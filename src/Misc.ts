@@ -1,6 +1,7 @@
 import * as Base58 from 'bs58'
 import { Readable } from 'stream'
 import { FeedId } from './FeedStore'
+import { discoveryKey } from './hypercore'
 
 export type BaseId = string & { id: true }
 export type RepoId = BaseId & { repoId: true }
@@ -41,6 +42,18 @@ export function toHyperfileUrl(hyperfileId: HyperfileId): HyperfileUrl {
   return `hyperfile:/${hyperfileId}` as HyperfileUrl
 }
 
+export function decodeId(id: BaseId): Buffer {
+  return Base58.decode(id)
+}
+
+export function toDiscoveryId(id: BaseId): DiscoveryId {
+  return Base58.encode(toDiscoveryKey(id)) as DiscoveryId
+}
+
+export function toDiscoveryKey(id: BaseId): Buffer {
+  return discoveryKey(Base58.decode(id))
+}
+
 export function rootActorId(docId: DocId): ActorId {
   return (docId as string) as ActorId
 }
@@ -64,6 +77,25 @@ export function ID(_id: string): string {
 
 export function notEmpty<TValue>(value: TValue | null | undefined): value is TValue {
   return value !== null && value !== undefined
+}
+
+export function getOrCreate<K extends Object, V>(
+  map: WeakMap<K, V>,
+  key: K,
+  create: (key: K) => V
+): V
+export function getOrCreate<K, V>(map: Map<K, V>, key: K, create: (key: K) => V): V
+export function getOrCreate<K, V>(
+  map: Map<K, V> | WeakMap<K & Object, V>,
+  key: K,
+  create: (key: K) => V
+): V {
+  const existing = map.get(key)
+  if (existing) return existing
+
+  const created = create(key)
+  map.set(key, created)
+  return created
 }
 
 export function streamToBuffer(stream: Readable): Promise<Buffer> {

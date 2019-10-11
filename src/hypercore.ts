@@ -13,6 +13,7 @@ type Storage = string | Function
 export interface Options {
   secretKey?: Key
   valueEncoding?: string
+  extensions?: string[]
 }
 
 export interface ReadOpts {
@@ -35,22 +36,41 @@ export function hypercore<T>(storage: Storage, arg2: any, arg3?: any): Feed<T> {
   }
 }
 
-export interface Feed<T> {
-  on(event: 'ready', cb: () => void): this
-  on(event: 'close', cb: () => void): this
-  on(event: 'sync', cb: () => void): this
-  on(event: 'error', cb: (err: Error) => void): this
-  on(event: 'download', cb: (index: number, data: Buffer) => void): this
-  on(event: 'upload', cb: (index: number, data: T) => void): this
-  on(event: 'data', cb: (idx: number, data: T) => void): this
-  on(event: 'peer-add', cb: (peer: Peer) => void): this
-  on(event: 'peer-remove', cb: (peer: Peer) => void): this
-  on(event: 'extension', cb: (a: any, b: any) => void): this
+export interface Peer {
+  feed: any
+  stream: any
+  onextension: any
+  remoteId: Buffer
+  extension: any
+  extensions: string[]
+}
 
+export interface FeedEvents<T> {
+  ready(): void
+  close(): void
+  sync(): void
+  error(err: Error): void
+  download(index: number, data: Buffer): void
+  upload(index: number, data: T): void
+  data(idx: number, data: T): void
+  extension(name: string, msg: Buffer, peer: Peer): void
+  ['peer-add'](peer: Peer): void
+  ['peer-remove'](peer: Peer): void
+}
+
+export interface Feed<T> {
   peers: Peer[]
   replicate: Function
   writable: boolean
+  discoveryKey: Buffer
+  key: Buffer
+  length: number
   ready: Function
+  readonly extensions: string[]
+
+  on<K extends keyof FeedEvents<T>>(event: K, cb: FeedEvents<T>[K]): this
+  off<K extends keyof FeedEvents<T>>(event: K, cb: FeedEvents<T>[K]): this
+
   append(data: T): void
   append(data: T, cb: (err: Error | null, seq: number) => void): void
   clear(index: number, cb: () => void): void
@@ -70,9 +90,8 @@ export interface Feed<T> {
   getBatch(start: number, end: number, config: any, cb: (Err: any, data: T[]) => void): void
   createReadStream(opts: any): Readable
   createWriteStream(): Writable
-  discoveryKey: Buffer
-  id: Buffer
-  length: number
+
+  extension(name: string, msg: Buffer): void
 }
 
 function readFeedN<T>(
@@ -116,11 +135,4 @@ export function readFeed<T>(id: ActorId | 'ledger', feed: Feed<T>, cb: (data: T[
       break
     }
   }
-}
-
-export interface Peer {
-  feed: any
-  stream: any
-  onextension: any
-  remoteId: Buffer
 }

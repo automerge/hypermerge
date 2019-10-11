@@ -20,16 +20,12 @@ import {
   HyperfileUrl,
 } from './Misc'
 
-export interface NewMetadata {
-  type: 'NewMetadata'
-  input: Uint8Array
-}
-
-export function validateRemoteMetadata(message: RemoteMetadata): RemoteMetadata {
+export function sanitizeRemoteMetadata(message: any): RemoteMetadata {
   const result: RemoteMetadata = { type: 'RemoteMetadata', clocks: {}, blocks: [] }
+
   if (
     message instanceof Object &&
-    message.blocks instanceof Array &&
+    Array.isArray(message.blocks) &&
     message.clocks instanceof Object
   ) {
     result.blocks = filterMetadataInputs(message.blocks)
@@ -246,6 +242,7 @@ export class Metadata {
     this.ledger = hypercore(storageFn('ledger'), {})
     this.join = joinFn
     this.leave = leaveFn
+
     log('LEDGER READY (1)')
     this.ledger.ready(() => {
       log('LEDGER READY (2)', this.ledger.length)
@@ -269,10 +266,6 @@ export class Metadata {
     this._docsWith = new Map()
     this.allActors().forEach((actorId: string) => this.join(actorId as ActorId))
     this.readyQ.subscribe((f) => f())
-  }
-
-  private hasBlock(block: MetadataBlock): boolean {
-    return false
   }
 
   private batchAdd(blocks: MetadataBlock[]) {
@@ -308,13 +301,12 @@ export class Metadata {
     })
   }
 
-  private addBlock(idx: number, block: MetadataBlock): boolean {
+  private addBlock(_idx: number, block: MetadataBlock): boolean {
     let changedDocs = false
     let changedActors = false
     //    let changedFollow = false;
     let changedFiles = false
     let changedMerge = false
-    let id = block.id
 
     if ('actors' in block && block.actors !== undefined) {
       changedActors = this.primaryActors.merge(block.id, block.actors)
@@ -383,7 +375,7 @@ export class Metadata {
   }
 
   async actorsAsync(id: DocId): Promise<ActorId[]> {
-    return new Promise<ActorId[]>((resolve, reject) => {
+    return new Promise<ActorId[]>((resolve) => {
       this.readyQ.push(() => {
         resolve(this.actors(id))
       })

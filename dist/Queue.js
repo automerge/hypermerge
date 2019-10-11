@@ -11,17 +11,33 @@ class Queue {
             this.log('queued', item);
             this.queue.push(item);
         };
+        this.name = name;
         this.log = debug_1.default(`queue:${name}`);
         this.push = this.enqueue;
     }
+    first() {
+        return new Promise((res) => {
+            this.once(res);
+        });
+    }
+    drain(fn) {
+        while (this.queue.length) {
+            const item = this.queue.shift();
+            if (item !== undefined)
+                fn(item);
+        }
+    }
     once(subscriber) {
         if (this.subscription === undefined) {
-            this.subscribe(subscriber);
+            this.subscribe((item) => {
+                this.unsubscribe();
+                subscriber(item);
+            });
         }
     }
     subscribe(subscriber) {
         if (this.subscription) {
-            throw new Error('only one subscriber at a time to a queue');
+            throw new Error(`${this.name}: only one subscriber at a time to a queue`);
         }
         this.log('subscribe');
         this.subscription = subscriber;

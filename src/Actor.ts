@@ -1,4 +1,4 @@
-import { Peer, discoveryKey } from './hypercore'
+import { discoveryKey } from './hypercore'
 import { Change } from 'automerge'
 import { ID, ActorId, DiscoveryId, encodeActorId, encodeDiscoveryId } from './Misc'
 import Queue from './Queue'
@@ -9,13 +9,7 @@ import FeedStore, { FeedId, Feed } from './FeedStore'
 
 const log = Debug('repo:actor')
 
-export type ActorMsg =
-  | ActorFeedReady
-  | ActorInitialized
-  | ActorSync
-  | PeerUpdate
-  | PeerAdd
-  | Download
+export type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | Download
 
 interface ActorSync {
   type: 'ActorSync'
@@ -25,24 +19,13 @@ interface ActorSync {
 interface ActorFeedReady {
   type: 'ActorFeedReady'
   actor: Actor
+  feed: Feed
   writable: boolean
 }
 
 interface ActorInitialized {
   type: 'ActorInitialized'
   actor: Actor
-}
-
-interface PeerUpdate {
-  type: 'PeerUpdate'
-  actor: Actor
-  peers: number
-}
-
-interface PeerAdd {
-  type: 'PeerAdd'
-  actor: Actor
-  peer: Peer
 }
 
 interface Download {
@@ -63,7 +46,6 @@ export class Actor {
   id: ActorId
   dkString: DiscoveryId
   changes: Change[] = []
-  peers: Map<string, Peer> = new Map()
   private q: Queue<(actor: Actor) => void>
   private notify: (msg: ActorMsg) => void
   private store: FeedStore
@@ -99,7 +81,7 @@ export class Actor {
   }
 
   close() {
-    return this.store.close(this.id)
+    return this.store.closeFeed(this.id)
   }
 
   async destroy() {
@@ -118,10 +100,8 @@ export class Actor {
   }
 
   private onFeedReady = async (feed: Feed) => {
-    this.notify({ type: 'ActorFeedReady', actor: this, writable: feed.writable })
+    this.notify({ type: 'ActorFeedReady', actor: this, writable: feed.writable, feed })
 
-    feed.on('peer-remove', this.onPeerRemove)
-    feed.on('peer-add', this.onPeerAdd)
     feed.on('close', this.onClose)
     if (!feed.writable) {
       feed.on('download', this.onDownload)
@@ -141,21 +121,6 @@ export class Actor {
       this.q.subscribe((f) => f(this))
       if (hasData) this.onSync()
     })
-  }
-
-  private onPeerAdd = (peer: Peer) => {
-    log('peer-add feed', ID(this.id), peer.remoteId)
-    // peer-add is called multiple times. Noop if we already know about this peer.
-    if (this.peers.has(peer.remoteId.toString())) return
-
-    this.peers.set(peer.remoteId.toString(), peer)
-    this.notify({ type: 'PeerAdd', actor: this, peer: peer })
-    this.notify({ type: 'PeerUpdate', actor: this, peers: this.peers.size })
-  }
-
-  private onPeerRemove = (peer: Peer) => {
-    this.peers.delete(peer.remoteId.toString())
-    this.notify({ type: 'PeerUpdate', actor: this, peers: this.peers.size })
   }
 
   private onDownload = (index: number, data: Uint8Array) => {

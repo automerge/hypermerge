@@ -7,11 +7,15 @@ class ClockStore {
     constructor(db) {
         this.db = db;
         this.preparedGet = this.db.prepare(`SELECT * FROM Clocks WHERE repoId=? AND documentId=?`);
-        this.preparedInsert = this.db.prepare(`INSERT INTO Clocks (repoId, documentId, actorId, seq) 
-       VALUES (?, ?, ?, ?) 
-       ON CONFLICT (repoId, documentId, actorId) 
+        this.preparedInsert = this.db.prepare(`INSERT INTO Clocks (repoId, documentId, actorId, seq)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT (repoId, documentId, actorId)
        DO UPDATE SET seq=excluded.seq WHERE excluded.seq > seq`);
         this.preparedDelete = this.db.prepare('DELETE FROM Clocks WHERE repoId=? AND documentId=?');
+        this.preparedAllRepoIds = this.db.prepare('SELECT DISTINCT repoId from Clocks').pluck();
+        this.preparedAllDocumentIds = this.db
+            .prepare('SELECT DISTINCT documentId from Clocks WHERE repoId=?')
+            .pluck();
     }
     /**
      * TODO: handle missing clocks better. Currently returns an empty clock (i.e. an empty object)
@@ -59,6 +63,12 @@ class ClockStore {
             return this.update(repoId, documentId, clock);
         });
         return transaction(documentId, clock);
+    }
+    getAllDocumentIds(repoId) {
+        return this.preparedAllDocumentIds.all(repoId);
+    }
+    getAllRepoIds() {
+        return this.preparedAllRepoIds.all();
     }
 }
 exports.default = ClockStore;

@@ -1,9 +1,8 @@
-import { Peer } from './hypercore';
 import { Change } from 'automerge';
 import { ActorId, DiscoveryId } from './Misc';
 import * as Keys from './Keys';
-import FeedStore, { FeedId } from './FeedStore';
-export declare type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | PeerUpdate | PeerAdd | Download;
+import FeedStore, { FeedId, Feed } from './FeedStore';
+export declare type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | Download;
 interface ActorSync {
     type: 'ActorSync';
     actor: Actor;
@@ -11,21 +10,12 @@ interface ActorSync {
 interface ActorFeedReady {
     type: 'ActorFeedReady';
     actor: Actor;
+    feed: Feed;
     writable: boolean;
 }
 interface ActorInitialized {
     type: 'ActorInitialized';
     actor: Actor;
-}
-interface PeerUpdate {
-    type: 'PeerUpdate';
-    actor: Actor;
-    peers: number;
-}
-interface PeerAdd {
-    type: 'PeerAdd';
-    actor: Actor;
-    peer: Peer;
 }
 interface Download {
     type: 'Download';
@@ -43,7 +33,6 @@ export declare class Actor {
     id: ActorId;
     dkString: DiscoveryId;
     changes: Change[];
-    peers: Map<string, Peer>;
     private q;
     private notify;
     private store;
@@ -54,8 +43,6 @@ export declare class Actor {
     destroy(): Promise<void>;
     private getOrCreateFeed;
     private onFeedReady;
-    private onPeerAdd;
-    private onPeerRemove;
     private onDownload;
     private onSync;
     private onClose;

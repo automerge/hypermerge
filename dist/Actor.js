@@ -29,15 +29,12 @@ const log = debug_1.default('repo:actor');
 class Actor {
     constructor(config) {
         this.changes = [];
-        this.peers = new Map();
         // Note: on Actor ready, not Feed!
         this.onReady = (cb) => {
             this.q.push(cb);
         };
         this.onFeedReady = (feed) => __awaiter(this, void 0, void 0, function* () {
-            this.notify({ type: 'ActorFeedReady', actor: this, writable: feed.writable });
-            feed.on('peer-remove', this.onPeerRemove);
-            feed.on('peer-add', this.onPeerAdd);
+            this.notify({ type: 'ActorFeedReady', actor: this, writable: feed.writable, feed });
             feed.on('close', this.onClose);
             if (!feed.writable) {
                 feed.on('download', this.onDownload);
@@ -58,19 +55,6 @@ class Actor {
                     this.onSync();
             });
         });
-        this.onPeerAdd = (peer) => {
-            log('peer-add feed', Misc_1.ID(this.id), peer.remoteId);
-            // peer-add is called multiple times. Noop if we already know about this peer.
-            if (this.peers.has(peer.remoteId.toString()))
-                return;
-            this.peers.set(peer.remoteId.toString(), peer);
-            this.notify({ type: 'PeerAdd', actor: this, peer: peer });
-            this.notify({ type: 'PeerUpdate', actor: this, peers: this.peers.size });
-        };
-        this.onPeerRemove = (peer) => {
-            this.peers.delete(peer.remoteId.toString());
-            this.notify({ type: 'PeerUpdate', actor: this, peers: this.peers.size });
-        };
         this.onDownload = (index, data) => {
             this.parseBlock(data, index);
             const time = Date.now();
@@ -105,7 +89,7 @@ class Actor {
         this.store.append(this.id, Block.pack(change));
     }
     close() {
-        return this.store.close(this.id);
+        return this.store.closeFeed(this.id);
     }
     destroy() {
         return __awaiter(this, void 0, void 0, function* () {

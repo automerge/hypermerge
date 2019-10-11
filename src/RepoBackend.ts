@@ -1,5 +1,5 @@
 import Queue from './Queue'
-import { Metadata } from './Metadata'
+import { Metadata, sanitizeRemoteMetadata } from './Metadata'
 import { Actor, ActorMsg } from './Actor'
 import { Clock, strs2clock, clockDebug, clockActorIds } from './Clock'
 import * as Base58 from 'bs58'
@@ -13,27 +13,30 @@ import {
   notEmpty,
   ID,
   ActorId,
-  DiscoveryId,
   DocId,
   RepoId,
   encodeRepoId,
   encodeDocId,
   rootActorId,
   encodeActorId,
+  toDiscoveryId,
 } from './Misc'
 import Debug from 'debug'
-import * as DocumentBroadcast from './DocumentBroadcast'
 import * as Keys from './Keys'
 import FeedStore from './FeedStore'
 import FileStore from './FileStore'
 import FileServer from './FileServer'
-import Network, { Swarm } from './Network'
-import { PeerId } from './NetworkPeer'
+import Network from './Network'
+import NetworkPeer, { PeerId } from './NetworkPeer'
+import { Swarm, JoinOptions } from './SwarmInterface'
+import { PeerMsg } from './PeerMsg'
 import ClockStore from './ClockStore'
 import * as SqlDatabase from './SqlDatabase'
+import MessageRouter, { Routed } from './MessageRouter'
 import ram from 'random-access-memory'
 import raf from 'random-access-file'
 import KeyStore from './KeyStore'
+import ReplicationManager, { Discovery } from './ReplicationManager'
 
 Debug.formatters.b = Base58.encode
 
@@ -53,21 +56,22 @@ export interface Options {
 export class RepoBackend {
   path?: string
   storage: Function
+  feeds: FeedStore
   keys: KeyStore
-  store: FeedStore
   files: FileStore
   clocks: ClockStore
   actors: Map<ActorId, Actor> = new Map()
-  actorsDk: Map<DiscoveryId, Actor> = new Map()
   docs: Map<DocId, DocBackend.DocBackend> = new Map()
   meta: Metadata
   opts: Options
   toFrontend: Queue<ToFrontendRepoMsg> = new Queue('repo:back:toFrontend')
   id: RepoId
+  network: Network
+  messages: MessageRouter<PeerMsg>
+  replication: ReplicationManager
   swarmKey: Buffer // TODO: Remove this once we no longer use discovery-swarm/discovery-cloud
   private db: SqlDatabase.Database
   private fileServer: FileServer
-  private network: Network
 
   constructor(opts: Options) {
     this.opts = opts
@@ -81,6 +85,8 @@ export class RepoBackend {
     this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
 
     this.keys = new KeyStore(this.db)
+    this.feeds = new FeedStore(this.storageFn)
+    this.files = new FileStore(this.feeds)
 
     // init repo
     const repoKeys = this.keys.get('self.repo') || this.keys.set('self.repo', Keys.createBuffer())
@@ -89,15 +95,22 @@ export class RepoBackend {
 
     // initialize the various stores
     this.clocks = new ClockStore(this.db)
-    this.store = new FeedStore(this.storageFn)
-    this.files = new FileStore(this.store)
     this.files.writeLog.subscribe((header) => {
       this.meta.addFile(header.url, header.bytes, header.mimeType)
     })
     this.fileServer = new FileServer(this.files)
 
+    this.replication = new ReplicationManager(this.feeds)
     this.meta = new Metadata(this.storageFn, this.join, this.leave)
-    this.network = new Network(toPeerId(this.id), this.store)
+    this.network = new Network(toPeerId(this.id))
+    this.messages = new MessageRouter('HypermergeMessages')
+
+    this.messages.inboxQ.subscribe(this.onMessage)
+    this.replication.discoveryQ.subscribe(this.onDiscovery)
+    this.network.peerQ.subscribe(this.onPeer)
+    this.feeds.feedIdQ.subscribe((feedId) => {
+      this.replication.addFeedIds([feedId])
+    })
   }
 
   startFileServer = (path: string) => {
@@ -193,7 +206,12 @@ export class RepoBackend {
     this.actors.clear()
     this.db.close()
 
-    return Promise.all([this.network.close(), this.fileServer.close()])
+    return Promise.all([
+      this.feeds.close(),
+      this.replication.close(),
+      this.network.close(),
+      this.fileServer.close(),
+    ])
   }
 
   private async allReadyActors(docId: DocId): Promise<Actor[]> {
@@ -222,11 +240,11 @@ export class RepoBackend {
   }
 
   join = (actorId: ActorId) => {
-    this.network.join(actorId)
+    this.network.join(toDiscoveryId(actorId))
   }
 
   leave = (actorId: ActorId) => {
-    this.network.leave(actorId)
+    this.network.leave(toDiscoveryId(actorId))
   }
 
   private getReadyActor = (actorId: ActorId): Promise<Actor> => {
@@ -330,25 +348,47 @@ export class RepoBackend {
     }
   }
 
-  private broadcastNotify = (msg: DocumentBroadcast.BroadcastMessage) => {
+  onPeer = (peer: NetworkPeer): void => {
+    this.messages.listenTo(peer)
+    this.replication.onPeer(peer)
+  }
+
+  onDiscovery = ({ feedId, peer }: Discovery) => {
+    const actorId = feedId as ActorId
+
+    const blocks = this.meta.forActor(actorId)
+
+    const docs = this.meta.docsWith(actorId)
+    const clocks = this.clocks.getMultiple(this.id, docs)
+
+    this.messages.sendToPeer(peer, {
+      type: 'RemoteMetadata',
+      clocks,
+      blocks,
+    })
+  }
+
+  private onMessage = ({ msg }: Routed<PeerMsg>) => {
     switch (msg.type) {
       case 'RemoteMetadata': {
-        for (let docId in msg.clocks) {
-          const clock = msg.clocks[docId]
+        const { blocks, clocks } = sanitizeRemoteMetadata(msg)
+
+        for (let docId in clocks) {
+          const clock = clocks[docId]
           const doc = this.docs.get(docId as DocId)
           if (clock && doc) {
             doc.updateMinimumClock(clock)
           }
         }
-        const _blocks = msg.blocks
-        this.meta.addBlocks(_blocks)
-        _blocks.map((block) => {
+        this.meta.addBlocks(blocks)
+        blocks.map((block) => {
           if ('actors' in block && block.actors) this.syncReadyActors(block.actors)
           if ('merge' in block && block.merge) this.syncReadyActors(clockActorIds(block.merge))
           // if (block.follows) block.follows.forEach(id => this.open(id))
         })
         break
       }
+
       case 'DocumentMessage': {
         const { contents, id } = msg as DocumentMsg
         this.toFrontend.push({
@@ -356,11 +396,6 @@ export class RepoBackend {
           id,
           contents,
         })
-        break
-      }
-      case 'NewMetadata': {
-        // TODO: Warn better than this!
-        console.log('Legacy Metadata message received - better upgrade')
         break
       }
     }
@@ -372,33 +407,27 @@ export class RepoBackend {
         const actor = msg.actor
         // Record whether or not this actor is writable.
         this.meta.setWritable(actor.id, msg.writable)
+
         // Broadcast latest document information to peers.
-        const metadata = this.meta.forActor(actor.id)
+        const blocks = this.meta.forActor(actor.id)
         const docs = this.meta.docsWith(actor.id)
         const clocks = this.clocks.getMultiple(this.id, docs)
-        docs.forEach((documentId) => {
-          const documentActor = this.actor(rootActorId(documentId as DocId))
-          if (documentActor) {
-            DocumentBroadcast.broadcastMetadata(metadata, clocks, documentActor.peers.values())
-          }
+        const discoveryIds = this.meta.docsWith(actor.id).map(toDiscoveryId)
+        const peers = this.replication.getPeersWith(discoveryIds)
+
+        this.messages.sendToPeers(peers, {
+          type: 'RemoteMetadata',
+          blocks,
+          clocks,
         })
+
         this.join(actor.id)
+
         break
       }
       case 'ActorInitialized': {
         // Swarm on the actor's feed.
         this.join(msg.actor.id)
-        break
-      }
-      case 'PeerAdd': {
-        // Listen for hypermerge extension broadcasts.
-        DocumentBroadcast.listen(msg.peer, this.broadcastNotify)
-
-        // Broadcast the latest document information to the new peer
-        const metadata = this.meta.forActor(msg.actor.id)
-        const docs = this.meta.docsWith(msg.actor.id)
-        const clocks = this.clocks.getMultiple(this.id, docs)
-        DocumentBroadcast.broadcastMetadata(metadata, clocks, [msg.peer])
         break
       }
       case 'ActorSync':
@@ -421,9 +450,13 @@ export class RepoBackend {
   }
 
   private initActor(keys: Keys.KeyBuffer): Actor {
-    const actor = new Actor({ keys, notify: this.actorNotify, store: this.store })
+    const actor = new Actor({
+      keys,
+      notify: this.actorNotify,
+      store: this.feeds,
+    })
     this.actors.set(actor.id, actor)
-    this.actorsDk.set(actor.dkString, actor)
+    this.replication.addFeedIds([actor.id])
     return actor
   }
 
@@ -454,12 +487,8 @@ export class RepoBackend {
     })
   }
 
-  setSwarm = (swarm: Swarm) => {
-    return this.network.setSwarm(swarm)
-  }
-
-  stream = (opts: any): any => {
-    return this.network.onConnect(opts)
+  setSwarm = (swarm: Swarm, joinOptions?: JoinOptions) => {
+    this.network.setSwarm(swarm, joinOptions)
   }
 
   subscribe = (subscriber: (message: ToFrontendRepoMsg) => void) => {
@@ -480,7 +509,7 @@ export class RepoBackend {
           .getIn(['opSet', 'history'])
           .slice(0, query.history)
           .toArray()
-        const [_, patch] = Backend.applyChanges(Backend.init(), changes)
+        const [, patch] = Backend.applyChanges(Backend.init(), changes)
         this.toFrontend.push({ type: 'Reply', id, payload: patch })
         break
       }
@@ -531,10 +560,13 @@ export class RepoBackend {
       case 'DocumentMessage': {
         // Note: 'id' is the document id of the document to send the message to.
         const { id, contents } = msg
-        const documentActor = this.actor(rootActorId(id))
-        if (documentActor) {
-          DocumentBroadcast.broadcastDocumentMessage(id, contents, documentActor.peers.values())
-        }
+        const peers = this.replication.getPeersWith([toDiscoveryId(id)])
+        this.messages.sendToPeers(peers, {
+          type: 'DocumentMessage',
+          id,
+          contents,
+        })
+
         break
       }
       case 'DestroyMsg': {
@@ -562,9 +594,5 @@ function ensureDirectoryExists(path: string) {
 }
 
 function toPeerId(repoId: RepoId): PeerId {
-  return (repoId as string) as PeerId
-}
-
-function toDiscoveryId(repoId: RepoId): DiscoveryId {
-  return (repoId as string) as DiscoveryId
+  return repoId as PeerId
 }

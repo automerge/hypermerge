@@ -1,6 +1,14 @@
 import test from 'tape'
 import uuid from 'uuid/v4'
 import { Repo } from '../src'
+import Hyperswarm from 'hyperswarm'
+import Network from '../src/Network'
+import { DiscoveryId } from '../src/Misc'
+import * as Keys from '../src/Keys'
+import NetworkPeer, { PeerId } from '../src/NetworkPeer'
+import ram from 'random-access-memory'
+import PeerConnection from '../src/PeerConnection'
+import { Duplex } from 'stream'
 
 type DocMsg = [any, string]
 type DocMsgCB = [any, string, any]
@@ -15,6 +23,100 @@ export function testRepo() {
   // in-memory sqlite datbasae - which breaks the tests!
   const randomPath = uuid().toString()
   return new Repo({ path: randomPath, memory: true })
+}
+
+export function testSwarm() {
+  return Hyperswarm()
+}
+
+export function testDiscoveryId(): DiscoveryId {
+  return Keys.create().publicKey as DiscoveryId
+}
+
+export function testNetwork(): Network {
+  return new Network(testPeerId())
+}
+
+export function testPeerPair(): [NetworkPeer, NetworkPeer] {
+  const idA = testPeerId()
+  const idB = testPeerId()
+
+  const peerA = new NetworkPeer(idA, idB)
+  const peerB = new NetworkPeer(idB, idA)
+
+  const [connA, connB] = testConnectionPair()
+
+  peerA.addConnection(connA)
+  peerB.addConnection(connB)
+
+  return [peerA, peerB]
+}
+
+export function testConnectionPair(): [PeerConnection, PeerConnection] {
+  const [duplexA, duplexB] = testDuplexPair()
+
+  const connA = new PeerConnection(duplexA, { isClient: true, type: 'tcp' })
+  const connB = new PeerConnection(duplexB, { isClient: false, type: 'tcp' })
+
+  return [connA, connB]
+}
+
+export function testDuplexPair(): [Duplex, Duplex] {
+  // The interval keeps node from exiting while streaming:
+  const interval = setInterval(() => {}, 999999)
+
+  const duplexA = new Duplex({
+    read(size) {
+      const chunk = duplexB.read(size)
+      if (chunk) this.push(chunk)
+    },
+    write(chunk, encoding, cb) {
+      // Push async to avoid sync race conditions:
+      setImmediate(() => {
+        duplexB.push(chunk, encoding)
+        cb()
+      })
+    },
+  })
+
+  const duplexB = new Duplex({
+    read(size) {
+      const data = duplexA.read(size)
+      if (data) this.push(data)
+    },
+    write(chunk, encoding, cb) {
+      // Push async to avoid sync race conditions:
+      setImmediate(() => {
+        duplexA.push(chunk, encoding)
+        cb()
+      })
+    },
+  })
+
+  duplexA.on('close', () => {
+    clearInterval(interval)
+    duplexB.destroy()
+  })
+
+  duplexB.on('close', () => {
+    clearInterval(interval)
+    duplexA.destroy()
+  })
+
+  return [duplexA, duplexB]
+}
+
+export function testKeyPair(): Required<Keys.KeyPair> {
+  return Keys.create()
+}
+
+export function testPeerId(): PeerId {
+  return Keys.create().publicKey as PeerId
+}
+
+export function testStorageFn() {
+  const root = uuid()
+  return (path: string) => (name: string) => ram(root + path + name)
 }
 
 export function expectDocs(t: test.Test, docs: DocInfo[]) {
@@ -35,13 +137,17 @@ export function expectDocs(t: test.Test, docs: DocInfo[]) {
   }
 }
 
-export function expect<T>(t: test.Test, getValue: Function, expected: Expected<T>[]) {
+export function expect<T, Args extends any[]>(
+  t: test.Test,
+  getValue: (...args: Args) => T,
+  expected: Expected<T>[]
+) {
   let i = 0
 
   // add to the current planned test length:
   t.plan(((<any>t)._plan || 0) + expected.length)
 
-  return (...args: any) => {
+  return (...args: Args) => {
     const currentExpected = expected[i++]
     if (currentExpected === undefined) {
       t.fail(`Invoked more times than expected. Invoked with: ${JSON.stringify(args)}`)

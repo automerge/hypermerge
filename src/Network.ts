@@ -1,104 +1,112 @@
-import * as Base58 from 'bs58'
-import HypercoreProtocol from 'hypercore-protocol'
-import { DiscoveryId, encodeDiscoveryId } from './Misc'
-import Peer, { PeerId, decodePeerId } from './NetworkPeer'
-import * as DocumentBroadcast from './DocumentBroadcast'
-import FeedStore, { FeedId, discoveryId } from './FeedStore'
-
-export interface Swarm {
-  join(dk: Buffer): void
-  leave(dk: Buffer): void
-  on: Function
-  removeAllListeners(): void
-  discovery: {
-    removeAllListeners(): void
-    close(): void
-  }
-  peers: Map<any, any>
-}
+import { DiscoveryId, getOrCreate, decodeId } from './Misc'
+import NetworkPeer, { PeerId } from './NetworkPeer'
+import { Swarm, JoinOptions, Socket, ConnectionDetails } from './SwarmInterface'
+import Queue from './Queue'
+import PeerConnection from './PeerConnection'
 
 export default class Network {
   selfId: PeerId
-  joined: Map<DiscoveryId, FeedId>
-  store: FeedStore
-  peers: Map<PeerId, Peer>
+  joined: Set<DiscoveryId>
+  pending: Set<DiscoveryId>
+  peers: Map<PeerId, NetworkPeer>
+  peerQ: Queue<NetworkPeer>
   swarm?: Swarm
+  joinOptions?: JoinOptions
 
-  constructor(selfId: PeerId, store: FeedStore) {
+  constructor(selfId: PeerId) {
     this.selfId = selfId
-    this.store = store
-    this.joined = new Map()
+    this.joined = new Set()
+    this.pending = new Set()
     this.peers = new Map()
+    this.peerQ = new Queue('Network:peerQ')
+    this.joinOptions = { announce: true, lookup: true }
   }
 
-  join(feedId: FeedId): void {
-    const id = discoveryId(feedId)
-    if (this.joined.has(id)) return
-    if (this.swarm) this.swarm.join(decodeId(id))
+  join(discoveryId: DiscoveryId): void {
+    if (this.swarm) {
+      if (this.joined.has(discoveryId)) return
 
-    this.joined.set(id, feedId)
+      this.joined.add(discoveryId)
+      this.swarm.join(decodeId(discoveryId), this.joinOptions)
+      this.pending.delete(discoveryId)
+    } else {
+      this.pending.add(discoveryId)
+    }
   }
 
-  leave(feedId: FeedId): void {
-    const id = discoveryId(feedId)
-    if (!this.joined.has(id)) return
-    if (this.swarm) this.swarm.leave(decodeId(id))
-    this.joined.delete(id)
+  leave(discoveryId: DiscoveryId): void {
+    this.pending.delete(discoveryId)
+    if (!this.joined.has(discoveryId)) return
+
+    if (this.swarm) this.swarm.leave(decodeId(discoveryId))
+    this.joined.delete(discoveryId)
   }
 
-  setSwarm(swarm: Swarm): void {
+  setSwarm(swarm: Swarm, joinOptions?: JoinOptions): void {
     if (this.swarm) throw new Error('Swarm already exists!')
 
+    if (joinOptions) this.joinOptions = joinOptions
     this.swarm = swarm
+    this.swarm.on('connection', this.onConnection)
 
-    for (let id of this.joined.keys()) {
-      this.swarm.join(decodeId(id))
+    for (const discoveryId of this.pending) {
+      this.join(discoveryId)
     }
   }
 
-  close(): Promise<void> {
+  get closedConnectionCount(): number {
+    let count = 0
+    for (const peer of this.peers.values()) {
+      count += peer.closedConnectionCount
+    }
+    return count
+  }
+
+  async close(): Promise<void> {
+    this.peers.forEach((peer) => {
+      peer.close()
+    })
+
     return new Promise((res) => {
-      if (!this.swarm) return res()
-      this.swarm.discovery.removeAllListeners()
-      this.swarm.discovery.close()
-      this.swarm.peers.forEach((p: any) => p.connections.forEach((con: any) => con.destroy()))
-      this.swarm.removeAllListeners()
-      res()
+      this.swarm ? this.swarm.destroy(res) : res()
     })
   }
 
-  onConnect = (peerInfo: any) => {
-    const protocol = HypercoreProtocol({
-      live: true,
-      id: decodePeerId(this.selfId),
-      encrypt: false,
-      timeout: 10000,
-      extensions: DocumentBroadcast.SUPPORTED_EXTENSIONS,
-    })
+  getOrCreatePeer(peerId: PeerId) {
+    return getOrCreate(this.peers, peerId, () => {
+      const peer = new NetworkPeer(this.selfId, peerId)
 
-    const onFeedRequested = (discoveryKey: Buffer) => {
-      const discoveryId = encodeDiscoveryId(discoveryKey)
-      const feedId = this.joined.get(discoveryId)
-
-      if (!feedId) throw new Error(`Unknown feed: ${discoveryId}`)
-
-      this.store.getFeed(feedId).then((feed) => {
-        feed.replicate({
-          stream: protocol,
-          live: true,
-        })
+      peer.connectionQ.subscribe((_conn) => {
+        this.peerQ.push(peer)
       })
-    }
 
-    protocol.on('feed', onFeedRequested)
-    const discoveryKey = peerInfo.channel || peerInfo.discoveryKey
-
-    if (discoveryKey) onFeedRequested(discoveryKey)
-
-    return protocol
+      return peer
+    })
   }
-}
 
-function decodeId(id: DiscoveryId): Buffer {
-  return Base58.decode(id)
+  private onConnection = async (socket: Socket, details: ConnectionDetails) => {
+    details.reconnect(false)
+
+    const conn = new PeerConnection(socket, {
+      isClient: details.client,
+      type: details.type,
+      onClose() {
+        details.ban()
+      },
+    })
+
+    conn.networkBus.send({
+      type: 'Info',
+      peerId: this.selfId,
+    })
+
+    const firstMsg = await conn.networkBus.receiveQ.first()
+
+    if (firstMsg.type !== 'Info') throw new Error('First message must be Info.')
+
+    const { peerId } = firstMsg
+    if (peerId === this.selfId) throw new Error('Connected to self.')
+
+    this.getOrCreatePeer(peerId).addConnection(conn)
+  }
 }

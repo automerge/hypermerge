@@ -30,10 +30,10 @@ const Misc_1 = require("./Misc");
 const log = debug_1.default('repo:metadata');
 const Clock_1 = require("./Clock");
 const Misc_2 = require("./Misc");
-function validateRemoteMetadata(message) {
+function sanitizeRemoteMetadata(message) {
     const result = { type: 'RemoteMetadata', clocks: {}, blocks: [] };
     if (message instanceof Object &&
-        message.blocks instanceof Array &&
+        Array.isArray(message.blocks) &&
         message.clocks instanceof Object) {
         result.blocks = filterMetadataInputs(message.blocks);
         result.clocks = message.clocks;
@@ -44,7 +44,7 @@ function validateRemoteMetadata(message) {
         return result;
     }
 }
-exports.validateRemoteMetadata = validateRemoteMetadata;
+exports.sanitizeRemoteMetadata = sanitizeRemoteMetadata;
 function cleanMetadataInput(input) {
     const id = input.id || input.docId;
     if (typeof id !== 'string')
@@ -253,20 +253,16 @@ class Metadata {
             hypercore_1.readFeed('ledger', this.ledger, this.loadLedger);
         });
     }
-    hasBlock(block) {
-        return false;
-    }
     batchAdd(blocks) {
         log('Batch add', blocks.length);
         blocks.forEach((block, i) => this.addBlock(i, block));
     }
-    addBlock(idx, block) {
+    addBlock(_idx, block) {
         let changedDocs = false;
         let changedActors = false;
         //    let changedFollow = false;
         let changedFiles = false;
         let changedMerge = false;
-        let id = block.id;
         if ('actors' in block && block.actors !== undefined) {
             changedActors = this.primaryActors.merge(block.id, block.actors);
         }
@@ -324,7 +320,7 @@ class Metadata {
     }
     actorsAsync(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 this.readyQ.push(() => {
                     resolve(this.actors(id));
                 });

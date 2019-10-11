@@ -11,18 +11,14 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const Queue_1 = __importDefault(require("./Queue"));
-const Base58 = __importStar(require("bs58"));
 const MapSet_1 = __importDefault(require("./MapSet"));
 const automerge_1 = require("automerge");
 const DocFrontend_1 = require("./DocFrontend");
 const Clock_1 = require("./Clock");
 const Keys = __importStar(require("./Keys"));
-const debug_1 = __importDefault(require("debug"));
 const Metadata_1 = require("./Metadata");
 const Misc_1 = require("./Misc");
 const FileServerClient_1 = __importDefault(require("./FileServerClient"));
-debug_1.default.formatters.b = Base58.encode;
-const log = debug_1.default('repo:front');
 let msgid = 1;
 class RepoFrontend {
     constructor() {
@@ -50,7 +46,7 @@ class RepoFrontend {
             this.open(url).change(fn);
         };
         this.meta = (url, cb) => {
-            const { id, type } = Metadata_1.validateURL(url);
+            const { id } = Metadata_1.validateURL(url);
             this.queryBackend({ type: 'MetadataMsg', id: id }, (meta) => {
                 if (meta) {
                     const doc = this.docs.get(id);
@@ -64,7 +60,7 @@ class RepoFrontend {
             });
         };
         this.meta2 = (url) => {
-            const { id, type } = Metadata_1.validateURL(url);
+            const { id } = Metadata_1.validateURL(url);
             const doc = this.docs.get(id);
             if (!doc)
                 return;
@@ -77,7 +73,7 @@ class RepoFrontend {
         this.merge = (url, target) => {
             const id = Metadata_1.validateDocURL(url);
             Metadata_1.validateDocURL(target);
-            this.doc(target, (doc, clock) => {
+            this.doc(target, (_doc, clock) => {
                 const actors = Clock_1.clock2strs(clock);
                 this.toBackend.push({ type: 'MergeMsg', id, actors });
             });

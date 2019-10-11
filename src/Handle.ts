@@ -115,7 +115,7 @@ export class Handle<T> {
 
   cleanup = () => {}
 
-  changeFn = (fn: ChangeFn<T>) => {}
+  changeFn = (_fn: ChangeFn<T>) => {}
 
   change = (fn: ChangeFn<T>): this => {
     this.changeFn(fn)
