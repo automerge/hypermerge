@@ -6,6 +6,7 @@ import { NetworkMsg } from './NetworkMsg';
 export interface SocketInfo {
     type: 'tcp' | 'utp';
     isClient: boolean;
+    onClose?(): void;
 }
 export default class PeerConnection {
     networkBus: MessageBus<NetworkMsg>;
@@ -17,6 +18,7 @@ export default class PeerConnection {
     private rawSocket;
     private multiplex;
     private secureStream;
+    private onClose?;
     constructor(rawSocket: Duplex, info: SocketInfo);
     readonly isOpen: boolean;
     readonly isClosed: boolean;

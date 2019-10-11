@@ -22,6 +22,7 @@ class PeerConnection {
         this.channels = new Map();
         this.pendingChannels = new Map();
         this.type = info.type;
+        this.onClose = info.onClose;
         this.isClient = info.isClient;
         this.rawSocket = rawSocket;
         this.secureStream = noise_peer_1.default(rawSocket, this.isClient);
@@ -58,6 +59,7 @@ class PeerConnection {
     }
     close() {
         return __awaiter(this, void 0, void 0, function* () {
+            this.onClose && this.onClose();
             this.rawSocket.destroy();
         });
     }

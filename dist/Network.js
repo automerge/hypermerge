@@ -23,6 +23,9 @@ class Network {
             const conn = new PeerConnection_1.default(socket, {
                 isClient: details.client,
                 type: details.type,
+                onClose() {
+                    details.ban();
+                },
             });
             conn.networkBus.send({
                 type: 'Info',
