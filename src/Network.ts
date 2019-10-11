@@ -87,8 +87,6 @@ export default class Network {
   private onConnection = async (socket: Socket, details: ConnectionDetails) => {
     details.reconnect(false)
 
-    console.log('onConnection', details.type, this.selfId)
-
     const conn = new PeerConnection(socket, {
       isClient: details.client,
       type: details.type,
