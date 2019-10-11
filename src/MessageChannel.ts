@@ -10,8 +10,8 @@ export default class MessageChannel<Msg> {
   constructor(stream: Duplex) {
     this.stream = stream
 
-    this.sendQ = new Queue('MessageBus:sendQ')
-    this.receiveQ = new Queue('MessageBus:receiveQ')
+    this.sendQ = new Queue('MessageChannel:sendQ')
+    this.receiveQ = new Queue('MessageChannel:receiveQ')
 
     this.stream
       .on('data', this.onData)

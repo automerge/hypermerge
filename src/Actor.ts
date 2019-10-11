@@ -1,4 +1,4 @@
-import { Peer, discoveryKey } from './hypercore'
+import { discoveryKey } from './hypercore'
 import { Change } from 'automerge'
 import { ID, ActorId, DiscoveryId, encodeActorId, encodeDiscoveryId } from './Misc'
 import Queue from './Queue'

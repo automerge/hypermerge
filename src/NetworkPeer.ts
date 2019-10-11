@@ -90,6 +90,10 @@ export default class NetworkPeer {
 
   close(): void {
     this.connection && this.closeConnection(this.connection)
+
+    for (const pendingConn of this.pendingConnections) {
+      this.closeConnection(pendingConn)
+    }
   }
 }
 
