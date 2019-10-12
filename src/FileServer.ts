@@ -65,7 +65,7 @@ export default class FileServer {
 
   private async upload(req: IncomingMessage, res: ServerResponse) {
     const info = uploadInfo(req.headers)
-    const header = await this.files.write(info.mimeType, info.bytes, req)
+    const header = await this.files.write(info.mimeType, req)
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(header))
   }
