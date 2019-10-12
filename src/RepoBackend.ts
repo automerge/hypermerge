@@ -85,7 +85,7 @@ export class RepoBackend {
     this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
 
     this.keys = new KeyStore(this.db)
-    this.feeds = new FeedStore(this.storageFn)
+    this.feeds = new FeedStore((path: string) => this.storageFn('feeds/' + path))
     this.files = new FileStore(this.feeds)
 
     // init repo
