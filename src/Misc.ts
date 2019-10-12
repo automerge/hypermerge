@@ -1,5 +1,4 @@
 import * as Base58 from 'bs58'
-import { Readable } from 'stream'
 import { FeedId } from './FeedStore'
 import { discoveryKey } from './hypercore'
 
@@ -96,25 +95,6 @@ export function getOrCreate<K, V>(
   const created = create(key)
   map.set(key, created)
   return created
-}
-
-export function streamToBuffer(stream: Readable): Promise<Buffer> {
-  return new Promise((res, rej) => {
-    const buffers: Buffer[] = []
-    stream
-      .on('data', (data: Buffer) => buffers.push(data))
-      .on('error', (err: any) => rej(err))
-      .on('end', () => res(Buffer.concat(buffers)))
-  })
-}
-
-export function bufferToStream(buffer: Buffer): Readable {
-  return new Readable({
-    read() {
-      this.push(buffer)
-      this.push(null)
-    },
-  })
 }
 
 // Windows uses named pipes:

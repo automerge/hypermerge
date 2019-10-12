@@ -96,7 +96,7 @@ export class RepoBackend {
     // initialize the various stores
     this.clocks = new ClockStore(this.db)
     this.files.writeLog.subscribe((header) => {
-      this.meta.addFile(header.url, header.bytes, header.mimeType)
+      this.meta.addFile(header.url, header.size, header.mimeType)
     })
     this.fileServer = new FileServer(this.files)
 

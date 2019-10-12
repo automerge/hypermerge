@@ -5,11 +5,13 @@ import { validateFileURL } from './Metadata'
 import * as Keys from './Keys'
 import * as JsonBuffer from './JsonBuffer'
 import Queue from './Queue'
+import { MaxChunkSizeTransform } from './StreamLogic'
+
+export const MAX_BLOCK_SIZE = 62 * 1024
 
 export interface Header {
-  type: 'File'
   url: HyperfileUrl
-  bytes: number
+  size: number
   mimeType: string
 }
 
@@ -31,26 +33,23 @@ export default class FileStore {
     return this.feeds.stream(feedId, 0, -1)
   }
 
-  async write(mimeType: string, stream: Readable): Promise<Header> {
+  async write(stream: Readable, mimeType: string): Promise<Header> {
     const keys = Keys.create()
     const feedId = await this.feeds.create(keys)
 
     const appendStream = await this.feeds.appendStream(feedId)
 
     return new Promise<Header>((res, rej) => {
-      let bytes = 0
+      const chunkStream = new MaxChunkSizeTransform(MAX_BLOCK_SIZE)
 
       stream
-        .on('data', (chunk: Buffer) => {
-          bytes += chunk.length
-        })
+        .pipe(chunkStream)
         .pipe(appendStream)
         .on('error', (err) => rej(err))
         .on('finish', async () => {
           const header: Header = {
-            type: 'File',
             url: toHyperfileUrl(feedId),
-            bytes,
+            size: chunkStream.processedBytes,
             mimeType,
           }
 
@@ -59,6 +58,11 @@ export default class FileStore {
           res(header)
         })
     })
+  }
+
+  async blockCount(url: HyperfileUrl): Promise<number> {
+    const feed = await this.feeds.getFeed(toFeedId(url))
+    return feed.length - 1
   }
 }
 
