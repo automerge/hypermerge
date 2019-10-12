@@ -1,6 +1,6 @@
 import fs from 'fs'
 import { Readable, Writable } from 'stream'
-import { hypercore, Feed } from './hypercore'
+import hypercore, { Feed } from 'hypercore'
 import { KeyPair, decodePair } from './Keys'
 import { BaseId, getOrCreate } from './Misc'
 import Queue from './Queue'
