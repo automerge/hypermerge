@@ -1,7 +1,7 @@
 import { Backend, Change, BackendState as BackDoc, Patch } from 'automerge'
 import Queue from './Queue'
 import Debug from 'debug'
-import { Clock, cmp, union } from './Clock'
+import { Clock } from './Clock'
 import { ActorId, DocId, rootActorId } from './Misc'
 
 const log = Debug('repo:doc:back')
@@ -56,7 +56,6 @@ export class DocBackend {
       this.back = back
       this.actorId = rootActorId(documentId)
       this.ready.subscribe((f) => f())
-      // If we already have a materialized document, no need to wait for the minimum clock to be satisfied.
       this.subscribeToRemoteChanges()
       this.subscribeToLocalChanges()
       const history = (this.back as any).getIn(['opSet', 'history']).size

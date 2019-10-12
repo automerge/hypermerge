@@ -27,7 +27,7 @@ export function sequenceTotal(clock: Clock) {
 // that the candidate clock completely covers the target clock and that the sequence numbers
 // for all of the overlapping ids are greater or equal in the candidate clock.
 export function isSatisfied(target: Clock, candidate: Clock) {
-  return Object.entries(target).every(([id, value]) => id in candidate && candidate[id] > value)
+  return Object.entries(target).every(([id, value]) => id in candidate && candidate[id] >= value)
 }
 
 export function gte(a: Clock, b: Clock): boolean {

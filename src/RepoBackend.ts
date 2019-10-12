@@ -128,6 +128,9 @@ export class RepoBackend {
     log('create', docId)
     const doc = new DocBackend.DocBackend(docId, Backend.init())
     doc.updateQ.subscribe(this.documentNotify)
+    // HACK: We set a clock value of zero so we have a clock in the clock store
+    // TODO: This isn't right.
+    this.clocks.set(this.id, doc.id, { [doc.id]: 0 })
 
     this.docs.set(docId, doc)
 
@@ -394,8 +397,7 @@ export class RepoBackend {
         const { blocks, clocks } = sanitizeRemoteMetadata(msg)
 
         for (let docId in clocks) {
-          const remoteClock = clocks[docId]
-          const [clock] = this.clocks.update(sender.id, docId as DocId, remoteClock)
+          this.clocks.update(sender.id, docId as DocId, clocks[docId])
         }
         this.meta.addBlocks(blocks)
         blocks.map((block) => {
