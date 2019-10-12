@@ -65,6 +65,7 @@ export default class FileServer {
         return
 
       default:
+        return this.sendCode(res, 405, 'Method Not Allowed')
     }
   }
 
