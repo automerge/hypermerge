@@ -62,8 +62,7 @@ export function testConnectionPair(): [PeerConnection, PeerConnection] {
 }
 
 export function testDuplexPair(): [Duplex, Duplex] {
-  // The interval keeps node from exiting while streaming:
-  const interval = setInterval(() => {}, 999999)
+  const allowExit = preventExit()
 
   const duplexA = new Duplex({
     read(size) {
@@ -94,12 +93,12 @@ export function testDuplexPair(): [Duplex, Duplex] {
   })
 
   duplexA.on('close', () => {
-    clearInterval(interval)
+    allowExit()
     duplexB.destroy()
   })
 
   duplexB.on('close', () => {
-    clearInterval(interval)
+    allowExit()
     duplexA.destroy()
   })
 
@@ -117,6 +116,11 @@ export function testPeerId(): PeerId {
 export function testStorageFn() {
   const root = uuid()
   return (path: string) => (name: string) => ram(root + path + name)
+}
+
+export function preventExit(): () => void {
+  const interval = setInterval(() => {}, 999999)
+  return () => clearInterval(interval)
 }
 
 export function expectDocs(t: test.Test, docs: DocInfo[]) {
