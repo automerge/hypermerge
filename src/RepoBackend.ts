@@ -292,14 +292,23 @@ export class RepoBackend {
     })
   }
 
+  private getGoodClock(doc: DocBackend.DocBackend): Clock | undefined {
+    const minimumClockSatisfied = this.clocks.has(this.id, doc.id)
+    return minimumClockSatisfied
+      ? doc.clock
+      : this.clocks.getMaximumSatisfiedClock(doc.id, doc.clock)
+  }
+
   private documentNotify = (msg: DocBackend.DocBackendMessage) => {
     switch (msg.type) {
       case 'ReadyMsg': {
+        const doc = msg.doc
+        const goodClock = this.getGoodClock(doc)
         this.toFrontend.push({
           type: 'ReadyMsg',
-          id: msg.id,
-          minimumClockSatisfied: msg.minimumClockSatisfied,
-          actorId: msg.actorId,
+          id: doc.id,
+          minimumClockSatisfied: !!goodClock,
+          actorId: doc.actorId,
           history: msg.history,
           patch: msg.patch,
         })
@@ -314,32 +323,38 @@ export class RepoBackend {
         break
       }
       case 'RemotePatchMsg': {
+        const doc = msg.doc
+        const goodClock = this.getGoodClock(doc)
+        if (goodClock) {
+          this.clocks.update(this.id, doc.id, goodClock)
+        }
         this.toFrontend.push({
           type: 'PatchMsg',
-          id: msg.id,
-          minimumClockSatisfied: msg.minimumClockSatisfied,
+          id: doc.id,
+          minimumClockSatisfied: !!goodClock,
           patch: msg.patch,
           history: msg.history,
         })
-        const doc = this.docs.get(msg.id)
-        if (doc && msg.minimumClockSatisfied) {
-          this.clocks.update(this.id, msg.id, doc.clock)
-        }
         break
       }
       case 'LocalPatchMsg': {
+        const doc = msg.doc
+        if (!doc.actorId) return
+
+        this.actor(doc.actorId)!.writeChange(msg.change)
+
+        const goodClock = this.getGoodClock(doc)
+        if (goodClock) {
+          this.clocks.update(this.id, doc.id, goodClock)
+        }
+
         this.toFrontend.push({
           type: 'PatchMsg',
-          id: msg.id,
-          minimumClockSatisfied: msg.minimumClockSatisfied,
+          id: doc.id,
+          minimumClockSatisfied: !!goodClock,
           patch: msg.patch,
           history: msg.history,
         })
-        this.actor(msg.actorId)!.writeChange(msg.change)
-        const doc = this.docs.get(msg.id)
-        if (doc && msg.minimumClockSatisfied) {
-          this.clocks.update(this.id, msg.id, doc.clock)
-        }
         break
       }
       default: {
@@ -368,17 +383,14 @@ export class RepoBackend {
     })
   }
 
-  private onMessage = ({ msg }: Routed<PeerMsg>) => {
+  private onMessage = ({ sender, msg }: Routed<PeerMsg>) => {
     switch (msg.type) {
       case 'RemoteMetadata': {
         const { blocks, clocks } = sanitizeRemoteMetadata(msg)
 
         for (let docId in clocks) {
-          const clock = clocks[docId]
-          const doc = this.docs.get(docId as DocId)
-          if (clock && doc) {
-            doc.updateMinimumClock(clock)
-          }
+          const remoteClock = clocks[docId]
+          const [clock] = this.clocks.update(sender.id, docId as DocId, remoteClock)
         }
         this.meta.addBlocks(blocks)
         blocks.map((block) => {

@@ -6,6 +6,30 @@ export interface Clock {
 
 export type CMP = 'GT' | 'LT' | 'CONCUR' | 'EQ'
 
+export function getMax(clocks: Clock[]) {
+  let maxClock
+  let max
+  for (let clock of clocks) {
+    const value = sequenceTotal(clock)
+    if (!max || value > max) {
+      maxClock = clock
+      max = value
+    }
+  }
+  return maxClock
+}
+
+export function sequenceTotal(clock: Clock) {
+  return Object.values(clock).reduce((total, seq) => (total += seq))
+}
+
+// Note: the candidate clock may be a superset of the target clock. That's ok. We only care
+// that the candidate clock completely covers the target clock and that the sequence numbers
+// for all of the overlapping ids are greater or equal in the candidate clock.
+export function isSatisfied(target: Clock, candidate: Clock) {
+  return Object.entries(target).every(([id, value]) => id in candidate && candidate[id] > value)
+}
+
 export function gte(a: Clock, b: Clock): boolean {
   for (let id in a) {
     if (a[id] < (b[id] || 0)) return false
