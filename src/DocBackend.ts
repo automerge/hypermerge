@@ -44,14 +44,13 @@ export class DocBackend {
   back?: BackDoc // can we make this private?
   changes: Map<string, number> = new Map()
   ready = new Queue<Function>('doc:back:readyQ')
-  private notify: (msg: DocBackendMessage) => void
+  updateQ = new Queue<DocBackendMessage>('doc:back:updateQ')
 
   private localChangeQ = new Queue<Change>('doc:back:localChangeQ')
   private remoteChangesQ = new Queue<Change[]>('doc:back:remoteChangesQ')
 
-  constructor(documentId: DocId, notify: (msg: DocBackendMessage) => void, back?: BackDoc) {
+  constructor(documentId: DocId, back?: BackDoc) {
     this.id = documentId
-    this.notify = notify
 
     if (back) {
       this.back = back
@@ -61,7 +60,7 @@ export class DocBackend {
       this.subscribeToRemoteChanges()
       this.subscribeToLocalChanges()
       const history = (this.back as any).getIn(['opSet', 'history']).size
-      this.notify({
+      this.updateQ.push({
         type: 'ReadyMsg',
         doc: this,
         history,
@@ -81,7 +80,7 @@ export class DocBackend {
     log('initActor')
     if (this.back) {
       this.actorId = this.actorId || actorId
-      this.notify({
+      this.updateQ.push({
         type: 'ActorIdMsg',
         id: this.id,
         actorId: this.actorId,
@@ -110,7 +109,7 @@ export class DocBackend {
       this.subscribeToLocalChanges()
       this.subscribeToRemoteChanges()
       const history = (this.back as any).getIn(['opSet', 'history']).size
-      this.notify({
+      this.updateQ.push({
         type: 'ReadyMsg',
         doc: this,
         patch,
@@ -126,7 +125,7 @@ export class DocBackend {
         this.back = back
         this.updateClock(changes)
         const history = (this.back as any).getIn(['opSet', 'history']).size
-        this.notify({
+        this.updateQ.push({
           type: 'RemotePatchMsg',
           doc: this,
           patch,
@@ -143,7 +142,7 @@ export class DocBackend {
         this.back = back
         this.updateClock([change])
         const history = (this.back as any).getIn(['opSet', 'history']).size
-        this.notify({
+        this.updateQ.push({
           type: 'LocalPatchMsg',
           doc: this,
           change,

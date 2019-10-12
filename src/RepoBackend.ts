@@ -126,7 +126,8 @@ export class RepoBackend {
   private create(keys: Keys.KeyBuffer): DocBackend.DocBackend {
     const docId = encodeDocId(keys.publicKey)
     log('create', docId)
-    const doc = new DocBackend.DocBackend(docId, this.documentNotify, Backend.init())
+    const doc = new DocBackend.DocBackend(docId, Backend.init())
+    doc.updateQ.subscribe(this.documentNotify)
 
     this.docs.set(docId, doc)
 
@@ -180,7 +181,11 @@ export class RepoBackend {
     if (this.meta.isFile(docId)) {
       throw new Error('trying to open a file like a document')
     }
-    let doc = this.docs.get(docId) || new DocBackend.DocBackend(docId, this.documentNotify)
+    let doc = this.docs.get(docId)
+    if (!doc) {
+      doc = new DocBackend.DocBackend(docId)
+      doc.updateQ.subscribe(this.documentNotify)
+    }
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc)
       this.meta.addActor(docId, rootActorId(docId))
