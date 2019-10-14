@@ -199,6 +199,8 @@ export class RepoBackend {
   private open(docId: DocId): DocBackend.DocBackend {
     //    log("open", docId, this.meta.forDoc(docId));
     // TODO: FileStore should answer this.
+    // NOTE: This isn't guaranteed to be correct. `meta.isFile` can return an incorrect answer
+    // if the metadata ledger hasn't finished loading.
     if (this.meta.isFile(docId)) {
       throw new Error('trying to open a file like a document')
     }
@@ -548,23 +550,27 @@ export class RepoBackend {
         // TODO: We're recreating the MetadataMsg which used to live in Metadata.ts
         // Its not clear if this is used or useful. It looks like the data (which is faithfully
         // represented below - empty clock and 0 history in all) is already somewhat broken.
-        let payload
-        if (this.meta.isDoc(query.id)) {
-          const cursor = this.cursors.get(this.id, query.id)
-          const actors = cursor ? Clock.actors(cursor) : []
-          payload = {
-            type: 'Document',
-            clock: {},
-            history: 0,
-            actor: this.localActorId(query.id),
-            actors,
+        // NOTE: Responses to file metadata won't reply until the ledger is fully loaded. Document
+        // responses will respond immediately.
+        this.meta.readyQ.push(() => {
+          let payload
+          if (this.meta.isDoc(query.id)) {
+            const cursor = this.cursors.get(this.id, query.id)
+            const actors = cursor ? Clock.actors(cursor) : []
+            payload = {
+              type: 'Document',
+              clock: {},
+              history: 0,
+              actor: this.localActorId(query.id),
+              actors,
+            }
+          } else if (this.meta.isFile(query.id)) {
+            payload = this.meta.fileMetadata(query.id)
+          } else {
+            payload = null
           }
-        } else if (this.meta.isFile(query.id)) {
-          payload = await this.meta.fileMetadata(query.id)
-        } else {
-          payload = null
-        }
-        this.toFrontend.push({ type: 'Reply', id, payload })
+          this.toFrontend.push({ type: 'Reply', id, payload })
+        })
         break
       }
       case 'MaterializeMsg': {

@@ -257,18 +257,14 @@ export class Metadata {
     log(`metadata task=${msg} time=${duration}ms total=${total}ms`)
   }
 
-  async fileMetadata(id: HyperfileId) {
-    return new Promise((res) => {
-      this.readyQ.push(() => {
-        const bytes = this.files.get(id)!
-        const mimeType = this.mimeTypes.get(id)!
-        res({
-          type: 'File',
-          bytes,
-          mimeType,
-        })
-      })
-    })
+  fileMetadata(id: HyperfileId) {
+    const bytes = this.files.get(id)!
+    const mimeType = this.mimeTypes.get(id)!
+    return {
+      type: 'File',
+      bytes,
+      mimeType,
+    }
   }
 }
 
