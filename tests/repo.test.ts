@@ -116,7 +116,7 @@ test('Test meta...', (t) => {
         if (index === 1) {
           const actor = meta.actor!
           const seq = meta.clock[actor]
-          t.equal(seq, 3)
+          t.equal(seq, 2)
         }
         if (index === 3) {
           const actor = meta.actor!

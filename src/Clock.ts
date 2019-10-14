@@ -6,6 +6,10 @@ export interface Clock {
 
 export type CMP = 'GT' | 'LT' | 'CONCUR' | 'EQ'
 
+export function actors(clock: Clock): ActorId[] {
+  return Object.keys(clock) as ActorId[]
+}
+
 export function gte(a: Clock, b: Clock): boolean {
   for (let id in a) {
     if (a[id] < (b[id] || 0)) return false
@@ -27,10 +31,6 @@ export function cmp(a: Clock, b: Clock): CMP {
     return 'LT'
   }
   return 'CONCUR'
-}
-
-export function clockActorIds(clock: Clock): ActorId[] {
-  return Object.keys(clock) as ActorId[]
 }
 
 export function strs2clock(input: string | string[]): Clock {
