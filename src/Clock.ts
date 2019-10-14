@@ -20,6 +20,10 @@ export function gte(a: Clock, b: Clock): boolean {
   return true
 }
 
+export function equal(a: Clock, b: Clock) {
+  return cmp(a, b) === 'EQ'
+}
+
 export function cmp(a: Clock, b: Clock): CMP {
   const aGTE = gte(a, b)
   const bGTE = gte(b, a)

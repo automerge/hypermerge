@@ -153,7 +153,7 @@ export class RepoBackend {
   // more readily available - either in FeedStore or DocumentStore.
   localActorId(docId: DocId) {
     const cursor = this.cursors.get(this.id, docId)
-    const actors = cursor ? Clock.actors(cursor) : []
+    const actors = Clock.actors(cursor)
     return actors.find((actorId) => this.meta.isWritable(actorId))
   }
 
@@ -167,7 +167,7 @@ export class RepoBackend {
       console.log(`doc:backend clock=${Clock.clockDebug(doc.clock)}`)
       const local = this.localActorId(id)
       const cursor = this.cursors.get(this.id, id)
-      const actors = cursor ? Clock.actors(cursor) : []
+      const actors = Clock.actors(cursor)
       const info = actors
         .map((actor) => {
           const nm = actor.substr(0, 5)
@@ -209,6 +209,7 @@ export class RepoBackend {
       this.docs.set(docId, doc)
       // TODO: It isn't always correct to add this actor with an Infinity cursor entry.
       // If we don't have a cursor for the document, we should wait to get one from a peer.
+      // For now, we're mirroring legacy behavior.
       this.cursors.addActor(this.id, docId, rootActorId(docId))
       this.loadDocument(doc)
     }
@@ -299,7 +300,7 @@ export class RepoBackend {
 
   actorIds(doc: DocBackend.DocBackend): ActorId[] {
     const cursor = this.cursors.get(this.id, doc.id)
-    return cursor ? Clock.actors(cursor) : []
+    return Clock.actors(cursor)
   }
 
   docActors(doc: DocBackend.DocBackend): Actor[] {
@@ -556,7 +557,7 @@ export class RepoBackend {
           let payload
           if (this.meta.isDoc(query.id)) {
             const cursor = this.cursors.get(this.id, query.id)
-            const actors = cursor ? Clock.actors(cursor) : []
+            const actors = Clock.actors(cursor)
             payload = {
               type: 'Document',
               clock: {},

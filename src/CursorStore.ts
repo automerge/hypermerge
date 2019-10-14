@@ -1,5 +1,5 @@
 import { RepoId, DocId, ActorId } from './Misc'
-import { Clock } from './Clock'
+import * as Clock from './Clock'
 import { Database, Statement } from './SqlDatabase'
 import Queue from './Queue'
 
@@ -10,8 +10,9 @@ interface CursorRow {
   seq: number
 }
 
-type CursorEntry = [ActorId, number]
-type CursorDescriptor = [Clock, DocId, RepoId]
+export type Cursor = Clock.Clock
+export type CursorEntry = [ActorId, number]
+export type CursorDescriptor = [Cursor, DocId, RepoId]
 
 export default class CursorStore {
   private db: Database
@@ -38,12 +39,14 @@ export default class CursorStore {
       .pluck()
   }
 
-  get(repoId: RepoId, docId: DocId): Clock {
+  // NOTE: We return an empty cursor when we don't have a stored cursor. We want
+  // to return undefined instead.
+  get(repoId: RepoId, docId: DocId): Cursor {
     const rows = this.preparedGet.all(repoId, docId)
     return rowsToCursor(rows)
   }
 
-  update(repoId: RepoId, docId: DocId, cursor: Clock): CursorDescriptor {
+  update(repoId: RepoId, docId: DocId, cursor: Cursor): CursorDescriptor {
     const transaction = this.db.transaction((cursorEntries) => {
       cursorEntries.forEach(([actorId, seq]: CursorEntry) => {
         this.preparedInsert.run(repoId, docId, actorId, boundedSeq(seq))
@@ -52,7 +55,9 @@ export default class CursorStore {
     })
     const updatedCursor = transaction(Object.entries(cursor))
     const descriptor: CursorDescriptor = [updatedCursor, docId, repoId]
-    this.updateQ.push(descriptor)
+    if (!Clock.equal(cursor, updatedCursor)) {
+      this.updateQ.push(descriptor)
+    }
     return descriptor
   }
 
@@ -72,8 +77,8 @@ export default class CursorStore {
   }
 }
 
-function rowsToCursor(rows: CursorRow[]): Clock {
-  return rows.reduce((clock: Clock, row: CursorRow) => {
+function rowsToCursor(rows: CursorRow[]): Cursor {
+  return rows.reduce((clock: Cursor, row: CursorRow) => {
     clock[row.actorId] = row.seq
     return clock
   }, {})
