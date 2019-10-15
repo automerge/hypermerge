@@ -1,36 +1,35 @@
-import * as Base58 from 'bs58'
 import { FeedId } from './FeedStore'
-import { discoveryKey } from './hypercore'
+import * as Keys from './Keys'
+import { Key, PublicKey, DiscoveryKey, DiscoveryId, PublicId, EncodedKeyId } from './Keys'
 
-export type BaseId = string & { id: true }
-export type RepoId = BaseId & { repoId: true }
-export type DocId = BaseId & { docId: true }
-export type ActorId = FeedId & { actorId: true }
-export type HyperfileId = BaseId & { hyperfileId: true }
-export type DiscoveryId = BaseId & { discoveryId: true }
+export { DiscoveryId }
+export type RepoId = PublicId & { __repoId: true }
+export type DocId = PublicId & { __docId: true }
+export type ActorId = FeedId & { __actorId: true }
+export type HyperfileId = FeedId & { __hyperfileId: true }
 
-export type BaseUrl = string & { url: true }
-export type DocUrl = BaseUrl & { docUrl: true }
-export type HyperfileUrl = BaseUrl & { hyperfileUrl: true }
+export type BaseUrl = string & { __baseUrl: true }
+export type DocUrl = BaseUrl & { __docUrl: true }
+export type HyperfileUrl = BaseUrl & { __hyperfileUrl: true }
 
-export function encodeRepoId(repoKey: Buffer): RepoId {
-  return Base58.encode(repoKey) as RepoId
+export function decodeId(id: EncodedKeyId): Key {
+  return Keys.decode(id)
 }
 
-export function encodeDocId(actorKey: Buffer): DocId {
-  return Base58.encode(actorKey) as DocId
+export function encodeRepoId(repoKey: PublicKey): RepoId {
+  return Keys.encode(repoKey) as RepoId
 }
 
-export function encodeActorId(actorKey: Buffer): ActorId {
-  return Base58.encode(actorKey) as ActorId
+export function encodeDocId(actorKey: PublicKey): DocId {
+  return Keys.encode(actorKey) as DocId
 }
 
-export function encodeDiscoveryId(discoveryKey: Buffer): DiscoveryId {
-  return Base58.encode(discoveryKey) as DiscoveryId
+export function encodeActorId(actorKey: PublicKey): ActorId {
+  return Keys.encode(actorKey) as ActorId
 }
 
-export function encodeHyperfileId(hyperfileKey: Buffer): HyperfileId {
-  return Base58.encode(hyperfileKey) as HyperfileId
+export function encodeHyperfileId(hyperfileKey: PublicKey): HyperfileId {
+  return Keys.encode(hyperfileKey) as HyperfileId
 }
 
 export function toDocUrl(docId: DocId): DocUrl {
@@ -41,16 +40,12 @@ export function toHyperfileUrl(hyperfileId: HyperfileId): HyperfileUrl {
   return `hyperfile:/${hyperfileId}` as HyperfileUrl
 }
 
-export function decodeId(id: BaseId): Buffer {
-  return Base58.decode(id)
+export function toDiscoveryId(id: PublicId): DiscoveryId {
+  return Keys.encode(toDiscoveryKey(id))
 }
 
-export function toDiscoveryId(id: BaseId): DiscoveryId {
-  return Base58.encode(toDiscoveryKey(id)) as DiscoveryId
-}
-
-export function toDiscoveryKey(id: BaseId): Buffer {
-  return discoveryKey(Base58.decode(id))
+export function toDiscoveryKey(id: PublicId): DiscoveryKey {
+  return Keys.discoveryKey(Keys.decode(id))
 }
 
 export function rootActorId(docId: DocId): ActorId {
@@ -61,7 +56,7 @@ export function hyperfileActorId(hyperfileId: HyperfileId): ActorId {
   return (hyperfileId as string) as ActorId
 }
 
-export function isBaseUrl(str: BaseUrl | BaseId): str is BaseUrl {
+export function isBaseUrl(str: BaseUrl | EncodedKeyId): str is BaseUrl {
   return str.includes(':')
 }
 

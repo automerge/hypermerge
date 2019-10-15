@@ -1,12 +1,12 @@
 import fs from 'fs'
 import { Readable, Writable } from 'stream'
 import hypercore, { Feed } from 'hypercore'
-import { KeyPair, decodePair } from './Keys'
-import { BaseId, getOrCreate, DiscoveryId, toDiscoveryId } from './Misc'
+import { KeyPair, decodePair, PublicId } from './Keys'
+import { DiscoveryId, getOrCreate, toDiscoveryId } from './Misc'
 import Queue from './Queue'
 
 export type Feed = Feed<Block>
-export type FeedId = BaseId & { feedId: true }
+export type FeedId = PublicId & { __feedId: true }
 export type Block = Uint8Array
 
 export interface ReplicateOptions {

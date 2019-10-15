@@ -3,14 +3,14 @@ import * as Keys from './Keys'
 
 interface KeyRow {
   name: string
-  publicKey: Buffer
-  secretKey: Buffer
+  publicKey: Keys.PublicKey
+  secretKey: Keys.SecretKey
 }
 
 export default class KeyStore {
   private db: Database
   private preparedGet: Statement<string>
-  private preparedSet: Statement<[string, Buffer, Buffer?]>
+  private preparedSet: Statement<[string, Keys.PublicKey, Keys.SecretKey?]>
   private preparedClear: Statement<string>
 
   constructor(db: Database) {
@@ -18,7 +18,7 @@ export default class KeyStore {
 
     this.preparedGet = this.db.prepare(`SELECT * FROM Keys WHERE name=?`)
     this.preparedSet = this.db.prepare(`
-        INSERT INTO Keys (name, publicKey, secretKey) VALUES (?, ?, ?) 
+        INSERT INTO Keys (name, publicKey, secretKey) VALUES (?, ?, ?)
         ON CONFLICT (name) DO UPDATE SET publicKey=excluded.publicKey, secretKey=excluded.secretKey`)
     this.preparedClear = this.db.prepare(`DELETE FROM Keys WHERE name=?`)
   }

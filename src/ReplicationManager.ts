@@ -2,7 +2,8 @@ import NetworkPeer from './NetworkPeer'
 import HypercoreProtocol from 'hypercore-protocol'
 import FeedStore, { FeedId } from './FeedStore'
 import PeerConnection from './PeerConnection'
-import { getOrCreate, encodeDiscoveryId, DiscoveryId, toDiscoveryId, joinSets } from './Misc'
+import * as Keys from './Keys'
+import { getOrCreate, DiscoveryId, toDiscoveryId, joinSets } from './Misc'
 import MessageRouter, { Routed } from './MessageRouter'
 import pump from 'pump'
 import MapSet from './MapSet'
@@ -137,7 +138,7 @@ export default class ReplicationManager {
           this.protocols.delete(conn)
         })
         .on('discovery-key', (discoveryKey) => {
-          const discoveryId = encodeDiscoveryId(discoveryKey)
+          const discoveryId = Keys.encode(discoveryKey)
           // Hypercore verifies that the remote has the feed automatically
           this.replicateWith(peer, [discoveryId])
         })

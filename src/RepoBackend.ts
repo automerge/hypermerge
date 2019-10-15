@@ -2,8 +2,6 @@ import Queue from './Queue'
 import { Metadata } from './Metadata'
 import { Actor, ActorMsg } from './Actor'
 import * as Clock from './Clock'
-import * as Base58 from 'bs58'
-import * as crypto from 'hypercore/lib/crypto'
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg, DocumentMsg } from './RepoMsg'
 import { Backend, Change } from 'automerge'
 import * as DocBackend from './DocBackend'
@@ -39,7 +37,7 @@ import raf from 'random-access-file'
 import KeyStore from './KeyStore'
 import ReplicationManager, { Discovery } from './ReplicationManager'
 
-Debug.formatters.b = Base58.encode
+Debug.formatters.b = Keys.encode
 
 const log = Debug('repo:backend')
 
@@ -270,7 +268,7 @@ export class RepoBackend {
   }
 
   private getReadyActor = (actorId: ActorId): Promise<Actor> => {
-    const publicKey = Base58.decode(actorId)
+    const publicKey = Keys.decode(actorId)
     const actor = this.actors.get(actorId) || this.initActor({ publicKey })
     const actorPromise = new Promise<Actor>((resolve, reject) => {
       try {
@@ -290,7 +288,7 @@ export class RepoBackend {
 
   initActorFeed(doc: DocBackend.DocBackend): ActorId {
     log('initActorFeed', doc.id)
-    const keys = crypto.keyPair()
+    const keys = Keys.createBuffer()
     const actorId = encodeActorId(keys.publicKey)
     this.cursors.addActor(this.id, doc.id, actorId)
     this.initActor(keys)
@@ -606,11 +604,7 @@ export class RepoBackend {
         break
       }
       case 'CreateMsg': {
-        const keys = {
-          publicKey: Keys.decode(msg.publicKey),
-          secretKey: Keys.decode(msg.secretKey),
-        }
-        this.create(keys)
+        this.create(Keys.decodePair(msg))
         break
       }
       case 'MergeMsg': {

@@ -3,7 +3,7 @@ import uuid from 'uuid/v4'
 import { Repo } from '../src'
 import Hyperswarm from 'hyperswarm'
 import Network from '../src/Network'
-import { DiscoveryId } from '../src/Misc'
+import { DiscoveryId, toDiscoveryId } from '../src/Misc'
 import * as Keys from '../src/Keys'
 import NetworkPeer, { PeerId } from '../src/NetworkPeer'
 import ram from 'random-access-memory'
@@ -30,7 +30,7 @@ export function testSwarm() {
 }
 
 export function testDiscoveryId(): DiscoveryId {
-  return Keys.create().publicKey as DiscoveryId
+  return toDiscoveryId(Keys.create().publicKey)
 }
 
 export function testNetwork(): Network {

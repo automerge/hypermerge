@@ -1,6 +1,5 @@
-import { discoveryKey } from './hypercore'
 import { Change } from 'automerge'
-import { ID, ActorId, DiscoveryId, encodeActorId, encodeDiscoveryId } from './Misc'
+import { ID, ActorId, DiscoveryId, encodeActorId } from './Misc'
 import Queue from './Queue'
 import * as Block from './Block'
 import * as Keys from './Keys'
@@ -52,13 +51,13 @@ export class Actor {
 
   constructor(config: ActorConfig) {
     const { publicKey } = config.keys
-    const dk = discoveryKey(publicKey)
+    const dk = Keys.discoveryKey(publicKey)
     const id = encodeActorId(publicKey)
 
     this.id = id
     this.store = config.store
     this.notify = config.notify
-    this.dkString = encodeDiscoveryId(dk)
+    this.dkString = Keys.encode(dk)
     this.q = new Queue<(actor: Actor) => void>('repo:actor:Q' + id.slice(0, 4))
 
     this.getOrCreateFeed(Keys.encodePair(config.keys)).then((feed) => {

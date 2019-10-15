@@ -1,6 +1,7 @@
 import { Patch, Change } from 'automerge'
 import { PublicMetadata } from './Metadata'
 import { DocId, HyperfileId, ActorId } from './Misc'
+import { PublicId, SecretId } from './Keys'
 
 export type ToBackendQueryMsg = MaterializeMsg | MetadataMsg
 
@@ -46,8 +47,8 @@ export interface MetadataMsg {
 
 export interface CreateMsg {
   type: 'CreateMsg'
-  publicKey: string
-  secretKey: string
+  publicKey: PublicId
+  secretKey: SecretId
 }
 
 export interface MergeMsg {

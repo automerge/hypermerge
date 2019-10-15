@@ -1,13 +1,66 @@
-declare module 'hypercore/lib/crypto' {
-  function keyPair(): any
-}
-
 declare module 'hypercore' {
   import { Readable, Writable } from 'stream'
+  import { PublicKey, DiscoveryKey, SecretKey } from 'hypercore-crypto'
 
   export default hypercore
 
   const hypercore: Hypercore
+
+  export interface Options {
+    /** create a new hypercore key pair if none was present in storage. Default: true */
+    createIfMissing?: boolean
+
+    /** overwrite any old hypercore that might already exist. Default: false */
+    overwrite?: boolean
+
+    /** defaults to binary */
+    valueEncoding?: 'json' | 'utf-8' | 'binary'
+
+    /** do not mark the entire feed to be downloaded */
+    sparse?: false
+
+    /**
+     * always fetch the latest update that is advertised.
+     * Default: false in sparse mode, otherwise true
+     */
+    eagerUpdate?: boolean
+
+    /** optionally pass the corresponding secret key yourself */
+    secretKey?: SecretKey
+
+    /** if false, will not save the secret key. Default: true */
+    storeSecretKey?: boolean
+
+    /** the # of entries to keep in the storage system's LRU cache (false or 0 to disable). Default: 65536 */
+    storageCacheSize?: number
+
+    /**
+     * optional hook called before data is written after being verified.
+     * (remember to call cb() at the end of your handler)
+     */
+    onwrite?(index: number, data: Buffer, peer: any, cb: () => void): void
+
+    /** collect network-related statistics. Default: true */
+    stats?: boolean
+
+    /** Optionally use custom cryptography for signatures */
+    crypto?: {
+      sign(
+        data: Buffer,
+        secretKey: SecretKey,
+        cb: (err: Error | null, signature: Buffer) => void
+      ): void
+      verify(
+        signature: Buffer,
+        data: Buffer,
+        key: PublicKey,
+        cb: (err: Error | null, valid: boolean) => void
+      ): void
+    }
+
+    /** set a static key pair to use for Noise authentication when replicating */
+    noiseKeyPair?: { publicKey: Buffer; secretKey: Buffer }
+  }
 
   interface Hypercore {
     /**
@@ -22,9 +75,9 @@ declare module 'hypercore' {
      * needs to function and return your own random-access instance that is used to store the data.
      */
     <T>(storage: Storage, options?: Options): Feed<T>
-    <T>(storage: Storage, key: Key, options?: Options): Feed<T>
+    <T>(storage: Storage, key: PublicKey, options?: Options): Feed<T>
 
-    discoveryKey(publicKey: Buffer): Buffer
+    discoveryKey(publicKey: PublicKey): DiscoveryKey
   }
 
   export type Storage = string | ((filename: string) => any)
@@ -80,8 +133,8 @@ declare module 'hypercore' {
     peers: Peer[]
     replicate: Function
     writable: boolean
-    discoveryKey: Buffer
-    key: Buffer
+    discoveryKey: DiscoveryKey
+    key: PublicKey
     length: number
     ready: Function
     readonly extensions: string[]
@@ -132,5 +185,14 @@ declare module 'hypercore' {
     createWriteStream(): Writable
 
     extension(name: string, msg: Buffer): void
+  }
+
+  export interface Peer {
+    feed: any
+    stream: any
+    onextension: any
+    remoteId: Buffer
+    extension: any
+    extensions: string[]
   }
 }
