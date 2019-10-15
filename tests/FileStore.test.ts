@@ -1,21 +1,37 @@
 import test from 'tape'
 import { testStorageFn } from './misc'
-import FileStore from '../src/FileStore'
+import FileStore, { Header } from '../src/FileStore'
 import FeedStore from '../src/FeedStore'
-import { streamToBuffer, bufferToStream } from '../src/Misc'
+import * as Stream from '../src/StreamLogic'
+import { createHash } from 'crypto'
 
 test('FileStore', (t) => {
   const feeds = new FeedStore(testStorageFn())
   const files = new FileStore(feeds)
 
-  t.test('appendStream', async (t) => {
-    t.plan(1)
+  t.test('writing and reading 1MB file', async (t) => {
+    t.plan(2)
 
-    const testBuffer = Buffer.from('coolcool')
-    const testStream = bufferToStream(testBuffer)
-    const { url } = await files.write('application/octet-stream', testBuffer.length, testStream)
-    const output = await files.read(url)
-    const outputBuffer = await streamToBuffer(output)
-    t.equal(testBuffer.toString(), outputBuffer.toString())
+    const testBuffer = Buffer.alloc(1024 * 1024, 1)
+    const testStream = Stream.fromBuffer(testBuffer)
+    const header = await files.write(testStream, 'application/octet-stream')
+    const sha256 = createHash('sha256')
+      .update(testBuffer)
+      .digest('hex')
+
+    const expectedHeader: Header = {
+      size: testBuffer.length,
+      mimeType: 'application/octet-stream',
+      sha256,
+      blocks: 17,
+      url: header.url,
+    }
+
+    t.deepEqual(header, expectedHeader, 'reads the expected header')
+
+    const output = await files.read(header.url)
+    const outputBuffer = await Stream.toBuffer(output)
+
+    t.deepEqual(outputBuffer, testBuffer, 'reads the written buffer')
   })
 })

@@ -1,9 +1,9 @@
 import test from 'tape'
 import { RepoBackend, RepoFrontend } from '../src'
 import { expect, expectDocs, generateServerPath, testRepo } from './misc'
-import { streamToBuffer, bufferToStream } from '../src/Misc'
 import { validateDocURL } from '../src/Metadata'
 import { INFINITY_SEQ } from '../src/CursorStore'
+import * as Stream from '../src/StreamLogic'
 
 test('Simple create doc and make a change', (t) => {
   const repo = testRepo()
@@ -198,14 +198,17 @@ test('Test meta...', (t) => {
 
 test('Writing and reading files works', async (t) => {
   t.plan(1)
+
   const repo = testRepo()
   repo.startFileServer(generateServerPath())
-  const pseudoFile = Buffer.from('coolcool')
-  const size = pseudoFile.length
-  const url = await repo.files.write(bufferToStream(pseudoFile), size, 'application/octet-stream')
-  const [readable] = await repo.files.read(url)
-  const buffer = await streamToBuffer(readable)
-  t.equal(pseudoFile.toString(), buffer.toString())
+
+  const pseudoFile = Buffer.alloc(1024 * 1024, 1)
+  const { url } = await repo.files.write(Stream.fromBuffer(pseudoFile), 'application/octet-stream')
+  const [, readable] = await repo.files.read(url)
+  const buffer = await Stream.toBuffer(readable)
+
+  t.deepEqual(pseudoFile, buffer)
+
   repo.close()
 })
 

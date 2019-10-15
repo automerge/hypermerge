@@ -123,12 +123,8 @@ Here's a simple example of reading and writing files.
 
 ```ts
 // Write an hyperfile
-fs.stat('image.png', (err, stats) => {
-  if (err) return
-
-  const fileStream = fs.createReadStream('image.png')
-  const { url } = await repo.files.write(fileStream, stats.size, 'image/png')
-})
+const fileStream = fs.createReadStream('image.png')
+const { url } = await repo.files.write(fileStream, 'image/png')
 
 // Read an hyperfile
 const fileStream = fs.createWriteStream('image.png')

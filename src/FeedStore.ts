@@ -1,8 +1,8 @@
 import fs from 'fs'
 import { Readable, Writable } from 'stream'
-import { hypercore, Feed } from './hypercore'
+import hypercore, { Feed } from 'hypercore'
 import { KeyPair, decodePair } from './Keys'
-import { BaseId, getOrCreate } from './Misc'
+import { BaseId, getOrCreate, DiscoveryId, toDiscoveryId } from './Misc'
 import Queue from './Queue'
 
 export type Feed = Feed<Block>
@@ -13,8 +13,8 @@ export interface ReplicateOptions {
   stream(): void
 }
 
-interface FeedStorageFn {
-  (feedId: FeedId): (filename: string) => unknown
+interface StorageFn {
+  (path: string): (filename: string) => unknown
 }
 
 /**
@@ -28,12 +28,12 @@ interface FeedStorageFn {
  */
 
 export default class FeedStore {
-  private storage: FeedStorageFn
-  private feeds: Map<FeedId, Feed<Block>> = new Map()
+  private storage: (discoveryId: DiscoveryId) => (filename: string) => unknown
+  private opened: Map<FeedId, Feed<Block>> = new Map()
   feedIdQ: Queue<FeedId>
 
-  constructor(storageFn: FeedStorageFn) {
-    this.storage = storageFn
+  constructor(storageFn: StorageFn) {
+    this.storage = (discoveryId) => storageFn(`${discoveryId.slice(0, 2)}/${discoveryId.slice(2)}`)
     this.feedIdQ = new Queue('FeedStore:idQ')
   }
 
@@ -42,8 +42,8 @@ export default class FeedStore {
    * Promises the FeedId.
    */
   async create(keys: Required<KeyPair>): Promise<FeedId> {
-    const [feedId] = await this.openOrCreateFeed(keys)
-    return feedId
+    await this.openOrCreateFeed(keys)
+    return keys.publicKey as FeedId
   }
 
   async append(feedId: FeedId, ...blocks: Block[]): Promise<number> {
@@ -62,12 +62,12 @@ export default class FeedStore {
   }
 
   async appendStream(feedId: FeedId): Promise<Writable> {
-    const feed = await this.open(feedId)
+    const feed = await this.getFeed(feedId)
     return feed.createWriteStream()
   }
 
-  async read(feedId: FeedId, seq: number): Promise<any> {
-    const feed = await this.open(feedId)
+  async read(feedId: FeedId, seq: number): Promise<Block> {
+    const feed = await this.getFeed(feedId)
     return new Promise((res, rej) => {
       feed.get(seq, (err, data) => {
         if (err) return rej(err)
@@ -76,13 +76,25 @@ export default class FeedStore {
     })
   }
 
-  async stream(feedId: FeedId, start = 0): Promise<Readable> {
+  async head(feedId: FeedId): Promise<Block> {
+    const feed = await this.getFeed(feedId)
+    return new Promise((res, rej) => {
+      feed.head((err, data) => {
+        if (err) return rej(err)
+
+        res(data)
+      })
+    })
+  }
+
+  async stream(feedId: FeedId, start = 0, end?: number): Promise<Readable> {
     const feed = await this.open(feedId)
-    return feed.createReadStream({ start })
+    if (end != null && end < 0) end = feed.length + end
+    return feed.createReadStream({ start, end })
   }
 
   closeFeed(feedId: FeedId): Promise<FeedId> {
-    const feed = this.feeds.get(feedId)
+    const feed = this.opened.get(feedId)
     if (!feed) return Promise.reject(new Error(`Can't close feed ${feedId}, feed not open`))
 
     return new Promise((res, rej) => {
@@ -95,7 +107,7 @@ export default class FeedStore {
 
   destroy(feedId: FeedId): Promise<FeedId> {
     return new Promise((res, rej) => {
-      const filename = (this.storage(feedId)('') as any).filename
+      const filename = (this.storage(toDiscoveryId(feedId))('') as any).filename
       const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`
       fs.rename(filename, newName, (err: Error) => {
         if (err) return rej(err)
@@ -105,34 +117,31 @@ export default class FeedStore {
   }
 
   async close(): Promise<void> {
-    await Promise.all([...this.feeds.keys()].map((feedId) => this.closeFeed(feedId)))
+    await Promise.all([...this.opened.keys()].map((feedId) => this.closeFeed(feedId)))
   }
 
-  // Junk method used to bridge to Network
   async getFeed(feedId: FeedId): Promise<Feed<Block>> {
     return this.open(feedId)
   }
 
   private async open(feedId: FeedId) {
-    const [, feed] = await this.openOrCreateFeed({ publicKey: feedId })
-    return feed
+    return await this.openOrCreateFeed({ publicKey: feedId })
   }
 
-  private openOrCreateFeed(keys: KeyPair): Promise<[FeedId, Feed<Block>]> {
+  private openOrCreateFeed(keys: KeyPair): Promise<Feed<Block>> {
     return new Promise((res, _rej) => {
       const feedId = keys.publicKey as FeedId
 
-      const feed = getOrCreate(this.feeds, feedId, () => {
+      const feed = getOrCreate(this.opened, feedId, () => {
         const { publicKey, secretKey } = decodePair(keys)
 
         this.feedIdQ.push(feedId)
-
-        return hypercore(this.storage(feedId), publicKey, {
+        return hypercore(this.storage(toDiscoveryId(feedId)), publicKey, {
           secretKey,
         })
       })
 
-      feed.ready(() => res([feedId, feed]))
+      feed.ready(() => res(feed))
     })
   }
 }

@@ -1,6 +1,7 @@
 import Queue from './Queue'
 import * as Base58 from 'bs58'
-import { hypercore, readFeed, Feed } from './hypercore'
+import hypercore, { Feed } from 'hypercore'
+import { readFeed } from './hypercore'
 import Debug from 'debug'
 import * as JsonBuffer from './JsonBuffer'
 import * as URL from 'url'

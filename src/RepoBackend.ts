@@ -87,7 +87,7 @@ export class RepoBackend {
     this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
 
     this.keys = new KeyStore(this.db)
-    this.feeds = new FeedStore(this.storageFn)
+    this.feeds = new FeedStore((path: string) => this.storageFn('feeds/' + path))
     this.files = new FileStore(this.feeds)
 
     // init repo
@@ -105,8 +105,7 @@ export class RepoBackend {
       //console.log(descriptor)
     })
     this.files.writeLog.subscribe((header) => {
-      // TODO: manage this in FileStore.
-      this.meta.addFile(header.url, header.bytes, header.mimeType)
+      this.meta.addFile(header.url, header.size, header.mimeType)
     })
     this.fileServer = new FileServer(this.files)
 

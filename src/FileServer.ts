@@ -39,66 +39,63 @@ export default class FileServer {
     })
   }
 
-  private onConnection = (req: IncomingMessage, res: ServerResponse) => {
+  private onConnection = async (req: IncomingMessage, res: ServerResponse) => {
+    const { method } = req
     const { path } = parse(req.url!)
     const url = path!.slice(1)
 
-    switch (url) {
-      case 'upload':
-        if (req.method !== 'POST') {
-          res.writeHead(500, 'Must be POST')
-          res.end()
-          return
-        }
+    if (!method) return this.sendCode(res, 400, 'Bad Request')
 
+    switch (req.method) {
+      case 'POST':
         return this.upload(req, res)
 
-      default:
-        if (isHyperfileUrl(url)) {
-          return this.stream(url, res)
+      case 'HEAD':
+      case 'GET':
+        if (!isHyperfileUrl(url)) return this.sendCode(res, 404, 'Not Found')
+
+        await this.writeHeaders(url, res)
+
+        if (method === 'GET') {
+          const stream = await this.files.read(url)
+          stream.pipe(res)
         } else {
-          res.writeHead(404, 'NOT FOUND')
           res.end()
         }
+        return
+
+      default:
+        return this.sendCode(res, 405, 'Method Not Allowed')
     }
   }
 
+  private sendCode(res: ServerResponse, code: number, reason: string): void {
+    res.writeHead(code, reason)
+    res.end()
+  }
+
   private async upload(req: IncomingMessage, res: ServerResponse) {
-    const info = uploadInfo(req.headers)
-    const header = await this.files.write(info.mimeType, info.bytes, req)
+    const mimeType = getMimeType(req.headers)
+    const header = await this.files.write(req, mimeType)
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(header))
   }
 
-  private async stream(url: HyperfileUrl, res: ServerResponse) {
+  private async writeHeaders(url: HyperfileUrl, res: ServerResponse) {
     const header = await this.files.header(url)
 
     res.writeHead(200, {
+      ETag: header.sha256,
       'Content-Type': header.mimeType,
-      'Content-Length': header.bytes,
+      'Content-Length': header.size,
+      'X-Block-Count': header.blocks,
     })
-
-    const stream = await this.files.read(url)
-    stream.pipe(res)
   }
 }
 
-interface UploadInfo {
-  mimeType: string
-  bytes: number
-}
-
-function uploadInfo(headers: IncomingHttpHeaders): UploadInfo {
+function getMimeType(headers: IncomingHttpHeaders): string {
   const mimeType = headers['content-type']
-  const length = headers['content-length']
 
   if (!mimeType) throw new Error('Content-Type is a required header.')
-  if (!length) throw new Error('Content-Length is a required header.')
-
-  const bytes = parseInt(length, 10)
-
-  return {
-    mimeType,
-    bytes,
-  }
+  return mimeType
 }

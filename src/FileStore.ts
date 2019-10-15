@@ -5,17 +5,16 @@ import { validateFileURL } from './Metadata'
 import * as Keys from './Keys'
 import * as JsonBuffer from './JsonBuffer'
 import Queue from './Queue'
+import { MaxChunkSizeTransform, HashPassThrough } from './StreamLogic'
 
-// const KB = 1024
-// const MB = 1024 * KB
-// const BLOCK_SIZE = 64 * KB
-const FIRST_DATA_BLOCK = 1
+export const MAX_BLOCK_SIZE = 62 * 1024
 
 export interface Header {
-  type: 'File'
   url: HyperfileUrl
-  bytes: number
+  size: number
+  blocks: number
   mimeType: string
+  sha256: string
 }
 
 export default class FileStore {
@@ -28,32 +27,39 @@ export default class FileStore {
   }
 
   async header(url: HyperfileUrl): Promise<Header> {
-    return this.feeds.read(toFeedId(url), 0).then(JsonBuffer.parse)
+    return this.feeds.head(toFeedId(url)).then(JsonBuffer.parse)
   }
 
   async read(url: HyperfileUrl): Promise<Readable> {
     const feedId = toFeedId(url)
-    return this.feeds.stream(feedId, FIRST_DATA_BLOCK)
+    return this.feeds.stream(feedId, 0, -1)
   }
 
-  async write(mimeType: string, length: number, stream: Readable): Promise<Header> {
+  async write(stream: Readable, mimeType: string): Promise<Header> {
     const keys = Keys.create()
     const feedId = await this.feeds.create(keys)
-    const header: Header = {
-      type: 'File',
-      url: toHyperfileUrl(feedId),
-      bytes: length,
-      mimeType,
-    }
 
-    await this.feeds.append(feedId, JsonBuffer.bufferify(header))
     const appendStream = await this.feeds.appendStream(feedId)
 
     return new Promise<Header>((res, rej) => {
+      const chunkStream = new MaxChunkSizeTransform(MAX_BLOCK_SIZE)
+      const hashStream = new HashPassThrough('sha256')
+
       stream
+        .pipe(hashStream)
+        .pipe(chunkStream)
         .pipe(appendStream)
         .on('error', (err) => rej(err))
-        .on('finish', () => {
+        .on('finish', async () => {
+          const header: Header = {
+            url: toHyperfileUrl(feedId),
+            mimeType,
+            size: chunkStream.processedBytes,
+            blocks: chunkStream.chunkCount,
+            sha256: hashStream.hash.digest('hex'),
+          }
+
+          await this.feeds.append(feedId, JsonBuffer.bufferify(header))
           this.writeLog.push(header)
           res(header)
         })
