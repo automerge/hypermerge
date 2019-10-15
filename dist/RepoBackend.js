@@ -23,8 +23,6 @@ const Queue_1 = __importDefault(require("./Queue"));
 const Metadata_1 = require("./Metadata");
 const Actor_1 = require("./Actor");
 const Clock = __importStar(require("./Clock"));
-const Base58 = __importStar(require("bs58"));
-const crypto = __importStar(require("hypercore/lib/crypto"));
 const automerge_1 = require("automerge");
 const DocBackend = __importStar(require("./DocBackend"));
 const path_1 = __importDefault(require("path"));
@@ -44,7 +42,7 @@ const random_access_memory_1 = __importDefault(require("random-access-memory"));
 const random_access_file_1 = __importDefault(require("random-access-file"));
 const KeyStore_1 = __importDefault(require("./KeyStore"));
 const ReplicationManager_1 = __importDefault(require("./ReplicationManager"));
-debug_1.default.formatters.b = Base58.encode;
+debug_1.default.formatters.b = Keys.encode;
 const log = debug_1.default('repo:backend');
 class RepoBackend {
     constructor(opts) {
@@ -78,7 +76,7 @@ class RepoBackend {
             this.network.leave(Misc_1.toDiscoveryId(actorId));
         };
         this.getReadyActor = (actorId) => {
-            const publicKey = Base58.decode(actorId);
+            const publicKey = Keys.decode(actorId);
             const actor = this.actors.get(actorId) || this.initActor({ publicKey });
             const actorPromise = new Promise((resolve, reject) => {
                 try {
@@ -366,11 +364,7 @@ class RepoBackend {
                     break;
                 }
                 case 'CreateMsg': {
-                    const keys = {
-                        publicKey: Keys.decode(msg.publicKey),
-                        secretKey: Keys.decode(msg.secretKey),
-                    };
-                    this.create(keys);
+                    this.create(Keys.decodePair(msg));
                     break;
                 }
                 case 'MergeMsg': {
@@ -422,7 +416,7 @@ class RepoBackend {
         this.storage = opts.memory ? random_access_memory_1.default : random_access_file_1.default;
         this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), opts.memory || false);
         this.keys = new KeyStore_1.default(this.db);
-        this.feeds = new FeedStore_1.default(this.storageFn);
+        this.feeds = new FeedStore_1.default((path) => this.storageFn('feeds/' + path));
         this.files = new FileStore_1.default(this.feeds);
         // init repo
         const repoKeys = this.keys.get('self.repo') || this.keys.set('self.repo', Keys.createBuffer());
@@ -438,8 +432,7 @@ class RepoBackend {
             //console.log(descriptor)
         });
         this.files.writeLog.subscribe((header) => {
-            // TODO: manage this in FileStore.
-            this.meta.addFile(header.url, header.bytes, header.mimeType);
+            this.meta.addFile(header.url, header.size, header.mimeType);
         });
         this.fileServer = new FileServer_1.default(this.files);
         this.replication = new ReplicationManager_1.default(this.feeds);
@@ -564,7 +557,7 @@ class RepoBackend {
     }
     initActorFeed(doc) {
         log('initActorFeed', doc.id);
-        const keys = crypto.keyPair();
+        const keys = Keys.createBuffer();
         const actorId = Misc_1.encodeActorId(keys.publicKey);
         this.cursors.addActor(this.id, doc.id, actorId);
         this.initActor(keys);

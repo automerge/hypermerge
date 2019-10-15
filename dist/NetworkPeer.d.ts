@@ -1,9 +1,9 @@
-/// <reference types="node" />
 import { RepoId } from './Misc';
 import PeerConnection from './PeerConnection';
 import Queue from './Queue';
+import * as Keys from './Keys';
 export declare type PeerId = RepoId & {
-    peerId: true;
+    __peerId: true;
 };
 export default class NetworkPeer {
     selfId: PeerId;
@@ -35,6 +35,5 @@ export default class NetworkPeer {
     closeConnection(conn: PeerConnection): void;
     close(): void;
 }
-export declare function isPeerId(str: string): str is PeerId;
-export declare function encodePeerId(buffer: Buffer): PeerId;
-export declare function decodePeerId(id: PeerId): Buffer;
+export declare function encodePeerId(key: Keys.PublicKey): PeerId;
+export declare function decodePeerId(id: PeerId): Keys.PublicKey;

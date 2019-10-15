@@ -3,11 +3,13 @@ import { HyperfileUrl } from './Misc';
 import { Readable } from 'stream';
 import FeedStore from './FeedStore';
 import Queue from './Queue';
+export declare const MAX_BLOCK_SIZE: number;
 export interface Header {
-    type: 'File';
     url: HyperfileUrl;
-    bytes: number;
+    size: number;
+    blocks: number;
     mimeType: string;
+    sha256: string;
 }
 export default class FileStore {
     private feeds;
@@ -15,6 +17,6 @@ export default class FileStore {
     constructor(store: FeedStore);
     header(url: HyperfileUrl): Promise<Header>;
     read(url: HyperfileUrl): Promise<Readable>;
-    write(mimeType: string, length: number, stream: Readable): Promise<Header>;
+    write(stream: Readable, mimeType: string): Promise<Header>;
 }
 export declare function isHyperfileUrl(url: string): url is HyperfileUrl;

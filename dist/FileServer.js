@@ -19,27 +19,32 @@ const FileStore_1 = require("./FileStore");
 const Misc_1 = require("./Misc");
 class FileServer {
     constructor(store) {
-        this.onConnection = (req, res) => {
+        this.onConnection = (req, res) => __awaiter(this, void 0, void 0, function* () {
+            const { method } = req;
             const { path } = url_1.parse(req.url);
             const url = path.slice(1);
-            switch (url) {
-                case 'upload':
-                    if (req.method !== 'POST') {
-                        res.writeHead(500, 'Must be POST');
-                        res.end();
-                        return;
-                    }
+            if (!method)
+                return this.sendCode(res, 400, 'Bad Request');
+            switch (req.method) {
+                case 'POST':
                     return this.upload(req, res);
-                default:
-                    if (FileStore_1.isHyperfileUrl(url)) {
-                        return this.stream(url, res);
+                case 'HEAD':
+                case 'GET':
+                    if (!FileStore_1.isHyperfileUrl(url))
+                        return this.sendCode(res, 404, 'Not Found');
+                    yield this.writeHeaders(url, res);
+                    if (method === 'GET') {
+                        const stream = yield this.files.read(url);
+                        stream.pipe(res);
                     }
                     else {
-                        res.writeHead(404, 'NOT FOUND');
                         res.end();
                     }
+                    return;
+                default:
+                    return this.sendCode(res, 405, 'Method Not Allowed');
             }
-        };
+        });
         this.files = store;
         this.http = http_1.createServer(this.onConnection);
     }
@@ -68,38 +73,35 @@ class FileServer {
             }
         });
     }
+    sendCode(res, code, reason) {
+        res.writeHead(code, reason);
+        res.end();
+    }
     upload(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
-            const info = uploadInfo(req.headers);
-            const header = yield this.files.write(info.mimeType, info.bytes, req);
+            const mimeType = getMimeType(req.headers);
+            const header = yield this.files.write(req, mimeType);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(header));
         });
     }
-    stream(url, res) {
+    writeHeaders(url, res) {
         return __awaiter(this, void 0, void 0, function* () {
             const header = yield this.files.header(url);
             res.writeHead(200, {
+                ETag: header.sha256,
                 'Content-Type': header.mimeType,
-                'Content-Length': header.bytes,
+                'Content-Length': header.size,
+                'X-Block-Count': header.blocks,
             });
-            const stream = yield this.files.read(url);
-            stream.pipe(res);
         });
     }
 }
 exports.default = FileServer;
-function uploadInfo(headers) {
+function getMimeType(headers) {
     const mimeType = headers['content-type'];
-    const length = headers['content-length'];
     if (!mimeType)
         throw new Error('Content-Type is a required header.');
-    if (!length)
-        throw new Error('Content-Length is a required header.');
-    const bytes = parseInt(length, 10);
-    return {
-        mimeType,
-        bytes,
-    };
+    return mimeType;
 }
 //# sourceMappingURL=FileServer.js.map

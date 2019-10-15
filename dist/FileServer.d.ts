@@ -7,6 +7,7 @@ export default class FileServer {
     isListening(): boolean;
     close(): Promise<void>;
     private onConnection;
+    private sendCode;
     private upload;
-    private stream;
+    private writeHeaders;
 }

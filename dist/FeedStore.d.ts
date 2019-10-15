@@ -1,19 +1,18 @@
 /// <reference types="node" />
 import { Readable, Writable } from 'stream';
-import { Feed } from './hypercore';
-import { KeyPair } from './Keys';
-import { BaseId } from './Misc';
+import { Feed } from 'hypercore';
+import { KeyPair, PublicId } from './Keys';
 import Queue from './Queue';
 export declare type Feed = Feed<Block>;
-export declare type FeedId = BaseId & {
-    feedId: true;
+export declare type FeedId = PublicId & {
+    __feedId: true;
 };
 export declare type Block = Uint8Array;
 export interface ReplicateOptions {
     stream(): void;
 }
-interface FeedStorageFn {
-    (feedId: FeedId): (filename: string) => unknown;
+interface StorageFn {
+    (path: string): (filename: string) => unknown;
 }
 /**
  * Note:
@@ -26,9 +25,9 @@ interface FeedStorageFn {
  */
 export default class FeedStore {
     private storage;
-    private feeds;
+    private opened;
     feedIdQ: Queue<FeedId>;
-    constructor(storageFn: FeedStorageFn);
+    constructor(storageFn: StorageFn);
     /**
      * Create a brand-new writable feed using the given key pair.
      * Promises the FeedId.
@@ -36,10 +35,10 @@ export default class FeedStore {
     create(keys: Required<KeyPair>): Promise<FeedId>;
     append(feedId: FeedId, ...blocks: Block[]): Promise<number>;
     appendStream(feedId: FeedId): Promise<Writable>;
-    read(feedId: FeedId, seq: number): Promise<any>;
-    stream(feedId: FeedId, start?: number): Promise<Readable>;
+    read(feedId: FeedId, seq: number): Promise<Block>;
+    head(feedId: FeedId): Promise<Block>;
+    stream(feedId: FeedId, start?: number, end?: number): Promise<Readable>;
     closeFeed(feedId: FeedId): Promise<FeedId>;
-    destroy(feedId: FeedId): Promise<FeedId>;
     close(): Promise<void>;
     getFeed(feedId: FeedId): Promise<Feed<Block>>;
     private open;

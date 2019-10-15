@@ -1,11 +1,12 @@
 /// <reference types="node" />
 import Queue from './Queue';
 import { Clock } from './Clock';
-import { DocUrl, DocId, ActorId, BaseUrl, BaseId, HyperfileId, HyperfileUrl } from './Misc';
+import { DocUrl, DocId, ActorId, BaseUrl, HyperfileId, HyperfileUrl } from './Misc';
+import * as Keys from './Keys';
 export declare function cleanMetadataInput(input: any): MetadataBlock | undefined;
 export declare function filterMetadataInputs(input: any[]): MetadataBlock[];
 export interface UrlInfo {
-    id: BaseId;
+    id: Keys.PublicId;
     buffer: Buffer;
     type: string;
 }
@@ -15,8 +16,8 @@ interface FileBlock {
     mimeType: string;
 }
 export declare type MetadataBlock = FileBlock;
-export declare function isValidID(id: BaseId): id is BaseId;
-export declare function validateURL(urlString: BaseUrl | BaseId): UrlInfo;
+export declare function isValidID(id: Keys.PublicId): id is Keys.PublicId;
+export declare function validateURL(urlString: BaseUrl | Keys.PublicId): UrlInfo;
 export declare function validateFileURL(urlString: HyperfileUrl | HyperfileId): HyperfileId;
 export declare function validateDocURL(urlString: DocUrl | DocId): DocId;
 export declare class Metadata {

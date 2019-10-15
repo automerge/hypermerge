@@ -7,27 +7,25 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const Base58 = __importStar(require("bs58"));
-const stream_1 = require("stream");
-const hypercore_1 = require("./hypercore");
+const Keys = __importStar(require("./Keys"));
+function decodeId(id) {
+    return Keys.decode(id);
+}
+exports.decodeId = decodeId;
 function encodeRepoId(repoKey) {
-    return Base58.encode(repoKey);
+    return Keys.encode(repoKey);
 }
 exports.encodeRepoId = encodeRepoId;
 function encodeDocId(actorKey) {
-    return Base58.encode(actorKey);
+    return Keys.encode(actorKey);
 }
 exports.encodeDocId = encodeDocId;
 function encodeActorId(actorKey) {
-    return Base58.encode(actorKey);
+    return Keys.encode(actorKey);
 }
 exports.encodeActorId = encodeActorId;
-function encodeDiscoveryId(discoveryKey) {
-    return Base58.encode(discoveryKey);
-}
-exports.encodeDiscoveryId = encodeDiscoveryId;
 function encodeHyperfileId(hyperfileKey) {
-    return Base58.encode(hyperfileKey);
+    return Keys.encode(hyperfileKey);
 }
 exports.encodeHyperfileId = encodeHyperfileId;
 function toDocUrl(docId) {
@@ -38,16 +36,12 @@ function toHyperfileUrl(hyperfileId) {
     return `hyperfile:/${hyperfileId}`;
 }
 exports.toHyperfileUrl = toHyperfileUrl;
-function decodeId(id) {
-    return Base58.decode(id);
-}
-exports.decodeId = decodeId;
 function toDiscoveryId(id) {
-    return Base58.encode(toDiscoveryKey(id));
+    return Keys.encode(toDiscoveryKey(id));
 }
 exports.toDiscoveryId = toDiscoveryId;
 function toDiscoveryKey(id) {
-    return hypercore_1.discoveryKey(Base58.decode(id));
+    return Keys.discoveryKey(Keys.decode(id));
 }
 exports.toDiscoveryKey = toDiscoveryKey;
 function rootActorId(docId) {
@@ -84,25 +78,6 @@ function getOrCreate(map, key, create) {
     return created;
 }
 exports.getOrCreate = getOrCreate;
-function streamToBuffer(stream) {
-    return new Promise((res, rej) => {
-        const buffers = [];
-        stream
-            .on('data', (data) => buffers.push(data))
-            .on('error', (err) => rej(err))
-            .on('end', () => res(Buffer.concat(buffers)));
-    });
-}
-exports.streamToBuffer = streamToBuffer;
-function bufferToStream(buffer) {
-    return new stream_1.Readable({
-        read() {
-            this.push(buffer);
-            this.push(null);
-        },
-    });
-}
-exports.bufferToStream = bufferToStream;
 // Windows uses named pipes:
 // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
 function toIpcPath(path) {

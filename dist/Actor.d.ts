@@ -40,7 +40,6 @@ export declare class Actor {
     onReady: (cb: (actor: Actor) => void) => void;
     writeChange(change: Change): void;
     close(): Promise<FeedId>;
-    destroy(): Promise<void>;
     private getOrCreateFeed;
     private onFeedReady;
     private onDownload;

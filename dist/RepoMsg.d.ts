@@ -1,6 +1,7 @@
 import { Patch, Change } from 'automerge';
 import { PublicMetadata } from './Metadata';
 import { DocId, HyperfileId, ActorId } from './Misc';
+import { PublicId, SecretId } from './Keys';
 export declare type ToBackendQueryMsg = MaterializeMsg | MetadataMsg;
 export declare type ToFrontendReplyMsg = MaterializeReplyMsg | MetadataReplyMsg;
 export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DocumentMsg | DestroyMsg | DebugMsg | QueryMsg;
@@ -25,8 +26,8 @@ export interface MetadataMsg {
 }
 export interface CreateMsg {
     type: 'CreateMsg';
-    publicKey: string;
-    secretKey: string;
+    publicKey: PublicId;
+    secretKey: SecretId;
 }
 export interface MergeMsg {
     type: 'MergeMsg';

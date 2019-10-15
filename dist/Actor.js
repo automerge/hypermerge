@@ -19,7 +19,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const hypercore_1 = require("./hypercore");
 const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
 const Block = __importStar(require("./Block"));
@@ -69,12 +68,12 @@ class Actor {
             this.close();
         };
         const { publicKey } = config.keys;
-        const dk = hypercore_1.discoveryKey(publicKey);
+        const dk = Keys.discoveryKey(publicKey);
         const id = Misc_1.encodeActorId(publicKey);
         this.id = id;
         this.store = config.store;
         this.notify = config.notify;
-        this.dkString = Misc_1.encodeDiscoveryId(dk);
+        this.dkString = Keys.encode(dk);
         this.q = new Queue_1.default('repo:actor:Q' + id.slice(0, 4));
         this.getOrCreateFeed(Keys.encodePair(config.keys)).then((feed) => {
             feed.ready(() => this.onFeedReady(feed));
@@ -90,12 +89,6 @@ class Actor {
     }
     close() {
         return this.store.closeFeed(this.id);
-    }
-    destroy() {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield this.close();
-            this.store.destroy(this.id);
-        });
     }
     getOrCreateFeed(keys) {
         return __awaiter(this, void 0, void 0, function* () {

@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -6,13 +9,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     result["default"] = mod;
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const Misc_1 = require("./Misc");
-const Base58 = __importStar(require("bs58"));
 const Queue_1 = __importDefault(require("./Queue"));
+const Keys = __importStar(require("./Keys"));
 class NetworkPeer {
     constructor(selfId, id) {
         this.closedConnectionCount = 0;
@@ -83,16 +83,12 @@ class NetworkPeer {
     }
 }
 exports.default = NetworkPeer;
-function isPeerId(str) {
-    return Base58.decode(str).length === 32;
-}
-exports.isPeerId = isPeerId;
-function encodePeerId(buffer) {
-    return Misc_1.encodeRepoId(buffer);
+function encodePeerId(key) {
+    return Misc_1.encodeRepoId(key);
 }
 exports.encodePeerId = encodePeerId;
 function decodePeerId(id) {
-    return Base58.decode(id);
+    return Keys.decode(id);
 }
 exports.decodePeerId = decodePeerId;
 //# sourceMappingURL=NetworkPeer.js.map

@@ -23,10 +23,8 @@ const Metadata_1 = require("./Metadata");
 const Keys = __importStar(require("./Keys"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Queue_1 = __importDefault(require("./Queue"));
-// const KB = 1024
-// const MB = 1024 * KB
-// const BLOCK_SIZE = 64 * KB
-const FIRST_DATA_BLOCK = 1;
+const StreamLogic_1 = require("./StreamLogic");
+exports.MAX_BLOCK_SIZE = 62 * 1024;
 class FileStore {
     constructor(store) {
         this.feeds = store;
@@ -34,35 +32,40 @@ class FileStore {
     }
     header(url) {
         return __awaiter(this, void 0, void 0, function* () {
-            return this.feeds.read(toFeedId(url), 0).then(JsonBuffer.parse);
+            return this.feeds.head(toFeedId(url)).then(JsonBuffer.parse);
         });
     }
     read(url) {
         return __awaiter(this, void 0, void 0, function* () {
             const feedId = toFeedId(url);
-            return this.feeds.stream(feedId, FIRST_DATA_BLOCK);
+            return this.feeds.stream(feedId, 0, -1);
         });
     }
-    write(mimeType, length, stream) {
+    write(stream, mimeType) {
         return __awaiter(this, void 0, void 0, function* () {
             const keys = Keys.create();
             const feedId = yield this.feeds.create(keys);
-            const header = {
-                type: 'File',
-                url: toHyperfileUrl(feedId),
-                bytes: length,
-                mimeType,
-            };
-            yield this.feeds.append(feedId, JsonBuffer.bufferify(header));
             const appendStream = yield this.feeds.appendStream(feedId);
             return new Promise((res, rej) => {
+                const chunkStream = new StreamLogic_1.MaxChunkSizeTransform(exports.MAX_BLOCK_SIZE);
+                const hashStream = new StreamLogic_1.HashPassThrough('sha256');
                 stream
+                    .pipe(hashStream)
+                    .pipe(chunkStream)
                     .pipe(appendStream)
                     .on('error', (err) => rej(err))
-                    .on('finish', () => {
+                    .on('finish', () => __awaiter(this, void 0, void 0, function* () {
+                    const header = {
+                        url: toHyperfileUrl(feedId),
+                        mimeType,
+                        size: chunkStream.processedBytes,
+                        blocks: chunkStream.chunkCount,
+                        sha256: hashStream.hash.digest('hex'),
+                    };
+                    yield this.feeds.append(feedId, JsonBuffer.bufferify(header));
                     this.writeLog.push(header);
                     res(header);
-                });
+                }));
             });
         });
     }

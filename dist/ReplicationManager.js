@@ -2,8 +2,16 @@
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const hypercore_protocol_1 = __importDefault(require("hypercore-protocol"));
+const Keys = __importStar(require("./Keys"));
 const Misc_1 = require("./Misc");
 const MessageRouter_1 = __importDefault(require("./MessageRouter"));
 const pump_1 = __importDefault(require("pump"));
@@ -98,7 +106,7 @@ class ReplicationManager {
                 this.protocols.delete(conn);
             })
                 .on('discovery-key', (discoveryKey) => {
-                const discoveryId = Misc_1.encodeDiscoveryId(discoveryKey);
+                const discoveryId = Keys.encode(discoveryKey);
                 // Hypercore verifies that the remote has the feed automatically
                 this.replicateWith(peer, [discoveryId]);
             });

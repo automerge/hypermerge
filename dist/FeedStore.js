@@ -12,8 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const fs_1 = __importDefault(require("fs"));
-const hypercore_1 = require("./hypercore");
+const hypercore_1 = __importDefault(require("hypercore"));
 const Keys_1 = require("./Keys");
 const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
@@ -28,8 +27,8 @@ const Queue_1 = __importDefault(require("./Queue"));
  */
 class FeedStore {
     constructor(storageFn) {
-        this.feeds = new Map();
-        this.storage = storageFn;
+        this.opened = new Map();
+        this.storage = (discoveryId) => storageFn(`${discoveryId.slice(0, 2)}/${discoveryId.slice(2)}`);
         this.feedIdQ = new Queue_1.default('FeedStore:idQ');
     }
     /**
@@ -38,8 +37,8 @@ class FeedStore {
      */
     create(keys) {
         return __awaiter(this, void 0, void 0, function* () {
-            const [feedId] = yield this.openOrCreateFeed(keys);
-            return feedId;
+            yield this.openOrCreateFeed(keys);
+            return keys.publicKey;
         });
     }
     append(feedId, ...blocks) {
@@ -59,13 +58,13 @@ class FeedStore {
     }
     appendStream(feedId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const feed = yield this.open(feedId);
+            const feed = yield this.getFeed(feedId);
             return feed.createWriteStream();
         });
     }
     read(feedId, seq) {
         return __awaiter(this, void 0, void 0, function* () {
-            const feed = yield this.open(feedId);
+            const feed = yield this.getFeed(feedId);
             return new Promise((res, rej) => {
                 feed.get(seq, (err, data) => {
                     if (err)
@@ -75,14 +74,28 @@ class FeedStore {
             });
         });
     }
-    stream(feedId, start = 0) {
+    head(feedId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const feed = yield this.getFeed(feedId);
+            return new Promise((res, rej) => {
+                feed.head((err, data) => {
+                    if (err)
+                        return rej(err);
+                    res(data);
+                });
+            });
+        });
+    }
+    stream(feedId, start = 0, end) {
         return __awaiter(this, void 0, void 0, function* () {
             const feed = yield this.open(feedId);
-            return feed.createReadStream({ start });
+            if (end != null && end < 0)
+                end = feed.length + end;
+            return feed.createReadStream({ start, end });
         });
     }
     closeFeed(feedId) {
-        const feed = this.feeds.get(feedId);
+        const feed = this.opened.get(feedId);
         if (!feed)
             return Promise.reject(new Error(`Can't close feed ${feedId}, feed not open`));
         return new Promise((res, rej) => {
@@ -93,23 +106,11 @@ class FeedStore {
             });
         });
     }
-    destroy(feedId) {
-        return new Promise((res, rej) => {
-            const filename = this.storage(feedId)('').filename;
-            const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`;
-            fs_1.default.rename(filename, newName, (err) => {
-                if (err)
-                    return rej(err);
-                res(feedId);
-            });
-        });
-    }
     close() {
         return __awaiter(this, void 0, void 0, function* () {
-            yield Promise.all([...this.feeds.keys()].map((feedId) => this.closeFeed(feedId)));
+            yield Promise.all([...this.opened.keys()].map((feedId) => this.closeFeed(feedId)));
         });
     }
-    // Junk method used to bridge to Network
     getFeed(feedId) {
         return __awaiter(this, void 0, void 0, function* () {
             return this.open(feedId);
@@ -117,21 +118,20 @@ class FeedStore {
     }
     open(feedId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const [, feed] = yield this.openOrCreateFeed({ publicKey: feedId });
-            return feed;
+            return yield this.openOrCreateFeed({ publicKey: feedId });
         });
     }
     openOrCreateFeed(keys) {
         return new Promise((res, _rej) => {
             const feedId = keys.publicKey;
-            const feed = Misc_1.getOrCreate(this.feeds, feedId, () => {
+            const feed = Misc_1.getOrCreate(this.opened, feedId, () => {
                 const { publicKey, secretKey } = Keys_1.decodePair(keys);
                 this.feedIdQ.push(feedId);
-                return hypercore_1.hypercore(this.storage(feedId), publicKey, {
+                return hypercore_1.default(this.storage(Misc_1.toDiscoveryId(feedId)), publicKey, {
                     secretKey,
                 });
             });
-            feed.ready(() => res([feedId, feed]));
+            feed.ready(() => res(feed));
         });
     }
 }

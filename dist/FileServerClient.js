@@ -18,30 +18,38 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const http = __importStar(require("http"));
 const Misc_1 = require("./Misc");
+const Stream = __importStar(require("./StreamLogic"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 class FileServerClient {
     setServerPath(path) {
         this.serverPath = Misc_1.toIpcPath(path);
     }
-    write(data, size, mimeType) {
+    write(stream, mimeType) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.serverPath)
                 throw new Error('FileServer has not been started on RepoBackend');
             const [req, response] = request({
                 socketPath: this.serverPath,
-                path: '/upload',
+                path: '/',
                 method: 'POST',
                 headers: {
                     'Content-Type': mimeType,
-                    'Content-Length': size,
                 },
             });
-            data.pipe(req);
-            const header = JsonBuffer.parse(yield Misc_1.streamToBuffer(yield response));
-            const { url } = header;
-            if (!url)
-                throw new Error('Invalid response');
-            return url;
+            stream.pipe(req);
+            return JsonBuffer.parse(yield Stream.toBuffer(yield response));
+        });
+    }
+    header(url) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const [req, responsePromise] = request({
+                socketPath: this.serverPath,
+                path: '/' + url,
+                method: 'HEAD',
+            });
+            req.end();
+            const header = getHeader(url, yield responsePromise);
+            return header;
         });
     }
     read(url) {
@@ -55,23 +63,43 @@ class FileServerClient {
             });
             req.end();
             const response = yield responsePromise;
-            if (response.statusCode !== 200) {
-                throw new Error(`Server error, code=${response.statusCode} message=${response.statusMessage}`);
-            }
-            const mimeType = response.headers['content-type'];
-            const contentLength = response.headers['content-length'];
-            if (!mimeType)
-                throw new Error('Missing mimeType in FileServer response');
-            if (!contentLength)
-                throw new Error('Missing content-length in FileServer response');
-            const size = parseInt(contentLength, 10);
-            if (isNaN(size))
-                throw new Error('Invalid content-length in FileServer response');
-            return [response, mimeType, size];
+            const header = getHeader(url, response);
+            return [header, response];
         });
     }
 }
 exports.default = FileServerClient;
+function getHeader(url, response) {
+    if (response.statusCode !== 200) {
+        throw new Error(`Server error, code=${response.statusCode} message=${response.statusMessage}`);
+    }
+    const mimeType = response.headers['content-type'];
+    const contentLength = response.headers['content-length'];
+    const blockCount = response.headers['x-block-count'];
+    const sha256 = response.headers['etag'];
+    if (!mimeType)
+        throw new Error('Missing Content-Type in FileServer response');
+    if (!contentLength)
+        throw new Error('Missing Content-Length in FileServer response');
+    if (typeof sha256 != 'string')
+        throw new Error('Missing ETag in FileServer response');
+    if (typeof blockCount != 'string')
+        throw new Error('Missing X-Block-Count in FileServer response');
+    const size = parseInt(contentLength, 10);
+    const blocks = parseInt(blockCount, 10);
+    if (isNaN(size))
+        throw new Error('Invalid Content-Length in FileServer response');
+    if (isNaN(blocks))
+        throw new Error('Invalid X-Block-Count in FileServer response');
+    const header = {
+        url,
+        size,
+        blocks,
+        mimeType,
+        sha256,
+    };
+    return header;
+}
 function request(options) {
     const req = http.request(options);
     const response = new Promise((resolve, reject) => {

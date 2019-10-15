@@ -12,13 +12,15 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const Queue_1 = __importDefault(require("./Queue"));
 const Base58 = __importStar(require("bs58"));
-const hypercore_1 = require("./hypercore");
+const hypercore_1 = __importDefault(require("hypercore"));
+const hypercore_2 = require("./hypercore");
 const debug_1 = __importDefault(require("debug"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const URL = __importStar(require("url"));
 const Misc_1 = require("./Misc");
 const log = debug_1.default('repo:metadata');
 const Misc_2 = require("./Misc");
+const Keys = __importStar(require("./Keys"));
 function cleanMetadataInput(input) {
     const id = input.id || input.docId;
     if (typeof id !== 'string')
@@ -66,7 +68,7 @@ function isValidID(id) {
 exports.isValidID = isValidID;
 function validateID(id) {
     log(`id '${id}'`);
-    const buffer = Base58.decode(id);
+    const buffer = Keys.decode(id);
     if (buffer.length !== 32) {
         throw new Error(`invalid id ${id}`);
     }
@@ -161,12 +163,12 @@ class Metadata {
                     console.log('APPEND ERROR', err);
             });
         };
-        this.ledger = hypercore_1.hypercore(storageFn('ledger'), {});
+        this.ledger = hypercore_1.default(storageFn('ledger'), {});
         this.join = joinFn;
         log('LEDGER READY (1)');
         this.ledger.ready(() => {
             log('LEDGER READY (2)', this.ledger.length);
-            hypercore_1.readFeed('ledger', this.ledger, this.loadLedger);
+            hypercore_2.readFeed('ledger', this.ledger, this.loadLedger);
         });
     }
     batchAdd(blocks) {

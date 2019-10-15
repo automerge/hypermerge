@@ -8,7 +8,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const Base58 = __importStar(require("bs58"));
-const crypto = __importStar(require("hypercore/lib/crypto"));
+const crypto = __importStar(require("hypercore-crypto"));
+const hypercore_crypto_1 = require("hypercore-crypto");
+exports.discoveryKey = hypercore_crypto_1.discoveryKey;
 function create() {
     return encodePair(crypto.keyPair());
 }
