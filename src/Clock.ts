@@ -30,6 +30,10 @@ export function isSatisfied(target: Clock, candidate: Clock) {
   return Object.entries(target).every(([id, value]) => id in candidate && candidate[id] >= value)
 }
 
+export function actors(clock: Clock): ActorId[] {
+  return Object.keys(clock) as ActorId[]
+}
+
 export function gte(a: Clock, b: Clock): boolean {
   for (let id in a) {
     if (a[id] < (b[id] || 0)) return false
@@ -38,6 +42,10 @@ export function gte(a: Clock, b: Clock): boolean {
     if (b[id] > (a[id] || 0)) return false
   }
   return true
+}
+
+export function equal(a: Clock, b: Clock) {
+  return cmp(a, b) === 'EQ'
 }
 
 export function cmp(a: Clock, b: Clock): CMP {
@@ -51,10 +59,6 @@ export function cmp(a: Clock, b: Clock): CMP {
     return 'LT'
   }
   return 'CONCUR'
-}
-
-export function clockActorIds(clock: Clock): ActorId[] {
-  return Object.keys(clock) as ActorId[]
 }
 
 export function strs2clock(input: string | string[]): Clock {

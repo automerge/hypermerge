@@ -2,12 +2,14 @@
 import { RepoId, DocId } from './Misc';
 import { Clock } from './Clock';
 import { Database } from './SqlDatabase';
+import Queue from './Queue';
 export interface ClockMap {
     [documentId: string]: Clock;
 }
 export declare type ClockUpdate = [RepoId, DocId, Clock];
 export default class ClockStore {
     db: Database;
+    updateQ: Queue<ClockUpdate>;
     private preparedGet;
     private preparedInsert;
     private preparedDelete;

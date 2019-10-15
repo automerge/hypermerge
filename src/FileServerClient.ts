@@ -1,7 +1,9 @@
 import * as http from 'http'
 import { Readable } from 'stream'
-import { HyperfileUrl, streamToBuffer, toIpcPath } from './Misc'
+import { HyperfileUrl, toIpcPath } from './Misc'
+import * as Stream from './StreamLogic'
 import * as JsonBuffer from './JsonBuffer'
+import { Header } from './FileStore'
 
 export default class FileServerClient {
   serverPath?: string
@@ -10,28 +12,36 @@ export default class FileServerClient {
     this.serverPath = toIpcPath(path)
   }
 
-  async write(data: Readable, size: number, mimeType: string): Promise<HyperfileUrl> {
+  async write(stream: Readable, mimeType: string): Promise<Header> {
     if (!this.serverPath) throw new Error('FileServer has not been started on RepoBackend')
 
     const [req, response] = request({
       socketPath: this.serverPath,
-      path: '/upload',
+      path: '/',
       method: 'POST',
       headers: {
         'Content-Type': mimeType,
-        'Content-Length': size,
       },
     })
-    data.pipe(req)
-    const header = JsonBuffer.parse(await streamToBuffer(await response))
 
-    const { url } = header
-    if (!url) throw new Error('Invalid response')
+    stream.pipe(req)
 
-    return url
+    return JsonBuffer.parse(await Stream.toBuffer(await response))
   }
 
-  async read(url: HyperfileUrl): Promise<[Readable, string, number]> {
+  async header(url: HyperfileUrl): Promise<Header> {
+    const [req, responsePromise] = request({
+      socketPath: this.serverPath,
+      path: '/' + url,
+      method: 'HEAD',
+    })
+    req.end()
+
+    const header = getHeader(url, await responsePromise)
+    return header
+  }
+
+  async read(url: HyperfileUrl): Promise<[Header, Readable]> {
     if (!this.serverPath) throw new Error('FileServer has not been started on RepoBackend')
 
     const [req, responsePromise] = request({
@@ -42,21 +52,41 @@ export default class FileServerClient {
     req.end()
 
     const response = await responsePromise
+    const header = getHeader(url, response)
 
-    if (response.statusCode !== 200) {
-      throw new Error(`Server error, code=${response.statusCode} message=${response.statusMessage}`)
-    }
-    const mimeType = response.headers['content-type']
-    const contentLength = response.headers['content-length']
-
-    if (!mimeType) throw new Error('Missing mimeType in FileServer response')
-    if (!contentLength) throw new Error('Missing content-length in FileServer response')
-
-    const size = parseInt(contentLength, 10)
-    if (isNaN(size)) throw new Error('Invalid content-length in FileServer response')
-
-    return [response, mimeType, size]
+    return [header, response]
   }
+}
+
+function getHeader(url: HyperfileUrl, response: http.IncomingMessage): Header {
+  if (response.statusCode !== 200) {
+    throw new Error(`Server error, code=${response.statusCode} message=${response.statusMessage}`)
+  }
+
+  const mimeType = response.headers['content-type']
+  const contentLength = response.headers['content-length']
+  const blockCount = response.headers['x-block-count']
+  const sha256 = response.headers['etag']
+
+  if (!mimeType) throw new Error('Missing Content-Type in FileServer response')
+  if (!contentLength) throw new Error('Missing Content-Length in FileServer response')
+  if (typeof sha256 != 'string') throw new Error('Missing ETag in FileServer response')
+  if (typeof blockCount != 'string') throw new Error('Missing X-Block-Count in FileServer response')
+
+  const size = parseInt(contentLength, 10)
+  const blocks = parseInt(blockCount, 10)
+  if (isNaN(size)) throw new Error('Invalid Content-Length in FileServer response')
+  if (isNaN(blocks)) throw new Error('Invalid X-Block-Count in FileServer response')
+
+  const header: Header = {
+    url,
+    size,
+    blocks,
+    mimeType,
+    sha256,
+  }
+
+  return header
 }
 
 function request(

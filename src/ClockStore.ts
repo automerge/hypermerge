@@ -1,6 +1,7 @@
 import { RepoId, DocId, ActorId } from './Misc'
 import * as Clock from './Clock'
 import { Database, Statement } from './SqlDatabase'
+import Queue from './Queue'
 
 export interface ClockMap {
   [documentId: string /*DocId*/]: Clock.Clock
@@ -14,13 +15,14 @@ interface ClockRow {
 }
 
 type ClockEntry = [ActorId, number]
-type ClockDescriptor = [Clock.Clock, DocId, RepoId]
+export type ClockDescriptor = [Clock.Clock, DocId, RepoId]
 
 // NOTE: Joshua Wise (maintainer of better-sqlite3) suggests using multiple
 // prepared statements rather than batch inserts and selects :shrugging-man:.
 // We'll see if this becomes an issue.
 export default class ClockStore {
   db: Database
+  updateQ: Queue<ClockDescriptor>
   private preparedGet: Statement<[RepoId, DocId]>
   private preparedInsert: Statement<[RepoId, DocId, ActorId, number]>
   private preparedDelete: Statement<[RepoId, DocId]>
@@ -30,6 +32,7 @@ export default class ClockStore {
 
   constructor(db: Database) {
     this.db = db
+    this.updateQ = new Queue()
 
     this.preparedGet = this.db.prepare(`SELECT * FROM Clocks WHERE repoId=? AND documentId=?`)
     this.preparedInsert = this.db.prepare(

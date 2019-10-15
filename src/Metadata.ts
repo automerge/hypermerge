@@ -1,14 +1,14 @@
 import Queue from './Queue'
-import MapSet from './MapSet'
 import * as Base58 from 'bs58'
-import { hypercore, readFeed, Feed } from './hypercore'
+import hypercore, { Feed } from 'hypercore'
+import { readFeed } from './hypercore'
 import Debug from 'debug'
 import * as JsonBuffer from './JsonBuffer'
 import * as URL from 'url'
 import { hyperfileActorId } from './Misc'
 const log = Debug('repo:metadata')
 
-import { Clock, equivalent, addTo, union } from './Clock'
+import { Clock } from './Clock'
 import {
   DocUrl,
   DocId,
@@ -20,23 +20,6 @@ import {
   HyperfileUrl,
 } from './Misc'
 
-export function sanitizeRemoteMetadata(message: any): RemoteMetadata {
-  const result: RemoteMetadata = { type: 'RemoteMetadata', clocks: {}, blocks: [] }
-
-  if (
-    message instanceof Object &&
-    Array.isArray(message.blocks) &&
-    message.clocks instanceof Object
-  ) {
-    result.blocks = filterMetadataInputs(message.blocks)
-    result.clocks = message.clocks
-    return result
-  } else {
-    console.log('WARNING: Metadata Msg is not a well formed object', message)
-    return result
-  }
-}
-
 export function cleanMetadataInput(input: any): MetadataBlock | undefined {
   const id = input.id || input.docId
   if (typeof id !== 'string') return undefined
@@ -44,45 +27,14 @@ export function cleanMetadataInput(input: any): MetadataBlock | undefined {
   const bytes = input.bytes
   if (typeof bytes !== 'undefined' && typeof bytes !== 'number') return undefined
 
-  const actors = input.actors || input.actorIds
-  //  const follows = input.follows;
-  const merge = input.merge
   const mimeType = input.mimeType
-  const deleted = input.deleted
 
-  if (actors !== undefined) {
-    if (!(actors instanceof Array)) return undefined
-    if (!actors.every(isValidID)) return undefined
-  }
+  if (bytes === undefined) return undefined
 
-  //  if (follows !== undefined) {
-  //    if (!(follows instanceof Array)) return undefined;
-  //    if (!follows.every(isValidID)) return undefined;
-  //  }
-
-  if (merge !== undefined) {
-    if (typeof merge !== 'object') return undefined
-    if (!Object.keys(merge).every((id) => isValidID(id as ActorId))) return undefined
-    if (!Object.values(merge).every(isNumber)) return undefined
-  }
-
-  const meta = actors || deleted || merge // || follows;
-
-  if (meta === undefined && bytes === undefined) return undefined
-
-  if (meta !== undefined && bytes !== undefined) return undefined
-
-  // XXX(jeff): This is not technically returning a valid MetadataBlock. It's
-  // returning a union of all possible sub-types, which is a valid type, but not
-  // a valid value.
   return {
     id,
     bytes,
     mimeType,
-    actors,
-    //    follows,
-    merge,
-    deleted,
   } as any
 }
 
@@ -105,39 +57,16 @@ export interface UrlInfo {
   type: string
 }
 
-interface ActorsBlock {
-  id: DocId
-  actors: ActorId[]
-}
-
-interface MergeBlock {
-  id: DocId
-  merge: Clock
-}
-
-interface DeletedBlock {
-  id: DocId
-  deleted: true
-}
-
 interface FileBlock {
   id: HyperfileId
   bytes: number
   mimeType: string
 }
 
-export type MetadataBlock = FileBlock | ActorsBlock | MergeBlock | DeletedBlock
+export type MetadataBlock = FileBlock
 
 function isFileBlock(block: MetadataBlock): block is FileBlock {
   return 'mimeType' in block && typeof block.mimeType === 'string' && block.bytes != undefined
-}
-
-function isDeletedBlock(block: MetadataBlock): block is DeletedBlock {
-  return 'deleted' in block && block.deleted
-}
-
-function isNumber(n: any): n is number {
-  return typeof n === 'number'
 }
 
 // are try catchs as expensive as I remember?  Not sure - I wrote this logic twice
@@ -201,22 +130,10 @@ export function validateDocURL(urlString: DocUrl | DocId): DocId {
 
 var _benchTotal: { [type: string]: number } = {}
 
-export interface RemoteMetadata {
-  type: 'RemoteMetadata'
-  clocks: { [docId: string]: Clock }
-  blocks: MetadataBlock[]
-}
-
 export class Metadata {
-  docs: Set<DocId> = new Set()
-  private primaryActors: MapSet<DocId, ActorId> = new MapSet()
-  //  private follows: MapSet<string, string> = new MapSet();
   private files: Map<HyperfileId, number> = new Map()
   private mimeTypes: Map<HyperfileId, string> = new Map()
-  private merges: Map<DocId, Clock> = new Map()
   readyQ: Queue<() => void> = new Queue('repo:metadata:readyQ') // FIXME - need a better api for accessing metadata
-  private _clocks: { [docId: string /* DocId */]: Clock } = {}
-  private _docsWith: Map<string /* ${actor}-${seq} */, DocId[]> = new Map()
 
   private writable: Map<ActorId, boolean> = new Map()
 
@@ -236,12 +153,10 @@ export class Metadata {
 
   private ledger: Feed<Uint8Array>
   private join: (id: ActorId) => void
-  private leave: (id: ActorId) => void
 
-  constructor(storageFn: Function, joinFn: (id: ActorId) => void, leaveFn: (id: ActorId) => void) {
+  constructor(storageFn: Function, joinFn: (id: ActorId) => void) {
     this.ledger = hypercore(storageFn('ledger'), {})
     this.join = joinFn
-    this.leave = leaveFn
 
     log('LEDGER READY (1)')
     this.ledger.ready(() => {
@@ -253,18 +168,12 @@ export class Metadata {
   private loadLedger = (buffers: Uint8Array[]) => {
     const input = JsonBuffer.parseAllValid(buffers)
     const data = filterMetadataInputs(input) // FIXME
-    this.primaryActors = new MapSet()
-    //    this.follows = new MapSet();
     this.files = new Map()
     this.mimeTypes = new Map()
-    this.merges = new Map()
     this.ready = true
     this.batchAdd(data)
     this.replay.map(this.writeThrough)
     this.replay = []
-    this._clocks = {}
-    this._docsWith = new Map()
-    this.allActors().forEach((actorId: string) => this.join(actorId as ActorId))
     this.readyQ.subscribe((f) => f())
   }
 
@@ -282,15 +191,10 @@ export class Metadata {
 
     if (this.ready && dirty) {
       this.append(block)
-      this._clocks = {}
-      this._docsWith.clear()
 
       if (isFileBlock(block)) {
+        // TODO: Manage this elsewhere - either through FileStore, FeedStore, or not at all!
         this.join(hyperfileActorId(block.id))
-      } else if (isDeletedBlock(block)) {
-        this.actors(block.id).forEach(this.leave)
-      } else {
-        this.actors(block.id).forEach(this.join)
       }
     }
   }
@@ -302,19 +206,7 @@ export class Metadata {
   }
 
   private addBlock(_idx: number, block: MetadataBlock): boolean {
-    let changedDocs = false
-    let changedActors = false
-    //    let changedFollow = false;
     let changedFiles = false
-    let changedMerge = false
-
-    if ('actors' in block && block.actors !== undefined) {
-      changedActors = this.primaryActors.merge(block.id, block.actors)
-    }
-
-    //    if (block.follows !== undefined) {
-    //      changedFollow = this.follows.merge(id, block.follows);
-    //    }
 
     if (isFileBlock(block)) {
       if (
@@ -327,132 +219,20 @@ export class Metadata {
       }
     }
 
-    if ('merge' in block && block.merge !== undefined) {
-      const oldClock: Clock = this.merges.get(block.id) || {}
-      const newClock = union(oldClock, block.merge)
-      changedMerge = !equivalent(newClock, oldClock)
-      if (changedMerge) {
-        this.merges.set(block.id, newClock)
-      }
-    }
-
-    // shit - bug - rethink the whole remote people deleted something
-    // i dont care of they deleted it
-    if ('deleted' in block && block.deleted) {
-      if (this.docs.has(block.id)) {
-        this.docs.delete(block.id)
-        changedDocs = true
-      }
-    } else {
-      // XXX(jeff): I don't think this logic can be correct. This branch will be run
-      // for FileBlocks. That seems bad, but I'm not sure how to fix it.
-
-      const brokenId = block.id as DocId // HACK: This type not matching is part of why I think it's incorrect
-      if (!this.docs.has(brokenId)) {
-        this.docs.add(brokenId)
-        changedDocs = true
-      }
-    }
-
-    return changedActors || changedMerge || changedFiles || changedDocs // || changedFollow;
+    return changedFiles
   }
 
-  allActors(): Set<string> {
-    return new Set([...this.primaryActors.union(), ...this.files.keys()])
+  isWritable(actorId: ActorId) {
+    return this.writable.get(actorId) || false
   }
 
   setWritable(actor: ActorId, writable: boolean) {
     this.writable.set(actor, writable)
   }
 
-  localActorId(id: DocId): ActorId | undefined {
-    for (let actor of this.primaryActors.get(id)!) {
-      if (this.writable.get(actor) === true) {
-        return actor
-      }
-    }
-    return undefined
-  }
-
-  async actorsAsync(id: DocId): Promise<ActorId[]> {
-    return new Promise<ActorId[]>((resolve) => {
-      this.readyQ.push(() => {
-        resolve(this.actors(id))
-      })
-    })
-  }
-
-  actors(id: DocId): ActorId[] {
-    return Object.keys(this.clock(id)) as ActorId[]
-  }
-
-  /*
-  private actorsSeen(id: string, acc: string[], seen: Set<string>): string[] {
-    const primaryActors = this.primaryActors.get(id)!;
-    const mergeActors = Object.keys(this.merges.get(id) || {});
-    acc.push(...primaryActors);
-    acc.push(...mergeActors);
-    seen.add(id);
-    this.follows.get(id).forEach(follow => {
-      if (!seen.has(follow)) {
-        this.actorsSeen(follow, acc, seen);
-      }
-    });
-    return acc;
-  }
-*/
-
-  clockAt(id: DocId, actor: ActorId): number {
-    return this.clock(id)[actor] || 0
-  }
-
-  clock(id: DocId): Clock {
-    if (this._clocks[id]) return this._clocks[id]
-
-    const clock: Clock = { [id]: Infinity } // this also covers the clock for files
-    const actors = this.primaryActors.get(id)
-    const merges = this.merges.get(id)
-
-    if (actors) actors.forEach((actor) => (clock[actor] = Infinity))
-
-    if (merges) addTo(clock, merges)
-
-    this._clocks[id] = clock
-
-    return clock
-  }
-
-  docsWith(actor: ActorId, seq: number = 1): DocId[] {
-    // this is probably unnecessary
-    const key = `${actor}-${seq}`
-    if (!this._docsWith.has(key)) {
-      const docs = [...this.docs].filter((id) => this.has(id, actor, seq))
-      this._docsWith.set(key, docs)
-    }
-    return this._docsWith.get(key)!
-  }
-
-  has(id: DocId, actor: ActorId, seq: number): boolean {
-    if (!(seq >= 1)) throw new Error('seq number must be 1 or greater')
-
-    return this.clockAt(id, actor) >= seq
-  }
-
-  merge(id: DocId, merge: Clock) {
-    this.writeThrough({ id, merge })
-  }
-
   addFile(hyperfileUrl: HyperfileUrl, bytes: number, mimeType: string) {
     const id = validateFileURL(hyperfileUrl)
     this.writeThrough({ id, bytes, mimeType })
-  }
-
-  delete(id: DocId) {
-    this.writeThrough({ id, deleted: true })
-  }
-
-  addActor(id: DocId, actorId: ActorId) {
-    this.addActors(id, [actorId])
   }
 
   addBlocks(blocks: MetadataBlock[]) {
@@ -461,20 +241,12 @@ export class Metadata {
     })
   }
 
-  addActors(id: DocId, actors: ActorId[]) {
-    this.writeThrough({ id, actors })
-  }
-
   isFile(id: HyperfileId | DocId): id is HyperfileId {
     return this.files.get(id as HyperfileId) !== undefined
   }
 
-  isKnown(id: DocId | HyperfileId): boolean {
-    return this.isFile(id) || this.isDoc(id)
-  }
-
   isDoc(id: DocId | HyperfileId): id is DocId {
-    return this.primaryActors.get(id as DocId).size > 0
+    return !this.isFile(id)
   }
 
   bench(msg: string, f: () => void): void {
@@ -486,42 +258,14 @@ export class Metadata {
     log(`metadata task=${msg} time=${duration}ms total=${total}ms`)
   }
 
-  publicMetadata(id: DocId | HyperfileId, cb: (meta: PublicMetadata | null) => void) {
-    this.readyQ.push(() => {
-      if (this.isDoc(id)) {
-        cb({
-          type: 'Document',
-          clock: {},
-          history: 0,
-          actor: this.localActorId(id), // FIXME - why is this undefined??
-          actors: this.actors(id),
-          //          follows: [...this.follows.get(id)]
-        })
-      } else if (this.isFile(id)) {
-        const bytes = this.files.get(id)!
-        const mimeType = this.mimeTypes.get(id)!
-        cb({
-          type: 'File',
-          bytes,
-          mimeType,
-        })
-      } else {
-        cb(null)
-      }
-    })
-  }
-
-  forDoc(id: DocId): ActorsBlock & MergeBlock {
+  fileMetadata(id: HyperfileId) {
+    const bytes = this.files.get(id)!
+    const mimeType = this.mimeTypes.get(id)!
     return {
-      id,
-      actors: [...this.primaryActors.get(id)],
-      //      follows: [...this.follows.get(id)],
-      merge: this.merges.get(id) || {},
+      type: 'File',
+      bytes,
+      mimeType,
     }
-  }
-
-  forActor(actor: ActorId): MetadataBlock[] {
-    return this.docsWith(actor).map((id) => this.forDoc(id))
   }
 }
 
