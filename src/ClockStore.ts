@@ -88,7 +88,11 @@ export default class ClockStore {
       return this.get(repoId, documentId)
     })
     const updatedClock = transaction(Object.entries(clock))
-    return [updatedClock, documentId, repoId]
+    const descriptor: ClockDescriptor = [updatedClock, documentId, repoId]
+    if (!Clock.equal(clock, updatedClock)) {
+      this.updateQ.push(descriptor)
+    }
+    return descriptor
   }
 
   /**
