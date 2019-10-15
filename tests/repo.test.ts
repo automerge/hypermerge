@@ -3,6 +3,7 @@ import { RepoBackend, RepoFrontend } from '../src'
 import { expect, expectDocs, generateServerPath, testRepo } from './misc'
 import { streamToBuffer, bufferToStream } from '../src/Misc'
 import { validateDocURL } from '../src/Metadata'
+import { INFINITY_SEQ } from '../src/CursorStore'
 
 test('Simple create doc and make a change', (t) => {
   const repo = testRepo()
@@ -41,6 +42,62 @@ test('Create a doc backend - then wire it up to a frontend - make a change', (t)
     state.foo = 'bar'
   })
   test.onFinish(() => front.close())
+})
+
+test('Test document merging', (t) => {
+  t.plan(5)
+  const repo = testRepo()
+  const url1 = repo.create({ foo: 'bar' })
+  const url2 = repo.create({ baz: 'bah' })
+
+  const id = validateDocURL(url1)
+  const id2 = validateDocURL(url2)
+  repo.watch<any>(
+    url1,
+    expectDocs(t, [
+      [
+        { foo: 'bar' },
+        'initial value',
+        () => {
+          const clock = repo.back.cursors.get(repo.back.id, id)
+          t.deepEqual(clock, { [id]: INFINITY_SEQ })
+        },
+      ],
+      [
+        { foo: 'bar', baz: 'bah' },
+        'merged value',
+        () => {
+          const clock = repo.back.cursors.get(repo.back.id, id)
+          const clock2 = repo.back.cursors.get(repo.back.id, id2)
+          t.deepEqual(clock, { [id]: INFINITY_SEQ, [id2]: 1 })
+          t.deepEqual(clock2, { [id2]: INFINITY_SEQ })
+        },
+      ],
+    ])
+  )
+
+  repo.watch(
+    url2,
+    expectDocs(t, [
+      [{ baz: 'bah' }, 'initial value'],
+      [{ baz: 'boo' }, 'change value'],
+      [
+        { baz: 'boo' },
+        'change value echo',
+        () => {
+          const clock1 = repo.back.cursors.get(repo.back.id, id)
+          const clock2 = repo.back.cursors.get(repo.back.id, id2)
+          t.deepEqual(clock1, { [id]: INFINITY_SEQ, [id2]: 1 })
+          t.deepEqual(clock2, { [id2]: INFINITY_SEQ })
+        },
+      ],
+    ])
+  )
+
+  repo.merge(url1, url2)
+  repo.change(url2, (doc: any) => {
+    doc.baz = 'boo'
+  })
 })
 
 test('Test document forking...', (t) => {

@@ -41,7 +41,7 @@ export default class CursorStore {
       .pluck()
   }
 
-  // NOTE: We return an empty cursor when we don't have a stored cursor. We want
+  // NOTE: We return an empty cursor when we don't have a stored cursor. We might want
   // to return undefined instead.
   get(repoId: RepoId, docId: DocId): Cursor {
     const rows = this.preparedGet.all(repoId, docId)
