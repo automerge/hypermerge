@@ -14,6 +14,8 @@ export type Cursor = Clock.Clock
 export type CursorEntry = [ActorId, number]
 export type CursorDescriptor = [Cursor, DocId, RepoId]
 
+export const MAX_ENTRY_VALUE = Number.MAX_SAFE_INTEGER
+
 export default class CursorStore {
   private db: Database
   private preparedGet: Statement<[string, string]>
@@ -72,7 +74,7 @@ export default class CursorStore {
     return this.preparedDocsWithActor.all(repoId, actorId, boundedSeq(seq))
   }
 
-  addActor(repoId: RepoId, docId: DocId, actorId: ActorId, seq: number = Infinity) {
+  addActor(repoId: RepoId, docId: DocId, actorId: ActorId, seq: number = MAX_ENTRY_VALUE) {
     return this.update(repoId, docId, { [actorId]: boundedSeq(seq) })
   }
 }
@@ -85,5 +87,5 @@ function rowsToCursor(rows: CursorRow[]): Cursor {
 }
 
 function boundedSeq(seq: number) {
-  return Math.max(0, Math.min(seq, Number.MAX_SAFE_INTEGER))
+  return Math.max(0, Math.min(seq, MAX_ENTRY_VALUE))
 }

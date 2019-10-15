@@ -46,10 +46,6 @@ test("Three way docs don't load until all changes are in", (t) => {
   const repoB = testRepo()
   const repoC = testRepo()
 
-  console.log('REPO A', repoA.id)
-  console.log('REPO B', repoB.id)
-  console.log('REPO C', repoC.id)
-
   repoA.setSwarm(testSwarm())
   repoB.setSwarm(testSwarm())
 
