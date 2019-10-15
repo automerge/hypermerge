@@ -85,6 +85,7 @@ export default class FileServer {
     const header = await this.files.header(url)
 
     res.writeHead(200, {
+      ETag: header.sha256,
       'Content-Type': header.mimeType,
       'Content-Length': header.size,
       'X-Block-Count': header.blocks,

@@ -3,6 +3,7 @@ import { testStorageFn } from './misc'
 import FileStore, { Header } from '../src/FileStore'
 import FeedStore from '../src/FeedStore'
 import * as Stream from '../src/StreamLogic'
+import { createHash } from 'crypto'
 
 test('FileStore', (t) => {
   const feeds = new FeedStore(testStorageFn())
@@ -14,10 +15,14 @@ test('FileStore', (t) => {
     const testBuffer = Buffer.alloc(1024 * 1024, 1)
     const testStream = Stream.fromBuffer(testBuffer)
     const header = await files.write(testStream, 'application/octet-stream')
+    const sha256 = createHash('sha256')
+      .update(testBuffer)
+      .digest('hex')
 
     const expectedHeader: Header = {
       size: testBuffer.length,
       mimeType: 'application/octet-stream',
+      sha256,
       blocks: 17,
       url: header.url,
     }

@@ -5,7 +5,7 @@ import { validateFileURL } from './Metadata'
 import * as Keys from './Keys'
 import * as JsonBuffer from './JsonBuffer'
 import Queue from './Queue'
-import { MaxChunkSizeTransform } from './StreamLogic'
+import { MaxChunkSizeTransform, HashPassThrough } from './StreamLogic'
 
 export const MAX_BLOCK_SIZE = 62 * 1024
 
@@ -14,6 +14,7 @@ export interface Header {
   size: number
   blocks: number
   mimeType: string
+  sha256: string
 }
 
 export default class FileStore {
@@ -42,17 +43,20 @@ export default class FileStore {
 
     return new Promise<Header>((res, rej) => {
       const chunkStream = new MaxChunkSizeTransform(MAX_BLOCK_SIZE)
+      const hashStream = new HashPassThrough('sha256')
 
       stream
+        .pipe(hashStream)
         .pipe(chunkStream)
         .pipe(appendStream)
         .on('error', (err) => rej(err))
         .on('finish', async () => {
           const header: Header = {
             url: toHyperfileUrl(feedId),
+            mimeType,
             size: chunkStream.processedBytes,
             blocks: chunkStream.chunkCount,
-            mimeType,
+            sha256: hashStream.hash.digest('hex'),
           }
 
           await this.feeds.append(feedId, JsonBuffer.bufferify(header))

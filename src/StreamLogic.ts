@@ -1,4 +1,5 @@
 import { Transform, TransformCallback, Readable } from 'stream'
+import { Hash, createHash } from 'crypto'
 
 export class MaxChunkSizeTransform extends Transform {
   maxChunkSize: number
@@ -25,6 +26,20 @@ export class MaxChunkSizeTransform extends Transform {
     } while (offset < data.length)
 
     cb()
+  }
+}
+
+export class HashPassThrough extends Transform {
+  readonly hash: Hash
+
+  constructor(algorithm: string) {
+    super()
+    this.hash = createHash(algorithm)
+  }
+
+  _transform(data: Buffer, _encoding: string, cb: TransformCallback): void {
+    this.hash.update(data)
+    cb(undefined, data)
   }
 }
 

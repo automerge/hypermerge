@@ -66,21 +66,24 @@ function getHeader(url: HyperfileUrl, response: http.IncomingMessage): Header {
   const mimeType = response.headers['content-type']
   const contentLength = response.headers['content-length']
   const blockCount = response.headers['x-block-count']
+  const sha256 = response.headers['etag']
 
-  if (!mimeType) throw new Error('Missing mimeType in FileServer response')
-  if (!contentLength) throw new Error('Missing content-length in FileServer response')
-  if (typeof blockCount != 'string') throw new Error('Missing x-block-count in FileServer response')
+  if (!mimeType) throw new Error('Missing Content-Type in FileServer response')
+  if (!contentLength) throw new Error('Missing Content-Length in FileServer response')
+  if (typeof sha256 != 'string') throw new Error('Missing ETag in FileServer response')
+  if (typeof blockCount != 'string') throw new Error('Missing X-Block-Count in FileServer response')
 
   const size = parseInt(contentLength, 10)
   const blocks = parseInt(blockCount, 10)
-  if (isNaN(size)) throw new Error('Invalid content-length in FileServer response')
-  if (isNaN(blocks)) throw new Error('Invalid x-block-count in FileServer response')
+  if (isNaN(size)) throw new Error('Invalid Content-Length in FileServer response')
+  if (isNaN(blocks)) throw new Error('Invalid X-Block-Count in FileServer response')
 
   const header: Header = {
     url,
     size,
     blocks,
     mimeType,
+    sha256,
   }
 
   return header
