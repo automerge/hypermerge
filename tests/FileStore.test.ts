@@ -8,19 +8,17 @@ test('FileStore', (t) => {
   const feeds = new FeedStore(testStorageFn())
   const files = new FileStore(feeds)
 
-  t.test('writing and reading streams', async (t) => {
-    t.plan(3)
+  t.test('writing and reading 1MB file', async (t) => {
+    t.plan(2)
 
     const testBuffer = Buffer.alloc(1024 * 1024, 1)
     const testStream = Stream.fromBuffer(testBuffer)
     const header = await files.write(testStream, 'application/octet-stream')
 
-    const blockCount = await files.blockCount(header.url)
-    t.equal(blockCount, 17, 'feed contains correct block count')
-
     const expectedHeader: Header = {
       size: testBuffer.length,
       mimeType: 'application/octet-stream',
+      blocks: 17,
       url: header.url,
     }
 

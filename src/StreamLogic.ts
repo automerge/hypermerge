@@ -3,12 +3,14 @@ import { Transform, TransformCallback, Readable } from 'stream'
 export class MaxChunkSizeTransform extends Transform {
   maxChunkSize: number
   processedBytes: number
+  chunkCount: number
 
   constructor(maxChunkSize: number) {
     super({
       highWaterMark: maxChunkSize,
     })
     this.processedBytes = 0
+    this.chunkCount = 0
     this.maxChunkSize = maxChunkSize
   }
 
@@ -18,6 +20,7 @@ export class MaxChunkSizeTransform extends Transform {
       const chunk = data.slice(offset, offset + this.maxChunkSize)
       offset += chunk.length
       this.processedBytes += chunk.length
+      this.chunkCount += 1
       this.push(chunk)
     } while (offset < data.length)
 

@@ -87,6 +87,7 @@ export default class FileServer {
     res.writeHead(200, {
       'Content-Type': header.mimeType,
       'Content-Length': header.size,
+      'X-Block-Count': header.blocks,
     })
   }
 }

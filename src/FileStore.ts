@@ -12,6 +12,7 @@ export const MAX_BLOCK_SIZE = 62 * 1024
 export interface Header {
   url: HyperfileUrl
   size: number
+  blocks: number
   mimeType: string
 }
 
@@ -50,6 +51,7 @@ export default class FileStore {
           const header: Header = {
             url: toHyperfileUrl(feedId),
             size: chunkStream.processedBytes,
+            blocks: chunkStream.chunkCount,
             mimeType,
           }
 
@@ -58,11 +60,6 @@ export default class FileStore {
           res(header)
         })
     })
-  }
-
-  async blockCount(url: HyperfileUrl): Promise<number> {
-    const feed = await this.feeds.getFeed(toFeedId(url))
-    return feed.length - 1
   }
 }
 
