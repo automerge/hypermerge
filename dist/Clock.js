@@ -1,5 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+function actors(clock) {
+    return Object.keys(clock);
+}
+exports.actors = actors;
 function gte(a, b) {
     for (let id in a) {
         if (a[id] < (b[id] || 0))
@@ -12,6 +16,10 @@ function gte(a, b) {
     return true;
 }
 exports.gte = gte;
+function equal(a, b) {
+    return cmp(a, b) === 'EQ';
+}
+exports.equal = equal;
 function cmp(a, b) {
     const aGTE = gte(a, b);
     const bGTE = gte(b, a);
@@ -27,10 +35,6 @@ function cmp(a, b) {
     return 'CONCUR';
 }
 exports.cmp = cmp;
-function clockActorIds(clock) {
-    return Object.keys(clock);
-}
-exports.clockActorIds = clockActorIds;
 function strs2clock(input) {
     if (typeof input === 'string') {
         return { [input]: Infinity };
