@@ -1,11 +1,16 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+const Queue_1 = __importDefault(require("./Queue"));
 // NOTE: Joshua Wise (maintainer of better-sqlite3) suggests using multiple
 // prepared statements rather than batch inserts and selects :shrugging-man:.
 // We'll see if this becomes an issue.
 class ClockStore {
     constructor(db) {
         this.db = db;
+        this.updateQ = new Queue_1.default();
         this.preparedGet = this.db.prepare(`SELECT * FROM Clocks WHERE repoId=? AND documentId=?`);
         this.preparedInsert = this.db.prepare(`INSERT INTO Clocks (repoId, documentId, actorId, seq)
        VALUES (?, ?, ?, ?)
@@ -51,7 +56,9 @@ class ClockStore {
             return this.get(repoId, documentId);
         });
         const updatedClock = transaction(Object.entries(clock));
-        return [repoId, documentId, updatedClock];
+        const descriptor = [repoId, documentId, updatedClock];
+        this.updateQ.push(descriptor);
+        return descriptor;
     }
     /**
      * Hard set of a clock. Will clear any clock values that exist for the given document id

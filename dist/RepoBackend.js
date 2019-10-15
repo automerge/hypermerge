@@ -22,7 +22,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Queue_1 = __importDefault(require("./Queue"));
 const Metadata_1 = require("./Metadata");
 const Actor_1 = require("./Actor");
-const Clock_1 = require("./Clock");
+const Clock = __importStar(require("./Clock"));
 const Base58 = __importStar(require("bs58"));
 const crypto = __importStar(require("hypercore/lib/crypto"));
 const automerge_1 = require("automerge");
@@ -37,6 +37,7 @@ const FileStore_1 = __importDefault(require("./FileStore"));
 const FileServer_1 = __importDefault(require("./FileServer"));
 const Network_1 = __importDefault(require("./Network"));
 const ClockStore_1 = __importDefault(require("./ClockStore"));
+const CursorStore_1 = __importDefault(require("./CursorStore"));
 const SqlDatabase = __importStar(require("./SqlDatabase"));
 const MessageRouter_1 = __importDefault(require("./MessageRouter"));
 const random_access_memory_1 = __importDefault(require("random-access-memory"));
@@ -59,12 +60,6 @@ class RepoBackend {
                 path,
             });
         };
-        /*
-        follow(id: string, target: string) {
-          this.meta.follow(id, target);
-          this.syncReadyActors(this.meta.actors(id));
-        }
-      */
         this.close = () => {
             this.actors.forEach((actor) => actor.close());
             this.actors.clear();
@@ -167,33 +162,51 @@ class RepoBackend {
         };
         this.onDiscovery = ({ feedId, peer }) => {
             const actorId = feedId;
-            const blocks = this.meta.forActor(actorId);
-            const docs = this.meta.docsWith(actorId);
-            const clocks = this.clocks.getMultiple(this.id, docs);
+            const docsWithActor = this.cursors.docsWithActor(this.id, actorId);
+            const cursors = docsWithActor.map((docId) => ({
+                docId: docId,
+                cursor: this.cursors.get(this.id, docId),
+            }));
+            const clocks = docsWithActor.map((docId) => ({
+                docId: docId,
+                clock: this.clocks.get(this.id, docId),
+            }));
             this.messages.sendToPeer(peer, {
-                type: 'RemoteMetadata',
+                type: 'CursorMessage',
+                cursors,
                 clocks,
-                blocks,
             });
         };
-        this.onMessage = ({ msg }) => {
+        this.onMessage = (message) => {
+            const { sender, msg } = message;
             switch (msg.type) {
-                case 'RemoteMetadata': {
-                    const { blocks, clocks } = Metadata_1.sanitizeRemoteMetadata(msg);
-                    for (let docId in clocks) {
-                        const clock = clocks[docId];
+                case 'CursorMessage': {
+                    const { clocks, cursors } = msg;
+                    // TODO: ClockStore and CursorStore will both have updateQs, but we probably want to
+                    // wait to act for any given doc until both the ClockStore and CursorStore are updated
+                    // for that doc.
+                    clocks.forEach((clock) => this.clocks.update(sender.id, clock.docId, clock.clock));
+                    cursors.forEach((cursor) => {
+                        // TODO: Current behavior is to always expand our own cursor with our peers' cursors.
+                        // In the future, we might want to be more selective.
+                        this.cursors.update(sender.id, cursor.docId, cursor.cursor);
+                        this.cursors.update(this.id, cursor.docId, cursor.cursor);
+                    });
+                    // TODO: Use a ClockStore updateQ to manage this behavior.
+                    // Note: We use remote/peer clocks to set the minimum clock. This isn't quite right.
+                    clocks.forEach(({ docId }) => {
                         const doc = this.docs.get(docId);
-                        if (clock && doc) {
+                        const clock = this.clocks.get(sender.id, docId); // Get latest clock from the store.
+                        if (doc) {
                             doc.updateMinimumClock(clock);
                         }
-                    }
-                    this.meta.addBlocks(blocks);
-                    blocks.map((block) => {
-                        if ('actors' in block && block.actors)
-                            this.syncReadyActors(block.actors);
-                        if ('merge' in block && block.merge)
-                            this.syncReadyActors(Clock_1.clockActorIds(block.merge));
-                        // if (block.follows) block.follows.forEach(id => this.open(id))
+                    });
+                    // TODO: This emulates the syncReadyActors behavior from RemotaMetadata messages,
+                    // but is extremely wasteful. We'll able to trim this once we have DocumentStore.
+                    // TODO: Use a CursorStore updateQ to manage this behavior.
+                    cursors.forEach(({ cursor }) => {
+                        const actors = Clock.actors(cursor);
+                        this.syncReadyActors(actors);
                     });
                     break;
                 }
@@ -213,17 +226,24 @@ class RepoBackend {
                 case 'ActorFeedReady': {
                     const actor = msg.actor;
                     // Record whether or not this actor is writable.
+                    // TODO: DocumentStore or FeedStore should manage this.
                     this.meta.setWritable(actor.id, msg.writable);
                     // Broadcast latest document information to peers.
-                    const blocks = this.meta.forActor(actor.id);
-                    const docs = this.meta.docsWith(actor.id);
-                    const clocks = this.clocks.getMultiple(this.id, docs);
-                    const discoveryIds = this.meta.docsWith(actor.id).map(Misc_1.toDiscoveryId);
+                    const docsWithActor = this.cursors.docsWithActor(this.id, actor.id);
+                    const cursors = docsWithActor.map((docId) => ({
+                        docId: docId,
+                        cursor: this.cursors.get(this.id, docId),
+                    }));
+                    const clocks = docsWithActor.map((docId) => ({
+                        docId: docId,
+                        clock: this.clocks.get(this.id, docId),
+                    }));
+                    const discoveryIds = docsWithActor.map(Misc_1.toDiscoveryId);
                     const peers = this.replication.getPeersWith(discoveryIds);
                     this.messages.sendToPeers(peers, {
-                        type: 'RemoteMetadata',
-                        blocks,
-                        clocks,
+                        type: 'CursorMessage',
+                        cursors: cursors,
+                        clocks: clocks,
                     });
                     this.join(actor.id);
                     break;
@@ -238,7 +258,7 @@ class RepoBackend {
                     this.syncChanges(msg.actor);
                     break;
                 case 'Download':
-                    this.meta.docsWith(msg.actor.id).forEach((docId) => {
+                    this.cursors.docsWithActor(this.id, msg.actor.id).forEach((docId) => {
                         this.toFrontend.push({
                             type: 'ActorBlockDownloadedMsg',
                             id: docId,
@@ -253,12 +273,12 @@ class RepoBackend {
         };
         this.syncChanges = (actor) => {
             const actorId = actor.id;
-            const docIds = this.meta.docsWith(actorId);
+            const docIds = this.cursors.docsWithActor(this.id, actorId);
             docIds.forEach((docId) => {
                 const doc = this.docs.get(docId);
                 if (doc) {
                     doc.ready.push(() => {
-                        const max = this.meta.clockAt(docId, actorId);
+                        const max = this.cursors.entry(this.id, docId, actorId);
                         const min = doc.changes.get(actorId) || 0;
                         const changes = [];
                         let i = min;
@@ -283,10 +303,33 @@ class RepoBackend {
         this.subscribe = (subscriber) => {
             this.toFrontend.subscribe(subscriber);
         };
-        this.handleQuery = (id, query) => {
+        this.handleQuery = (id, query) => __awaiter(this, void 0, void 0, function* () {
             switch (query.type) {
                 case 'MetadataMsg': {
-                    this.meta.publicMetadata(query.id, (payload) => {
+                    // TODO: We're recreating the MetadataMsg which used to live in Metadata.ts
+                    // Its not clear if this is used or useful. It looks like the data (which is faithfully
+                    // represented below - empty clock and 0 history in all) is already somewhat broken.
+                    // NOTE: Responses to file metadata won't reply until the ledger is fully loaded. Document
+                    // responses will respond immediately.
+                    this.meta.readyQ.push(() => {
+                        let payload;
+                        if (this.meta.isDoc(query.id)) {
+                            const cursor = this.cursors.get(this.id, query.id);
+                            const actors = Clock.actors(cursor);
+                            payload = {
+                                type: 'Document',
+                                clock: {},
+                                history: 0,
+                                actor: this.localActorId(query.id),
+                                actors,
+                            };
+                        }
+                        else if (this.meta.isFile(query.id)) {
+                            payload = this.meta.fileMetadata(query.id);
+                        }
+                        else {
+                            payload = null;
+                        }
                         this.toFrontend.push({ type: 'Reply', id, payload });
                     });
                     break;
@@ -302,7 +345,7 @@ class RepoBackend {
                     break;
                 }
             }
-        };
+        });
         this.receive = (msg) => {
             switch (msg.type) {
                 case 'NeedsActorIdMsg': {
@@ -331,7 +374,7 @@ class RepoBackend {
                     break;
                 }
                 case 'MergeMsg': {
-                    this.merge(msg.id, Clock_1.strs2clock(msg.actors));
+                    this.merge(msg.id, Clock.strs2clock(msg.actors));
                     break;
                 }
                 /*
@@ -356,7 +399,8 @@ class RepoBackend {
                     break;
                 }
                 case 'DestroyMsg': {
-                    this.destroy(msg.id);
+                    console.log('Destroy is a noop');
+                    //this.destroy(msg.id)
                     break;
                 }
                 case 'DebugMsg': {
@@ -385,13 +429,21 @@ class RepoBackend {
         this.swarmKey = repoKeys.publicKey;
         this.id = Misc_1.encodeRepoId(repoKeys.publicKey);
         // initialize the various stores
+        this.cursors = new CursorStore_1.default(this.db);
+        this.cursors.updateQ.subscribe((_) => {
+            //console.log(descriptor)
+        });
         this.clocks = new ClockStore_1.default(this.db);
+        this.clocks.updateQ.subscribe((_) => {
+            //console.log(descriptor)
+        });
         this.files.writeLog.subscribe((header) => {
+            // TODO: manage this in FileStore.
             this.meta.addFile(header.url, header.bytes, header.mimeType);
         });
         this.fileServer = new FileServer_1.default(this.files);
         this.replication = new ReplicationManager_1.default(this.feeds);
-        this.meta = new Metadata_1.Metadata(this.storageFn, this.join, this.leave);
+        this.meta = new Metadata_1.Metadata(this.storageFn, this.join);
         this.network = new Network_1.default(toPeerId(this.id));
         this.messages = new MessageRouter_1.default('HypermergeMessages');
         this.messages.inboxQ.subscribe(this.onMessage);
@@ -406,9 +458,18 @@ class RepoBackend {
         log('create', docId);
         const doc = new DocBackend.DocBackend(docId, this.documentNotify, automerge_1.Backend.init());
         this.docs.set(docId, doc);
-        this.meta.addActor(doc.id, Misc_1.rootActorId(doc.id));
+        this.cursors.addActor(this.id, doc.id, Misc_1.rootActorId(doc.id));
         this.initActor(keys);
         return doc;
+    }
+    // TODO: Temporary solution to replace meta.localActorId
+    // We only know if an actor is local/writable if we have already
+    // opened that actor. We should be storing this information somewhere
+    // more readily available - either in FeedStore or DocumentStore.
+    localActorId(docId) {
+        const cursor = this.cursors.get(this.id, docId);
+        const actors = Clock.actors(cursor);
+        return actors.find((actorId) => this.meta.isWritable(actorId));
     }
     debug(id) {
         const doc = this.docs.get(id);
@@ -418,9 +479,10 @@ class RepoBackend {
         }
         else {
             console.log(`doc:backend id=${short}`);
-            console.log(`doc:backend clock=${Clock_1.clockDebug(doc.clock)}`);
-            const local = this.meta.localActorId(id);
-            const actors = this.meta.actors(id);
+            console.log(`doc:backend clock=${Clock.clockDebug(doc.clock)}`);
+            const local = this.localActorId(id);
+            const cursor = this.cursors.get(this.id, id);
+            const actors = Clock.actors(cursor);
             const info = actors
                 .map((actor) => {
                 const nm = actor.substr(0, 5);
@@ -430,43 +492,51 @@ class RepoBackend {
             console.log(`doc:backend actors=${info.join(',')}`);
         }
     }
-    destroy(id) {
-        this.meta.delete(id);
-        const doc = this.docs.get(id);
-        if (doc) {
-            this.docs.delete(id);
-        }
-        const actors = this.meta.allActors();
-        this.actors.forEach((actor, id) => {
-            if (!actors.has(id)) {
-                console.log('Orphaned actors - will purge', id);
-                this.actors.delete(id);
-                this.leave(actor.id);
-                actor.destroy();
-            }
-        });
-    }
+    // private destroy(id: DocId) {
+    //   this.meta.delete(id)
+    //   const doc = this.docs.get(id)
+    //   if (doc) {
+    //     this.docs.delete(id)
+    //   }
+    //   const actors = this.meta.allActors()
+    //   this.actors.forEach((actor, id) => {
+    //     if (!actors.has(id)) {
+    //       console.log('Orphaned actors - will purge', id)
+    //       this.actors.delete(id)
+    //       this.leave(actor.id)
+    //       actor.destroy()
+    //     }
+    //   })
+    // }
     // opening a file fucks it up
     open(docId) {
         //    log("open", docId, this.meta.forDoc(docId));
+        // TODO: FileStore should answer this.
+        // NOTE: This isn't guaranteed to be correct. `meta.isFile` can return an incorrect answer
+        // if the metadata ledger hasn't finished loading.
         if (this.meta.isFile(docId)) {
             throw new Error('trying to open a file like a document');
         }
         let doc = this.docs.get(docId) || new DocBackend.DocBackend(docId, this.documentNotify);
         if (!this.docs.has(docId)) {
             this.docs.set(docId, doc);
-            this.meta.addActor(docId, Misc_1.rootActorId(docId));
+            // TODO: It isn't always correct to add this actor with an Infinity cursor entry.
+            // If we don't have a cursor for the document, we should wait to get one from a peer.
+            // For now, we're mirroring legacy behavior.
+            this.cursors.addActor(this.id, docId, Misc_1.rootActorId(docId));
             this.loadDocument(doc);
         }
         return doc;
     }
     merge(id, clock) {
-        this.meta.merge(id, clock);
-        this.syncReadyActors(Clock_1.clockActorIds(clock));
+        // TODO: Should we do anything additional to note a merge?
+        this.cursors.update(this.id, id, clock);
+        this.syncReadyActors(Clock.actors(clock));
     }
     allReadyActors(docId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const actorIds = yield this.meta.actorsAsync(docId);
+            const cursor = this.cursors.get(this.id, docId);
+            const actorIds = Clock.actors(cursor);
             return Promise.all(actorIds.map(this.getReadyActor));
         });
     }
@@ -476,7 +546,7 @@ class RepoBackend {
             log(`load document 2 actors=${actors.map((a) => a.id)}`);
             const changes = [];
             actors.forEach((actor) => {
-                const max = this.meta.clockAt(doc.id, actor.id);
+                const max = this.cursors.entry(this.id, doc.id, actor.id);
                 const slice = actor.changes.slice(0, max);
                 doc.changes.set(actor.id, slice.length);
                 log(`change actor=${Misc_1.ID(actor.id)} changes=0..${slice.length}`);
@@ -484,7 +554,8 @@ class RepoBackend {
             });
             log(`loading doc=${Misc_1.ID(doc.id)} changes=${changes.length}`);
             // Check to see if we already have a local actor id. If so, re-use it.
-            const localActorId = this.meta.localActorId(doc.id);
+            // TODO: DocumentStore can answer this.
+            const localActorId = this.localActorId(doc.id);
             const actorId = localActorId
                 ? (yield this.getReadyActor(localActorId)).id
                 : this.initActorFeed(doc);
@@ -495,12 +566,13 @@ class RepoBackend {
         log('initActorFeed', doc.id);
         const keys = crypto.keyPair();
         const actorId = Misc_1.encodeActorId(keys.publicKey);
-        this.meta.addActor(doc.id, actorId);
+        this.cursors.addActor(this.id, doc.id, actorId);
         this.initActor(keys);
         return actorId;
     }
     actorIds(doc) {
-        return this.meta.actors(doc.id);
+        const cursor = this.cursors.get(this.id, doc.id);
+        return Clock.actors(cursor);
     }
     docActors(doc) {
         return this.actorIds(doc)

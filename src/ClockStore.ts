@@ -1,12 +1,13 @@
 import { RepoId, DocId, ActorId } from './Misc'
-import { Clock } from './Clock'
+import * as Clock from './Clock'
 import { Database, Statement } from './SqlDatabase'
+import Queue from './Queue'
 
 export interface ClockMap {
-  [documentId: string /*DocId*/]: Clock
+  [documentId: string /*DocId*/]: Clock.Clock
 }
 
-export type ClockUpdate = [RepoId, DocId, Clock]
+export type ClockUpdate = [RepoId, DocId, Clock.Clock]
 
 interface ClockRow {
   repoId: string
@@ -22,6 +23,7 @@ type ClockEntry = [ActorId, number]
 // We'll see if this becomes an issue.
 export default class ClockStore {
   db: Database
+  updateQ: Queue<ClockUpdate>
   private preparedGet: Statement<[RepoId, DocId]>
   private preparedInsert: Statement<[RepoId, DocId, ActorId, number]>
   private preparedDelete: Statement<[RepoId, DocId]>
@@ -30,6 +32,7 @@ export default class ClockStore {
 
   constructor(db: Database) {
     this.db = db
+    this.updateQ = new Queue()
 
     this.preparedGet = this.db.prepare(`SELECT * FROM Clocks WHERE repoId=? AND documentId=?`)
     this.preparedInsert = this.db.prepare(
@@ -48,7 +51,7 @@ export default class ClockStore {
   /**
    * TODO: handle missing clocks better. Currently returns an empty clock (i.e. an empty object)
    */
-  get(repoId: RepoId, documentId: DocId): Clock {
+  get(repoId: RepoId, documentId: DocId): Clock.Clock {
     const clockRows = this.preparedGet.all(repoId, documentId)
     return rowsToClock(clockRows)
   }
@@ -72,7 +75,7 @@ export default class ClockStore {
    * Update an existing clock with a new clock, merging the two.
    * If no clock exists in the data store, the new clock is stored as-is.
    */
-  update(repoId: RepoId, documentId: DocId, clock: Clock): ClockUpdate {
+  update(repoId: RepoId, documentId: DocId, clock: Clock.Clock): ClockUpdate {
     const transaction = this.db.transaction((clockEntries) => {
       clockEntries.forEach(([feedId, seq]: ClockEntry) => {
         this.preparedInsert.run(repoId, documentId, feedId, seq)
@@ -80,14 +83,18 @@ export default class ClockStore {
       return this.get(repoId, documentId)
     })
     const updatedClock = transaction(Object.entries(clock))
-    return [repoId, documentId, updatedClock]
+    const descriptor: ClockUpdate = [repoId, documentId, updatedClock]
+    if (!Clock.equal(clock, updatedClock)) {
+      this.updateQ.push(descriptor)
+    }
+    return descriptor
   }
 
   /**
    * Hard set of a clock. Will clear any clock values that exist for the given document id
    * and set explicitly the passed in clock.
    */
-  set(repoId: RepoId, documentId: DocId, clock: Clock): ClockUpdate {
+  set(repoId: RepoId, documentId: DocId, clock: Clock.Clock): ClockUpdate {
     const transaction = this.db.transaction((documentId, clock) => {
       this.preparedDelete.run(repoId, documentId)
       return this.update(repoId, documentId, clock)
@@ -104,8 +111,8 @@ export default class ClockStore {
   }
 }
 
-function rowsToClock(rows: ClockRow[]): Clock {
-  return rows.reduce((clock: Clock, row: ClockRow) => {
+function rowsToClock(rows: ClockRow[]): Clock.Clock {
+  return rows.reduce((clock: Clock.Clock, row: ClockRow) => {
     clock[row.actorId] = row.seq
     return clock
   }, {})

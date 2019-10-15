@@ -2,7 +2,7 @@
 import Queue from './Queue';
 import { Metadata } from './Metadata';
 import { Actor } from './Actor';
-import { Clock } from './Clock';
+import * as Clock from './Clock';
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg';
 import { Change } from 'automerge';
 import * as DocBackend from './DocBackend';
@@ -14,6 +14,7 @@ import NetworkPeer from './NetworkPeer';
 import { Swarm, JoinOptions } from './SwarmInterface';
 import { PeerMsg } from './PeerMsg';
 import ClockStore from './ClockStore';
+import CursorStore from './CursorStore';
 import MessageRouter from './MessageRouter';
 import KeyStore from './KeyStore';
 import ReplicationManager, { Discovery } from './ReplicationManager';
@@ -33,6 +34,7 @@ export declare class RepoBackend {
     keys: KeyStore;
     files: FileStore;
     clocks: ClockStore;
+    cursors: CursorStore;
     actors: Map<ActorId, Actor>;
     docs: Map<DocId, DocBackend.DocBackend>;
     meta: Metadata;
@@ -48,10 +50,10 @@ export declare class RepoBackend {
     constructor(opts: Options);
     startFileServer: (path: string) => void;
     private create;
+    localActorId(docId: DocId): ActorId | undefined;
     private debug;
-    private destroy;
     private open;
-    merge(id: DocId, clock: Clock): void;
+    merge(id: DocId, clock: Clock.Clock): void;
     close: () => Promise<[void, void, void, void]>;
     private allReadyActors;
     private loadDocument;
@@ -72,7 +74,7 @@ export declare class RepoBackend {
     syncChanges: (actor: Actor) => void;
     setSwarm: (swarm: Swarm, joinOptions?: JoinOptions | undefined) => void;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;
-    handleQuery: (id: number, query: ToBackendQueryMsg) => void;
+    handleQuery: (id: number, query: ToBackendQueryMsg) => Promise<void>;
     receive: (msg: ToBackendRepoMsg) => void;
     actor(id: ActorId): Actor | undefined;
 }
