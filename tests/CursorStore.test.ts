@@ -3,7 +3,7 @@ import * as SqlDatabase from '../src/SqlDatabase'
 import CursorStore, { INFINITY_SEQ } from '../src/CursorStore'
 import { RepoId, DocId } from '../src/Misc'
 
-test('ClockStore', (t) => {
+test('CursorStore', (t) => {
   t.test('read and write', async (t) => {
     t.plan(1)
     const repoId = 'repoId' as RepoId
