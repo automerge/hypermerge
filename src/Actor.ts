@@ -83,11 +83,6 @@ export class Actor {
     return this.store.closeFeed(this.id)
   }
 
-  async destroy() {
-    await this.close()
-    this.store.destroy(this.id)
-  }
-
   private async getOrCreateFeed(keys: Keys.KeyPair) {
     let feedId: FeedId
     if (keys.secretKey) {

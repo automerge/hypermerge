@@ -1,4 +1,3 @@
-import fs from 'fs'
 import { Readable, Writable } from 'stream'
 import hypercore, { Feed } from 'hypercore'
 import { KeyPair, decodePair, PublicId } from './Keys'
@@ -99,17 +98,6 @@ export default class FeedStore {
 
     return new Promise((res, rej) => {
       feed.close((err) => {
-        if (err) return rej(err)
-        res(feedId)
-      })
-    })
-  }
-
-  destroy(feedId: FeedId): Promise<FeedId> {
-    return new Promise((res, rej) => {
-      const filename = (this.storage(toDiscoveryId(feedId))('') as any).filename
-      const newName = filename.slice(0, -1) + `_${Date.now()}_DEL`
-      fs.rename(filename, newName, (err: Error) => {
         if (err) return rej(err)
         res(feedId)
       })
