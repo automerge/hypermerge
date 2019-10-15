@@ -1,6 +1,6 @@
 import test from 'tape'
 import * as SqlDatabase from '../src/SqlDatabase'
-import CursorStore, { MAX_ENTRY_VALUE } from '../src/CursorStore'
+import CursorStore, { INFINITY_SEQ } from '../src/CursorStore'
 import { RepoId, DocId } from '../src/Misc'
 
 test('ClockStore', (t) => {
@@ -14,7 +14,7 @@ test('ClockStore', (t) => {
     const clock = { abc123: Infinity, def456: 0 }
     cursorStore.update(repoId, docId, clock)
     const readClock = cursorStore.get(repoId, docId)
-    t.deepEqual(readClock, { abc123: MAX_ENTRY_VALUE, def456: 0 })
+    t.deepEqual(readClock, { abc123: INFINITY_SEQ, def456: 0 })
 
     db.close()
   })
