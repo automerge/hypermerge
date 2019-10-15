@@ -1,35 +1,8 @@
-import hypercore, { Feed } from 'hypercore'
+import { Feed } from 'hypercore'
 
 import Debug from 'debug'
 import { ID, ActorId } from './Misc'
 const log = Debug('repo:hypermerge')
-
-type Key = string | Buffer
-
-export interface Options {
-  secretKey?: Key
-  valueEncoding?: string
-  extensions?: string[]
-}
-
-export interface ReadOpts {
-  wait?: boolean
-  timeout?: number
-  valueEncoding?: string
-}
-
-export function discoveryKey(buf: Buffer): Buffer {
-  return hypercore.discoveryKey(buf)
-}
-
-export interface Peer {
-  feed: any
-  stream: any
-  onextension: any
-  remoteId: Buffer
-  extension: any
-  extensions: string[]
-}
 
 function readFeedN<T>(
   id: ActorId | 'ledger',

@@ -9,16 +9,8 @@ import { hyperfileActorId } from './Misc'
 const log = Debug('repo:metadata')
 
 import { Clock } from './Clock'
-import {
-  DocUrl,
-  DocId,
-  ActorId,
-  BaseUrl,
-  BaseId,
-  isBaseUrl,
-  HyperfileId,
-  HyperfileUrl,
-} from './Misc'
+import { DocUrl, DocId, ActorId, BaseUrl, isBaseUrl, HyperfileId, HyperfileUrl } from './Misc'
+import * as Keys from './Keys'
 
 export function cleanMetadataInput(input: any): MetadataBlock | undefined {
   const id = input.id || input.docId
@@ -52,7 +44,7 @@ export function filterMetadataInputs(input: any[]): MetadataBlock[] {
 }
 
 export interface UrlInfo {
-  id: BaseId
+  id: Keys.PublicId
   buffer: Buffer
   type: string
 }
@@ -70,7 +62,7 @@ function isFileBlock(block: MetadataBlock): block is FileBlock {
 }
 
 // are try catchs as expensive as I remember?  Not sure - I wrote this logic twice
-export function isValidID(id: BaseId): id is BaseId {
+export function isValidID(id: Keys.PublicId): id is Keys.PublicId {
   try {
     const buffer = Base58.decode(id)
     return buffer.length === 32
@@ -79,16 +71,16 @@ export function isValidID(id: BaseId): id is BaseId {
   }
 }
 
-function validateID(id: BaseId): Buffer {
+function validateID(id: Keys.PublicId): Keys.PublicKey {
   log(`id '${id}'`)
-  const buffer = Base58.decode(id)
+  const buffer = Keys.decode(id)
   if (buffer.length !== 32) {
     throw new Error(`invalid id ${id}`)
   }
   return buffer
 }
 
-export function validateURL(urlString: BaseUrl | BaseId): UrlInfo {
+export function validateURL(urlString: BaseUrl | Keys.PublicId): UrlInfo {
   if (!isBaseUrl(urlString)) {
     //    disabled this warning because internal APIs are currently inconsistent in their use
     //    so it's throwing warnings just, like, all the time in normal usage.

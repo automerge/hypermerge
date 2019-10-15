@@ -1,15 +1,16 @@
 declare module 'hypercore-protocol' {
+  import { DiscoveryKey, PublicKey, SecretKey } from 'hypercore-crypto'
   import { Duplex } from 'stream'
 
   interface Handlers {
     /** hook to verify the remotes public key */
-    onauthenticate?(remotePublicKey: Buffer, done: () => void): void
+    onauthenticate?(remotePublicKey: PublicKey, done: () => void): void
 
     /** function called when the stream handshake has finished */
     onhandshake?(): void
 
     /** function called when the remote stream opens a feed you have not */
-    ondiscoverykey?(discoveryKey: Buffer): void
+    ondiscoverykey?(discoveryKey: DiscoveryKey): void
   }
 
   interface Options extends Handlers {
@@ -20,7 +21,7 @@ declare module 'hypercore-protocol' {
     timeout?: number
 
     /** use this keypair for the stream authentication */
-    keyPair?: { publicKey: Buffer; secretKey: Buffer }
+    keyPair?: { publicKey: PublicKey; secretKey: SecretKey }
 
     live?: boolean
   }
@@ -30,7 +31,7 @@ declare module 'hypercore-protocol' {
      * Emitted when the remote opens a feed you have not opened.
      * Also calls `stream.handlers.ondiscoverykey(discoveryKey)`
      */
-    ['discovery-key'](discoveryKey: Buffer): void
+    ['discovery-key'](discoveryKey: DiscoveryKey): void
 
     /**
      * Emitted when the stream times out. Per default a timeout triggers a
@@ -60,7 +61,7 @@ declare module 'hypercore-protocol' {
    */
   export default class HypercoreProtocol extends Duplex {
     static isProtocolStream(stream: any): stream is HypercoreProtocol
-    static keyPair(): { publicKey: Buffer; secretKey: Buffer }
+    static keyPair(): { publicKey: PublicKey; secretKey: SecretKey }
 
     /** Create a new protocol duplex stream. */
     constructor(isInitiator: boolean, options?: Options)
@@ -83,7 +84,7 @@ declare module 'hypercore-protocol' {
      * opened the channel. Use this in ondiscoverykey to check that the remote
      * has the key corresponding to the discovery key.
      */
-    remoteVerified(feedKey: Buffer): boolean
+    remoteVerified(feedKey: PublicKey): boolean
 
     /**
      * Signal the other end that you want to share a hypercore feed.
@@ -94,14 +95,14 @@ declare module 'hypercore-protocol' {
      * possesses the feed key, which can be implicitly verified using the above
      * remoteVerified api.
      */
-    open(feedKey: Buffer, handlers: Handlers): Channel
+    open(feedKey: PublicKey, handlers: Handlers): Channel
 
     /**
      * You can call this method to signal to the other side that you do not
      * have the key corresponding to the discoveryKey. Normally you would use
      * this together with the ondiscoverykey hook.
      */
-    close(discoveryKey: Buffer): void
+    close(discoveryKey: DiscoveryKey): void
   }
 
   export interface Channel {}

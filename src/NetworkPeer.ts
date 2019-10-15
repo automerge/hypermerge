@@ -1,9 +1,9 @@
 import { RepoId, encodeRepoId } from './Misc'
-import * as Base58 from 'bs58'
 import PeerConnection from './PeerConnection'
 import Queue from './Queue'
+import * as Keys from './Keys'
 
-export type PeerId = RepoId & { peerId: true }
+export type PeerId = RepoId & { __peerId: true }
 
 export default class NetworkPeer {
   selfId: PeerId
@@ -97,14 +97,10 @@ export default class NetworkPeer {
   }
 }
 
-export function isPeerId(str: string): str is PeerId {
-  return Base58.decode(str).length === 32
+export function encodePeerId(key: Keys.PublicKey): PeerId {
+  return encodeRepoId(key) as PeerId
 }
 
-export function encodePeerId(buffer: Buffer): PeerId {
-  return encodeRepoId(buffer) as PeerId
-}
-
-export function decodePeerId(id: PeerId): Buffer {
-  return Base58.decode(id)
+export function decodePeerId(id: PeerId): Keys.PublicKey {
+  return Keys.decode(id)
 }
