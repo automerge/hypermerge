@@ -655,7 +655,11 @@ export class RepoBackend {
 }
 
 function ensureDirectoryExists(path: string) {
-  fs.mkdirSync(path, { recursive: true })
+  try {
+    fs.mkdirSync(path, { recursive: true })
+  } catch (e) {
+    // On slightly older versions of node, this will throw if the directory already exists
+  }
 }
 
 function toPeerId(repoId: RepoId): PeerId {
