@@ -1,14 +1,15 @@
 import test from 'tape'
+import { Duplex } from 'stream'
 import uuid from 'uuid/v4'
+import ram from 'random-access-memory'
 import { Repo } from '../src'
 import Hyperswarm from 'hyperswarm'
 import Network from '../src/Network'
 import { DiscoveryId, toDiscoveryId } from '../src/Misc'
 import * as Keys from '../src/Keys'
+import * as SqlDatabase from '../src/SqlDatabase'
 import NetworkPeer, { PeerId } from '../src/NetworkPeer'
-import ram from 'random-access-memory'
 import PeerConnection from '../src/PeerConnection'
-import { Duplex } from 'stream'
 
 type DocMsg = [any, string]
 type DocMsgCB = [any, string, any]
@@ -23,6 +24,11 @@ export function testRepo() {
   // in-memory sqlite datbasae - which breaks the tests!
   const randomPath = uuid().toString()
   return new Repo({ path: randomPath, memory: true })
+}
+
+export function testDb(): SqlDatabase.Database {
+  const randomPath = uuid().toString()
+  return SqlDatabase.open(`${randomPath}/test.db`, true)
 }
 
 export function testSwarm() {

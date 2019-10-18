@@ -19,3 +19,9 @@ CREATE TABLE IF NOT EXISTS Cursors (
     seq INTEGER NOT NULL,
     PRIMARY KEY (repoId, documentId, actorId)
 ) WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS Feeds (
+    discoveryId TEXT PRIMARY KEY,
+    publicId TEXT NOT NULL,
+    isWritable BOOLEAN NOT NULL
+) WITHOUT ROWID;
