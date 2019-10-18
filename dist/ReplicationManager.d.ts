@@ -17,14 +17,10 @@ export interface Discovery {
 export default class ReplicationManager {
     private protocols;
     private feeds;
-    discoveryIds: Map<DiscoveryId, FeedId>;
     messages: MessageRouter<ReplicationMsg>;
-    peers: Set<NetworkPeer>;
-    peersByDiscoveryId: MapSet<DiscoveryId, NetworkPeer>;
+    replicating: MapSet<NetworkPeer, DiscoveryId>;
     discoveryQ: Queue<Discovery>;
     constructor(feeds: FeedStore);
-    addFeedIds(feedIds: FeedId[]): void;
-    getFeedId(discoveryId: DiscoveryId): FeedId | undefined;
     getPeersWith(discoveryIds: DiscoveryId[]): Set<NetworkPeer>;
     close(): void;
     /**
@@ -32,6 +28,7 @@ export default class ReplicationManager {
      */
     onPeer: (peer: NetworkPeer) => void;
     private replicateWith;
+    private onFeedCreated;
     private onMessage;
     private getOrCreateProtocol;
 }

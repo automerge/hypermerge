@@ -23,55 +23,44 @@ class ReplicationManager {
          * Call this when a peer connects.
          */
         this.onPeer = (peer) => {
-            this.peers.add(peer);
+            this.replicating.set(peer, new Set());
             this.messages.listenTo(peer);
             this.getOrCreateProtocol(peer);
-            // NOTE(jeff): In the future, we should send a smaller/smarter set.
-            const discoveryIds = Array.from(this.discoveryIds.keys());
-            this.messages.sendToPeer(peer, {
+            if (peer.weHaveAuthority) {
+                // NOTE(jeff): In the future, we should send a smaller/smarter set.
+                const discoveryIds = this.feeds.info.allDiscoveryIds();
+                this.messages.sendToPeer(peer, {
+                    type: 'DiscoveryIds',
+                    discoveryIds,
+                });
+            }
+        };
+        this.onFeedCreated = ({ discoveryId }) => {
+            this.messages.sendToPeers(this.replicating.keys(), {
                 type: 'DiscoveryIds',
-                discoveryIds,
+                discoveryIds: [discoveryId],
             });
         };
         this.onMessage = ({ msg, sender }) => {
             switch (msg.type) {
                 case 'DiscoveryIds': {
-                    const sharedDiscoveryIds = msg.discoveryIds.filter((discoveryId) => this.discoveryIds.has(discoveryId));
+                    const existingShared = this.replicating.get(sender);
+                    const sharedDiscoveryIds = msg.discoveryIds.filter((discoveryId) => !existingShared.has(discoveryId) && this.feeds.info.hasDiscoveryId(discoveryId));
                     this.replicateWith(sender, sharedDiscoveryIds);
                     break;
                 }
             }
         };
-        this.discoveryIds = new Map();
         this.protocols = new WeakMap();
-        this.peers = new Set();
-        this.peersByDiscoveryId = new MapSet_1.default();
+        this.replicating = new MapSet_1.default();
         this.discoveryQ = new Queue_1.default('ReplicationManager:discoveryQ');
         this.feeds = feeds;
         this.messages = new MessageRouter_1.default('ReplicationManager');
+        this.feeds.info.createdQ.subscribe(this.onFeedCreated);
         this.messages.inboxQ.subscribe(this.onMessage);
     }
-    addFeedIds(feedIds) {
-        const discoveryIds = [];
-        for (const feedId of feedIds) {
-            const discoveryId = Misc_1.toDiscoveryId(feedId);
-            if (!this.discoveryIds.has(discoveryId)) {
-                this.discoveryIds.set(discoveryId, feedId);
-                discoveryIds.push(discoveryId);
-            }
-        }
-        if (discoveryIds.length > 0) {
-            this.messages.sendToPeers(this.peers, {
-                type: 'DiscoveryIds',
-                discoveryIds,
-            });
-        }
-    }
-    getFeedId(discoveryId) {
-        return this.discoveryIds.get(discoveryId);
-    }
     getPeersWith(discoveryIds) {
-        return Misc_1.joinSets(discoveryIds.map((id) => this.peersByDiscoveryId.get(id)));
+        return Misc_1.joinSets(discoveryIds.map((id) => this.replicating.keysWith(id)));
     }
     close() {
         this.messages.inboxQ.unsubscribe();
@@ -79,13 +68,13 @@ class ReplicationManager {
     replicateWith(peer, discoveryIds) {
         const protocol = this.getOrCreateProtocol(peer);
         for (const discoveryId of discoveryIds) {
-            const feedId = this.getFeedId(discoveryId);
-            if (feedId) {
+            const publicId = this.feeds.info.getPublicId(discoveryId);
+            this.replicating.add(peer, discoveryId);
+            if (publicId) {
                 // HACK(jeff): The peer has not yet been verified to have this key. They've
                 // only _told_ us that they have it:
-                this.peersByDiscoveryId.add(discoveryId, peer);
-                this.discoveryQ.push({ feedId, discoveryId, peer });
-                this.feeds.getFeed(feedId).then((feed) => {
+                this.discoveryQ.push({ feedId: publicId, discoveryId, peer });
+                this.feeds.getFeed(publicId).then((feed) => {
                     feed.replicate(protocol, { live: true });
                 });
             }

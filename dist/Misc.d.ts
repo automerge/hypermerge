@@ -39,4 +39,9 @@ export declare function ID(_id: string): string;
 export declare function notEmpty<TValue>(value: TValue | null | undefined): value is TValue;
 export declare function getOrCreate<K extends Object, V>(map: WeakMap<K, V>, key: K, create: (key: K) => V): V;
 export declare function getOrCreate<K, V>(map: Map<K, V>, key: K, create: (key: K) => V): V;
+/**
+ * The returned promise resolves after the `resolver` fn is called `n` times.
+ * Promises the last value passed to the resolver.
+ */
+export declare function createMultiPromise<T>(n: number, factory: (resolver: (value: T) => void, rejector: (err: Error) => void) => void): Promise<T>;
 export declare function toIpcPath(path: string): string;

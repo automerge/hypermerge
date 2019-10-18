@@ -1,7 +1,7 @@
 import { Change } from 'automerge';
 import { ActorId, DiscoveryId } from './Misc';
 import * as Keys from './Keys';
-import FeedStore, { FeedId, Feed } from './FeedStore';
+import FeedStore, { Feed } from './FeedStore';
 export declare type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | Download;
 interface ActorSync {
     type: 'ActorSync';
@@ -39,7 +39,7 @@ export declare class Actor {
     constructor(config: ActorConfig);
     onReady: (cb: (actor: Actor) => void) => void;
     writeChange(change: Change): void;
-    close(): Promise<FeedId>;
+    close(): Promise<Keys.PublicId>;
     private getOrCreateFeed;
     private onFeedReady;
     private onDownload;

@@ -1,16 +1,13 @@
+/// <reference types="better-sqlite3" />
 /// <reference types="node" />
 import { Readable, Writable } from 'stream';
 import { Feed } from 'hypercore';
-import { KeyPair, PublicId } from './Keys';
+import { KeyPair, PublicId, DiscoveryId } from './Keys';
 import Queue from './Queue';
+import { Database } from './SqlDatabase';
 export declare type Feed = Feed<Block>;
-export declare type FeedId = PublicId & {
-    __feedId: true;
-};
+export declare type FeedId = PublicId;
 export declare type Block = Uint8Array;
-export interface ReplicateOptions {
-    stream(): void;
-}
 interface StorageFn {
     (path: string): (filename: string) => unknown;
 }
@@ -25,9 +22,9 @@ interface StorageFn {
  */
 export default class FeedStore {
     private storage;
-    private opened;
-    feedIdQ: Queue<FeedId>;
-    constructor(storageFn: StorageFn);
+    private loaded;
+    info: FeedInfoStore;
+    constructor(db: Database, storageFn: StorageFn);
     /**
      * Create a brand-new writable feed using the given key pair.
      * Promises the FeedId.
@@ -43,5 +40,22 @@ export default class FeedStore {
     getFeed(feedId: FeedId): Promise<Feed<Block>>;
     private open;
     private openOrCreateFeed;
+}
+export interface FeedInfo {
+    publicId: PublicId;
+    discoveryId: DiscoveryId;
+    isWritable: 0 | 1;
+}
+export declare class FeedInfoStore {
+    createdQ: Queue<FeedInfo>;
+    private prepared;
+    constructor(db: Database);
+    save(info: FeedInfo): void;
+    getPublicId(discoveryId: DiscoveryId): PublicId | undefined;
+    hasDiscoveryId(discoveryId: DiscoveryId): boolean;
+    byPublicId(publicId: PublicId): FeedInfo | undefined;
+    byDiscoveryId(discoveryId: DiscoveryId): FeedInfo | undefined;
+    allPublicIds(): PublicId[];
+    allDiscoveryIds(): DiscoveryId[];
 }
 export {};

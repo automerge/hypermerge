@@ -78,6 +78,25 @@ function getOrCreate(map, key, create) {
     return created;
 }
 exports.getOrCreate = getOrCreate;
+/**
+ * The returned promise resolves after the `resolver` fn is called `n` times.
+ * Promises the last value passed to the resolver.
+ */
+function createMultiPromise(n, factory) {
+    return new Promise((resolve, reject) => {
+        const res = (value) => {
+            n -= 1;
+            if (n === 0)
+                resolve(value);
+        };
+        const rej = (err) => {
+            n = -1; // Ensure we never resolve
+            reject(err);
+        };
+        factory(res, rej);
+    });
+}
+exports.createMultiPromise = createMultiPromise;
 // Windows uses named pipes:
 // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
 function toIpcPath(path) {

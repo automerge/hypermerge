@@ -26,10 +26,10 @@ const Queue_1 = __importDefault(require("./Queue"));
  * track of which hypercores have already been opened.
  */
 class FeedStore {
-    constructor(storageFn) {
-        this.opened = new Map();
+    constructor(db, storageFn) {
+        this.loaded = new Map();
+        this.info = new FeedInfoStore(db);
         this.storage = (discoveryId) => storageFn(`${discoveryId.slice(0, 2)}/${discoveryId.slice(2)}`);
-        this.feedIdQ = new Queue_1.default('FeedStore:idQ');
     }
     /**
      * Create a brand-new writable feed using the given key pair.
@@ -44,7 +44,7 @@ class FeedStore {
     append(feedId, ...blocks) {
         return __awaiter(this, void 0, void 0, function* () {
             const feed = yield this.open(feedId);
-            return createMultiPromise(blocks.length, (res, rej) => {
+            return Misc_1.createMultiPromise(blocks.length, (res, rej) => {
                 blocks.forEach((block) => {
                     feed.append(block, (err, seq) => {
                         if (err) {
@@ -95,7 +95,7 @@ class FeedStore {
         });
     }
     closeFeed(feedId) {
-        const feed = this.opened.get(feedId);
+        const feed = this.loaded.get(feedId);
         if (!feed)
             return Promise.reject(new Error(`Can't close feed ${feedId}, feed not open`));
         return new Promise((res, rej) => {
@@ -108,7 +108,7 @@ class FeedStore {
     }
     close() {
         return __awaiter(this, void 0, void 0, function* () {
-            yield Promise.all([...this.opened.keys()].map((feedId) => this.closeFeed(feedId)));
+            yield Promise.all([...this.loaded.keys()].map((feedId) => this.closeFeed(feedId)));
         });
     }
     getFeed(feedId) {
@@ -116,42 +116,71 @@ class FeedStore {
             return this.open(feedId);
         });
     }
-    open(feedId) {
+    open(publicId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return yield this.openOrCreateFeed({ publicKey: feedId });
+            return yield this.openOrCreateFeed({ publicKey: publicId });
         });
     }
     openOrCreateFeed(keys) {
         return new Promise((res, _rej) => {
-            const feedId = keys.publicKey;
-            const feed = Misc_1.getOrCreate(this.opened, feedId, () => {
+            const publicId = keys.publicKey;
+            const feed = Misc_1.getOrCreate(this.loaded, publicId, () => {
+                const discoveryId = Misc_1.toDiscoveryId(publicId);
                 const { publicKey, secretKey } = Keys_1.decodePair(keys);
-                this.feedIdQ.push(feedId);
-                return hypercore_1.default(this.storage(Misc_1.toDiscoveryId(feedId)), publicKey, {
+                const feed = hypercore_1.default(this.storage(discoveryId), publicKey, {
                     secretKey,
                 });
+                feed.ready(() => {
+                    this.info.save({
+                        publicId,
+                        discoveryId,
+                        isWritable: feed.writable ? 1 : 0,
+                    });
+                });
+                return feed;
             });
             feed.ready(() => res(feed));
         });
     }
 }
 exports.default = FeedStore;
-/**
- * The returned promise resolves after the `resolver` fn is called `n` times.
- * Promises the last value passed to the resolver.
- */
-function createMultiPromise(n, factory) {
-    return new Promise((resolve, reject) => {
-        const res = (value) => {
-            n -= 1;
-            if (n === 0)
-                resolve(value);
+class FeedInfoStore {
+    constructor(db) {
+        this.createdQ = new Queue_1.default('FeedStore:createdQ');
+        this.prepared = {
+            insert: db.prepare(`INSERT INTO Feeds (publicId, discoveryId, isWritable)
+          VALUES (@publicId, @discoveryId, @isWritable)`),
+            byPublicId: db.prepare(`SELECT * FROM Feeds WHERE publicId = ? LIMIT 1`),
+            byDiscoveryId: db.prepare(`SELECT * FROM Feeds WHERE discoveryId = ? LIMIT 1`),
+            publicIds: db.prepare('SELECT publicId FROM Feeds').pluck(),
+            discoveryIds: db.prepare('SELECT discoveryId FROM Feeds').pluck(),
         };
-        const rej = (err) => {
-            n = -1; // Ensure we never resolve
-            reject(err);
-        };
-        factory(res, rej);
-    });
+    }
+    save(info) {
+        if (!this.hasDiscoveryId(info.discoveryId)) {
+            this.prepared.insert.run(info);
+            this.createdQ.push(info);
+        }
+    }
+    getPublicId(discoveryId) {
+        const info = this.byDiscoveryId(discoveryId);
+        return info && info.publicId;
+    }
+    hasDiscoveryId(discoveryId) {
+        return !!this.byDiscoveryId(discoveryId);
+    }
+    byPublicId(publicId) {
+        return this.prepared.byPublicId.get(publicId);
+    }
+    byDiscoveryId(discoveryId) {
+        return this.prepared.byDiscoveryId.get(discoveryId);
+    }
+    allPublicIds() {
+        return this.prepared.publicIds.all();
+    }
+    allDiscoveryIds() {
+        return this.prepared.discoveryIds.all();
+    }
 }
+exports.FeedInfoStore = FeedInfoStore;
 //# sourceMappingURL=FeedStore.js.map

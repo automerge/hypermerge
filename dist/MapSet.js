@@ -7,6 +7,9 @@ class MapSet {
     add(key, val) {
         return this.merge(key, [val]);
     }
+    set(key, val) {
+        this.map.set(key, val);
+    }
     values() {
         return [...this.map.values()];
     }

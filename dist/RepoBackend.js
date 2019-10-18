@@ -416,7 +416,7 @@ class RepoBackend {
         this.storage = opts.memory ? random_access_memory_1.default : random_access_file_1.default;
         this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), opts.memory || false);
         this.keys = new KeyStore_1.default(this.db);
-        this.feeds = new FeedStore_1.default((path) => this.storageFn('feeds/' + path));
+        this.feeds = new FeedStore_1.default(this.db, (path) => this.storageFn('feeds/' + path));
         this.files = new FileStore_1.default(this.feeds);
         // init repo
         const repoKeys = this.keys.get('self.repo') || this.keys.set('self.repo', Keys.createBuffer());
@@ -442,9 +442,6 @@ class RepoBackend {
         this.messages.inboxQ.subscribe(this.onMessage);
         this.replication.discoveryQ.subscribe(this.onDiscovery);
         this.network.peerQ.subscribe(this.onPeer);
-        this.feeds.feedIdQ.subscribe((feedId) => {
-            this.replication.addFeedIds([feedId]);
-        });
     }
     create(keys) {
         const docId = Misc_1.encodeDocId(keys.publicKey);
@@ -579,7 +576,6 @@ class RepoBackend {
             store: this.feeds,
         });
         this.actors.set(actor.id, actor);
-        this.replication.addFeedIds([actor.id]);
         return actor;
     }
     actor(id) {
