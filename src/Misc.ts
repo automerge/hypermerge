@@ -92,6 +92,29 @@ export function getOrCreate<K, V>(
   return created
 }
 
+/**
+ * The returned promise resolves after the `resolver` fn is called `n` times.
+ * Promises the last value passed to the resolver.
+ */
+export function createMultiPromise<T>(
+  n: number,
+  factory: (resolver: (value: T) => void, rejector: (err: Error) => void) => void
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const res = (value: T) => {
+      n -= 1
+      if (n === 0) resolve(value)
+    }
+
+    const rej = (err: Error) => {
+      n = -1 // Ensure we never resolve
+      reject(err)
+    }
+
+    factory(res, rej)
+  })
+}
+
 // Windows uses named pipes:
 // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
 export function toIpcPath(path: string): string {

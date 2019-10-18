@@ -1,16 +1,13 @@
 import { Readable, Writable } from 'stream'
 import hypercore, { Feed } from 'hypercore'
-import { KeyPair, decodePair, PublicId } from './Keys'
-import { DiscoveryId, getOrCreate, toDiscoveryId } from './Misc'
+import { KeyPair, decodePair, PublicId, DiscoveryId } from './Keys'
+import { getOrCreate, toDiscoveryId, createMultiPromise } from './Misc'
 import Queue from './Queue'
+import { Database, Statement } from './SqlDatabase'
 
 export type Feed = Feed<Block>
-export type FeedId = PublicId & { __feedId: true }
+export type FeedId = PublicId
 export type Block = Uint8Array
-
-export interface ReplicateOptions {
-  stream(): void
-}
 
 interface StorageFn {
   (path: string): (filename: string) => unknown
@@ -28,12 +25,12 @@ interface StorageFn {
 
 export default class FeedStore {
   private storage: (discoveryId: DiscoveryId) => (filename: string) => unknown
-  private opened: Map<FeedId, Feed<Block>> = new Map()
-  feedIdQ: Queue<FeedId>
+  private loaded: Map<PublicId, Feed<Block>> = new Map()
+  info: FeedInfoStore
 
-  constructor(storageFn: StorageFn) {
+  constructor(db: Database, storageFn: StorageFn) {
+    this.info = new FeedInfoStore(db)
     this.storage = (discoveryId) => storageFn(`${discoveryId.slice(0, 2)}/${discoveryId.slice(2)}`)
-    this.feedIdQ = new Queue('FeedStore:idQ')
   }
 
   /**
@@ -93,7 +90,7 @@ export default class FeedStore {
   }
 
   closeFeed(feedId: FeedId): Promise<FeedId> {
-    const feed = this.opened.get(feedId)
+    const feed = this.loaded.get(feedId)
     if (!feed) return Promise.reject(new Error(`Can't close feed ${feedId}, feed not open`))
 
     return new Promise((res, rej) => {
@@ -105,28 +102,38 @@ export default class FeedStore {
   }
 
   async close(): Promise<void> {
-    await Promise.all([...this.opened.keys()].map((feedId) => this.closeFeed(feedId)))
+    await Promise.all([...this.loaded.keys()].map((feedId) => this.closeFeed(feedId)))
   }
 
   async getFeed(feedId: FeedId): Promise<Feed<Block>> {
     return this.open(feedId)
   }
 
-  private async open(feedId: FeedId) {
-    return await this.openOrCreateFeed({ publicKey: feedId })
+  private async open(publicId: PublicId) {
+    return await this.openOrCreateFeed({ publicKey: publicId })
   }
 
   private openOrCreateFeed(keys: KeyPair): Promise<Feed<Block>> {
     return new Promise((res, _rej) => {
-      const feedId = keys.publicKey as FeedId
+      const publicId = keys.publicKey as FeedId
 
-      const feed = getOrCreate(this.opened, feedId, () => {
+      const feed = getOrCreate(this.loaded, publicId, () => {
+        const discoveryId = toDiscoveryId(publicId)
         const { publicKey, secretKey } = decodePair(keys)
 
-        this.feedIdQ.push(feedId)
-        return hypercore(this.storage(toDiscoveryId(feedId)), publicKey, {
+        const feed = hypercore<Block>(this.storage(discoveryId), publicKey, {
           secretKey,
         })
+
+        feed.ready(() => {
+          this.info.save({
+            publicId,
+            discoveryId,
+            isWritable: feed.writable ? 1 : 0,
+          })
+        })
+
+        return feed
       })
 
       feed.ready(() => res(feed))
@@ -134,25 +141,65 @@ export default class FeedStore {
   }
 }
 
-/**
- * The returned promise resolves after the `resolver` fn is called `n` times.
- * Promises the last value passed to the resolver.
- */
-function createMultiPromise<T>(
-  n: number,
-  factory: (resolver: (value: T) => void, rejector: (err: Error) => void) => void
-): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const res = (value: T) => {
-      n -= 1
-      if (n === 0) resolve(value)
-    }
+export interface FeedInfo {
+  publicId: PublicId
+  discoveryId: DiscoveryId
+  isWritable: 0 | 1
+}
 
-    const rej = (err: Error) => {
-      n = -1 // Ensure we never resolve
-      reject(err)
-    }
+export class FeedInfoStore {
+  createdQ: Queue<FeedInfo>
+  private prepared: {
+    insert: Statement<[FeedInfo]>
+    byPublicId: Statement<[PublicId]>
+    byDiscoveryId: Statement<[DiscoveryId]>
+    publicIds: Statement<[]>
+    discoveryIds: Statement<[]>
+  }
 
-    factory(res, rej)
-  })
+  constructor(db: Database) {
+    this.createdQ = new Queue('FeedStore:createdQ')
+    this.prepared = {
+      insert: db.prepare(
+        `INSERT INTO Feeds (publicId, discoveryId, isWritable)
+          VALUES (@publicId, @discoveryId, @isWritable)`
+      ),
+      byPublicId: db.prepare(`SELECT * FROM Feeds WHERE publicId = ? LIMIT 1`),
+      byDiscoveryId: db.prepare(`SELECT * FROM Feeds WHERE discoveryId = ? LIMIT 1`),
+      publicIds: db.prepare('SELECT publicId FROM Feeds').pluck(),
+      discoveryIds: db.prepare('SELECT discoveryId FROM Feeds').pluck(),
+    }
+  }
+
+  save(info: FeedInfo) {
+    if (!this.hasDiscoveryId(info.discoveryId)) {
+      this.prepared.insert.run(info)
+      this.createdQ.push(info)
+    }
+  }
+
+  getPublicId(discoveryId: DiscoveryId): PublicId | undefined {
+    const info = this.byDiscoveryId(discoveryId)
+    return info && info.publicId
+  }
+
+  hasDiscoveryId(discoveryId: DiscoveryId): boolean {
+    return !!this.byDiscoveryId(discoveryId)
+  }
+
+  byPublicId(publicId: PublicId): FeedInfo | undefined {
+    return this.prepared.byPublicId.get(publicId)
+  }
+
+  byDiscoveryId(discoveryId: DiscoveryId): FeedInfo | undefined {
+    return this.prepared.byDiscoveryId.get(discoveryId)
+  }
+
+  allPublicIds(): PublicId[] {
+    return this.prepared.publicIds.all()
+  }
+
+  allDiscoveryIds(): DiscoveryId[] {
+    return this.prepared.discoveryIds.all()
+  }
 }

@@ -85,7 +85,7 @@ export class RepoBackend {
     this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
 
     this.keys = new KeyStore(this.db)
-    this.feeds = new FeedStore((path: string) => this.storageFn('feeds/' + path))
+    this.feeds = new FeedStore(this.db, (path: string) => this.storageFn('feeds/' + path))
     this.files = new FileStore(this.feeds)
 
     // init repo
@@ -115,9 +115,6 @@ export class RepoBackend {
     this.messages.inboxQ.subscribe(this.onMessage)
     this.replication.discoveryQ.subscribe(this.onDiscovery)
     this.network.peerQ.subscribe(this.onPeer)
-    this.feeds.feedIdQ.subscribe((feedId) => {
-      this.replication.addFeedIds([feedId])
-    })
   }
 
   startFileServer = (path: string) => {
@@ -503,7 +500,6 @@ export class RepoBackend {
       store: this.feeds,
     })
     this.actors.set(actor.id, actor)
-    this.replication.addFeedIds([actor.id])
     return actor
   }
 

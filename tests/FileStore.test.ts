@@ -1,12 +1,12 @@
 import test from 'tape'
-import { testStorageFn } from './misc'
+import { createHash } from 'crypto'
+import { testStorageFn, testDb } from './misc'
 import FileStore, { Header } from '../src/FileStore'
 import FeedStore from '../src/FeedStore'
 import * as Stream from '../src/StreamLogic'
-import { createHash } from 'crypto'
 
 test('FileStore', (t) => {
-  const feeds = new FeedStore(testStorageFn())
+  const feeds = new FeedStore(testDb(), testStorageFn())
   const files = new FileStore(feeds)
 
   t.test('writing and reading 1MB file', async (t) => {

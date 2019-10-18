@@ -5,6 +5,10 @@ export default class MapSet<A, B> {
     return this.merge(key, [val])
   }
 
+  set(key: A, val: Set<B>): void {
+    this.map.set(key, val)
+  }
+
   values(): Set<B>[] {
     return [...this.map.values()]
   }

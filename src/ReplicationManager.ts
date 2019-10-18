@@ -1,9 +1,9 @@
 import NetworkPeer from './NetworkPeer'
 import HypercoreProtocol from 'hypercore-protocol'
-import FeedStore, { FeedId } from './FeedStore'
+import FeedStore, { FeedId, FeedInfo } from './FeedStore'
 import PeerConnection from './PeerConnection'
 import * as Keys from './Keys'
-import { getOrCreate, DiscoveryId, toDiscoveryId, joinSets } from './Misc'
+import { getOrCreate, DiscoveryId, joinSets } from './Misc'
 import MessageRouter, { Routed } from './MessageRouter'
 import pump from 'pump'
 import MapSet from './MapSet'
@@ -26,49 +26,24 @@ export default class ReplicationManager {
   private protocols: WeakMap<PeerConnection, HypercoreProtocol>
   private feeds: FeedStore
 
-  discoveryIds: Map<DiscoveryId, FeedId>
   messages: MessageRouter<ReplicationMsg>
-  peers: Set<NetworkPeer>
-  peersByDiscoveryId: MapSet<DiscoveryId, NetworkPeer>
+  replicating: MapSet<NetworkPeer, DiscoveryId>
 
   discoveryQ: Queue<Discovery>
 
   constructor(feeds: FeedStore) {
-    this.discoveryIds = new Map()
     this.protocols = new WeakMap()
-    this.peers = new Set()
-    this.peersByDiscoveryId = new MapSet()
+    this.replicating = new MapSet()
     this.discoveryQ = new Queue('ReplicationManager:discoveryQ')
     this.feeds = feeds
     this.messages = new MessageRouter('ReplicationManager')
+
+    this.feeds.info.createdQ.subscribe(this.onFeedCreated)
     this.messages.inboxQ.subscribe(this.onMessage)
   }
 
-  addFeedIds(feedIds: FeedId[]): void {
-    const discoveryIds: DiscoveryId[] = []
-
-    for (const feedId of feedIds) {
-      const discoveryId = toDiscoveryId(feedId)
-      if (!this.discoveryIds.has(discoveryId)) {
-        this.discoveryIds.set(discoveryId, feedId)
-        discoveryIds.push(discoveryId)
-      }
-    }
-
-    if (discoveryIds.length > 0) {
-      this.messages.sendToPeers(this.peers, {
-        type: 'DiscoveryIds',
-        discoveryIds,
-      })
-    }
-  }
-
-  getFeedId(discoveryId: DiscoveryId): FeedId | undefined {
-    return this.discoveryIds.get(discoveryId)
-  }
-
   getPeersWith(discoveryIds: DiscoveryId[]): Set<NetworkPeer> {
-    return joinSets(discoveryIds.map((id) => this.peersByDiscoveryId.get(id)))
+    return joinSets(discoveryIds.map((id) => this.replicating.keysWith(id)))
   }
 
   close(): void {
@@ -79,31 +54,32 @@ export default class ReplicationManager {
    * Call this when a peer connects.
    */
   onPeer = (peer: NetworkPeer): void => {
-    this.peers.add(peer)
+    this.replicating.set(peer, new Set())
     this.messages.listenTo(peer)
     this.getOrCreateProtocol(peer)
 
-    // NOTE(jeff): In the future, we should send a smaller/smarter set.
-    const discoveryIds = Array.from(this.discoveryIds.keys())
-
-    this.messages.sendToPeer(peer, {
-      type: 'DiscoveryIds',
-      discoveryIds,
-    })
+    if (peer.weHaveAuthority) {
+      // NOTE(jeff): In the future, we should send a smaller/smarter set.
+      const discoveryIds = this.feeds.info.allDiscoveryIds()
+      this.messages.sendToPeer(peer, {
+        type: 'DiscoveryIds',
+        discoveryIds,
+      })
+    }
   }
 
   private replicateWith(peer: NetworkPeer, discoveryIds: DiscoveryId[]): void {
     const protocol = this.getOrCreateProtocol(peer)
     for (const discoveryId of discoveryIds) {
-      const feedId = this.getFeedId(discoveryId)
+      const publicId = this.feeds.info.getPublicId(discoveryId)
+      this.replicating.add(peer, discoveryId)
 
-      if (feedId) {
+      if (publicId) {
         // HACK(jeff): The peer has not yet been verified to have this key. They've
         // only _told_ us that they have it:
-        this.peersByDiscoveryId.add(discoveryId, peer)
-        this.discoveryQ.push({ feedId, discoveryId, peer })
+        this.discoveryQ.push({ feedId: publicId, discoveryId, peer })
 
-        this.feeds.getFeed(feedId).then((feed) => {
+        this.feeds.getFeed(publicId).then((feed) => {
           feed.replicate(protocol, { live: true })
         })
       } else {
@@ -112,11 +88,21 @@ export default class ReplicationManager {
     }
   }
 
+  private onFeedCreated = ({ discoveryId }: FeedInfo) => {
+    this.messages.sendToPeers(this.replicating.keys(), {
+      type: 'DiscoveryIds',
+      discoveryIds: [discoveryId],
+    })
+  }
+
   private onMessage = ({ msg, sender }: Routed<ReplicationMsg>) => {
     switch (msg.type) {
       case 'DiscoveryIds': {
-        const sharedDiscoveryIds = msg.discoveryIds.filter((discoveryId) =>
-          this.discoveryIds.has(discoveryId)
+        const existingShared = this.replicating.get(sender)
+
+        const sharedDiscoveryIds = msg.discoveryIds.filter(
+          (discoveryId) =>
+            !existingShared.has(discoveryId) && this.feeds.info.hasDiscoveryId(discoveryId)
         )
 
         this.replicateWith(sender, sharedDiscoveryIds)
