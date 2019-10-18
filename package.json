@@ -4,7 +4,7 @@
   "description": "Node.js library for building p2p collaborative applications without server infrastructure",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rd ./dist/* && tsc",
     "postbuild": "copyfiles -f src/migrations/*.sql dist/migrations",
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "peek": "ts-node --files tools/Peek.ts $1 $2 $3",
