@@ -6,6 +6,7 @@
   "scripts": {
     "build": "rm -rd ./dist/* && tsc",
     "postbuild": "copyfiles -f src/migrations/*.sql dist/migrations",
+    "docs": "rm -r docs && typedoc --excludeNotExported --excludePrivate --theme minimal --out docs ./src",
     "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
     "peek": "ts-node --files tools/Peek.ts $1 $2 $3",
     "cp": "ts-node --files tools/Cp.ts $1 $2 $3",
@@ -59,6 +60,7 @@
     "prettier": "^1.18.2",
     "tape": "^4.11.0",
     "ts-node": "^8.3.0",
+    "typedoc": "^0.15.0",
     "typescript": "^3.6.2",
     "uuid": "^3.3.3"
   },
