@@ -116,6 +116,13 @@
   dependencies:
     "@types/node" "*"
 
+abstract-extension@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/abstract-extension/-/abstract-extension-3.0.1.tgz#5b1961dbf9dc89fab367a861376a7a0a98693413"
+  integrity sha512-5EQdWgjJo81nR6fK8DeyXzxGQRInxfSxYgLFaP81DaUGix3IAfiz6VtzwXqMjp+qXeYnlGPn/vSSlz13SejbrA==
+  dependencies:
+    codecs "^2.0.0"
+
 ansi-regex@^2.0.0:
   version "2.1.1"
   resolved "https://registry.yarnpkg.com/ansi-regex/-/ansi-regex-2.1.1.tgz#c3b33ab5ee360d86e0e628f0468ae7ef27d654df"
@@ -806,24 +813,26 @@ hypercore-protocol@^7.1.0:
     streamx "^2.1.0"
     timeout-refresh "^1.0.0"
 
-hypercore-protocol@^7.1.1:
-  version "7.1.1"
-  resolved "https://registry.yarnpkg.com/hypercore-protocol/-/hypercore-protocol-7.1.1.tgz#81c6e2f061a8e6e8800af02a175271310fb27122"
-  integrity sha512-SOmF8aRpZINDSHtqEDO9bdPKid2fxgTx7d9wa8K8zRTWzEByquavGU9hCopKgnaBfDdEyZ0c5zVVdQYHqIsvMw==
+hypercore-protocol@^7.6.0:
+  version "7.6.0"
+  resolved "https://registry.yarnpkg.com/hypercore-protocol/-/hypercore-protocol-7.6.0.tgz#bcf08620e034a861f6e25caf65266108725500c4"
+  integrity sha512-mOE/ufd8RmqRE0zUnA97U830oudcEzZoQ/ROV77hacYh/m5953biaxwL6hUQn8PHE0wXnJerjbmgFDffznG7+w==
   dependencies:
+    abstract-extension "^3.0.1"
     hypercore-crypto "^1.0.0"
     inspect-custom-symbol "^1.1.0"
     nanoguard "^1.2.1"
     pretty-hash "^1.0.1"
-    simple-hypercore-protocol "^1.1.2"
+    simple-hypercore-protocol "^1.3.0"
     streamx "^2.1.0"
     timeout-refresh "^1.0.0"
 
-hypercore@^8.0.2:
-  version "8.0.2"
-  resolved "https://registry.yarnpkg.com/hypercore/-/hypercore-8.0.2.tgz#63eb478e3df61826bdfb18c6528a407be64fa1c3"
-  integrity sha512-XOsBg6ZxH+a2tCVZkNqoznR9+KxFknFmtDNysT+igioitZKvsUsX6u7mXip/E9Go4DnWgjd/aN/55nu/S7l1Gg==
+hypercore@^8.2.5:
+  version "8.2.5"
+  resolved "https://registry.yarnpkg.com/hypercore/-/hypercore-8.2.5.tgz#d67555221834f30c15cc8aa3d4d0d10858fe2a1a"
+  integrity sha512-fIUiIKAy3kSuKTq2XjJ+lFiMdG1l05Aj3UO08CmN9F++ucpm+FueO9dAMveA7TviuL/kGXpvE2gmRJoExFn7Ug==
   dependencies:
+    abstract-extension "^3.0.1"
     array-lru "^1.1.0"
     atomic-batcher "^1.0.2"
     bitfield-rle "^2.2.1"
@@ -1706,10 +1715,28 @@ simple-hypercore-protocol@^1.1.2:
     sodium-universal "^2.0.0"
     varint "^5.0.0"
 
+simple-hypercore-protocol@^1.3.0:
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/simple-hypercore-protocol/-/simple-hypercore-protocol-1.3.1.tgz#8ea3654904b05773d9458fe49092c7bb0cb26929"
+  integrity sha512-VYzagn2NzlMFscn7gwSVpboe9DzJcvoKC3ft3OR7x/ovs/XllF9WgPk3/+365ZnLSsou05ivJCTepSO3NeBnDw==
+  dependencies:
+    protocol-buffers-encodings "^1.1.0"
+    simple-handshake "^1.3.1"
+    simple-message-channels "^1.2.1"
+    sodium-universal "^2.0.0"
+    varint "^5.0.0"
+
 simple-message-channels@^1.1.2:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/simple-message-channels/-/simple-message-channels-1.1.2.tgz#f4e8f5a1bba1aac20621bdc824dff90f70cc32e2"
   integrity sha512-kGH9PY3OKaAF2MkDynTC8Rl8ezXcE2VPzvY3bbYtiCH5cGE2ZpXIXJ7K0HjfQ/n5nf4AGRro0rDr2J5EqR6NVg==
+  dependencies:
+    varint "^5.0.0"
+
+simple-message-channels@^1.2.1:
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/simple-message-channels/-/simple-message-channels-1.2.1.tgz#d827d3da0df1f862fd09b748457a01f9a0eb7ac3"
+  integrity sha512-knSr69GKW9sCjzpoy817xQelpOASUQ53TXCBcSLDKLE7GTGpUAhZzOZYrdbX2Ig//m+8AIrNp7sM7HDNHBRzXw==
   dependencies:
     varint "^5.0.0"
 
