@@ -129,6 +129,14 @@ declare module 'hypercore' {
     wait?: boolean
   }
 
+  export interface HeadOptions extends GetOptions {
+    /** Wait for feed length update. Default: false */
+    update?: boolean
+
+    /** When `update: true`, wait for this length */
+    minLength?: number
+  }
+
   export interface Feed<T> {
     peers: Peer[]
     replicate: Function
@@ -178,7 +186,7 @@ declare module 'hypercore' {
     /**
      * Get the block of data at the tip of the feed. This will be the most recently appended block.
      */
-    head(options: GetOptions, cb: (err: Error | null, data: T) => void): void
+    head(options: HeadOptions, cb: (err: Error | null, data: T) => void): void
     head(cb: (err: Error | null, data: T) => void): void
 
     createReadStream(opts?: ReadStreamOptions): Readable

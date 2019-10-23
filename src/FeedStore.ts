@@ -75,7 +75,7 @@ export default class FeedStore {
   async head(feedId: FeedId): Promise<Block> {
     const feed = await this.getFeed(feedId)
     return new Promise((res, rej) => {
-      feed.head((err, data) => {
+      feed.head({ update: true, minLength: 1 }, (err, data) => {
         if (err) return rej(err)
 
         res(data)
