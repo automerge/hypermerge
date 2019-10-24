@@ -1,31 +1,68 @@
 import { Transform, TransformCallback, Readable } from 'stream'
 import { Hash, createHash } from 'crypto'
 
-export class MaxChunkSizeTransform extends Transform {
-  maxChunkSize: number
+export class ChunkSizeTransform extends Transform {
+  private pending: Buffer[]
+
+  chunkSize: number
   processedBytes: number
   chunkCount: number
 
-  constructor(maxChunkSize: number) {
+  constructor(chunkSize: number) {
     super({
-      highWaterMark: maxChunkSize,
+      highWaterMark: chunkSize,
     })
     this.processedBytes = 0
     this.chunkCount = 0
-    this.maxChunkSize = maxChunkSize
+    this.chunkSize = chunkSize
+    this.pending = []
   }
 
   _transform(data: Buffer, _encoding: string, cb: TransformCallback): void {
-    let offset = 0
-    do {
-      const chunk = data.slice(offset, offset + this.maxChunkSize)
-      offset += chunk.length
+    this.pending.push(data)
+
+    this.pushChunks(this.readPendingChunks())
+
+    cb()
+  }
+
+  _flush(cb: () => void) {
+    const chunk = Buffer.concat(this.pending)
+    this.pending = []
+    this.pushChunks([chunk])
+    cb()
+  }
+
+  private pushChunks(chunks: Buffer[]) {
+    chunks.forEach((chunk) => {
       this.processedBytes += chunk.length
       this.chunkCount += 1
       this.push(chunk)
-    } while (offset < data.length)
+    })
+  }
 
-    cb()
+  private readPendingChunks(): Buffer[] {
+    if (this.pendingLength() < this.chunkSize) return []
+
+    const chunks: Buffer[] = []
+    const full = Buffer.concat(this.pending)
+    this.pending = []
+
+    let offset = 0
+    while (offset + this.chunkSize <= full.length) {
+      const chunk = full.slice(offset, offset + this.chunkSize)
+      offset += chunk.length
+      chunks.push(chunk)
+    }
+
+    const remaining = full.slice(offset, offset + this.chunkSize)
+    this.pending.push(remaining)
+
+    return chunks
+  }
+
+  private pendingLength(): number {
+    return this.pending.reduce((len, chunk) => len + chunk.length, 0)
   }
 }
 
@@ -57,6 +94,17 @@ export function fromBuffer(buffer: Buffer): Readable {
   return new Readable({
     read(_size) {
       this.push(buffer)
+      this.push(null)
+    },
+  })
+}
+
+export function fromBuffers(buffers: Buffer[]): Readable {
+  return new Readable({
+    read(_size) {
+      buffers.forEach((buffer) => {
+        this.push(buffer)
+      })
       this.push(null)
     },
   })

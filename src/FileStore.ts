@@ -5,9 +5,9 @@ import { validateFileURL } from './Metadata'
 import * as Keys from './Keys'
 import * as JsonBuffer from './JsonBuffer'
 import Queue from './Queue'
-import { MaxChunkSizeTransform, HashPassThrough } from './StreamLogic'
+import { ChunkSizeTransform, HashPassThrough } from './StreamLogic'
 
-export const MAX_BLOCK_SIZE = 62 * 1024
+export const BLOCK_SIZE = 62 * 1024
 
 export interface Header {
   url: HyperfileUrl
@@ -42,7 +42,7 @@ export default class FileStore {
     const appendStream = await this.feeds.appendStream(feedId)
 
     return new Promise<Header>((res, rej) => {
-      const chunkStream = new MaxChunkSizeTransform(MAX_BLOCK_SIZE)
+      const chunkStream = new ChunkSizeTransform(BLOCK_SIZE)
       const hashStream = new HashPassThrough('sha256')
 
       stream
