@@ -48,17 +48,22 @@ class FileServer {
         this.files = store;
         this.http = http_1.createServer(this.onConnection);
     }
-    listen(path) {
-        const ipcPath = Misc_1.toIpcPath(path);
-        // For some reason, the non-sync version doesn't work :shrugging-man:
-        // fs.unlink(path, (err) => {
-        //   this.http.listen(path)
-        // })
-        try {
-            fs_1.default.unlinkSync(ipcPath);
+    listen(pathOrAddress) {
+        if (typeof pathOrAddress === 'string') {
+            const ipcPath = Misc_1.toIpcPath(pathOrAddress);
+            // For some reason, the non-sync version doesn't work :shrugging-man:
+            // fs.unlink(path, (err) => {
+            //   this.http.listen(path)
+            // })
+            try {
+                fs_1.default.unlinkSync(ipcPath);
+            }
+            catch (_a) { }
+            this.http.listen(ipcPath);
         }
-        catch (_a) { }
-        this.http.listen(ipcPath);
+        else {
+            this.http.listen(pathOrAddress);
+        }
     }
     isListening() {
         return this.http.listening;
