@@ -4,6 +4,11 @@ import fs from 'fs'
 import FileStore, { isHyperfileUrl } from './FileStore'
 import { HyperfileUrl, toIpcPath } from './Misc'
 
+export interface HostAndPort {
+  host: string
+  port: number
+}
+
 export default class FileServer {
   private files: FileStore
   private http: Server
@@ -13,16 +18,20 @@ export default class FileServer {
     this.http = createServer(this.onConnection)
   }
 
-  listen(path: string) {
-    const ipcPath = toIpcPath(path)
-    // For some reason, the non-sync version doesn't work :shrugging-man:
-    // fs.unlink(path, (err) => {
-    //   this.http.listen(path)
-    // })
-    try {
-      fs.unlinkSync(ipcPath)
-    } catch {}
-    this.http.listen(ipcPath)
+  listen(pathOrAddress: string | HostAndPort) {
+    if (typeof pathOrAddress === 'string') {
+      const ipcPath = toIpcPath(pathOrAddress)
+      // For some reason, the non-sync version doesn't work :shrugging-man:
+      // fs.unlink(path, (err) => {
+      //   this.http.listen(path)
+      // })
+      try {
+        fs.unlinkSync(ipcPath)
+      } catch {}
+      this.http.listen(ipcPath)
+    } else {
+      this.http.listen(pathOrAddress)
+    }
   }
 
   isListening(): boolean {
