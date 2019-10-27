@@ -129,6 +129,42 @@ export function preventExit(): () => void {
   return () => clearInterval(interval)
 }
 
+type StreamExpectations =
+  | ['end', string]
+  | ['end', string, () => void]
+  | ['close', string]
+  | ['data', Buffer, string]
+  | ['error', string, string]
+
+export function expectStream(
+  t: test.Test,
+  stream: NodeJS.ReadableStream,
+  expected: StreamExpectations[]
+) {
+  const onEvent = expect(
+    t,
+    (x) => x,
+    expected.map(([event, arg1, arg2]): any => {
+      switch (event) {
+        case 'data':
+          return [['data', arg1], arg2 || 'stream gets data']
+        case 'end':
+          return [['end'], arg1 || 'stream ends', arg2]
+        case 'close':
+          return [['close'], arg1 || 'stream closes']
+        case 'error':
+          return [['error', arg1], arg2 || 'stream errors']
+      }
+    })
+  )
+
+  stream
+    .on('end', () => onEvent(['end']))
+    .on('data', (data) => onEvent(['data', data]))
+    .on('error', (err) => onEvent(['error', err.message]))
+    .on('close', () => onEvent(['close']))
+}
+
 export function expectDocs(t: test.Test, docs: DocInfo[]) {
   let i = 0
 

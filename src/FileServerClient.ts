@@ -7,6 +7,13 @@ import { Header } from './FileStore'
 
 export default class FileServerClient {
   serverPath?: string
+  agent: http.Agent
+
+  constructor() {
+    this.agent = new http.Agent({
+      keepAlive: true,
+    })
+  }
 
   setServerPath(path: string) {
     this.serverPath = toIpcPath(path)
@@ -15,8 +22,7 @@ export default class FileServerClient {
   async write(stream: Readable, mimeType: string): Promise<Header> {
     if (!this.serverPath) throw new Error('FileServer has not been started on RepoBackend')
 
-    const [req, response] = request({
-      socketPath: this.serverPath,
+    const [req, response] = this.request({
       path: '/',
       method: 'POST',
       headers: {
@@ -30,8 +36,7 @@ export default class FileServerClient {
   }
 
   async header(url: HyperfileUrl): Promise<Header> {
-    const [req, responsePromise] = request({
-      socketPath: this.serverPath,
+    const [req, responsePromise] = this.request({
       path: '/' + url,
       method: 'HEAD',
     })
@@ -44,8 +49,7 @@ export default class FileServerClient {
   async read(url: HyperfileUrl): Promise<[Header, Readable]> {
     if (!this.serverPath) throw new Error('FileServer has not been started on RepoBackend')
 
-    const [req, responsePromise] = request({
-      socketPath: this.serverPath,
+    const [req, responsePromise] = this.request({
       path: '/' + url,
       method: 'GET',
     })
@@ -55,6 +59,18 @@ export default class FileServerClient {
     const header = getHeader(url, response)
 
     return [header, response]
+  }
+
+  private request(
+    options: http.RequestOptions
+  ): [http.ClientRequest, Promise<http.IncomingMessage>] {
+    if (!this.serverPath) throw new Error('Must call setServerPath before making requests.')
+
+    return request({
+      agent: this.agent,
+      socketPath: this.serverPath,
+      ...options,
+    })
   }
 }
 

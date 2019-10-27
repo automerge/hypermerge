@@ -1842,6 +1842,14 @@ streamx@^2.1.0:
     fast-fifo "^1.0.0"
     nanoassert "^2.0.0"
 
+streamx@^2.5.0:
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/streamx/-/streamx-2.5.0.tgz#4163d152f594cd386c4fd5ef116b8d8063f73db4"
+  integrity sha512-3HbwdI3Wnjj4dyi9Pk+rkEuQzfiUIUuCT9ayYa2Aohnxvod01TNwnC2e8KWlpjNqrlctNhgctogssukMebeFmg==
+  dependencies:
+    fast-fifo "^1.0.0"
+    nanoassert "^2.0.0"
+
 string-width@^1.0.1, string-width@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/string-width/-/string-width-1.0.2.tgz#118bdf5b8cdc51a2a7e70d211e07e2b0b9b107d3"

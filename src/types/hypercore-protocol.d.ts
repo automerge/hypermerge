@@ -52,8 +52,8 @@ declare module 'hypercore-protocol' {
     // Writable events
     drain(): void
     finish(): void
-    pipe(src: Readable): void
-    unpipe(src: Readable): void
+    pipe(src: NodeJS.ReadableStream): void
+    unpipe(src: NodeJS.ReadableStream): void
   }
 
   /**
