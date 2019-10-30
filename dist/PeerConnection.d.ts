@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { Duplex } from 'stream';
-import { SubStream } from 'multiplex';
+import { Channel } from './Multiplex';
 import MessageBus from './MessageBus';
 import { NetworkMsg } from './NetworkMsg';
 export interface SocketInfo {
@@ -13,8 +13,6 @@ export default class PeerConnection {
     isClient: boolean;
     isConfirmed: boolean;
     type: SocketInfo['type'];
-    pendingChannels: Map<string, SubStream>;
-    channels: Map<string, SubStream>;
     private rawSocket;
     private multiplex;
     private secureStream;
@@ -22,6 +20,6 @@ export default class PeerConnection {
     constructor(rawSocket: Duplex, info: SocketInfo);
     readonly isOpen: boolean;
     readonly isClosed: boolean;
-    openChannel(name: string): SubStream;
+    openChannel(name: string): Channel;
     close(): Promise<void>;
 }

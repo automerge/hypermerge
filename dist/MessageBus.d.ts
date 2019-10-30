@@ -1,11 +1,10 @@
 /// <reference types="node" />
 import Queue from './Queue';
-import { Duplex } from 'stream';
 export default class MessageBus<Msg> {
-    stream: Duplex;
+    stream: NodeJS.ReadWriteStream;
     sendQ: Queue<Msg>;
     receiveQ: Queue<Msg>;
-    constructor(stream: Duplex);
+    constructor(stream: NodeJS.ReadWriteStream);
     onData: (data: Buffer) => void;
     send(msg: Msg): void;
     subscribe(onMsg: (msg: Msg) => void): void;
