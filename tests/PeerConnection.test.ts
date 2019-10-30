@@ -26,7 +26,7 @@ test('PeerConnection', (t) => {
   })
 
   t.test('delayed channels', (t) => {
-    t.plan(2)
+    t.plan(0)
 
     const channelA = connA.openChannel('DelayedConnTest')
     assignGlobal({ channelA })
@@ -42,15 +42,8 @@ test('PeerConnection', (t) => {
     channelA.write('delayed_from_connA_2')
 
     setTimeout(() => {
-      t.assert(connB.pendingChannels.has('DelayedConnTest'), 'connB has pending channel')
-
       const channelB = connB.openChannel('DelayedConnTest')
       assignGlobal({ channelB })
-
-      t.assert(
-        !connB.pendingChannels.has('DelayedConnTest'),
-        'connB no longer has pending channel after openChannel'
-      )
 
       channelB.on(
         'data',
