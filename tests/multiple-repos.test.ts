@@ -1,5 +1,6 @@
 import test from 'tape'
-import { expectDocs, testRepo, testSwarm } from './misc'
+import { expectDocs, testRepo, testSwarm, generateServerPath, testDiscoveryId } from './misc'
+import * as Stream from '../src/StreamLogic'
 
 test('Share a doc between two repos', (t) => {
   t.plan(0)
@@ -118,4 +119,29 @@ test('Message about a doc between two repos', (t) => {
     repoA.close()
     repoB.close()
   })
+})
+
+test('Share a file between two repos', async (t) => {
+  t.plan(2)
+
+  const repoA = testRepo()
+  const repoB = testRepo()
+  repoA.startFileServer(generateServerPath())
+  repoB.startFileServer(generateServerPath())
+  repoA.setSwarm(testSwarm())
+  repoB.setSwarm(testSwarm())
+
+  const discoveryId = testDiscoveryId()
+  repoA.back.network.join(discoveryId)
+  repoB.back.network.join(discoveryId)
+
+  const pseudoFile = Buffer.alloc(1024 * 1024, 1)
+  const { url } = await repoA.files.write(Stream.fromBuffer(pseudoFile), 'application/octet-stream')
+
+  const [header, readable] = await repoB.files.read(url)
+  const content = await Stream.toBuffer(readable)
+  t.equal(header.mimeType, 'application/octet-stream')
+  t.equal(content.equals(pseudoFile), true)
+  repoA.close()
+  repoB.close()
 })
