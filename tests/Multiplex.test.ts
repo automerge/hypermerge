@@ -1,7 +1,7 @@
 import test from 'tape'
 import Multiplex, { Channel, MsgType } from '../src/Multiplex'
 import { testDuplexPair, expectStream, expect } from './misc'
-import { pipeline } from 'stream'
+import pump from 'pump'
 
 test('Multiplex', (t) => {
   const [plexA, plexB] = testMultiplexPair()
@@ -13,10 +13,10 @@ test('Multiplex', (t) => {
       'mychannel',
       1 as any,
       expect(t, (...args) => args, [
-        [[MsgType.Start, Buffer.from('mychannel')], 'sends open msg'],
+        [[MsgType.Start, Buffer.from('mychannel')], 'sends Start msg'],
         [[MsgType.Data, Buffer.from('some_chunk')], 'sends Data'],
-        [[MsgType.End, Buffer.alloc(0)], 'sends End'],
-        [[MsgType.Destroy, Buffer.alloc(0)], 'sends Destroy'],
+        [[MsgType.End, Buffer.alloc(0)], 'sends End msg'],
+        [[MsgType.Destroy, Buffer.alloc(0)], 'sends Destroy msg'],
       ])
     )
 
@@ -25,6 +25,49 @@ test('Multiplex', (t) => {
       t.pass('channel closes fully')
     })
     channel.push(null) // Simulate receiving End by the remote
+  })
+
+  t.test('Destroying a channel before it can drain', (t) => {
+    t.plan(1)
+
+    const channel = new Channel(
+      'mychannel',
+      1 as any,
+      expect(t, (...args) => args, [
+        [[MsgType.Start, Buffer.from('mychannel')], 'sends Start msg'],
+        [[MsgType.Destroy, Buffer.alloc(0)], 'sends Destroy msg'],
+      ])
+    )
+
+    channel.write(Buffer.from('dropped_chunk'))
+    channel.on('close', () => {
+      t.pass('channel closes after .destroy()')
+    })
+
+    channel.destroy()
+  })
+
+  t.test('Destroying a channel after data has been sent', (t) => {
+    t.plan(1)
+
+    const channel = new Channel(
+      'mychannel',
+      1 as any,
+      expect(t, (...args) => args, [
+        [[MsgType.Start, Buffer.from('mychannel')], 'sends Start msg'],
+        [[MsgType.Data, Buffer.from('some_chunk')], 'sends chunk'],
+        [[MsgType.Destroy, Buffer.alloc(0)], 'sends Destroy'],
+      ])
+    )
+
+    channel.write(Buffer.from('some_chunk'))
+    channel.on('close', () => {
+      t.pass('channel closes after .destroy()')
+    })
+
+    setTimeout(() => {
+      channel.destroy()
+    }, 100)
   })
 
   t.test('open channels concurrently', (t) => {
@@ -114,22 +157,22 @@ test('Multiplex', (t) => {
     channelA.write(Buffer.from('dropped_from_channelA_2'))
 
     channelA.close().then(() => {
-      t.false(plexA.isOpen('will_be_destroyed'), 'plexA has closed the channel')
-      t.false(plexB.isOpen('will_be_destroyed'), 'plexB has not opened channel')
+      t.false(plexA.channels.has('will_be_destroyed'), 'plexA has removed will_be_destroyed')
+      t.false(plexB.channels.has('will_be_destroyed'), 'plexB has removed will_be_destroyed')
     })
   })
 
-  t.test('MsgType.End destroys channel if not opened locally', (t) => {
+  t.test('Closing and opening new channel with same name', (t) => {
     t.plan(3)
 
-    const channelA = plexA.openChannel('re-open')
+    const channelA = plexA.openChannel('close_and_reopen')
 
     channelA.write(Buffer.from('dropped_from_channelA_1'))
     channelA.write(Buffer.from('dropped_from_channelA_2'))
 
     channelA.close().then(() => {
-      t.false(plexA.isOpen('re-open'), 'plexA has closed the channel')
-      t.false(plexB.isOpen('re-open'), 'plexB has not opened channel')
+      t.false(plexA.channels.has('close_and_reopen'), 'plexA has removed close_and_reopen')
+      t.false(plexB.channels.has('close_and_reopen'), 'plexB has removed close_and_reopen')
 
       const channelA2 = plexA.openChannel('close_and_reopen')
       const channelB2 = plexB.openChannel('close_and_reopen')
@@ -160,9 +203,40 @@ test('Multiplex', (t) => {
     })
   })
 
+  t.test('closing Multiplex closes all channels', (t) => {
+    t.plan(2)
+
+    const [plexA, plexB] = testMultiplexPair()
+
+    const channelA = plexA.openChannel('channel')
+    const channelB = plexB.openChannel('channel')
+
+    channelA.write('from_channelA')
+    channelB.write('from_channelB')
+
+    expectStream(t, channelA, [
+      ['data', Buffer.from('from_channelB'), 'channelA gets chunk'],
+      ['end', 'channelA ends'],
+      ['close', 'channelA closes'],
+    ])
+
+    expectStream(t, channelB, [
+      ['data', Buffer.from('from_channelA'), 'channelB gets chunk'],
+      ['end', 'channelB ends'],
+      ['close', 'channelB closes'],
+    ])
+
+    plexA.close().then(() => {
+      t.pass('plexA closes')
+    })
+    plexB.close().then(() => {
+      t.pass('plexB closes')
+    })
+  })
+
   test.onFinish(() => {
-    plexA.destroy()
-    plexB.destroy()
+    plexA.close()
+    plexB.close()
   })
 })
 
@@ -171,8 +245,8 @@ function testMultiplexPair(): [Multiplex, Multiplex] {
   const plexA = new Multiplex()
   const plexB = new Multiplex()
 
-  pipeline(dupA, plexA, dupA, (_err) => {})
-  pipeline(dupB, plexB, dupB, (_err) => {})
+  pump(dupA, plexA, dupA)
+  pump(dupB, plexB, dupB)
 
   return [plexA, plexB]
 }

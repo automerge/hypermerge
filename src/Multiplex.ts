@@ -22,6 +22,8 @@ export enum MsgType {
    *
    * Message body is an empty Buffer.
    *
+   * If `End` is received before we have opened the same channel locally, we call .end()
+   * automatically.
    */
   End = 2,
 
@@ -31,8 +33,6 @@ export enum MsgType {
    *
    * Message body is an empty Buffer.
    *
-   * If `Destroy` is received before we have opened the same Channel locally, the Channel is
-   * destroyed and all data is dropped.
    */
   Destroy = 3,
 }
@@ -45,12 +45,17 @@ type LocalId = number & { __localChannelId: true }
  */
 export default class Multiplex extends Duplex {
   /** Which channels the remote Multiplex has opened. */
-  remoteChannels: Map<RemoteId, string>
+  remoteChannels: Map<RemoteId, Channel>
 
   /**
    * Map of channels by name. Are currently open locally, remotely, or both.
    */
   channels: Map<string, Channel>
+
+  /**
+   * Which channels have been explicitly opened locally. Used to ensure that each channel is
+   * only opened once.
+   */
   opened: Set<string>
 
   private nextId: LocalId
@@ -75,9 +80,19 @@ export default class Multiplex extends Duplex {
    * Open a new `Channel`. Every channel has a `name`, local `id`, and an associated [[RemoteId]].
    */
   openChannel(name: string): Channel {
+    if (this.destroyed) throw new Error(`Multiplex is destroyed. Cannot open channel '${name}'.`)
     if (this.isOpen(name)) throw new Error(`Channel '${name}' is already open.`)
     this.opened.add(name)
     return this.getOrCreateChannel(name)
+  }
+
+  async close(): Promise<void> {
+    const channels = Array.from(this.channels.values())
+    await Promise.all(channels.map((ch) => ch.close()))
+    await new Promise((res) => {
+      this.once('finish', () => res())
+      this.end()
+    })
   }
 
   /**
@@ -97,7 +112,13 @@ export default class Multiplex extends Duplex {
     }
   }
 
-  _destroy(cb: () => void) {
+  _destroy(cb: () => void): void {
+    for (const channel of this.channels.values()) {
+      channel.destroy()
+    }
+    this.channels.clear()
+    this.remoteChannels.clear()
+    this.opened.clear()
     cb()
   }
 
@@ -121,9 +142,12 @@ export default class Multiplex extends Duplex {
    */
   private onReceivedMsg = (remoteId: RemoteId, type: MsgType, data: Buffer) => {
     switch (type) {
-      case MsgType.Start:
-        this.remoteChannels.set(remoteId, data.toString())
+      case MsgType.Start: {
+        const name = data.toString()
+        const channel = this.getOrCreateChannel(name)
+        this.remoteChannels.set(remoteId, channel)
         break
+      }
 
       case MsgType.Data:
         this.getChannelByRemoteId(remoteId).push(data)
@@ -132,12 +156,15 @@ export default class Multiplex extends Duplex {
       case MsgType.End: {
         const channel = this.getChannelByRemoteId(remoteId)
         channel.push(null)
-        if (!this.isOpen(channel.name)) channel.end()
+        this.remoteChannels.delete(remoteId)
+        if (!this.isOpen(channel.name)) channel.destroy()
         break
       }
 
       case MsgType.Destroy: {
+        const channel = this.remoteChannels.get(remoteId)
         this.remoteChannels.delete(remoteId)
+        if (channel) channel.destroy()
         break
       }
 
@@ -147,9 +174,9 @@ export default class Multiplex extends Duplex {
   }
 
   private getChannelByRemoteId(id: RemoteId): Channel {
-    const name = this.remoteChannels.get(id)
-    if (!name) throw new Error(`Unknown remote channelId: ${id}`)
-    return this.getOrCreateChannel(name)
+    const channel = this.remoteChannels.get(id)
+    if (!channel) throw new Error(`Unknown remote channelId: ${id}`)
+    return channel
   }
 
   private getOrCreateChannel(name: string): Channel {
@@ -167,7 +194,6 @@ export default class Multiplex extends Duplex {
 export class Channel extends Duplex {
   name: string
   id: LocalId
-  isOpen: boolean
 
   private send: (type: MsgType, body: Buffer) => void
 
@@ -179,22 +205,20 @@ export class Channel extends Duplex {
     this.name = name
     this.id = id
     this.send = send
-    this.isOpen = false
+    this.send(MsgType.Start, Buffer.from(this.name))
   }
 
   /**
-   * Calls .end() and returns a promise that resolves when the channel is fully closed.
+   * Calls .end() and returns a promise that resolves when the channel is fully closed. Channels
+   * are fully closed when both sides have called .end()
    */
-  close(): Promise<this> {
+  close(): Promise<void> {
     return new Promise((res) => {
-      this.once('close', () => res(this))
-      this.end()
+      this.once('close', () => res()).end()
     })
   }
 
   _open(cb: () => void) {
-    this.isOpen = true
-    this.send(MsgType.Start, Buffer.from(this.name))
     cb()
   }
 
@@ -211,7 +235,7 @@ export class Channel extends Duplex {
   /**
    * From Writable.
    *
-   * Called when data is written locally into this channel.
+   * Called when .write() is called locally on this channel.
    */
   _write(chunk: Buffer, cb: () => void) {
     this.send(MsgType.Data, chunk)
@@ -221,7 +245,7 @@ export class Channel extends Duplex {
   /**
    * From Writable.
    *
-   * Called when end() is called locally on the writable half of this channel.
+   * Called when .end() is called locally on the writable half of this channel.
    */
   _final(cb: (err?: Error) => void) {
     this.send(MsgType.End, Buffer.alloc(0))
@@ -231,11 +255,10 @@ export class Channel extends Duplex {
   /**
    * From Readable and Writable.
    *
-   * Called when .destroy() or .close() is called locally. Signals that we are completely done with
-   * this channel and no more data will be read or written.
+   * Called when .destroy() is called locally, or after both sides have called .end().
+   * We are completely done with this channel and no more data will be read or written.
    */
   _destroy(cb: (err?: Error) => void) {
-    this.isOpen = false
     this.send(MsgType.Destroy, Buffer.alloc(0))
     cb()
   }

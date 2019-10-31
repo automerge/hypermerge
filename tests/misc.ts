@@ -68,8 +68,6 @@ export function testConnectionPair(): [PeerConnection, PeerConnection] {
 }
 
 export function testDuplexPair(): [Duplex, Duplex] {
-  const allowExit = preventExit()
-
   const duplexA = new Duplex({
     read(size) {
       const chunk = duplexB.read(size)
@@ -79,6 +77,12 @@ export function testDuplexPair(): [Duplex, Duplex] {
       // Push async to avoid sync race conditions:
       setImmediate(() => {
         duplexB.push(chunk, encoding)
+        cb()
+      })
+    },
+    final(cb) {
+      setImmediate(() => {
+        duplexB.push(null)
         cb()
       })
     },
@@ -96,15 +100,19 @@ export function testDuplexPair(): [Duplex, Duplex] {
         cb()
       })
     },
+    final(cb) {
+      setImmediate(() => {
+        duplexA.push(null)
+        cb()
+      })
+    },
   })
 
   duplexA.on('close', () => {
-    allowExit()
     duplexB.destroy()
   })
 
   duplexB.on('close', () => {
-    allowExit()
     duplexA.destroy()
   })
 
