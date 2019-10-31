@@ -7,8 +7,6 @@ export interface ClockMap {
   [documentId: string /*DocId*/]: Clock.Clock
 }
 
-export type ClockUpdate = [RepoId, DocId, Clock.Clock]
-
 interface ClockRow {
   repoId: string
   documentId: string
@@ -17,18 +15,20 @@ interface ClockRow {
 }
 
 type ClockEntry = [ActorId, number]
+export type ClockDescriptor = [Clock.Clock, DocId, RepoId]
 
 // NOTE: Joshua Wise (maintainer of better-sqlite3) suggests using multiple
 // prepared statements rather than batch inserts and selects :shrugging-man:.
 // We'll see if this becomes an issue.
 export default class ClockStore {
   db: Database
-  updateQ: Queue<ClockUpdate>
+  updateQ: Queue<ClockDescriptor>
   private preparedGet: Statement<[RepoId, DocId]>
   private preparedInsert: Statement<[RepoId, DocId, ActorId, number]>
   private preparedDelete: Statement<[RepoId, DocId]>
   private preparedAllRepoIds: Statement<[]>
   private preparedAllDocumentIds: Statement<[RepoId]>
+  private preparedAllForDocumentId: Statement<DocId>
 
   constructor(db: Database) {
     this.db = db
@@ -46,6 +46,7 @@ export default class ClockStore {
     this.preparedAllDocumentIds = this.db
       .prepare('SELECT DISTINCT documentId from Clocks WHERE repoId=?')
       .pluck()
+    this.preparedAllForDocumentId = this.db.prepare('SELECT * FROM Clocks WHERE documentId = ?')
   }
 
   /**
@@ -54,6 +55,10 @@ export default class ClockStore {
   get(repoId: RepoId, documentId: DocId): Clock.Clock {
     const clockRows = this.preparedGet.all(repoId, documentId)
     return rowsToClock(clockRows)
+  }
+
+  has(repoId: RepoId, documentId: DocId): boolean {
+    return !!this.preparedGet.get(repoId, documentId)
   }
 
   /**
@@ -75,7 +80,7 @@ export default class ClockStore {
    * Update an existing clock with a new clock, merging the two.
    * If no clock exists in the data store, the new clock is stored as-is.
    */
-  update(repoId: RepoId, documentId: DocId, clock: Clock.Clock): ClockUpdate {
+  update(repoId: RepoId, documentId: DocId, clock: Clock.Clock): ClockDescriptor {
     const transaction = this.db.transaction((clockEntries) => {
       clockEntries.forEach(([feedId, seq]: ClockEntry) => {
         this.preparedInsert.run(repoId, documentId, feedId, seq)
@@ -83,7 +88,7 @@ export default class ClockStore {
       return this.get(repoId, documentId)
     })
     const updatedClock = transaction(Object.entries(clock))
-    const descriptor: ClockUpdate = [repoId, documentId, updatedClock]
+    const descriptor: ClockDescriptor = [updatedClock, documentId, repoId]
     if (!Clock.equal(clock, updatedClock)) {
       this.updateQ.push(descriptor)
     }
@@ -94,7 +99,7 @@ export default class ClockStore {
    * Hard set of a clock. Will clear any clock values that exist for the given document id
    * and set explicitly the passed in clock.
    */
-  set(repoId: RepoId, documentId: DocId, clock: Clock.Clock): ClockUpdate {
+  set(repoId: RepoId, documentId: DocId, clock: Clock.Clock): ClockDescriptor {
     const transaction = this.db.transaction((documentId, clock) => {
       this.preparedDelete.run(repoId, documentId)
       return this.update(repoId, documentId, clock)
@@ -108,6 +113,31 @@ export default class ClockStore {
 
   getAllRepoIds(): RepoId[] {
     return this.preparedAllRepoIds.all()
+  }
+
+  getAllForDocumentId(docId: DocId): ClockDescriptor[] {
+    const result: ClockRow[] = this.preparedAllForDocumentId.all(docId)
+    // TODO: yuck
+    const byRepoId = result.reduce(
+      (accum: { [repoId: string]: { [actorId: string]: number } }, row) => {
+        const clock = accum[row.repoId] || {}
+        clock[row.actorId] = row.seq
+        accum[row.repoId] = clock
+        return accum
+      },
+      {}
+    )
+    return Object.entries(byRepoId).map(([repoId, clock]) => [
+      clock,
+      docId as DocId,
+      repoId as RepoId,
+    ])
+  }
+
+  getMaximumSatisfiedClock(docId: DocId, candidate: Clock.Clock) {
+    const clocks = this.getAllForDocumentId(docId).map(([clock]) => clock)
+    const satisfiedClocks = clocks.filter((clock) => Clock.isSatisfied(clock, candidate))
+    return Clock.getMax(satisfiedClocks)
   }
 }
 

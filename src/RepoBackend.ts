@@ -130,7 +130,11 @@ export class RepoBackend {
   private create(keys: Keys.KeyBuffer): DocBackend.DocBackend {
     const docId = encodeDocId(keys.publicKey)
     log('create', docId)
-    const doc = new DocBackend.DocBackend(docId, this.documentNotify, Backend.init())
+    const doc = new DocBackend.DocBackend(docId, Backend.init())
+    doc.updateQ.subscribe(this.documentNotify)
+    // HACK: We set a clock value of zero so we have a clock in the clock store
+    // TODO: This isn't right.
+    this.clocks.set(this.id, doc.id, { [doc.id]: 0 })
 
     this.docs.set(docId, doc)
 
@@ -198,7 +202,11 @@ export class RepoBackend {
     if (this.meta.isFile(docId)) {
       throw new Error('trying to open a file like a document')
     }
-    let doc = this.docs.get(docId) || new DocBackend.DocBackend(docId, this.documentNotify)
+    let doc = this.docs.get(docId)
+    if (!doc) {
+      doc = new DocBackend.DocBackend(docId)
+      doc.updateQ.subscribe(this.documentNotify)
+    }
     if (!this.docs.has(docId)) {
       this.docs.set(docId, doc)
       // TODO: It isn't always correct to add this actor with an Infinity cursor entry.
@@ -310,14 +318,23 @@ export class RepoBackend {
     })
   }
 
+  private getGoodClock(doc: DocBackend.DocBackend): Clock.Clock | undefined {
+    const minimumClockSatisfied = this.clocks.has(this.id, doc.id)
+    return minimumClockSatisfied
+      ? doc.clock
+      : this.clocks.getMaximumSatisfiedClock(doc.id, doc.clock)
+  }
+
   private documentNotify = (msg: DocBackend.DocBackendMessage) => {
     switch (msg.type) {
       case 'ReadyMsg': {
+        const doc = msg.doc
+        const goodClock = this.getGoodClock(doc)
         this.toFrontend.push({
           type: 'ReadyMsg',
-          id: msg.id,
-          minimumClockSatisfied: msg.minimumClockSatisfied,
-          actorId: msg.actorId,
+          id: doc.id,
+          minimumClockSatisfied: !!goodClock,
+          actorId: doc.actorId,
           history: msg.history,
           patch: msg.patch,
         })
@@ -332,32 +349,38 @@ export class RepoBackend {
         break
       }
       case 'RemotePatchMsg': {
+        const doc = msg.doc
+        const goodClock = this.getGoodClock(doc)
+        if (goodClock) {
+          this.clocks.update(this.id, doc.id, goodClock)
+        }
         this.toFrontend.push({
           type: 'PatchMsg',
-          id: msg.id,
-          minimumClockSatisfied: msg.minimumClockSatisfied,
+          id: doc.id,
+          minimumClockSatisfied: !!goodClock,
           patch: msg.patch,
           history: msg.history,
         })
-        const doc = this.docs.get(msg.id)
-        if (doc && msg.minimumClockSatisfied) {
-          this.clocks.update(this.id, msg.id, doc.clock)
-        }
         break
       }
       case 'LocalPatchMsg': {
+        const doc = msg.doc
+        if (!doc.actorId) return
+
+        this.actor(doc.actorId)!.writeChange(msg.change)
+
+        const goodClock = this.getGoodClock(doc)
+        if (goodClock) {
+          this.clocks.update(this.id, doc.id, goodClock)
+        }
+
         this.toFrontend.push({
           type: 'PatchMsg',
-          id: msg.id,
-          minimumClockSatisfied: msg.minimumClockSatisfied,
+          id: doc.id,
+          minimumClockSatisfied: !!goodClock,
           patch: msg.patch,
           history: msg.history,
         })
-        this.actor(msg.actorId)!.writeChange(msg.change)
-        const doc = this.docs.get(msg.id)
-        if (doc && msg.minimumClockSatisfied) {
-          this.clocks.update(this.id, msg.id, doc.clock)
-        }
         break
       }
       default: {
@@ -391,8 +414,7 @@ export class RepoBackend {
     })
   }
 
-  private onMessage = (message: Routed<PeerMsg>) => {
-    const { sender, msg } = message
+  private onMessage = ({ sender, msg }: Routed<PeerMsg>) => {
     switch (msg.type) {
       case 'CursorMessage': {
         const { clocks, cursors } = msg
@@ -405,16 +427,6 @@ export class RepoBackend {
           // In the future, we might want to be more selective.
           this.cursors.update(sender.id, cursor.docId, cursor.cursor)
           this.cursors.update(this.id, cursor.docId, cursor.cursor)
-        })
-
-        // TODO: Use a ClockStore updateQ to manage this behavior.
-        // Note: We use remote/peer clocks to set the minimum clock. This isn't quite right.
-        clocks.forEach(({ docId }) => {
-          const doc = this.docs.get(docId)
-          const clock = this.clocks.get(sender.id, docId) // Get latest clock from the store.
-          if (doc) {
-            doc.updateMinimumClock(clock)
-          }
         })
 
         // TODO: This emulates the syncReadyActors behavior from RemotaMetadata messages,
