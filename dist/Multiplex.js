@@ -70,16 +70,14 @@ class Multiplex extends streamx_1.Duplex {
                 case MsgType.End: {
                     const channel = this.getChannelByRemoteId(remoteId);
                     channel.push(null);
-                    this.remoteChannels.delete(remoteId);
                     if (!this.isOpen(channel.name))
                         channel.destroy();
                     break;
                 }
                 case MsgType.Destroy: {
-                    const channel = this.remoteChannels.get(remoteId);
+                    const channel = this.getChannelByRemoteId(remoteId);
                     this.remoteChannels.delete(remoteId);
-                    if (channel)
-                        channel.destroy();
+                    channel.destroy();
                     break;
                 }
                 default:

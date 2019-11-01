@@ -16,6 +16,8 @@ const noise_peer_1 = __importDefault(require("noise-peer"));
 const Multiplex_1 = __importDefault(require("./Multiplex"));
 const MessageBus_1 = __importDefault(require("./MessageBus"));
 const pump_1 = __importDefault(require("pump"));
+const StreamLogic_1 = require("./StreamLogic");
+const VERSION_PREFIX = Buffer.from('hypermerge.v1');
 class PeerConnection {
     constructor(rawSocket, info) {
         this.isConfirmed = false;
@@ -25,7 +27,14 @@ class PeerConnection {
         this.rawSocket = rawSocket;
         this.secureStream = noise_peer_1.default(rawSocket, this.isClient);
         this.multiplex = new Multiplex_1.default();
-        pump_1.default(this.secureStream, this.multiplex, this.secureStream);
+        const prefixMatch = new StreamLogic_1.PrefixMatchPassThrough(VERSION_PREFIX);
+        this.secureStream.write(VERSION_PREFIX);
+        pump_1.default(this.secureStream, prefixMatch, this.multiplex, this.secureStream, (err) => {
+            if (err instanceof StreamLogic_1.InvalidPrefixError) {
+                console.log('Closing connection to outdated peer. Prefix:', err.actual);
+                this.close();
+            }
+        });
         this.networkBus = new MessageBus_1.default(this.openChannel('NetworkMsg'));
     }
     get isOpen() {

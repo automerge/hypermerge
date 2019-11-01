@@ -65,6 +65,7 @@ export declare class RepoBackend {
     actorIds(doc: DocBackend.DocBackend): ActorId[];
     docActors(doc: DocBackend.DocBackend): Actor[];
     syncReadyActors: (ids: ActorId[]) => void;
+    private getGoodClock;
     private documentNotify;
     onPeer: (peer: NetworkPeer) => void;
     onDiscovery: ({ feedId, peer }: Discovery) => void;

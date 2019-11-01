@@ -3,6 +3,9 @@ export interface Clock {
     [actorId: string]: number;
 }
 export declare type CMP = 'GT' | 'LT' | 'CONCUR' | 'EQ';
+export declare function getMax(clocks: Clock[]): Clock | undefined;
+export declare function sequenceTotal(clock: Clock): number;
+export declare function isSatisfied(target: Clock, candidate: Clock): boolean;
 export declare function actors(clock: Clock): ActorId[];
 export declare function gte(a: Clock, b: Clock): boolean;
 export declare function equal(a: Clock, b: Clock): boolean;
