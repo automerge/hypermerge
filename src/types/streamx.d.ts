@@ -127,4 +127,8 @@ declare module 'streamx' {
     off(event: 'close', listener: () => void): this
     off(event: 'error', listener: (err: Error) => void): this
   }
+
+  export class Transform extends Duplex {
+    _transform(data: Buffer, cb: () => void): void
+  }
 }

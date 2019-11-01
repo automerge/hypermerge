@@ -1,6 +1,6 @@
 import test from 'tape'
 import * as Stream from '../src/StreamLogic'
-import { expect } from './misc'
+import { expect, expectStream } from './misc'
 
 test('StreamLogic', (t) => {
   t.test('fromBuffers', (t) => {
@@ -68,6 +68,38 @@ test('StreamLogic', (t) => {
             [Buffer.alloc(9, 3), 'second chunk is 9 bytes'],
           ])
         )
+    })
+  })
+
+  t.test('PrefixMatchPassThrough', (t) => {
+    t.test('correct match', (t) => {
+      t.plan(1)
+
+      const prefix = Buffer.from('some_prefix.v1')
+      const prefixMatch = new Stream.PrefixMatchPassThrough(prefix)
+      const inputStream = Stream.fromBuffer(Buffer.concat([prefix, Buffer.alloc(10, 1)]))
+      const testStream = inputStream.pipe(prefixMatch)
+
+      expectStream(t, testStream, [
+        ['data', Buffer.alloc(10, 1), 'gets data after prefix'],
+        [
+          'end',
+          'stream ends',
+          () => {
+            t.assert(prefixMatch.matched, 'prefixMatch matched the prefix')
+          },
+        ],
+      ])
+    })
+
+    t.test('failing match', (t) => {
+      const prefixMatch = new Stream.PrefixMatchPassThrough(Buffer.from('some_prefix.v1'))
+      const inputStream = Stream.fromBuffer(
+        Buffer.concat([Buffer.from('some_prefix.v2'), Buffer.alloc(10, 1)])
+      )
+      const testStream = inputStream.pipe(prefixMatch)
+
+      expectStream(t, testStream, [['error', "Invalid prefix: 'some_prefix.v2'", 'stream errors']])
     })
   })
 })

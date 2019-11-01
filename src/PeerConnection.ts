@@ -4,6 +4,9 @@ import Multiplex, { Channel } from './Multiplex'
 import MessageBus from './MessageBus'
 import { NetworkMsg } from './NetworkMsg'
 import pump from 'pump'
+import { PrefixMatchPassThrough, InvalidPrefixError } from './StreamLogic'
+
+const VERSION_PREFIX = Buffer.from('hypermerge.v1')
 
 export interface SocketInfo {
   type: 'tcp' | 'utp'
@@ -31,7 +34,15 @@ export default class PeerConnection {
     this.secureStream = noise(rawSocket, this.isClient)
     this.multiplex = new Multiplex()
 
-    pump(this.secureStream, this.multiplex, this.secureStream)
+    const prefixMatch = new PrefixMatchPassThrough(VERSION_PREFIX)
+    this.secureStream.write(VERSION_PREFIX)
+
+    pump(this.secureStream, prefixMatch, this.multiplex, this.secureStream, (err) => {
+      if (err instanceof InvalidPrefixError) {
+        console.log('Closing connection to outdated peer. Prefix:', err.actual)
+        this.close()
+      }
+    })
 
     this.networkBus = new MessageBus<NetworkMsg>(this.openChannel('NetworkMsg'))
   }

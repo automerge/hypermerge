@@ -91,7 +91,7 @@ export default class Network {
       isClient: details.client,
       type: details.type,
       onClose() {
-        details.ban()
+        if (!conn.isConfirmed) details.ban()
       },
     })
 
