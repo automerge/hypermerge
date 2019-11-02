@@ -24,7 +24,7 @@ const Keys = __importStar(require("./Keys"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const Queue_1 = __importDefault(require("./Queue"));
 const StreamLogic_1 = require("./StreamLogic");
-exports.MAX_BLOCK_SIZE = 62 * 1024;
+exports.BLOCK_SIZE = 62 * 1024;
 class FileStore {
     constructor(store) {
         this.feeds = store;
@@ -47,7 +47,7 @@ class FileStore {
             const feedId = yield this.feeds.create(keys);
             const appendStream = yield this.feeds.appendStream(feedId);
             return new Promise((res, rej) => {
-                const chunkStream = new StreamLogic_1.MaxChunkSizeTransform(exports.MAX_BLOCK_SIZE);
+                const chunkStream = new StreamLogic_1.ChunkSizeTransform(exports.BLOCK_SIZE);
                 const hashStream = new StreamLogic_1.HashPassThrough('sha256');
                 stream
                     .pipe(hashStream)

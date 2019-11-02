@@ -2,28 +2,55 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const stream_1 = require("stream");
 const crypto_1 = require("crypto");
-class MaxChunkSizeTransform extends stream_1.Transform {
-    constructor(maxChunkSize) {
+class ChunkSizeTransform extends stream_1.Transform {
+    constructor(chunkSize) {
         super({
-            highWaterMark: maxChunkSize,
+            highWaterMark: chunkSize,
         });
         this.processedBytes = 0;
         this.chunkCount = 0;
-        this.maxChunkSize = maxChunkSize;
+        this.chunkSize = chunkSize;
+        this.pending = [];
     }
     _transform(data, _encoding, cb) {
-        let offset = 0;
-        do {
-            const chunk = data.slice(offset, offset + this.maxChunkSize);
-            offset += chunk.length;
+        this.pending.push(data);
+        this.pushChunks(this.readPendingChunks());
+        cb();
+    }
+    _flush(cb) {
+        const chunk = Buffer.concat(this.pending);
+        this.pending = [];
+        this.pushChunks([chunk]);
+        cb();
+    }
+    pushChunks(chunks) {
+        chunks.forEach((chunk) => {
             this.processedBytes += chunk.length;
             this.chunkCount += 1;
             this.push(chunk);
-        } while (offset < data.length);
-        cb();
+        });
+    }
+    readPendingChunks() {
+        if (this.pendingLength() < this.chunkSize)
+            return [];
+        const chunks = [];
+        const full = Buffer.concat(this.pending);
+        this.pending = [];
+        let offset = 0;
+        while (offset + this.chunkSize <= full.length) {
+            const chunk = full.slice(offset, offset + this.chunkSize);
+            offset += chunk.length;
+            chunks.push(chunk);
+        }
+        const remaining = full.slice(offset, offset + this.chunkSize);
+        this.pending.push(remaining);
+        return chunks;
+    }
+    pendingLength() {
+        return this.pending.reduce((len, chunk) => len + chunk.length, 0);
     }
 }
-exports.MaxChunkSizeTransform = MaxChunkSizeTransform;
+exports.ChunkSizeTransform = ChunkSizeTransform;
 class HashPassThrough extends stream_1.Transform {
     constructor(algorithm) {
         super();
@@ -35,6 +62,35 @@ class HashPassThrough extends stream_1.Transform {
     }
 }
 exports.HashPassThrough = HashPassThrough;
+class PrefixMatchPassThrough extends stream_1.Transform {
+    constructor(prefix) {
+        super();
+        this.prefix = prefix;
+        this.matched = false;
+    }
+    _transform(chunk, _encoding, cb) {
+        if (this.matched)
+            return cb(undefined, chunk);
+        const prefix = chunk.slice(0, this.prefix.length);
+        if (prefix.equals(this.prefix)) {
+            this.matched = true;
+            const rest = chunk.slice(prefix.length);
+            cb(undefined, rest);
+        }
+        else {
+            cb(new InvalidPrefixError(prefix, this.prefix));
+        }
+    }
+}
+exports.PrefixMatchPassThrough = PrefixMatchPassThrough;
+class InvalidPrefixError extends Error {
+    constructor(actual, expected) {
+        super(`Invalid prefix: '${actual}'`);
+        this.actual = actual;
+        this.expected = expected;
+    }
+}
+exports.InvalidPrefixError = InvalidPrefixError;
 function toBuffer(stream) {
     return new Promise((res, rej) => {
         const buffers = [];
@@ -54,4 +110,15 @@ function fromBuffer(buffer) {
     });
 }
 exports.fromBuffer = fromBuffer;
+function fromBuffers(buffers) {
+    return new stream_1.Readable({
+        read(_size) {
+            buffers.forEach((buffer) => {
+                this.push(buffer);
+            });
+            this.push(null);
+        },
+    });
+}
+exports.fromBuffers = fromBuffers;
 //# sourceMappingURL=StreamLogic.js.map

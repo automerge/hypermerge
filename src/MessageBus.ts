@@ -1,13 +1,12 @@
 import Queue from './Queue'
 import * as JsonBuffer from './JsonBuffer'
-import { Duplex } from 'stream'
 
 export default class MessageBus<Msg> {
-  stream: Duplex
+  stream: NodeJS.ReadWriteStream
   sendQ: Queue<Msg>
   receiveQ: Queue<Msg>
 
-  constructor(stream: Duplex) {
+  constructor(stream: NodeJS.ReadWriteStream) {
     this.stream = stream
 
     this.sendQ = new Queue('MessageBus:sendQ')

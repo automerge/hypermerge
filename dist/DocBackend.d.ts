@@ -5,9 +5,7 @@ import { ActorId, DocId } from './Misc';
 export declare type DocBackendMessage = ReadyMsg | ActorIdMsg | RemotePatchMsg | LocalPatchMsg;
 interface ReadyMsg {
     type: 'ReadyMsg';
-    id: DocId;
-    minimumClockSatisfied: boolean;
-    actorId?: ActorId;
+    doc: DocBackend;
     history?: number;
     patch?: Patch;
 }
@@ -18,18 +16,14 @@ interface ActorIdMsg {
 }
 interface RemotePatchMsg {
     type: 'RemotePatchMsg';
-    id: DocId;
-    actorId?: ActorId;
-    minimumClockSatisfied: boolean;
+    doc: DocBackend;
     patch: Patch;
     change?: Change;
     history: number;
 }
 interface LocalPatchMsg {
     type: 'LocalPatchMsg';
-    id: DocId;
-    actorId: ActorId;
-    minimumClockSatisfied: boolean;
+    doc: DocBackend;
     patch: Patch;
     change: Change;
     history: number;
@@ -41,14 +35,10 @@ export declare class DocBackend {
     back?: BackDoc;
     changes: Map<string, number>;
     ready: Queue<Function>;
-    private notify;
-    private minimumClock?;
-    private minimumClockSatisfied;
+    updateQ: Queue<DocBackendMessage>;
     private localChangeQ;
     private remoteChangesQ;
-    constructor(documentId: DocId, notify: (msg: DocBackendMessage) => void, back?: BackDoc);
-    testMinimumClockSatisfied: () => void;
-    updateMinimumClock: (clock: Clock) => void;
+    constructor(documentId: DocId, back?: BackDoc);
     applyRemoteChanges: (changes: Change[]) => void;
     applyLocalChange: (change: Change) => void;
     initActor: (actorId: ActorId) => void;

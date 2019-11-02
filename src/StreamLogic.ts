@@ -80,6 +80,36 @@ export class HashPassThrough extends Transform {
   }
 }
 
+export class PrefixMatchPassThrough extends Transform {
+  prefix: Buffer
+  matched: boolean
+
+  constructor(prefix: Buffer) {
+    super()
+    this.prefix = prefix
+    this.matched = false
+  }
+
+  _transform(chunk: Buffer, _encoding: string, cb: TransformCallback) {
+    if (this.matched) return cb(undefined, chunk)
+
+    const prefix = chunk.slice(0, this.prefix.length)
+    if (prefix.equals(this.prefix)) {
+      this.matched = true
+      const rest = chunk.slice(prefix.length)
+      cb(undefined, rest)
+    } else {
+      cb(new InvalidPrefixError(prefix, this.prefix))
+    }
+  }
+}
+
+export class InvalidPrefixError extends Error {
+  constructor(public actual: Buffer, public expected: Buffer) {
+    super(`Invalid prefix: '${actual}'`)
+  }
+}
+
 export function toBuffer(stream: Readable): Promise<Buffer> {
   return new Promise((res, rej) => {
     const buffers: Buffer[] = []

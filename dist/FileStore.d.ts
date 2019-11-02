@@ -3,7 +3,7 @@ import { HyperfileUrl } from './Misc';
 import { Readable } from 'stream';
 import FeedStore from './FeedStore';
 import Queue from './Queue';
-export declare const MAX_BLOCK_SIZE: number;
+export declare const BLOCK_SIZE: number;
 export interface Header {
     url: HyperfileUrl;
     size: number;

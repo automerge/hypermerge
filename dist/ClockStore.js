@@ -29,6 +29,7 @@ class ClockStore {
         this.preparedAllDocumentIds = this.db
             .prepare('SELECT DISTINCT documentId from Clocks WHERE repoId=?')
             .pluck();
+        this.preparedAllForDocumentId = this.db.prepare('SELECT * FROM Clocks WHERE documentId = ?');
     }
     /**
      * TODO: handle missing clocks better. Currently returns an empty clock (i.e. an empty object)
@@ -36,6 +37,9 @@ class ClockStore {
     get(repoId, documentId) {
         const clockRows = this.preparedGet.all(repoId, documentId);
         return rowsToClock(clockRows);
+    }
+    has(repoId, documentId) {
+        return !!this.preparedGet.get(repoId, documentId);
     }
     /**
      * Retrieve the clocks for all given documents. If we don't have a clock
@@ -64,7 +68,7 @@ class ClockStore {
             return this.get(repoId, documentId);
         });
         const updatedClock = transaction(Object.entries(clock));
-        const descriptor = [repoId, documentId, updatedClock];
+        const descriptor = [updatedClock, documentId, repoId];
         if (!Clock.equal(clock, updatedClock)) {
             this.updateQ.push(descriptor);
         }
@@ -86,6 +90,26 @@ class ClockStore {
     }
     getAllRepoIds() {
         return this.preparedAllRepoIds.all();
+    }
+    getAllForDocumentId(docId) {
+        const result = this.preparedAllForDocumentId.all(docId);
+        // TODO: yuck
+        const byRepoId = result.reduce((accum, row) => {
+            const clock = accum[row.repoId] || {};
+            clock[row.actorId] = row.seq;
+            accum[row.repoId] = clock;
+            return accum;
+        }, {});
+        return Object.entries(byRepoId).map(([repoId, clock]) => [
+            clock,
+            docId,
+            repoId,
+        ]);
+    }
+    getMaximumSatisfiedClock(docId, candidate) {
+        const clocks = this.getAllForDocumentId(docId).map(([clock]) => clock);
+        const satisfiedClocks = clocks.filter((clock) => Clock.isSatisfied(clock, candidate));
+        return Clock.getMax(satisfiedClocks);
     }
 }
 exports.default = ClockStore;

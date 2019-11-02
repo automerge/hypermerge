@@ -68,8 +68,6 @@ export function testConnectionPair(): [PeerConnection, PeerConnection] {
 }
 
 export function testDuplexPair(): [Duplex, Duplex] {
-  const allowExit = preventExit()
-
   const duplexA = new Duplex({
     read(size) {
       const chunk = duplexB.read(size)
@@ -79,6 +77,12 @@ export function testDuplexPair(): [Duplex, Duplex] {
       // Push async to avoid sync race conditions:
       setImmediate(() => {
         duplexB.push(chunk, encoding)
+        cb()
+      })
+    },
+    final(cb) {
+      setImmediate(() => {
+        duplexB.push(null)
         cb()
       })
     },
@@ -96,15 +100,19 @@ export function testDuplexPair(): [Duplex, Duplex] {
         cb()
       })
     },
+    final(cb) {
+      setImmediate(() => {
+        duplexA.push(null)
+        cb()
+      })
+    },
   })
 
   duplexA.on('close', () => {
-    allowExit()
     duplexB.destroy()
   })
 
   duplexB.on('close', () => {
-    allowExit()
     duplexA.destroy()
   })
 
@@ -127,6 +135,42 @@ export function testStorageFn() {
 export function preventExit(): () => void {
   const interval = setInterval(() => {}, 999999)
   return () => clearInterval(interval)
+}
+
+type StreamExpectations =
+  | ['end', string]
+  | ['end', string, () => void]
+  | ['close', string]
+  | ['data', Buffer, string]
+  | ['error', string, string]
+
+export function expectStream(
+  t: test.Test,
+  stream: NodeJS.ReadableStream,
+  expected: StreamExpectations[]
+) {
+  const onEvent = expect(
+    t,
+    (x) => x,
+    expected.map(([event, arg1, arg2]): any => {
+      switch (event) {
+        case 'data':
+          return [['data', arg1], arg2 || 'stream gets data']
+        case 'end':
+          return [['end'], arg1 || 'stream ends', arg2]
+        case 'close':
+          return [['close'], arg1 || 'stream closes']
+        case 'error':
+          return [['error', arg1], arg2 || 'stream errors']
+      }
+    })
+  )
+
+  stream
+    .on('end', () => onEvent(['end']))
+    .on('data', (data) => onEvent(['data', data]))
+    .on('error', (err) => onEvent(['error', err.message]))
+    .on('close', () => onEvent(['close']))
 }
 
 export function expectDocs(t: test.Test, docs: DocInfo[]) {

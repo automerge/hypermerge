@@ -21,6 +21,11 @@ const Misc_1 = require("./Misc");
 const Stream = __importStar(require("./StreamLogic"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 class FileServerClient {
+    constructor() {
+        this.agent = new http.Agent({
+            keepAlive: true,
+        });
+    }
     setServerPath(path) {
         this.serverPath = Misc_1.toIpcPath(path);
     }
@@ -28,8 +33,7 @@ class FileServerClient {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.serverPath)
                 throw new Error('FileServer has not been started on RepoBackend');
-            const [req, response] = request({
-                socketPath: this.serverPath,
+            const [req, response] = this.request({
                 path: '/',
                 method: 'POST',
                 headers: {
@@ -42,8 +46,7 @@ class FileServerClient {
     }
     header(url) {
         return __awaiter(this, void 0, void 0, function* () {
-            const [req, responsePromise] = request({
-                socketPath: this.serverPath,
+            const [req, responsePromise] = this.request({
                 path: '/' + url,
                 method: 'HEAD',
             });
@@ -56,8 +59,7 @@ class FileServerClient {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.serverPath)
                 throw new Error('FileServer has not been started on RepoBackend');
-            const [req, responsePromise] = request({
-                socketPath: this.serverPath,
+            const [req, responsePromise] = this.request({
                 path: '/' + url,
                 method: 'GET',
             });
@@ -66,6 +68,11 @@ class FileServerClient {
             const header = getHeader(url, response);
             return [header, response];
         });
+    }
+    request(options) {
+        if (!this.serverPath)
+            throw new Error('Must call setServerPath before making requests.');
+        return request(Object.assign({ agent: this.agent, socketPath: this.serverPath }, options));
     }
 }
 exports.default = FileServerClient;

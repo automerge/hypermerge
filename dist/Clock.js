@@ -1,5 +1,29 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+function getMax(clocks) {
+    let maxClock;
+    let max;
+    for (let clock of clocks) {
+        const value = sequenceTotal(clock);
+        if (!max || value > max) {
+            maxClock = clock;
+            max = value;
+        }
+    }
+    return maxClock;
+}
+exports.getMax = getMax;
+function sequenceTotal(clock) {
+    return Object.values(clock).reduce((total, seq) => (total += seq));
+}
+exports.sequenceTotal = sequenceTotal;
+// Note: the candidate clock may be a superset of the target clock. That's ok. We only care
+// that the candidate clock completely covers the target clock and that the sequence numbers
+// for all of the overlapping ids are greater or equal in the candidate clock.
+function isSatisfied(target, candidate) {
+    return Object.entries(target).every(([id, value]) => id in candidate && candidate[id] >= value);
+}
+exports.isSatisfied = isSatisfied;
 function actors(clock) {
     return Object.keys(clock);
 }
