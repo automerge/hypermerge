@@ -11,7 +11,10 @@ export default class FileServer {
     isListening(): boolean;
     close(): Promise<void>;
     private onConnection;
-    private sendCode;
+    /**
+     * Handles incoming connections, and can respond by throwing FileServerError.
+     */
+    private onConnectionUnsafe;
     private upload;
-    private writeHeaders;
+    private sendHeaders;
 }
