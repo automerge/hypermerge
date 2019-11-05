@@ -1,6 +1,7 @@
 import { Server, createServer, IncomingMessage, ServerResponse, IncomingHttpHeaders } from 'http'
 import { parse } from 'url'
 import fs from 'fs'
+import * as JsonBuffer from './JsonBuffer'
 import FileStore, { isHyperfileUrl } from './FileStore'
 import { HyperfileUrl, toIpcPath } from './Misc'
 
@@ -16,6 +17,7 @@ export default class FileServer {
   constructor(store: FileStore) {
     this.files = store
     this.http = createServer(this.onConnection)
+    this.http.setTimeout(0)
   }
 
   listen(pathOrAddress: string | HostAndPort) {
@@ -49,48 +51,67 @@ export default class FileServer {
   }
 
   private onConnection = async (req: IncomingMessage, res: ServerResponse) => {
+    try {
+      await this.onConnectionUnsafe(req, res)
+    } catch (err) {
+      if (err instanceof FileServerError) {
+        res.writeHead(err.code, err.reason)
+        res.end()
+      } else {
+        res.writeHead(500, 'Internal Server Error', {
+          'Content-Type': 'application/json',
+        })
+
+        const details = {
+          error: { name: err.name, message: err.message, stack: err.stack },
+        }
+
+        res.end(JsonBuffer.bufferify(details))
+      }
+    }
+  }
+
+  /**
+   * Handles incoming connections, and can respond by throwing FileServerError.
+   */
+  private onConnectionUnsafe = async (req: IncomingMessage, res: ServerResponse) => {
     const { method } = req
     const { path } = parse(req.url!)
     const url = path!.slice(1)
 
-    if (!method) return this.sendCode(res, 400, 'Bad Request')
+    if (!method) throw new FileServerError(400, 'Bad Request')
 
     switch (req.method) {
       case 'POST':
         return this.upload(req, res)
 
       case 'HEAD':
+        if (!isHyperfileUrl(url)) throw new NotFoundError()
+        await this.sendHeaders(url, res)
+        res.end()
+        return
+
       case 'GET':
-        if (!isHyperfileUrl(url)) return this.sendCode(res, 404, 'Not Found')
+        if (!isHyperfileUrl(url)) throw new NotFoundError()
 
-        await this.writeHeaders(url, res)
-
-        if (method === 'GET') {
-          const stream = await this.files.read(url)
-          stream.pipe(res)
-        } else {
-          res.end()
-        }
+        await this.sendHeaders(url, res)
+        const stream = await this.files.read(url)
+        stream.pipe(res)
         return
 
       default:
-        return this.sendCode(res, 405, 'Method Not Allowed')
+        throw new FileServerError(405, 'Method Not Allowed')
     }
-  }
-
-  private sendCode(res: ServerResponse, code: number, reason: string): void {
-    res.writeHead(code, reason)
-    res.end()
   }
 
   private async upload(req: IncomingMessage, res: ServerResponse) {
     const mimeType = getMimeType(req.headers)
     const header = await this.files.write(req, mimeType)
     res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify(header))
+    res.end(JsonBuffer.bufferify(header))
   }
 
-  private async writeHeaders(url: HyperfileUrl, res: ServerResponse) {
+  private async sendHeaders(url: HyperfileUrl, res: ServerResponse) {
     const header = await this.files.header(url)
 
     res.writeHead(200, {
@@ -107,4 +128,16 @@ function getMimeType(headers: IncomingHttpHeaders): string {
 
   if (!mimeType) throw new Error('Content-Type is a required header.')
   return mimeType
+}
+
+class FileServerError extends Error {
+  constructor(public code: number, public reason: string) {
+    super()
+  }
+}
+
+class NotFoundError extends FileServerError {
+  constructor() {
+    super(404, 'Not Found')
+  }
 }

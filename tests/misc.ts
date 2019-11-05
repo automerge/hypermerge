@@ -43,9 +43,30 @@ export function testNetwork(): Network {
   return new Network(testPeerId())
 }
 
-export function testPeerPair(): [NetworkPeer, NetworkPeer] {
-  const idA = testPeerId()
-  const idB = testPeerId()
+/**
+ * Returns a pair of directly-connected repos.
+ */
+export function testRepoPair(): [Repo, Repo] {
+  const repoA = testRepo()
+  const repoB = testRepo()
+
+  const netA = repoA.back.network
+  const netB = repoB.back.network
+
+  const [peerA, peerB] = testPeerPair(netA.selfId, netB.selfId)
+
+  netA.peers.set(peerA.id, peerA)
+  peerA.connectionQ.subscribe(() => netA.peerQ.push(peerA))
+
+  netB.peers.set(peerB.id, peerB)
+  peerB.connectionQ.subscribe(() => netB.peerQ.push(peerB))
+
+  return [repoA, repoB]
+}
+
+export function testPeerPair(idA?: PeerId, idB?: PeerId): [NetworkPeer, NetworkPeer] {
+  if (!idA) idA = testPeerId()
+  if (!idB) idB = testPeerId()
 
   const peerA = new NetworkPeer(idA, idB)
   const peerB = new NetworkPeer(idB, idA)
