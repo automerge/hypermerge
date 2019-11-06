@@ -7,7 +7,7 @@ export default class FileServer {
     private files;
     private http;
     constructor(store: FileStore);
-    listen(pathOrAddress: string | HostAndPort): void;
+    listen(pathOrAddress: string | HostAndPort): Promise<void>;
     isListening(): boolean;
     close(): Promise<void>;
     private onConnection;
