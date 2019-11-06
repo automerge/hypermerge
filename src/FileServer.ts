@@ -20,20 +20,22 @@ export default class FileServer {
     this.http.setTimeout(0)
   }
 
-  listen(pathOrAddress: string | HostAndPort) {
-    if (typeof pathOrAddress === 'string') {
-      const ipcPath = toIpcPath(pathOrAddress)
-      // For some reason, the non-sync version doesn't work :shrugging-man:
-      // fs.unlink(path, (err) => {
-      //   this.http.listen(path)
-      // })
-      try {
-        fs.unlinkSync(ipcPath)
-      } catch {}
-      this.http.listen(ipcPath)
-    } else {
-      this.http.listen(pathOrAddress)
-    }
+  listen(pathOrAddress: string | HostAndPort): Promise<void> {
+    return new Promise((res) => {
+      if (typeof pathOrAddress === 'string') {
+        const ipcPath = toIpcPath(pathOrAddress)
+        // For some reason, the non-sync version doesn't work :shrugging-man:
+        // fs.unlink(path, (err) => {
+        //   this.http.listen(path)
+        // })
+        try {
+          fs.unlinkSync(ipcPath)
+        } catch {}
+        this.http.listen(ipcPath, () => res())
+      } else {
+        this.http.listen(pathOrAddress, () => res())
+      }
+    })
   }
 
   isListening(): boolean {
