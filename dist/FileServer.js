@@ -103,7 +103,7 @@ class FileServer {
     close() {
         return new Promise((res) => {
             if (this.isListening()) {
-                this.http.close(res);
+                this.http.close(() => res());
             }
             else {
                 res();
