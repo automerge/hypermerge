@@ -1,42 +1,19 @@
+import { Repo, DocUrl } from '../src'
+import Hyperswarm from 'hyperswarm'
 
-import fs from "fs"
-import { Repo } from "../src"
-const raf: Function = require("random-access-file")
-const id = process.argv[2]
-const _path = process.argv[3]
-const path = _path || ".data"
+const url = process.argv[2] as DocUrl
 
-if (id === undefined) {
-  console.log("Usage: cat DOC_ID [REPO]")
+if (url === undefined) {
+  console.log('Usage: cat <doc_url>')
   process.exit()
 }
 
-if (_path && !fs.existsSync(_path + "/ledger")) {
-  console.log("No repo found: " + _path)
-  process.exit()
-}
+const repo = new Repo({ memory: true })
 
-setTimeout(() => {}, 50000)
+repo.setSwarm(Hyperswarm())
 
-const repo = new Repo({ path, storage: raf })
+console.log('Watching document:', url)
 
-repo.meta(id,(meta) => {
-  console.log("META",meta)
-  if (!meta) {
-    console.log("No such doc or file in repo")
-    process.exit()
-  } else if (meta.type === "Document") {
-    repo.doc(id, (doc,c) => {
-      console.log("Clock", c)
-      console.log(doc)
-      process.exit()
-    })
-  } else if (meta.type === "File") {
-    repo.readFile(id, (data,mimeType) => {
-      console.log(id)
-      console.log("File Size: ", data.length)
-      console.log("File Type: ", mimeType)
-      process.exit()
-    })
-  }
+repo.watch(url, (doc) => {
+  console.log(doc)
 })
