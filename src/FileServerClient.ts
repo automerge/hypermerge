@@ -6,23 +6,22 @@ import * as JsonBuffer from './JsonBuffer'
 import { Header } from './FileStore'
 
 export default class FileServerClient {
-  serverPath?: string
+  serverPath: Promise<string>
   agent: http.Agent
+  setServerPath!: (path: string) => void
 
   constructor() {
     this.agent = new http.Agent({
       keepAlive: true,
     })
-  }
 
-  setServerPath(path: string) {
-    this.serverPath = toIpcPath(path)
+    this.serverPath = new Promise((res) => {
+      this.setServerPath = (path: string) => res(toIpcPath(path))
+    })
   }
 
   async write(stream: Readable, mimeType: string): Promise<Header> {
-    if (!this.serverPath) throw new Error('FileServer has not been started on RepoBackend')
-
-    const [req, response] = this.request({
+    const [req, response] = await this.request({
       path: '/',
       method: 'POST',
       headers: {
@@ -36,7 +35,7 @@ export default class FileServerClient {
   }
 
   async header(url: HyperfileUrl): Promise<Header> {
-    const [req, responsePromise] = this.request({
+    const [req, responsePromise] = await this.request({
       path: '/' + url,
       method: 'HEAD',
     })
@@ -47,9 +46,7 @@ export default class FileServerClient {
   }
 
   async read(url: HyperfileUrl): Promise<[Header, Readable]> {
-    if (!this.serverPath) throw new Error('FileServer has not been started on RepoBackend')
-
-    const [req, responsePromise] = this.request({
+    const [req, responsePromise] = await this.request({
       path: '/' + url,
       method: 'GET',
     })
@@ -61,14 +58,14 @@ export default class FileServerClient {
     return [header, response]
   }
 
-  private request(
+  private async request(
     options: http.RequestOptions
-  ): [http.ClientRequest, Promise<http.IncomingMessage>] {
-    if (!this.serverPath) throw new Error('Must call setServerPath before making requests.')
+  ): Promise<[http.ClientRequest, Promise<http.IncomingMessage>]> {
+    const socketPath = await this.serverPath
 
     return request({
       agent: this.agent,
-      socketPath: this.serverPath,
+      socketPath,
       ...options,
     })
   }

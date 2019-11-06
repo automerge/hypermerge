@@ -120,10 +120,11 @@ export class RepoBackend {
   startFileServer = (path: string) => {
     if (this.fileServer.isListening()) return
 
-    this.fileServer.listen(path)
-    this.toFrontend.push({
-      type: 'FileServerReadyMsg',
-      path,
+    this.fileServer.listen(path).then(() => {
+      this.toFrontend.push({
+        type: 'FileServerReadyMsg',
+        path,
+      })
     })
   }
 

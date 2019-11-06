@@ -81,21 +81,23 @@ class FileServer {
         this.http.setTimeout(0);
     }
     listen(pathOrAddress) {
-        if (typeof pathOrAddress === 'string') {
-            const ipcPath = Misc_1.toIpcPath(pathOrAddress);
-            // For some reason, the non-sync version doesn't work :shrugging-man:
-            // fs.unlink(path, (err) => {
-            //   this.http.listen(path)
-            // })
-            try {
-                fs_1.default.unlinkSync(ipcPath);
+        return new Promise((res) => {
+            if (typeof pathOrAddress === 'string') {
+                const ipcPath = Misc_1.toIpcPath(pathOrAddress);
+                // For some reason, the non-sync version doesn't work :shrugging-man:
+                // fs.unlink(path, (err) => {
+                //   this.http.listen(path)
+                // })
+                try {
+                    fs_1.default.unlinkSync(ipcPath);
+                }
+                catch (_a) { }
+                this.http.listen(ipcPath, () => res());
             }
-            catch (_a) { }
-            this.http.listen(ipcPath);
-        }
-        else {
-            this.http.listen(pathOrAddress);
-        }
+            else {
+                this.http.listen(pathOrAddress, () => res());
+            }
+        });
     }
     isListening() {
         return this.http.listening;

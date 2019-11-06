@@ -4,10 +4,10 @@ import { Readable } from 'stream';
 import { HyperfileUrl } from './Misc';
 import { Header } from './FileStore';
 export default class FileServerClient {
-    serverPath?: string;
+    serverPath: Promise<string>;
     agent: http.Agent;
+    setServerPath: (path: string) => void;
     constructor();
-    setServerPath(path: string): void;
     write(stream: Readable, mimeType: string): Promise<Header>;
     header(url: HyperfileUrl): Promise<Header>;
     read(url: HyperfileUrl): Promise<[Header, Readable]>;

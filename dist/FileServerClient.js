@@ -25,15 +25,13 @@ class FileServerClient {
         this.agent = new http.Agent({
             keepAlive: true,
         });
-    }
-    setServerPath(path) {
-        this.serverPath = Misc_1.toIpcPath(path);
+        this.serverPath = new Promise((res) => {
+            this.setServerPath = (path) => res(Misc_1.toIpcPath(path));
+        });
     }
     write(stream, mimeType) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.serverPath)
-                throw new Error('FileServer has not been started on RepoBackend');
-            const [req, response] = this.request({
+            const [req, response] = yield this.request({
                 path: '/',
                 method: 'POST',
                 headers: {
@@ -46,7 +44,7 @@ class FileServerClient {
     }
     header(url) {
         return __awaiter(this, void 0, void 0, function* () {
-            const [req, responsePromise] = this.request({
+            const [req, responsePromise] = yield this.request({
                 path: '/' + url,
                 method: 'HEAD',
             });
@@ -57,9 +55,7 @@ class FileServerClient {
     }
     read(url) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.serverPath)
-                throw new Error('FileServer has not been started on RepoBackend');
-            const [req, responsePromise] = this.request({
+            const [req, responsePromise] = yield this.request({
                 path: '/' + url,
                 method: 'GET',
             });
@@ -70,9 +66,10 @@ class FileServerClient {
         });
     }
     request(options) {
-        if (!this.serverPath)
-            throw new Error('Must call setServerPath before making requests.');
-        return request(Object.assign({ agent: this.agent, socketPath: this.serverPath }, options));
+        return __awaiter(this, void 0, void 0, function* () {
+            const socketPath = yield this.serverPath;
+            return request(Object.assign({ agent: this.agent, socketPath }, options));
+        });
     }
 }
 exports.default = FileServerClient;
