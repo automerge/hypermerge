@@ -1,5 +1,5 @@
 import test from 'tape'
-import { RepoBackend, RepoFrontend } from '../src'
+import { RepoBackend, RepoFrontend, Signature } from '../src'
 import { expect, expectDocs, generateServerPath, testRepo } from './misc'
 import { validateDocURL } from '../src/Metadata'
 import { INFINITY_SEQ } from '../src/CursorStore'
@@ -161,6 +161,80 @@ test('Test materialize...', (t) => {
     state.foo = 'bar3'
   })
   test.onFinish(() => repo.close())
+})
+
+test('Test signing and verifying', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const url = repo.create({ foo: 'bar0' })
+  const message = 'test message'
+  const signature = await repo.sign(url, message)
+  const success = await repo.verify(url, message, signature)
+  t.true(success)
+  test.onFinish(() => repo.close())
+})
+
+test('Test verifying garbage fails', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const url = repo.create({ foo: 'bar0' })
+  const message = 'test message'
+  await repo.sign(url, message)
+  const success = await repo.verify(url, message, 'thisisnotasignature' as Signature)
+  t.false(success)
+  test.onFinish(() => repo.close())
+})
+
+test('Test verifying with wrong signature fails', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const url1 = repo.create({ foo: 'bar0' })
+  const url2 = repo.create({ foo2: 'bar1' })
+  const message = 'test message'
+  const signature2 = await repo.sign(url2, message)
+  const success = await repo.verify(url1, message, signature2)
+  t.false(success)
+  test.onFinish(() => repo.close())
+})
+
+test('Test verifying with wrong message fails', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const url = repo.create({ foo: 'bar0' })
+  const message = 'test message'
+  const message2 = 'test message 2'
+  const signature = await repo.sign(url, message)
+  const success = await repo.verify(url, message2, signature)
+  t.false(success)
+  test.onFinish(() => repo.close())
+})
+
+test('Test signing a document from another repo', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const repo2 = testRepo()
+  const url = repo.create({ foo: 'bar0' })
+  const message = 'test message'
+  repo2.sign(url, message).then(() => t.fail('sign() promise should reject'), () => t.pass())
+  test.onFinish(() => {
+    repo.close()
+    repo2.close()
+  })
+})
+
+test('Test verifying a signature from another repo succeeds', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const repo2 = testRepo()
+  const url = repo.create({ foo: 'bar0' })
+  const message = 'test message'
+  const signature = await repo.sign(url, message)
+  const success = await repo2.verify(url, message, signature)
+  t.true(success)
+  test.onFinish(() => {
+    repo.close()
+    repo2.close()
+  })
 })
 
 test('Test meta...', (t) => {

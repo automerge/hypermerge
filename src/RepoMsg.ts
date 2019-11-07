@@ -1,11 +1,15 @@
 import { Patch, Change } from 'automerge'
 import { PublicMetadata } from './Metadata'
-import { DocId, HyperfileId, ActorId } from './Misc'
+import { DocId, HyperfileId, ActorId, Signature } from './Misc'
 import { PublicId, SecretId } from './Keys'
 
-export type ToBackendQueryMsg = MaterializeMsg | MetadataMsg
+export type ToBackendQueryMsg = MaterializeMsg | MetadataMsg | SignMsg | VerifyMsg
 
-export type ToFrontendReplyMsg = MaterializeReplyMsg | MetadataReplyMsg
+export type ToFrontendReplyMsg =
+  | MaterializeReplyMsg
+  | MetadataReplyMsg
+  | SignReplyMsg
+  | VerifyReplyMsg
 
 export type ToBackendRepoMsg =
   | NeedsActorIdMsg
@@ -30,7 +34,7 @@ export interface QueryMsg {
 export interface ReplyMsg {
   type: 'Reply'
   id: number
-  payload: any // PublicMetadata | Patch
+  payload: ToFrontendReplyMsg // PublicMetadata | Patch
   //  reply: ToFrontendReplyMsg;
 }
 
@@ -43,6 +47,37 @@ export interface MaterializeMsg {
 export interface MetadataMsg {
   type: 'MetadataMsg'
   id: DocId | HyperfileId
+}
+
+export interface SignMsg {
+  type: 'SignMsg'
+  docId: DocId
+  message: string
+}
+
+export type SignReplyMsg = SignSuccessReplyMsg | SignErrorReplyMsg
+
+export interface SignSuccessReplyMsg {
+  type: 'SignReplyMsg'
+  success: true
+  signature: Signature
+}
+
+export interface SignErrorReplyMsg {
+  type: 'SignReplyMsg'
+  success: false
+}
+
+export interface VerifyMsg {
+  type: 'VerifyMsg'
+  docId: DocId
+  message: string
+  signature: Signature
+}
+
+export interface VerifyReplyMsg {
+  type: 'VerifyReplyMsg'
+  success: boolean
 }
 
 export interface CreateMsg {

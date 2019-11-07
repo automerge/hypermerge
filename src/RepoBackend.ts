@@ -1,8 +1,14 @@
 import Queue from './Queue'
-import { Metadata } from './Metadata'
+import { Metadata, PublicMetadata } from './Metadata'
 import { Actor, ActorMsg } from './Actor'
 import * as Clock from './Clock'
-import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg, DocumentMsg } from './RepoMsg'
+import {
+  ToBackendQueryMsg,
+  ToBackendRepoMsg,
+  ToFrontendRepoMsg,
+  DocumentMsg,
+  SignReplyMsg,
+} from './RepoMsg'
 import { Backend, Change } from 'automerge'
 import * as DocBackend from './DocBackend'
 import path from 'path'
@@ -553,6 +559,42 @@ export class RepoBackend {
 
   handleQuery = async (id: number, query: ToBackendQueryMsg) => {
     switch (query.type) {
+      case 'SignMsg': {
+        let payload: SignReplyMsg
+        try {
+          const signature = await this.feeds.sign(query.docId, query.message)
+          payload = {
+            type: 'SignReplyMsg',
+            success: true,
+            signature: signature,
+          }
+        } catch {
+          payload = { type: 'SignReplyMsg', success: false }
+        }
+        this.toFrontend.push({
+          type: 'Reply',
+          id,
+          payload,
+        })
+        break
+      }
+      case 'VerifyMsg': {
+        let success
+        try {
+          success = this.feeds.verify(query.docId, query.message, query.signature)
+        } catch {
+          success = false
+        }
+        this.toFrontend.push({
+          type: 'Reply',
+          id,
+          payload: {
+            type: 'VerifyReplyMsg',
+            success,
+          },
+        })
+        break
+      }
       case 'MetadataMsg': {
         // TODO: We're recreating the MetadataMsg which used to live in Metadata.ts
         // Its not clear if this is used or useful. It looks like the data (which is faithfully
@@ -560,7 +602,7 @@ export class RepoBackend {
         // NOTE: Responses to file metadata won't reply until the ledger is fully loaded. Document
         // responses will respond immediately.
         this.meta.readyQ.push(() => {
-          let payload
+          let payload: PublicMetadata | null
           if (this.meta.isDoc(query.id)) {
             const cursor = this.cursors.get(this.id, query.id)
             const actors = Clock.actors(cursor)
@@ -576,7 +618,11 @@ export class RepoBackend {
           } else {
             payload = null
           }
-          this.toFrontend.push({ type: 'Reply', id, payload })
+          this.toFrontend.push({
+            type: 'Reply',
+            id,
+            payload: { type: 'MetadataReplyMsg', metadata: payload },
+          })
         })
         break
       }
@@ -587,7 +633,7 @@ export class RepoBackend {
           .slice(0, query.history)
           .toArray()
         const [, patch] = Backend.applyChanges(Backend.init(), changes)
-        this.toFrontend.push({ type: 'Reply', id, payload: patch })
+        this.toFrontend.push({ type: 'Reply', id, payload: { type: 'MaterializeReplyMsg', patch } })
         break
       }
     }

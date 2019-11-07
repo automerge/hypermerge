@@ -250,7 +250,7 @@ export class Metadata {
     log(`metadata task=${msg} time=${duration}ms total=${total}ms`)
   }
 
-  fileMetadata(id: HyperfileId) {
+  fileMetadata(id: HyperfileId): PublicFileMetadata {
     const bytes = this.files.get(id)!
     const mimeType = this.mimeTypes.get(id)!
     return {
