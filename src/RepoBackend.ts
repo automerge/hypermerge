@@ -579,7 +579,12 @@ export class RepoBackend {
         break
       }
       case 'VerifyMsg': {
-        const success = this.feeds.verify(query.docId, query.message, query.signature)
+        let success
+        try {
+          success = this.feeds.verify(query.docId, query.message, query.signature)
+        } catch {
+          success = false
+        }
         this.toFrontend.push({
           type: 'Reply',
           id,

@@ -1,5 +1,5 @@
 import test from 'tape'
-import { RepoBackend, RepoFrontend } from '../src'
+import { RepoBackend, RepoFrontend, Signature } from '../src'
 import { expect, expectDocs, generateServerPath, testRepo } from './misc'
 import { validateDocURL } from '../src/Metadata'
 import { INFINITY_SEQ } from '../src/CursorStore'
@@ -174,6 +174,16 @@ test('Test signing and verifying', async (t) => {
   test.onFinish(() => repo.close())
 })
 
+test('Test verifying garbage fails', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const url = repo.create({ foo: 'bar0' })
+  const message = 'test message'
+  await repo.sign(url, message)
+  const success = await repo.verify(url, message, 'thisisnotasignature' as Signature)
+  t.false(success)
+  test.onFinish(() => repo.close())
+})
 test('Test signing a document from another repo', async (t) => {
   t.plan(1)
   const repo = testRepo()
