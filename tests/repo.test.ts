@@ -184,6 +184,31 @@ test('Test verifying garbage fails', async (t) => {
   t.false(success)
   test.onFinish(() => repo.close())
 })
+
+test('Test verifying with wrong signature fails', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const url1 = repo.create({ foo: 'bar0' })
+  const url2 = repo.create({ foo2: 'bar1' })
+  const message = 'test message'
+  const signature2 = await repo.sign(url2, message)
+  const success = await repo.verify(url1, message, signature2)
+  t.false(success)
+  test.onFinish(() => repo.close())
+})
+
+test('Test verifying with wrong message fails', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const url = repo.create({ foo: 'bar0' })
+  const message = 'test message'
+  const message2 = 'test message 2'
+  const signature = await repo.sign(url, message)
+  const success = await repo.verify(url, message2, signature)
+  t.false(success)
+  test.onFinish(() => repo.close())
+})
+
 test('Test signing a document from another repo', async (t) => {
   t.plan(1)
   const repo = testRepo()
