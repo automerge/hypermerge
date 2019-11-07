@@ -163,6 +163,45 @@ test('Test materialize...', (t) => {
   test.onFinish(() => repo.close())
 })
 
+test('Test signing and verifying', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const url = repo.create({ foo: 'bar0' })
+  const message = 'test message'
+  const signature = await repo.sign(url, message)
+  const success = await repo.verify(url, message, signature)
+  t.true(success)
+  test.onFinish(() => repo.close())
+})
+
+test('Test signing a document from another repo', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const repo2 = testRepo()
+  const url = repo.create({ foo: 'bar0' })
+  const message = 'test message'
+  repo2.sign(url, message).then(() => t.fail('sign() promise should reject'), () => t.pass())
+  test.onFinish(() => {
+    repo.close()
+    repo2.close()
+  })
+})
+
+test('Test verifying a signature from another repo succeeds', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const repo2 = testRepo()
+  const url = repo.create({ foo: 'bar0' })
+  const message = 'test message'
+  const signature = await repo.sign(url, message)
+  const success = await repo2.verify(url, message, signature)
+  t.true(success)
+  test.onFinish(() => {
+    repo.close()
+    repo2.close()
+  })
+})
+
 test('Test meta...', (t) => {
   t.plan(2)
   const repo = testRepo()

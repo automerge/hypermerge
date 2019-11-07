@@ -143,6 +143,7 @@ declare module 'hypercore' {
     writable: boolean
     discoveryKey: DiscoveryKey
     key: PublicKey
+    secretKey?: SecretKey
     length: number
     ready: Function
     readonly extensions: string[]

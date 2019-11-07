@@ -12,6 +12,9 @@ export type BaseUrl = string & { __baseUrl: true }
 export type DocUrl = BaseUrl & { __docUrl: true }
 export type HyperfileUrl = BaseUrl & { __hyperfileUrl: true }
 
+export type SignatureBuffer = Buffer & { __signatureBuffer: true }
+export type Signature = string & { __signature: true }
+
 export function decodeId(id: EncodedKeyId): Key {
   return Keys.decode(id)
 }
@@ -58,6 +61,18 @@ export function hyperfileActorId(hyperfileId: HyperfileId): ActorId {
 
 export function isBaseUrl(str: BaseUrl | EncodedKeyId): str is BaseUrl {
   return str.includes(':')
+}
+
+export function encodeSignature(signature: SignatureBuffer): Signature
+export function encodeSignature(signature: Buffer): Signature
+export function encodeSignature(signature: Buffer): Signature {
+  return signature.toString('base64') as Signature
+}
+
+export function decodeSignature(signature: Signature): SignatureBuffer
+export function decodeSignature(signature: string): SignatureBuffer
+export function decodeSignature(signature: string): SignatureBuffer {
+  return Buffer.from(signature, 'base64') as SignatureBuffer
 }
 
 export function joinSets<T>(sets: Set<T>[]): Set<T> {

@@ -1,13 +1,30 @@
 import Queue from './Queue'
 import MapSet from './MapSet'
-import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg'
+import {
+  ToBackendQueryMsg,
+  ToBackendRepoMsg,
+  ToFrontendRepoMsg,
+  MaterializeReplyMsg,
+  MetadataReplyMsg,
+  SignReplyMsg,
+  VerifyReplyMsg,
+} from './RepoMsg'
 import { Handle } from './Handle'
 import { Doc, Patch, Frontend, ChangeFn } from 'automerge'
 import { DocFrontend } from './DocFrontend'
 import { clock2strs, Clock, clockDebug } from './Clock'
 import * as Keys from './Keys'
 import { PublicMetadata, validateDocURL, validateURL } from './Metadata'
-import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId } from './Misc'
+import {
+  DocUrl,
+  DocId,
+  ActorId,
+  toDocUrl,
+  HyperfileId,
+  HyperfileUrl,
+  rootActorId,
+  Signature,
+} from './Misc'
 import FileServerClient from './FileServerClient'
 
 export interface DocMetadata {
@@ -58,7 +75,8 @@ export class RepoFrontend {
     const { id } = validateURL(url)
     this.queryBackend(
       { type: 'MetadataMsg', id: id as DocId | HyperfileId },
-      (meta: PublicMetadata | undefined) => {
+      (msg: MetadataReplyMsg) => {
+        const meta = msg.metadata
         if (meta) {
           const doc = this.docs.get(id as DocId)
           if (doc && meta.type === 'Document') {
@@ -67,7 +85,7 @@ export class RepoFrontend {
             meta.clock = doc.clock
           }
         }
-        cb(meta)
+        cb(meta || undefined) // TODO: change this to null
       }
     )
   }
@@ -130,6 +148,25 @@ export class RepoFrontend {
     })
   }
 
+  sign = (url: DocUrl, message: string): Promise<Signature> => {
+    return new Promise((res, rej) => {
+      const docId = validateDocURL(url)
+      this.queryBackend({ type: 'SignMsg', docId, message }, (msg: SignReplyMsg) => {
+        if (msg.success) return res(msg.signature)
+        rej()
+      })
+    })
+  }
+
+  verify = (url: DocUrl, message: string, signature: Signature): Promise<boolean> => {
+    return new Promise((res) => {
+      const docId = validateDocURL(url)
+      this.queryBackend({ type: 'VerifyMsg', docId, message, signature }, (msg: VerifyReplyMsg) => {
+        res(msg.success)
+      })
+    })
+  }
+
   materialize = <T>(url: DocUrl, history: number, cb: (val: Doc<T>) => void) => {
     const id = validateDocURL(url)
     const doc = this.docs.get(id)
@@ -139,9 +176,9 @@ export class RepoFrontend {
     if (history < 0 && history >= doc.history) {
       throw new Error(`Invalid history ${history} for id ${id}`)
     }
-    this.queryBackend({ type: 'MaterializeMsg', history, id }, (patch: Patch) => {
+    this.queryBackend({ type: 'MaterializeMsg', history, id }, (msg: MaterializeReplyMsg) => {
       const doc = Frontend.init({ deferActorId: true }) as Doc<T>
-      cb(Frontend.applyPatch(doc, patch))
+      cb(Frontend.applyPatch(doc, msg.patch))
     })
   }
 
