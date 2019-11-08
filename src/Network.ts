@@ -94,7 +94,8 @@ export default class Network {
   }
 
   private onConnection = async (socket: Socket, details: ConnectionDetails) => {
-    details.reconnect(false)
+    // NOTE(jeff): Disabling this for now, the `details.ban()` should already better handle this:
+    // details.reconnect(false)
 
     const conn = new PeerConnection(socket, {
       isClient: details.client,
