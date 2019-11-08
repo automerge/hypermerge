@@ -17,7 +17,7 @@ export default class CryptoClient {
   constructor(request: RequestFn) {
     this.request = request
   }
-  sign = (url: DocUrl, message: string): Promise<Crypto.EncodedSignature> => {
+  sign(url: DocUrl, message: string): Promise<Crypto.EncodedSignature> {
     return new Promise((res, rej) => {
       const docId = validateDocURL(url)
       this.request({ type: 'SignMsg', docId, message }, (msg: SignReplyMsg) => {
@@ -27,7 +27,7 @@ export default class CryptoClient {
     })
   }
 
-  verify = (url: DocUrl, message: string, signature: Crypto.EncodedSignature): Promise<boolean> => {
+  verify(url: DocUrl, message: string, signature: Crypto.EncodedSignature): Promise<boolean> {
     return new Promise((res) => {
       const docId = validateDocURL(url)
       this.request({ type: 'VerifyMsg', docId, message, signature }, (msg: VerifyReplyMsg) => {
@@ -36,10 +36,10 @@ export default class CryptoClient {
     })
   }
 
-  sealedBox = (
+  sealedBox(
     publicKey: Crypto.EncodedPublicEncryptionKey,
     message: string
-  ): Promise<Crypto.EncodedSealedBox> => {
+  ): Promise<Crypto.EncodedSealedBox> {
     return new Promise((res, rej) => {
       this.request({ type: 'SealedBoxMsg', publicKey, message }, (msg: SealedBoxReplyMsg) => {
         if (msg.success) return res(msg.sealedBox)
@@ -48,10 +48,10 @@ export default class CryptoClient {
     })
   }
 
-  openSealedBox = (
+  openSealedBox(
     keyPair: Crypto.EncodedEncryptionKeyPair,
     sealedBox: Crypto.EncodedSealedBox
-  ): Promise<string> => {
+  ): Promise<string> {
     return new Promise((res, rej) => {
       this.request(
         { type: 'OpenSealedBoxMsg', keyPair, sealedBox },
@@ -63,7 +63,7 @@ export default class CryptoClient {
     })
   }
 
-  encryptionKeyPair = (): Promise<Crypto.EncodedEncryptionKeyPair> => {
+  encryptionKeyPair(): Promise<Crypto.EncodedEncryptionKeyPair> {
     return new Promise((res, rej) => {
       this.request({ type: 'EncryptionKeyPairMsg' }, (msg: EncryptionKeyPairReplyMsg) => {
         if (msg.success) return res(msg.keyPair)
