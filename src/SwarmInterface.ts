@@ -17,6 +17,7 @@ export interface SwarmEvents {
   disconnection(socket: Socket, details: ConnectionDetails): void
   peer(peer: PeerInfo): void
   updated(info: { key: Buffer }): void
+  listening(): void
 }
 
 export interface JoinOptions {

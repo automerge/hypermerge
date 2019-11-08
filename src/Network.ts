@@ -7,7 +7,6 @@ import PeerConnection from './PeerConnection'
 export default class Network {
   selfId: PeerId
   joined: Set<DiscoveryId>
-  pending: Set<DiscoveryId>
   peers: Map<PeerId, NetworkPeer>
   peerQ: Queue<NetworkPeer>
   swarm?: Swarm
@@ -16,30 +15,21 @@ export default class Network {
   constructor(selfId: PeerId) {
     this.selfId = selfId
     this.joined = new Set()
-    this.pending = new Set()
     this.peers = new Map()
     this.peerQ = new Queue('Network:peerQ')
     this.joinOptions = { announce: true, lookup: true }
   }
 
   join(discoveryId: DiscoveryId): void {
-    if (this.swarm) {
-      if (this.joined.has(discoveryId)) return
-
-      this.joined.add(discoveryId)
-      this.swarm.join(decodeId(discoveryId), this.joinOptions)
-      this.pending.delete(discoveryId)
-    } else {
-      this.pending.add(discoveryId)
-    }
+    if (this.joined.has(discoveryId)) return
+    this.joined.add(discoveryId)
+    this.swarmJoin(discoveryId)
   }
 
   leave(discoveryId: DiscoveryId): void {
-    this.pending.delete(discoveryId)
     if (!this.joined.has(discoveryId)) return
-
-    if (this.swarm) this.swarm.leave(decodeId(discoveryId))
     this.joined.delete(discoveryId)
+    this.swarmLeave(discoveryId)
   }
 
   setSwarm(swarm: Swarm, joinOptions?: JoinOptions): void {
@@ -48,10 +38,7 @@ export default class Network {
     if (joinOptions) this.joinOptions = joinOptions
     this.swarm = swarm
     this.swarm.on('connection', this.onConnection)
-
-    for (const discoveryId of this.pending) {
-      this.join(discoveryId)
-    }
+    this.swarm.on('listening', this.onListening)
   }
 
   get closedConnectionCount(): number {
@@ -82,6 +69,20 @@ export default class Network {
 
       return peer
     })
+  }
+
+  private swarmJoin(discoveryId: DiscoveryId): void {
+    if (this.swarm) this.swarm.join(decodeId(discoveryId), this.joinOptions)
+  }
+
+  private swarmLeave(discoveryId: DiscoveryId): void {
+    if (this.swarm) this.swarm.leave(decodeId(discoveryId))
+  }
+
+  private onListening = () => {
+    for (const discoveryId of this.joined) {
+      this.swarmJoin(discoveryId)
+    }
   }
 
   private onConnection = async (socket: Socket, details: ConnectionDetails) => {
