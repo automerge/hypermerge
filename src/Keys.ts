@@ -1,13 +1,14 @@
 import * as Base58 from 'bs58'
 import * as crypto from 'hypercore-crypto'
 import { Key, PublicKey, SecretKey, DiscoveryKey, discoveryKey } from 'hypercore-crypto'
+import * as Crypto from './Crypto'
 
 export { Key, PublicKey, SecretKey, DiscoveryKey, discoveryKey }
 
-export type EncodedKeyId = string & { __encodedKeyId: true }
-export type PublicId = EncodedKeyId & { __publicId: true }
-export type SecretId = EncodedKeyId & { __secretId: true }
-export type DiscoveryId = EncodedKeyId & { __discoveryId: true }
+export type KeyId = Crypto.EncodedPublicSigningKey
+export type PublicId = KeyId & { __publicId: true }
+export type SecretId = KeyId & { __secretId: true }
+export type DiscoveryId = KeyId & { __discoveryId: true }
 
 export interface KeyBuffer {
   publicKey: PublicKey
@@ -46,7 +47,7 @@ export function encodePair(keys: KeyBuffer): KeyPair {
 export function decode(key: DiscoveryId): DiscoveryKey
 export function decode(key: SecretId): SecretKey
 export function decode(key: PublicId): PublicKey
-export function decode(key: EncodedKeyId): Key
+export function decode(key: KeyId): Key
 export function decode(key: string): Buffer {
   return Base58.decode(key)
 }
@@ -54,7 +55,7 @@ export function decode(key: string): Buffer {
 export function encode(key: DiscoveryKey): DiscoveryId
 export function encode(key: SecretKey): SecretId
 export function encode(key: PublicKey): PublicId
-export function encode(key: Key): EncodedKeyId
+export function encode(key: Key): KeyId
 export function encode(key: Buffer): string {
   return Base58.encode(key)
 }

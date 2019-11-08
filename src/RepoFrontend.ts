@@ -8,6 +8,9 @@ import {
   MetadataReplyMsg,
   SignReplyMsg,
   VerifyReplyMsg,
+  SealedBoxReplyMsg,
+  OpenSealedBoxReplyMsg,
+  EncryptionKeyPairReplyMsg,
 } from './RepoMsg'
 import { Handle } from './Handle'
 import { Doc, Patch, Frontend, ChangeFn } from 'automerge'
@@ -15,17 +18,9 @@ import { DocFrontend } from './DocFrontend'
 import { clock2strs, Clock, clockDebug } from './Clock'
 import * as Keys from './Keys'
 import { PublicMetadata, validateDocURL, validateURL } from './Metadata'
-import {
-  DocUrl,
-  DocId,
-  ActorId,
-  toDocUrl,
-  HyperfileId,
-  HyperfileUrl,
-  rootActorId,
-  Signature,
-} from './Misc'
+import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId } from './Misc'
 import FileServerClient from './FileServerClient'
+import * as Crypto from './Crypto'
 
 export interface DocMetadata {
   clock: Clock
@@ -148,7 +143,7 @@ export class RepoFrontend {
     })
   }
 
-  sign = (url: DocUrl, message: string): Promise<Signature> => {
+  sign = (url: DocUrl, message: string): Promise<Crypto.EncodedSignature> => {
     return new Promise((res, rej) => {
       const docId = validateDocURL(url)
       this.queryBackend({ type: 'SignMsg', docId, message }, (msg: SignReplyMsg) => {
@@ -158,11 +153,47 @@ export class RepoFrontend {
     })
   }
 
-  verify = (url: DocUrl, message: string, signature: Signature): Promise<boolean> => {
+  verify = (url: DocUrl, message: string, signature: Crypto.EncodedSignature): Promise<boolean> => {
     return new Promise((res) => {
       const docId = validateDocURL(url)
       this.queryBackend({ type: 'VerifyMsg', docId, message, signature }, (msg: VerifyReplyMsg) => {
         res(msg.success)
+      })
+    })
+  }
+
+  sealedBox = (
+    publicKey: Crypto.EncodedPublicEncryptionKey,
+    message: string
+  ): Promise<Crypto.EncodedSealedBox> => {
+    return new Promise((res, rej) => {
+      this.queryBackend({ type: 'SealedBoxMsg', publicKey, message }, (msg: SealedBoxReplyMsg) => {
+        if (msg.success) return res(msg.sealedBox)
+        rej()
+      })
+    })
+  }
+
+  openSealedBox = (
+    keyPair: Crypto.EncodedEncryptionKeyPair,
+    sealedBox: Crypto.EncodedSealedBox
+  ): Promise<string> => {
+    return new Promise((res, rej) => {
+      this.queryBackend(
+        { type: 'OpenSealedBoxMsg', keyPair, sealedBox },
+        (msg: OpenSealedBoxReplyMsg) => {
+          if (msg.success) return res(msg.message)
+          rej()
+        }
+      )
+    })
+  }
+
+  encryptionKeyPair = (): Promise<Crypto.EncodedEncryptionKeyPair> => {
+    return new Promise((res, rej) => {
+      this.queryBackend({ type: 'EncryptionKeyPairMsg' }, (msg: EncryptionKeyPairReplyMsg) => {
+        if (msg.success) return res(msg.keyPair)
+        rej()
       })
     })
   }
