@@ -169,8 +169,8 @@ test('Test signing and verifying', async (t) => {
   const repo = testRepo()
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
-  const signature = await repo.sign(url, message)
-  const success = await repo.verify(url, message, signature)
+  const signature = await repo.crypto.sign(url, message)
+  const success = await repo.crypto.verify(url, message, signature)
   t.true(success)
   test.onFinish(() => repo.close())
 })
@@ -180,8 +180,12 @@ test("Test verifying garbage returns false and doesn't throw", async (t) => {
   const repo = testRepo()
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
-  await repo.sign(url, message)
-  const success = await repo.verify(url, message, 'thisisnotasignature' as Crypto.EncodedSignature)
+  await repo.crypto.sign(url, message)
+  const success = await repo.crypto.verify(
+    url,
+    message,
+    'thisisnotasignature' as Crypto.EncodedSignature
+  )
   t.false(success)
   test.onFinish(() => repo.close())
 })
@@ -192,8 +196,8 @@ test('Test verifying with wrong signature fails', async (t) => {
   const url1 = repo.create({ foo: 'bar0' })
   const url2 = repo.create({ foo2: 'bar1' })
   const message = 'test message'
-  const signature2 = await repo.sign(url2, message)
-  const success = await repo.verify(url1, message, signature2)
+  const signature2 = await repo.crypto.sign(url2, message)
+  const success = await repo.crypto.verify(url1, message, signature2)
   t.false(success)
   test.onFinish(() => repo.close())
 })
@@ -204,7 +208,7 @@ test('Test signing as document from another repo', async (t) => {
   const repo2 = testRepo()
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
-  repo2
+  repo2.crypto
     .sign(url, message)
     .then(() => t.fail('sign() promise should reject'), () => t.pass('Should reject'))
   test.onFinish(() => {
@@ -219,8 +223,8 @@ test('Test verifying a signature from another repo succeeds', async (t) => {
   const repo2 = testRepo()
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
-  const signature = await repo.sign(url, message)
-  const success = await repo2.verify(url, message, signature)
+  const signature = await repo.crypto.sign(url, message)
+  const success = await repo2.crypto.verify(url, message, signature)
   t.true(success)
   test.onFinish(() => {
     repo.close()
@@ -233,8 +237,8 @@ test('Test sealedBox and openSealedBox', async (t) => {
   const repo = testRepo()
   const keyPair = Crypto.encodedEncryptionKeyPair()
   const message = 'test message'
-  const sealedBox = await repo.sealedBox(keyPair.publicKey, message)
-  const openedMessage = await repo.openSealedBox(keyPair, sealedBox)
+  const sealedBox = await repo.crypto.sealedBox(keyPair.publicKey, message)
+  const openedMessage = await repo.crypto.openSealedBox(keyPair, sealedBox)
   t.equal(openedMessage, message)
   test.onFinish(() => {
     repo.close()
@@ -247,8 +251,8 @@ test('Test open sealed box in another repo', async (t) => {
   const repo2 = testRepo()
   const keyPair = Crypto.encodedEncryptionKeyPair()
   const message = 'test message'
-  const sealedBox = await repo.sealedBox(keyPair.publicKey, message)
-  const openedMessage = await repo2.openSealedBox(keyPair, sealedBox)
+  const sealedBox = await repo.crypto.sealedBox(keyPair.publicKey, message)
+  const openedMessage = await repo2.crypto.openSealedBox(keyPair, sealedBox)
   t.equal(openedMessage, message)
   test.onFinish(() => {
     repo.close()
@@ -262,8 +266,8 @@ test('Test fails with wrong keypair', async (t) => {
   const keyPair = Crypto.encodedEncryptionKeyPair()
   const keyPair2 = Crypto.encodedEncryptionKeyPair()
   const message = 'test message'
-  const sealedBox = await repo.sealedBox(keyPair.publicKey, message)
-  repo
+  const sealedBox = await repo.crypto.sealedBox(keyPair.publicKey, message)
+  repo.crypto
     .openSealedBox(keyPair2, sealedBox)
     .then(() => t.fail('openSealedBox should reject'), () => t.pass('Should reject'))
   test.onFinish(() => {
@@ -274,10 +278,10 @@ test('Test fails with wrong keypair', async (t) => {
 test('Test encryption key pair', async (t) => {
   t.plan(1)
   const repo = testRepo()
-  const keyPair = await repo.encryptionKeyPair()
+  const keyPair = await repo.crypto.encryptionKeyPair()
   const message = 'test message'
-  const sealedBox = await repo.sealedBox(keyPair.publicKey, message)
-  const openedMessage = await repo.openSealedBox(keyPair, sealedBox)
+  const sealedBox = await repo.crypto.sealedBox(keyPair.publicKey, message)
+  const openedMessage = await repo.crypto.openSealedBox(keyPair, sealedBox)
   t.equal(openedMessage, message)
   test.onFinish(() => {
     repo.close()
