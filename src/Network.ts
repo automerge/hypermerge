@@ -1,6 +1,6 @@
 import { DiscoveryId, getOrCreate, decodeId } from './Misc'
 import NetworkPeer, { PeerId } from './NetworkPeer'
-import { Swarm, JoinOptions, Socket, ConnectionDetails } from './SwarmInterface'
+import { Swarm, JoinOptions, Socket, ConnectionDetails, PeerInfo } from './SwarmInterface'
 import Queue from './Queue'
 import PeerConnection from './PeerConnection'
 
@@ -9,6 +9,7 @@ export default class Network {
   joined: Set<DiscoveryId>
   peers: Map<PeerId, NetworkPeer>
   peerQ: Queue<NetworkPeer>
+  discovered: Set<string>
   swarm?: Swarm
   joinOptions?: JoinOptions
 
@@ -16,6 +17,7 @@ export default class Network {
     this.selfId = selfId
     this.joined = new Set()
     this.peers = new Map()
+    this.discovered = new Set()
     this.peerQ = new Queue('Network:peerQ')
     this.joinOptions = { announce: true, lookup: true }
   }
@@ -39,6 +41,7 @@ export default class Network {
     this.swarm = swarm
     this.swarm.on('connection', this.onConnection)
     this.swarm.on('listening', this.onListening)
+    this.swarm.on('peer', this.onDiscovery)
   }
 
   get closedConnectionCount(): number {
@@ -83,6 +86,11 @@ export default class Network {
     for (const discoveryId of this.joined) {
       this.swarmJoin(discoveryId)
     }
+  }
+
+  private onDiscovery = (peerInfo: PeerInfo) => {
+    const type = peerInfo.local ? 'mdns' : 'dht'
+    this.discovered.add(`${type}@${peerInfo.host}:${peerInfo.port}`)
   }
 
   private onConnection = async (socket: Socket, details: ConnectionDetails) => {
