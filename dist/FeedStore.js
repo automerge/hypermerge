@@ -11,11 +11,19 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const hypercore_1 = __importDefault(require("hypercore"));
 const Keys_1 = require("./Keys");
 const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
+const Crypto = __importStar(require("./Crypto"));
 /**
  * Note:
  * FeedId should really be the discovery key. The public key should be
@@ -40,6 +48,19 @@ class FeedStore {
             yield this.openOrCreateFeed(keys);
             return keys.publicKey;
         });
+    }
+    sign(feedId, message) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const feed = yield this.open(feedId);
+            if (!feed || !feed.secretKey) {
+                throw new Error(`Can't sign with feed ${feedId}`);
+            }
+            const signature = Crypto.sign(Crypto.encode(feed.secretKey), message);
+            return signature;
+        });
+    }
+    verify(feedId, message, signature) {
+        return Crypto.verify(feedId, message, signature);
     }
     append(feedId, ...blocks) {
         return __awaiter(this, void 0, void 0, function* () {

@@ -24,6 +24,7 @@ class Repo {
         this.setSwarm = this.back.setSwarm;
         this.startFileServer = this.back.startFileServer;
         this.materialize = this.front.materialize;
+        this.crypto = this.front.crypto;
     }
 }
 exports.Repo = Repo;

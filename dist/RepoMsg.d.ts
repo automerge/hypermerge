@@ -2,8 +2,9 @@ import { Patch, Change } from 'automerge';
 import { PublicMetadata } from './Metadata';
 import { DocId, HyperfileId, ActorId } from './Misc';
 import { PublicId, SecretId } from './Keys';
-export declare type ToBackendQueryMsg = MaterializeMsg | MetadataMsg;
-export declare type ToFrontendReplyMsg = MaterializeReplyMsg | MetadataReplyMsg;
+import * as Crypto from './Crypto';
+export declare type ToBackendQueryMsg = MaterializeMsg | MetadataMsg | SignMsg | VerifyMsg | SealedBoxMsg | OpenSealedBoxMsg | EncryptionKeyPairMsg;
+export declare type ToFrontendReplyMsg = MaterializeReplyMsg | MetadataReplyMsg | SignReplyMsg | VerifyReplyMsg | SealedBoxReplyMsg | OpenSealedBoxReplyMsg | EncryptionKeyPairReplyMsg;
 export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DocumentMsg | DestroyMsg | DebugMsg | QueryMsg;
 export interface QueryMsg {
     type: 'Query';
@@ -13,7 +14,7 @@ export interface QueryMsg {
 export interface ReplyMsg {
     type: 'Reply';
     id: number;
-    payload: any;
+    payload: ToFrontendReplyMsg;
 }
 export interface MaterializeMsg {
     type: 'MaterializeMsg';
@@ -23,6 +24,74 @@ export interface MaterializeMsg {
 export interface MetadataMsg {
     type: 'MetadataMsg';
     id: DocId | HyperfileId;
+}
+export interface SealedBoxMsg {
+    type: 'SealedBoxMsg';
+    publicKey: Crypto.EncodedPublicEncryptionKey;
+    message: string;
+}
+export declare type SealedBoxReplyMsg = SealedBoxSuccessReplyMsg | SealedBoxErrorReplyMsg;
+export interface SealedBoxSuccessReplyMsg {
+    type: 'SealedBoxReplyMsg';
+    success: true;
+    sealedBox: Crypto.EncodedSealedBox;
+}
+export interface SealedBoxErrorReplyMsg {
+    type: 'SealedBoxReplyMsg';
+    success: false;
+}
+export interface OpenSealedBoxMsg {
+    type: 'OpenSealedBoxMsg';
+    keyPair: Crypto.EncodedEncryptionKeyPair;
+    sealedBox: Crypto.EncodedSealedBox;
+}
+export declare type OpenSealedBoxReplyMsg = OpenSealedBoxSuccessMsg | OpenSealedBoxErrorMsg;
+export interface OpenSealedBoxSuccessMsg {
+    type: 'OpenSealedBoxReplyMsg';
+    success: true;
+    message: string;
+}
+export interface OpenSealedBoxErrorMsg {
+    type: 'OpenSealedBoxReplyMsg';
+    success: false;
+}
+export interface EncryptionKeyPairMsg {
+    type: 'EncryptionKeyPairMsg';
+}
+export declare type EncryptionKeyPairReplyMsg = EncryptionKeyPairSuccessReplyMsg | EncryptionKeyPairErrorReplyMsg;
+export interface EncryptionKeyPairSuccessReplyMsg {
+    type: 'EncryptionKeyPairReplyMsg';
+    success: true;
+    keyPair: Crypto.EncodedEncryptionKeyPair;
+}
+export interface EncryptionKeyPairErrorReplyMsg {
+    type: 'EncryptionKeyPairReplyMsg';
+    success: false;
+}
+export interface SignMsg {
+    type: 'SignMsg';
+    docId: DocId;
+    message: string;
+}
+export declare type SignReplyMsg = SignSuccessReplyMsg | SignErrorReplyMsg;
+export interface SignSuccessReplyMsg {
+    type: 'SignReplyMsg';
+    success: true;
+    signature: Crypto.EncodedSignature;
+}
+export interface SignErrorReplyMsg {
+    type: 'SignReplyMsg';
+    success: false;
+}
+export interface VerifyMsg {
+    type: 'VerifyMsg';
+    docId: DocId;
+    message: string;
+    signature: Crypto.EncodedSignature;
+}
+export interface VerifyReplyMsg {
+    type: 'VerifyReplyMsg';
+    success: boolean;
 }
 export interface CreateMsg {
     type: 'CreateMsg';
