@@ -10,6 +10,9 @@ import {
   SignReplyMsg,
   SealedBoxReplyMsg,
   OpenSealedBoxReplyMsg,
+  BoxReplyMsg,
+  OpenBoxMsg,
+  OpenBoxReplyMsg,
 } from './RepoMsg'
 import { Backend, Change } from 'automerge'
 import * as DocBackend from './DocBackend'
@@ -569,6 +572,37 @@ export class RepoBackend {
           id,
           payload: { type: 'EncryptionKeyPairReplyMsg', success: true, keyPair },
         })
+        break
+      }
+      case 'BoxMsg': {
+        let payload: BoxReplyMsg
+        try {
+          const [box, nonce] = Crypto.box(
+            query.senderSecretKey,
+            query.recipientPublicKey,
+            Buffer.from(query.message)
+          )
+          payload = { type: 'BoxReplyMsg', success: true, box, nonce }
+        } catch {
+          payload = { type: 'BoxReplyMsg', success: false }
+        }
+        this.toFrontend.push({ type: 'Reply', id, payload })
+        break
+      }
+      case 'OpenBoxMsg': {
+        let payload: OpenBoxReplyMsg
+        try {
+          const message = Crypto.openBox(
+            query.senderPublicKey,
+            query.recipientSecretKey,
+            query.box,
+            query.nonce
+          )
+          payload = { type: 'OpenBoxReplyMsg', success: true, message: message.toString() }
+        } catch {
+          payload = { type: 'OpenBoxReplyMsg', success: false }
+        }
+        this.toFrontend.push({ type: 'Reply', id, payload })
         break
       }
       case 'SealedBoxMsg': {

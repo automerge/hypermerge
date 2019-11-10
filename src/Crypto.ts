@@ -93,14 +93,14 @@ export function openSealedBox(
 }
 
 export function box(
-  senderSecretKey: sodium.SecretEncryptionKey,
-  recipientPublicKey: sodium.PublicEncryptionKey,
+  senderSecretKey: EncodedSecretEncryptionKey,
+  recipientPublicKey: EncodedPublicEncryptionKey,
   message: Buffer
 ): [EncodedBox, EncodedBoxNonce] {
   const box = Buffer.alloc(message.length + sodium.crypto_box_MACBYTES) as sodium.Box
   const nonce = Buffer.alloc(sodium.crypto_box_NONCEBYTES) as sodium.BoxNonce
   sodium.randombytes_buf(nonce)
-  sodium.crypto_box_easy(box, message, nonce, recipientPublicKey, senderSecretKey)
+  sodium.crypto_box_easy(box, message, nonce, decode(recipientPublicKey), decode(senderSecretKey))
   return [encode(box), encode(nonce)]
 }
 

@@ -9,6 +9,8 @@ export type ToBackendQueryMsg =
   | MetadataMsg
   | SignMsg
   | VerifyMsg
+  | BoxMsg
+  | OpenBoxMsg
   | SealedBoxMsg
   | OpenSealedBoxMsg
   | EncryptionKeyPairMsg
@@ -18,6 +20,8 @@ export type ToFrontendReplyMsg =
   | MetadataReplyMsg
   | SignReplyMsg
   | VerifyReplyMsg
+  | BoxReplyMsg
+  | OpenBoxReplyMsg
   | SealedBoxReplyMsg
   | OpenSealedBoxReplyMsg
   | EncryptionKeyPairReplyMsg
@@ -95,6 +99,48 @@ export interface OpenSealedBoxSuccessMsg {
 
 export interface OpenSealedBoxErrorMsg {
   type: 'OpenSealedBoxReplyMsg'
+  success: false
+}
+
+export interface BoxMsg {
+  type: 'BoxMsg'
+  message: string
+  recipientPublicKey: Crypto.EncodedPublicEncryptionKey
+  senderSecretKey: Crypto.EncodedSecretEncryptionKey
+}
+
+export type BoxReplyMsg = BoxSuccessReplyMsg | BoxErrorReplyMsg
+
+export interface BoxSuccessReplyMsg {
+  type: 'BoxReplyMsg'
+  success: true
+  box: Crypto.EncodedBox
+  nonce: Crypto.EncodedBoxNonce
+}
+
+export interface BoxErrorReplyMsg {
+  type: 'BoxReplyMsg'
+  success: false
+}
+
+export interface OpenBoxMsg {
+  type: 'OpenBoxMsg'
+  box: Crypto.EncodedBox
+  nonce: Crypto.EncodedBoxNonce
+  recipientSecretKey: Crypto.EncodedSecretEncryptionKey
+  senderPublicKey: Crypto.EncodedPublicEncryptionKey
+}
+
+export type OpenBoxReplyMsg = OpenBoxSuccessReplyMsg | OpenBoxErrorReplyMsg
+
+export interface OpenBoxSuccessReplyMsg {
+  type: 'OpenBoxReplyMsg'
+  success: true
+  message: string
+}
+
+export interface OpenBoxErrorReplyMsg {
+  type: 'OpenBoxReplyMsg'
   success: false
 }
 
