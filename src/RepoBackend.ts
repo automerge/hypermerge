@@ -11,7 +11,6 @@ import {
   SealedBoxReplyMsg,
   OpenSealedBoxReplyMsg,
   BoxReplyMsg,
-  OpenBoxMsg,
   OpenBoxReplyMsg,
 } from './RepoMsg'
 import { Backend, Change } from 'automerge'

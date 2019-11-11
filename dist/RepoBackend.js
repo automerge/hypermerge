@@ -310,13 +310,37 @@ class RepoBackend {
                     });
                     break;
                 }
+                case 'BoxMsg': {
+                    let payload;
+                    try {
+                        const [box, nonce] = Crypto.box(query.senderSecretKey, query.recipientPublicKey, Buffer.from(query.message));
+                        payload = { type: 'BoxReplyMsg', success: true, box, nonce };
+                    }
+                    catch (_a) {
+                        payload = { type: 'BoxReplyMsg', success: false };
+                    }
+                    this.toFrontend.push({ type: 'Reply', id, payload });
+                    break;
+                }
+                case 'OpenBoxMsg': {
+                    let payload;
+                    try {
+                        const message = Crypto.openBox(query.senderPublicKey, query.recipientSecretKey, query.box, query.nonce);
+                        payload = { type: 'OpenBoxReplyMsg', success: true, message: message.toString() };
+                    }
+                    catch (_b) {
+                        payload = { type: 'OpenBoxReplyMsg', success: false };
+                    }
+                    this.toFrontend.push({ type: 'Reply', id, payload });
+                    break;
+                }
                 case 'SealedBoxMsg': {
                     let payload;
                     try {
                         const sealedBox = Crypto.sealedBox(query.publicKey, Buffer.from(query.message));
                         payload = { type: 'SealedBoxReplyMsg', success: true, sealedBox };
                     }
-                    catch (_a) {
+                    catch (_c) {
                         payload = { type: 'SealedBoxReplyMsg', success: false };
                     }
                     this.toFrontend.push({ type: 'Reply', id, payload });
@@ -328,7 +352,7 @@ class RepoBackend {
                         const message = Crypto.openSealedBox(query.keyPair, query.sealedBox);
                         payload = { type: 'OpenSealedBoxReplyMsg', success: true, message: message.toString() };
                     }
-                    catch (_b) {
+                    catch (_d) {
                         payload = { type: 'OpenSealedBoxReplyMsg', success: false };
                     }
                     this.toFrontend.push({ type: 'Reply', id, payload });
@@ -344,7 +368,7 @@ class RepoBackend {
                             signature: signature,
                         };
                     }
-                    catch (_c) {
+                    catch (_e) {
                         payload = { type: 'SignReplyMsg', success: false };
                     }
                     this.toFrontend.push({
@@ -359,7 +383,7 @@ class RepoBackend {
                     try {
                         success = this.feeds.verify(query.docId, Buffer.from(query.message), query.signature);
                     }
-                    catch (_d) {
+                    catch (_f) {
                         success = false;
                     }
                     this.toFrontend.push({

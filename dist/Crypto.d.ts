@@ -39,6 +39,9 @@ export declare type EncodedSealedBox = string & {
 export declare type EncodedBox = string & {
     __encodedBox: true;
 };
+export declare type EncodedBoxNonce = string & {
+    __encodedBoxNonce: true;
+};
 export declare function encodedSigningKeyPair(): EncodedSigningKeyPair;
 export declare function signingKeyPair(): sodium.SigningKeyPair;
 export declare function encodedEncryptionKeyPair(): EncodedEncryptionKeyPair;
@@ -47,19 +50,25 @@ export declare function sign(secretKey: EncodedSecretSigningKey, message: Buffer
 export declare function verify(publicKey: EncodedPublicSigningKey, message: Buffer, signature: EncodedSignature): boolean;
 export declare function sealedBox(publicKey: EncodedPublicEncryptionKey, message: Buffer): EncodedSealedBox;
 export declare function openSealedBox(keyPair: EncodedEncryptionKeyPair, sealedBox: EncodedSealedBox): Buffer;
+export declare function box(senderSecretKey: EncodedSecretEncryptionKey, recipientPublicKey: EncodedPublicEncryptionKey, message: Buffer): [EncodedBox, EncodedBoxNonce];
+export declare function openBox(senderPublicKey: EncodedPublicEncryptionKey, recipientSecretKey: EncodedSecretEncryptionKey, box: EncodedBox, nonce: EncodedBoxNonce): Buffer;
 export declare function encode(val: sodium.PublicSigningKey): EncodedPublicSigningKey;
 export declare function encode(val: sodium.SecretSigningKey): EncodedSecretSigningKey;
 export declare function encode(val: sodium.PublicEncryptionKey): EncodedPublicEncryptionKey;
 export declare function encode(val: sodium.SecretEncryptionKey): EncodedSecretSigningKey;
 export declare function encode(val: sodium.Signature): EncodedSignature;
 export declare function encode(val: sodium.SealedBox): EncodedSealedBox;
+export declare function encode(val: sodium.Box): EncodedBox;
+export declare function encode(val: sodium.BoxNonce): EncodedBoxNonce;
 export declare function encode(val: Buffer): string;
 export declare function decode(val: EncodedPublicSigningKey): sodium.PublicSigningKey;
 export declare function decode(val: EncodedSecretSigningKey): sodium.SecretSigningKey;
 export declare function decode(val: EncodedPublicEncryptionKey): sodium.PublicEncryptionKey;
-export declare function decode(val: EncodedSecretEncryptionKey): sodium.SecretSigningKey;
+export declare function decode(val: EncodedSecretEncryptionKey): sodium.SecretEncryptionKey;
 export declare function decode(val: EncodedSignature): sodium.Signature;
 export declare function decode(val: EncodedSealedBox): sodium.SealedBox;
+export declare function decode(val: EncodedBox): sodium.Box;
+export declare function decode(val: EncodedBoxNonce): sodium.BoxNonce;
 export declare function decode(val: string): Buffer;
 export declare function decodePair(pair: EncodedEncryptionKeyPair): sodium.EncryptionKeyPair;
 export declare function decodePair(pair: EncodedSigningKeyPair): sodium.SigningKeyPair;
