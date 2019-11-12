@@ -42,6 +42,7 @@ const random_access_memory_1 = __importDefault(require("random-access-memory"));
 const random_access_file_1 = __importDefault(require("random-access-file"));
 const KeyStore_1 = __importDefault(require("./KeyStore"));
 const ReplicationManager_1 = __importDefault(require("./ReplicationManager"));
+const Crypto = __importStar(require("./Crypto"));
 debug_1.default.formatters.b = Keys.encode;
 const log = debug_1.default('repo:backend');
 class RepoBackend {
@@ -300,6 +301,77 @@ class RepoBackend {
         };
         this.handleQuery = (id, query) => __awaiter(this, void 0, void 0, function* () {
             switch (query.type) {
+                case 'EncryptionKeyPairMsg': {
+                    const keyPair = Crypto.encodedEncryptionKeyPair();
+                    this.toFrontend.push({
+                        type: 'Reply',
+                        id,
+                        payload: { type: 'EncryptionKeyPairReplyMsg', success: true, keyPair },
+                    });
+                    break;
+                }
+                case 'SealedBoxMsg': {
+                    let payload;
+                    try {
+                        const sealedBox = Crypto.sealedBox(query.publicKey, Buffer.from(query.message));
+                        payload = { type: 'SealedBoxReplyMsg', success: true, sealedBox };
+                    }
+                    catch (_a) {
+                        payload = { type: 'SealedBoxReplyMsg', success: false };
+                    }
+                    this.toFrontend.push({ type: 'Reply', id, payload });
+                    break;
+                }
+                case 'OpenSealedBoxMsg': {
+                    let payload;
+                    try {
+                        const message = Crypto.openSealedBox(query.keyPair, query.sealedBox);
+                        payload = { type: 'OpenSealedBoxReplyMsg', success: true, message: message.toString() };
+                    }
+                    catch (_b) {
+                        payload = { type: 'OpenSealedBoxReplyMsg', success: false };
+                    }
+                    this.toFrontend.push({ type: 'Reply', id, payload });
+                    break;
+                }
+                case 'SignMsg': {
+                    let payload;
+                    try {
+                        const signature = yield this.feeds.sign(query.docId, Buffer.from(query.message));
+                        payload = {
+                            type: 'SignReplyMsg',
+                            success: true,
+                            signature: signature,
+                        };
+                    }
+                    catch (_c) {
+                        payload = { type: 'SignReplyMsg', success: false };
+                    }
+                    this.toFrontend.push({
+                        type: 'Reply',
+                        id,
+                        payload,
+                    });
+                    break;
+                }
+                case 'VerifyMsg': {
+                    let success;
+                    try {
+                        success = this.feeds.verify(query.docId, Buffer.from(query.message), query.signature);
+                    }
+                    catch (_d) {
+                        success = false;
+                    }
+                    this.toFrontend.push({
+                        type: 'Reply',
+                        id,
+                        payload: {
+                            type: 'VerifyReplyMsg',
+                            success,
+                        },
+                    });
+                    break;
+                }
                 case 'MetadataMsg': {
                     // TODO: We're recreating the MetadataMsg which used to live in Metadata.ts
                     // Its not clear if this is used or useful. It looks like the data (which is faithfully
@@ -325,7 +397,11 @@ class RepoBackend {
                         else {
                             payload = null;
                         }
-                        this.toFrontend.push({ type: 'Reply', id, payload });
+                        this.toFrontend.push({
+                            type: 'Reply',
+                            id,
+                            payload: { type: 'MetadataReplyMsg', metadata: payload },
+                        });
                     });
                     break;
                 }
@@ -336,7 +412,7 @@ class RepoBackend {
                         .slice(0, query.history)
                         .toArray();
                     const [, patch] = automerge_1.Backend.applyChanges(automerge_1.Backend.init(), changes);
-                    this.toFrontend.push({ type: 'Reply', id, payload: patch });
+                    this.toFrontend.push({ type: 'Reply', id, payload: { type: 'MaterializeReplyMsg', patch } });
                     break;
                 }
             }

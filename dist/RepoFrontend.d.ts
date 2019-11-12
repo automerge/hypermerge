@@ -7,6 +7,7 @@ import { DocFrontend } from './DocFrontend';
 import { Clock } from './Clock';
 import { DocUrl, DocId, ActorId, HyperfileId, HyperfileUrl } from './Misc';
 import FileServerClient from './FileServerClient';
+import CryptoClient from './CryptoClient';
 export interface DocMetadata {
     clock: Clock;
     history: number;
@@ -25,9 +26,11 @@ export declare class RepoFrontend {
     msgcb: Map<number, (patch: Patch) => void>;
     readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void>;
     files: FileServerClient;
+    crypto: CryptoClient;
+    constructor();
     create: <T>(init?: T | undefined) => DocUrl;
     change: <T>(url: DocUrl, fn: ChangeFn<T>) => void;
-    meta: (url: DocUrl | HyperfileUrl, cb: (meta: import("./Metadata").PublicDocMetadata | import("./Metadata").PublicFileMetadata | undefined) => void) => void;
+    meta: (url: DocUrl | HyperfileUrl, cb: (meta: import("./Metadata").PublicFileMetadata | import("./Metadata").PublicDocMetadata | undefined) => void) => void;
     meta2: (url: DocUrl | HyperfileUrl) => DocMetadata | undefined;
     merge: (url: DocUrl, target: DocUrl) => void;
     fork: (url: DocUrl) => DocUrl;
@@ -35,7 +38,7 @@ export declare class RepoFrontend {
     message: <T>(url: DocUrl, contents: T) => void;
     doc: <T>(url: DocUrl, cb?: ((val: import("automerge").FreezeObject<T>, clock?: Clock | undefined) => void) | undefined) => Promise<import("automerge").FreezeObject<T>>;
     materialize: <T>(url: DocUrl, history: number, cb: (val: import("automerge").FreezeObject<T>) => void) => void;
-    queryBackend(query: ToBackendQueryMsg, cb: (arg: any) => void): void;
+    queryBackend: (query: ToBackendQueryMsg, cb: (arg: any) => void) => void;
     open: <T>(url: DocUrl) => Handle<T>;
     debug(url: DocUrl): void;
     private openDocFrontend;

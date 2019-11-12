@@ -7,6 +7,7 @@ import { DocUrl, HyperfileUrl, RepoId } from './Misc';
 import FileServerClient from './FileServerClient';
 import { Swarm, JoinOptions } from './SwarmInterface';
 import { Doc, Proxy } from 'automerge';
+import CryptoClient from './CryptoClient';
 export declare class Repo {
     front: RepoFrontend;
     back: RepoBackend;
@@ -16,6 +17,7 @@ export declare class Repo {
     destroy: (id: DocUrl) => void;
     setSwarm: (swarm: Swarm, joinOptions?: JoinOptions) => void;
     message: (url: DocUrl, message: any) => void;
+    crypto: CryptoClient;
     files: FileServerClient;
     startFileServer: (fileServerPath: string) => void;
     fork: (url: DocUrl) => DocUrl;

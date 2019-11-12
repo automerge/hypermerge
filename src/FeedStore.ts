@@ -1,17 +1,10 @@
 import { Readable, Writable } from 'stream'
 import hypercore, { Feed } from 'hypercore'
-import { KeyPair, decodePair, decode, PublicId, DiscoveryId } from './Keys'
-import {
-  getOrCreate,
-  toDiscoveryId,
-  createMultiPromise,
-  encodeSignature,
-  decodeSignature,
-  Signature,
-} from './Misc'
+import { KeyPair, decodePair, PublicId, DiscoveryId } from './Keys'
+import { getOrCreate, toDiscoveryId, createMultiPromise } from './Misc'
 import Queue from './Queue'
 import { Database, Statement } from './SqlDatabase'
-import * as crypto from 'hypercore-crypto'
+import * as Crypto from './Crypto'
 
 export type Feed = Feed<Block>
 export type FeedId = PublicId
@@ -50,17 +43,17 @@ export default class FeedStore {
     return keys.publicKey as FeedId
   }
 
-  async sign(feedId: FeedId, message: string): Promise<Signature> {
+  async sign(feedId: FeedId, message: Buffer): Promise<Crypto.EncodedSignature> {
     const feed = await this.open(feedId)
     if (!feed || !feed.secretKey) {
       throw new Error(`Can't sign with feed ${feedId}`)
     }
-    const signature = crypto.sign(Buffer.from(message), feed.secretKey)
-    return encodeSignature(signature)
+    const signature = Crypto.sign(Crypto.encode(feed.secretKey), message)
+    return signature
   }
 
-  verify(feedId: FeedId, message: string, signature: Signature): boolean {
-    return crypto.verify(Buffer.from(message), decodeSignature(signature), decode(feedId))
+  verify(feedId: FeedId, message: Buffer, signature: Crypto.EncodedSignature): boolean {
+    return Crypto.verify(feedId, message, signature)
   }
 
   async append(feedId: FeedId, ...blocks: Block[]): Promise<number> {

@@ -1,5 +1,5 @@
 import { FeedId } from './FeedStore';
-import { Key, PublicKey, DiscoveryKey, DiscoveryId, PublicId, EncodedKeyId } from './Keys';
+import { Key, PublicKey, DiscoveryKey, DiscoveryId, PublicId, KeyId } from './Keys';
 export { DiscoveryId };
 export declare type RepoId = PublicId & {
     __repoId: true;
@@ -22,7 +22,7 @@ export declare type DocUrl = BaseUrl & {
 export declare type HyperfileUrl = BaseUrl & {
     __hyperfileUrl: true;
 };
-export declare function decodeId(id: EncodedKeyId): Key;
+export declare function decodeId(id: KeyId): Key;
 export declare function encodeRepoId(repoKey: PublicKey): RepoId;
 export declare function encodeDocId(actorKey: PublicKey): DocId;
 export declare function encodeActorId(actorKey: PublicKey): ActorId;
@@ -33,7 +33,7 @@ export declare function toDiscoveryId(id: PublicId): DiscoveryId;
 export declare function toDiscoveryKey(id: PublicId): DiscoveryKey;
 export declare function rootActorId(docId: DocId): ActorId;
 export declare function hyperfileActorId(hyperfileId: HyperfileId): ActorId;
-export declare function isBaseUrl(str: BaseUrl | EncodedKeyId): str is BaseUrl;
+export declare function isBaseUrl(str: BaseUrl | KeyId): str is BaseUrl;
 export declare function joinSets<T>(sets: Set<T>[]): Set<T>;
 export declare function ID(_id: string): string;
 export declare function notEmpty<TValue>(value: TValue | null | undefined): value is TValue;

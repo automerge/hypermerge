@@ -1,13 +1,10 @@
 declare module 'hypercore-crypto' {
-  export type Key = Buffer & { __key: true }
-  export type PublicKey = Key & { __publicKey: true }
-  export type SecretKey = Key & { __secretKey: true }
+  import sodium from 'sodium-native'
+  export type Key = sodium.Key
+  export type PublicKey = sodium.PublicSigningKey
+  export type SecretKey = sodium.SecretSigningKey
   export type DiscoveryKey = Key & { __discoveryKey: true }
-
-  export interface KeyPair {
-    publicKey: PublicKey
-    secretKey: SecretKey
-  }
+  export type KeyPair = sodium.SigningKeyPair
 
   /** Returns an ED25519 keypair that can used for tree signing. */
   export function keyPair(): KeyPair

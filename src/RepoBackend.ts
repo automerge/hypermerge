@@ -8,6 +8,8 @@ import {
   ToFrontendRepoMsg,
   DocumentMsg,
   SignReplyMsg,
+  SealedBoxReplyMsg,
+  OpenSealedBoxReplyMsg,
 } from './RepoMsg'
 import { Backend, Change } from 'automerge'
 import * as DocBackend from './DocBackend'
@@ -42,6 +44,7 @@ import ram from 'random-access-memory'
 import raf from 'random-access-file'
 import KeyStore from './KeyStore'
 import ReplicationManager, { Discovery } from './ReplicationManager'
+import * as Crypto from './Crypto'
 
 Debug.formatters.b = Keys.encode
 
@@ -559,10 +562,41 @@ export class RepoBackend {
 
   handleQuery = async (id: number, query: ToBackendQueryMsg) => {
     switch (query.type) {
+      case 'EncryptionKeyPairMsg': {
+        const keyPair = Crypto.encodedEncryptionKeyPair()
+        this.toFrontend.push({
+          type: 'Reply',
+          id,
+          payload: { type: 'EncryptionKeyPairReplyMsg', success: true, keyPair },
+        })
+        break
+      }
+      case 'SealedBoxMsg': {
+        let payload: SealedBoxReplyMsg
+        try {
+          const sealedBox = Crypto.sealedBox(query.publicKey, Buffer.from(query.message))
+          payload = { type: 'SealedBoxReplyMsg', success: true, sealedBox }
+        } catch {
+          payload = { type: 'SealedBoxReplyMsg', success: false }
+        }
+        this.toFrontend.push({ type: 'Reply', id, payload })
+        break
+      }
+      case 'OpenSealedBoxMsg': {
+        let payload: OpenSealedBoxReplyMsg
+        try {
+          const message = Crypto.openSealedBox(query.keyPair, query.sealedBox)
+          payload = { type: 'OpenSealedBoxReplyMsg', success: true, message: message.toString() }
+        } catch {
+          payload = { type: 'OpenSealedBoxReplyMsg', success: false }
+        }
+        this.toFrontend.push({ type: 'Reply', id, payload })
+        break
+      }
       case 'SignMsg': {
         let payload: SignReplyMsg
         try {
-          const signature = await this.feeds.sign(query.docId, query.message)
+          const signature = await this.feeds.sign(query.docId, Buffer.from(query.message))
           payload = {
             type: 'SignReplyMsg',
             success: true,
@@ -581,7 +615,7 @@ export class RepoBackend {
       case 'VerifyMsg': {
         let success
         try {
-          success = this.feeds.verify(query.docId, query.message, query.signature)
+          success = this.feeds.verify(query.docId, Buffer.from(query.message), query.signature)
         } catch {
           success = false
         }

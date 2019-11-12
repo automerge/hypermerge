@@ -1,9 +1,10 @@
 import test from 'tape'
-import { RepoBackend, RepoFrontend, Signature } from '../src'
+import { RepoBackend, RepoFrontend } from '../src'
 import { expect, expectDocs, generateServerPath, testRepo } from './misc'
 import { validateDocURL } from '../src/Metadata'
 import { INFINITY_SEQ } from '../src/CursorStore'
 import * as Stream from '../src/StreamLogic'
+import * as Crypto from '../src/Crypto'
 
 test('Simple create doc and make a change', (t) => {
   const repo = testRepo()
@@ -168,19 +169,23 @@ test('Test signing and verifying', async (t) => {
   const repo = testRepo()
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
-  const signature = await repo.sign(url, message)
-  const success = await repo.verify(url, message, signature)
+  const signature = await repo.crypto.sign(url, message)
+  const success = await repo.crypto.verify(url, message, signature)
   t.true(success)
   test.onFinish(() => repo.close())
 })
 
-test('Test verifying garbage fails', async (t) => {
+test("Test verifying garbage returns false and doesn't throw", async (t) => {
   t.plan(1)
   const repo = testRepo()
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
-  await repo.sign(url, message)
-  const success = await repo.verify(url, message, 'thisisnotasignature' as Signature)
+  await repo.crypto.sign(url, message)
+  const success = await repo.crypto.verify(
+    url,
+    message,
+    'thisisnotasignature' as Crypto.EncodedSignature
+  )
   t.false(success)
   test.onFinish(() => repo.close())
 })
@@ -191,31 +196,21 @@ test('Test verifying with wrong signature fails', async (t) => {
   const url1 = repo.create({ foo: 'bar0' })
   const url2 = repo.create({ foo2: 'bar1' })
   const message = 'test message'
-  const signature2 = await repo.sign(url2, message)
-  const success = await repo.verify(url1, message, signature2)
+  const signature2 = await repo.crypto.sign(url2, message)
+  const success = await repo.crypto.verify(url1, message, signature2)
   t.false(success)
   test.onFinish(() => repo.close())
 })
 
-test('Test verifying with wrong message fails', async (t) => {
-  t.plan(1)
-  const repo = testRepo()
-  const url = repo.create({ foo: 'bar0' })
-  const message = 'test message'
-  const message2 = 'test message 2'
-  const signature = await repo.sign(url, message)
-  const success = await repo.verify(url, message2, signature)
-  t.false(success)
-  test.onFinish(() => repo.close())
-})
-
-test('Test signing a document from another repo', async (t) => {
+test('Test signing as document from another repo', async (t) => {
   t.plan(1)
   const repo = testRepo()
   const repo2 = testRepo()
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
-  repo2.sign(url, message).then(() => t.fail('sign() promise should reject'), () => t.pass())
+  repo2.crypto
+    .sign(url, message)
+    .then(() => t.fail('sign() promise should reject'), () => t.pass('Should reject'))
   test.onFinish(() => {
     repo.close()
     repo2.close()
@@ -228,12 +223,68 @@ test('Test verifying a signature from another repo succeeds', async (t) => {
   const repo2 = testRepo()
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
-  const signature = await repo.sign(url, message)
-  const success = await repo2.verify(url, message, signature)
+  const signature = await repo.crypto.sign(url, message)
+  const success = await repo2.crypto.verify(url, message, signature)
   t.true(success)
   test.onFinish(() => {
     repo.close()
     repo2.close()
+  })
+})
+
+test('Test sealedBox and openSealedBox', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const keyPair = Crypto.encodedEncryptionKeyPair()
+  const message = 'test message'
+  const sealedBox = await repo.crypto.sealedBox(keyPair.publicKey, message)
+  const openedMessage = await repo.crypto.openSealedBox(keyPair, sealedBox)
+  t.equal(openedMessage, message)
+  test.onFinish(() => {
+    repo.close()
+  })
+})
+
+test('Test open sealed box in another repo', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const repo2 = testRepo()
+  const keyPair = Crypto.encodedEncryptionKeyPair()
+  const message = 'test message'
+  const sealedBox = await repo.crypto.sealedBox(keyPair.publicKey, message)
+  const openedMessage = await repo2.crypto.openSealedBox(keyPair, sealedBox)
+  t.equal(openedMessage, message)
+  test.onFinish(() => {
+    repo.close()
+    repo2.close()
+  })
+})
+
+test('Test fails with wrong keypair', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const keyPair = Crypto.encodedEncryptionKeyPair()
+  const keyPair2 = Crypto.encodedEncryptionKeyPair()
+  const message = 'test message'
+  const sealedBox = await repo.crypto.sealedBox(keyPair.publicKey, message)
+  repo.crypto
+    .openSealedBox(keyPair2, sealedBox)
+    .then(() => t.fail('openSealedBox should reject'), () => t.pass('Should reject'))
+  test.onFinish(() => {
+    repo.close()
+  })
+})
+
+test('Test encryption key pair', async (t) => {
+  t.plan(1)
+  const repo = testRepo()
+  const keyPair = await repo.crypto.encryptionKeyPair()
+  const message = 'test message'
+  const sealedBox = await repo.crypto.sealedBox(keyPair.publicKey, message)
+  const openedMessage = await repo.crypto.openSealedBox(keyPair, sealedBox)
+  t.equal(openedMessage, message)
+  test.onFinish(() => {
+    repo.close()
   })
 })
 

@@ -5,6 +5,7 @@ import { Feed } from 'hypercore';
 import { KeyPair, PublicId, DiscoveryId } from './Keys';
 import Queue from './Queue';
 import { Database } from './SqlDatabase';
+import * as Crypto from './Crypto';
 export declare type Feed = Feed<Block>;
 export declare type FeedId = PublicId;
 export declare type Block = Uint8Array;
@@ -30,6 +31,8 @@ export default class FeedStore {
      * Promises the FeedId.
      */
     create(keys: Required<KeyPair>): Promise<FeedId>;
+    sign(feedId: FeedId, message: Buffer): Promise<Crypto.EncodedSignature>;
+    verify(feedId: FeedId, message: Buffer, signature: Crypto.EncodedSignature): boolean;
     append(feedId: FeedId, ...blocks: Block[]): Promise<number>;
     appendStream(feedId: FeedId): Promise<Writable>;
     read(feedId: FeedId, seq: number): Promise<Block>;

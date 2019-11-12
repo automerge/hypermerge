@@ -42,11 +42,7 @@ export declare class Metadata {
     isFile(id: HyperfileId | DocId): id is HyperfileId;
     isDoc(id: DocId | HyperfileId): id is DocId;
     bench(msg: string, f: () => void): void;
-    fileMetadata(id: HyperfileId): {
-        type: string;
-        bytes: number;
-        mimeType: string;
-    };
+    fileMetadata(id: HyperfileId): PublicFileMetadata;
 }
 export declare type PublicMetadata = PublicDocMetadata | PublicFileMetadata;
 export declare type PublicDocMetadata = {

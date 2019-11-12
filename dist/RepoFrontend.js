@@ -19,6 +19,7 @@ const Keys = __importStar(require("./Keys"));
 const Metadata_1 = require("./Metadata");
 const Misc_1 = require("./Misc");
 const FileServerClient_1 = __importDefault(require("./FileServerClient"));
+const CryptoClient_1 = __importDefault(require("./CryptoClient"));
 let msgid = 1;
 class RepoFrontend {
     constructor() {
@@ -47,7 +48,8 @@ class RepoFrontend {
         };
         this.meta = (url, cb) => {
             const { id } = Metadata_1.validateURL(url);
-            this.queryBackend({ type: 'MetadataMsg', id: id }, (meta) => {
+            this.queryBackend({ type: 'MetadataMsg', id: id }, (msg) => {
+                const meta = msg.metadata;
                 if (meta) {
                     const doc = this.docs.get(id);
                     if (doc && meta.type === 'Document') {
@@ -56,7 +58,7 @@ class RepoFrontend {
                         meta.clock = doc.clock;
                     }
                 }
-                cb(meta);
+                cb(meta || undefined); // TODO: change this to null
             });
         };
         this.meta2 = (url) => {
@@ -121,10 +123,16 @@ class RepoFrontend {
             if (history < 0 && history >= doc.history) {
                 throw new Error(`Invalid history ${history} for id ${id}`);
             }
-            this.queryBackend({ type: 'MaterializeMsg', history, id }, (patch) => {
+            this.queryBackend({ type: 'MaterializeMsg', history, id }, (msg) => {
                 const doc = automerge_1.Frontend.init({ deferActorId: true });
-                cb(automerge_1.Frontend.applyPatch(doc, patch));
+                cb(automerge_1.Frontend.applyPatch(doc, msg.patch));
             });
+        };
+        this.queryBackend = (query, cb) => {
+            msgid += 1; // global counter
+            const id = msgid;
+            this.cb.set(id, cb);
+            this.toBackend.push({ type: 'Query', id, query });
         };
         this.open = (url) => {
             const id = Metadata_1.validateDocURL(url);
@@ -217,12 +225,7 @@ class RepoFrontend {
                     break;
             }
         };
-    }
-    queryBackend(query, cb) {
-        msgid += 1; // global counter
-        const id = msgid;
-        this.cb.set(id, cb);
-        this.toBackend.push({ type: 'Query', id, query });
+        this.crypto = new CryptoClient_1.default(this.queryBackend);
     }
     debug(url) {
         const id = Metadata_1.validateDocURL(url);

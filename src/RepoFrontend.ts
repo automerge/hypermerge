@@ -6,8 +6,6 @@ import {
   ToFrontendRepoMsg,
   MaterializeReplyMsg,
   MetadataReplyMsg,
-  SignReplyMsg,
-  VerifyReplyMsg,
 } from './RepoMsg'
 import { Handle } from './Handle'
 import { Doc, Patch, Frontend, ChangeFn } from 'automerge'
@@ -15,17 +13,9 @@ import { DocFrontend } from './DocFrontend'
 import { clock2strs, Clock, clockDebug } from './Clock'
 import * as Keys from './Keys'
 import { PublicMetadata, validateDocURL, validateURL } from './Metadata'
-import {
-  DocUrl,
-  DocId,
-  ActorId,
-  toDocUrl,
-  HyperfileId,
-  HyperfileUrl,
-  rootActorId,
-  Signature,
-} from './Misc'
+import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId } from './Misc'
 import FileServerClient from './FileServerClient'
+import CryptoClient from './CryptoClient'
 
 export interface DocMetadata {
   clock: Clock
@@ -49,6 +39,11 @@ export class RepoFrontend {
   msgcb: Map<number, (patch: Patch) => void> = new Map()
   readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void> = new MapSet()
   files = new FileServerClient()
+  crypto: CryptoClient
+
+  constructor() {
+    this.crypto = new CryptoClient(this.queryBackend)
+  }
 
   create = <T>(init?: T): DocUrl => {
     const { publicKey, secretKey } = Keys.create()
@@ -148,25 +143,6 @@ export class RepoFrontend {
     })
   }
 
-  sign = (url: DocUrl, message: string): Promise<Signature> => {
-    return new Promise((res, rej) => {
-      const docId = validateDocURL(url)
-      this.queryBackend({ type: 'SignMsg', docId, message }, (msg: SignReplyMsg) => {
-        if (msg.success) return res(msg.signature)
-        rej()
-      })
-    })
-  }
-
-  verify = (url: DocUrl, message: string, signature: Signature): Promise<boolean> => {
-    return new Promise((res) => {
-      const docId = validateDocURL(url)
-      this.queryBackend({ type: 'VerifyMsg', docId, message, signature }, (msg: VerifyReplyMsg) => {
-        res(msg.success)
-      })
-    })
-  }
-
   materialize = <T>(url: DocUrl, history: number, cb: (val: Doc<T>) => void) => {
     const id = validateDocURL(url)
     const doc = this.docs.get(id)
@@ -182,7 +158,7 @@ export class RepoFrontend {
     })
   }
 
-  queryBackend(query: ToBackendQueryMsg, cb: (arg: any) => void) {
+  queryBackend = (query: ToBackendQueryMsg, cb: (arg: any) => void) => {
     msgid += 1 // global counter
     const id = msgid
     this.cb.set(id, cb)

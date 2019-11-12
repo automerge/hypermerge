@@ -3,10 +3,11 @@ import { RepoFrontend } from './RepoFrontend'
 import { Handle } from './Handle'
 import { PublicMetadata } from './Metadata'
 import { Clock } from './Clock'
-import { DocUrl, HyperfileUrl, RepoId, Signature } from './Misc'
+import { DocUrl, HyperfileUrl, RepoId } from './Misc'
 import FileServerClient from './FileServerClient'
 import { Swarm, JoinOptions } from './SwarmInterface'
 import { Doc, Proxy } from 'automerge'
+import CryptoClient from './CryptoClient'
 
 export class Repo {
   front: RepoFrontend
@@ -21,6 +22,8 @@ export class Repo {
 
   message: (url: DocUrl, message: any) => void
 
+  crypto: CryptoClient
+
   files: FileServerClient
   startFileServer: (fileServerPath: string) => void
 
@@ -28,8 +31,6 @@ export class Repo {
   watch: <T>(url: DocUrl, cb: (val: Doc<T>, clock?: Clock, index?: number) => void) => Handle<T>
   doc: <T>(url: DocUrl, cb?: (val: Doc<T>, clock?: Clock) => void) => Promise<Doc<T>>
   merge: (url: DocUrl, target: DocUrl) => void
-  sign: (url: DocUrl, message: string) => Promise<Signature>
-  verify: (url: DocUrl, message: string, signature: Signature) => Promise<boolean>
   change: <T>(url: DocUrl, fn: (state: Proxy<T>) => void) => void
   materialize: <T>(url: DocUrl, seq: number, cb: (val: Doc<T>) => void) => void
   meta: (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void) => void
@@ -46,8 +47,6 @@ export class Repo {
     this.message = this.front.message
     this.destroy = this.front.destroy
     this.meta = this.front.meta
-    this.sign = this.front.sign
-    this.verify = this.front.verify
     this.doc = this.front.doc
     this.fork = this.front.fork
     this.close = this.front.close
@@ -58,5 +57,6 @@ export class Repo {
     this.setSwarm = this.back.setSwarm
     this.startFileServer = this.back.startFileServer
     this.materialize = this.front.materialize
+    this.crypto = this.front.crypto
   }
 }
