@@ -149,6 +149,7 @@ class FeedStore {
                 const discoveryId = Misc_1.toDiscoveryId(publicId);
                 const { publicKey, secretKey } = Keys_1.decodePair(keys);
                 const feed = hypercore_1.default(this.storage(discoveryId), publicKey, {
+                    storageCacheSize: 0,
                     secretKey,
                 });
                 feed.ready(() => {
