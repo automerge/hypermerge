@@ -2,7 +2,7 @@ import { Change } from 'automerge';
 import { ActorId, DiscoveryId } from './Misc';
 import * as Keys from './Keys';
 import FeedStore, { Feed } from './FeedStore';
-export declare type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | Download;
+export declare type ActorMsg = ActorFeedReady | ActorSync | Download;
 interface ActorSync {
     type: 'ActorSync';
     actor: Actor;
@@ -12,10 +12,6 @@ interface ActorFeedReady {
     actor: Actor;
     feed: Feed;
     writable: boolean;
-}
-interface ActorInitialized {
-    type: 'ActorInitialized';
-    actor: Actor;
 }
 interface Download {
     type: 'Download';

@@ -17,9 +17,8 @@ const hypercore_2 = require("./hypercore");
 const debug_1 = __importDefault(require("debug"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const URL = __importStar(require("url"));
-const Misc_1 = require("./Misc");
 const log = debug_1.default('repo:metadata');
-const Misc_2 = require("./Misc");
+const Misc_1 = require("./Misc");
 const Keys = __importStar(require("./Keys"));
 function cleanMetadataInput(input) {
     const id = input.id || input.docId;
@@ -75,7 +74,7 @@ function validateID(id) {
     return buffer;
 }
 function validateURL(urlString) {
-    if (!Misc_2.isBaseUrl(urlString)) {
+    if (!Misc_1.isBaseUrl(urlString)) {
         //    disabled this warning because internal APIs are currently inconsistent in their use
         //    so it's throwing warnings just, like, all the time in normal usage.
         //    console.log("WARNING: `${id}` is deprecated - now use `hypermerge:/${id}`")
@@ -115,7 +114,7 @@ function validateDocURL(urlString) {
 exports.validateDocURL = validateDocURL;
 var _benchTotal = {};
 class Metadata {
-    constructor(storageFn, joinFn) {
+    constructor(storageFn) {
         this.files = new Map();
         this.mimeTypes = new Map();
         this.readyQ = new Queue_1.default('repo:metadata:readyQ'); // FIXME - need a better api for accessing metadata
@@ -151,10 +150,6 @@ class Metadata {
             const dirty = this.addBlock(-1, block);
             if (this.ready && dirty) {
                 this.append(block);
-                if (isFileBlock(block)) {
-                    // TODO: Manage this elsewhere - either through FileStore, FeedStore, or not at all!
-                    this.join(Misc_1.hyperfileActorId(block.id));
-                }
             }
         };
         this.append = (block) => {
@@ -164,7 +159,6 @@ class Metadata {
             });
         };
         this.ledger = hypercore_1.default(storageFn('ledger'), {});
-        this.join = joinFn;
         log('LEDGER READY (1)');
         this.ledger.ready(() => {
             log('LEDGER READY (2)', this.ledger.length);

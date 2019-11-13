@@ -57,8 +57,6 @@ export declare class RepoBackend {
     close: () => Promise<[void, void, void, void]>;
     private allReadyActors;
     private loadDocument;
-    join: (actorId: ActorId) => void;
-    leave: (actorId: ActorId) => void;
     private getReadyActor;
     storageFn: (path: string) => (name: string) => any;
     initActorFeed(doc: DocBackend.DocBackend): ActorId;

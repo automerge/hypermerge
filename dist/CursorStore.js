@@ -1,16 +1,8 @@
 "use strict";
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const Clock = __importStar(require("./Clock"));
 const Queue_1 = __importDefault(require("./Queue"));
 exports.INFINITY_SEQ = Number.MAX_SAFE_INTEGER;
 class CursorStore {
@@ -28,6 +20,9 @@ class CursorStore {
         this.preparedDocsWithActor = this.db
             .prepare('SELECT documentId FROM Cursors WHERE repoId = ? AND actorId = ? AND seq >= ?')
             .pluck();
+        this.preparedAllDocumentIds = this.db
+            .prepare('SELECT DISTINCT documentId from Cursors WHERE repoId = ?')
+            .pluck();
     }
     // NOTE: We return an empty cursor when we don't have a stored cursor. We might want
     // to return undefined instead.
@@ -44,9 +39,7 @@ class CursorStore {
         });
         const updatedCursor = transaction(Object.entries(cursor));
         const descriptor = [updatedCursor, docId, repoId];
-        if (!Clock.equal(cursor, updatedCursor)) {
-            this.updateQ.push(descriptor);
-        }
+        this.updateQ.push(descriptor);
         return descriptor;
     }
     // NOTE: We return 0 if we don't have a cursor value. This is for backwards compatibility
@@ -60,6 +53,9 @@ class CursorStore {
     }
     addActor(repoId, docId, actorId, seq = exports.INFINITY_SEQ) {
         return this.update(repoId, docId, { [actorId]: boundedSeq(seq) });
+    }
+    getAllDocumentIds(repoId) {
+        return this.preparedAllDocumentIds.all(repoId);
     }
 }
 exports.default = CursorStore;

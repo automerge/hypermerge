@@ -48,7 +48,6 @@ class Actor {
                 hasData = true;
             });
             data.on('end', () => {
-                this.notify({ type: 'ActorInitialized', actor: this });
                 this.q.subscribe((f) => f(this));
                 if (hasData)
                     this.onSync();
