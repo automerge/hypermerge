@@ -64,6 +64,7 @@
     "uuid": "^3.3.3"
   },
   "resolutions": {
-    "sodium-native": "^2.4.6"
+    "sodium-native": "^2.4.6",
+    "memory-pager": "1.4.0"
   }
 }

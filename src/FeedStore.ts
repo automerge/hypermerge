@@ -136,6 +136,7 @@ export default class FeedStore {
         const { publicKey, secretKey } = decodePair(keys)
 
         const feed = hypercore<Block>(this.storage(discoveryId), publicKey, {
+          storageCacheSize: 0,
           secretKey,
         })
 
