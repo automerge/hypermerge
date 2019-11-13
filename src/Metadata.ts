@@ -5,7 +5,6 @@ import { readFeed } from './hypercore'
 import Debug from 'debug'
 import * as JsonBuffer from './JsonBuffer'
 import * as URL from 'url'
-import { hyperfileActorId } from './Misc'
 const log = Debug('repo:metadata')
 
 import { Clock } from './Clock'
@@ -144,11 +143,9 @@ export class Metadata {
   private replay: MetadataBlock[] = []
 
   private ledger: Feed<Uint8Array>
-  private join: (id: ActorId) => void
 
-  constructor(storageFn: Function, joinFn: (id: ActorId) => void) {
+  constructor(storageFn: Function) {
     this.ledger = hypercore(storageFn('ledger'), {})
-    this.join = joinFn
 
     log('LEDGER READY (1)')
     this.ledger.ready(() => {
@@ -183,11 +180,6 @@ export class Metadata {
 
     if (this.ready && dirty) {
       this.append(block)
-
-      if (isFileBlock(block)) {
-        // TODO: Manage this elsewhere - either through FileStore, FeedStore, or not at all!
-        this.join(hyperfileActorId(block.id))
-      }
     }
   }
 

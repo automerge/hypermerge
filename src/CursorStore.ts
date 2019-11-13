@@ -22,6 +22,7 @@ export default class CursorStore {
   private preparedInsert: Statement<[string, string, string, number]>
   private preparedEntry: Statement<[string, string, string]>
   private preparedDocsWithActor: Statement<[string, string, number]>
+  private preparedAllDocumentIds: Statement<[RepoId]>
   updateQ: Queue<CursorDescriptor>
   constructor(db: Database) {
     this.db = db
@@ -38,6 +39,9 @@ export default class CursorStore {
       .pluck()
     this.preparedDocsWithActor = this.db
       .prepare('SELECT documentId FROM Cursors WHERE repoId = ? AND actorId = ? AND seq >= ?')
+      .pluck()
+    this.preparedAllDocumentIds = this.db
+      .prepare('SELECT DISTINCT documentId from Cursors WHERE repoId = ?')
       .pluck()
   }
 
@@ -57,9 +61,7 @@ export default class CursorStore {
     })
     const updatedCursor = transaction(Object.entries(cursor))
     const descriptor: CursorDescriptor = [updatedCursor, docId, repoId]
-    if (!Clock.equal(cursor, updatedCursor)) {
-      this.updateQ.push(descriptor)
-    }
+    this.updateQ.push(descriptor)
     return descriptor
   }
 
@@ -76,6 +78,10 @@ export default class CursorStore {
 
   addActor(repoId: RepoId, docId: DocId, actorId: ActorId, seq: number = INFINITY_SEQ) {
     return this.update(repoId, docId, { [actorId]: boundedSeq(seq) })
+  }
+
+  getAllDocumentIds(repoId: RepoId): DocId[] {
+    return this.preparedAllDocumentIds.all(repoId)
   }
 }
 
