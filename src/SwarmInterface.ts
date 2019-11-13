@@ -1,22 +1,20 @@
 import { Socket } from 'net'
+import { EventEmitter } from 'events'
 
 export { Socket }
-export type SocketType = 'tcp' | 'utp'
+export type SocketType = 'tcp' | 'utp' | 'cloud'
 
-export interface Swarm {
+export interface Swarm extends EventEmitter {
   join(dk: Buffer, options?: JoinOptions): void
   leave(dk: Buffer): void
   on<K extends keyof SwarmEvents>(name: K, cb: SwarmEvents[K]): this
   off<K extends keyof SwarmEvents>(name: K, cb: SwarmEvents[K]): this
-  removeAllListeners(): void
   destroy(cb: () => void): void
 }
 
 export interface SwarmEvents {
   connection(socket: Socket, details: ConnectionDetails): void
-  disconnection(socket: Socket, details: ConnectionDetails): void
   peer(peer: PeerInfo): void
-  updated(info: { key: Buffer }): void
   listening(): void
 }
 
@@ -27,8 +25,8 @@ export interface JoinOptions {
 
 export interface BaseConnectionDetails {
   type: SocketType
-  reconnect(shouldReconnect: boolean): void
-  ban(): void
+  reconnect?(shouldReconnect: boolean): void
+  ban?(): void
 }
 
 export interface InitiatedConnectionDetails extends BaseConnectionDetails {
