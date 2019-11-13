@@ -1,8 +1,11 @@
 declare module 'hyperswarm' {
+  import { EventEmitter } from 'events'
   import { Socket } from 'net'
 
   export { Socket }
   export type SocketType = 'tcp' | 'utp'
+
+  export default (options?: Options) => Hyperswarm
 
   export interface Options {
     /** Optionally overwrite the default set of bootstrap servers */
@@ -45,6 +48,12 @@ declare module 'hyperswarm' {
       requeue?: number[]
 
       /**
+       * attempt to reuse existing connections between peers across multiple topics.
+       * Default: false
+       */
+      multiplex?: boolean
+
+      /**
        * configure when to forget certain peer characteristics and treat them as fresh
        * peer connections again.
        */
@@ -54,19 +63,11 @@ declare module 'hyperswarm' {
 
         /** how long to wait before fogetting that a peer has been banned. Default: Infinity */
         banned?: number
-
-        /**
-         * attempt to reuse existing connections between peers across multiple topics.
-         * Default: false
-         */
-        multiplex?: boolean
       }
     }
   }
 
-  export default class Hyperswarm {
-    constructor(options?: Options)
-
+  export interface Hyperswarm extends EventEmitter {
     join(dk: Buffer, options?: JoinOptions): void
     leave(dk: Buffer): void
     on<K extends keyof SwarmEvents>(name: K, cb: SwarmEvents[K]): this

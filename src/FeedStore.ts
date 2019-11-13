@@ -1,12 +1,12 @@
 import { Readable, Writable } from 'stream'
-import hypercore, { Feed } from 'hypercore'
+import hypercore, { Feed as HypercoreFeed } from 'hypercore'
 import { KeyPair, decodePair, PublicId, DiscoveryId } from './Keys'
 import { getOrCreate, toDiscoveryId, createMultiPromise } from './Misc'
 import Queue from './Queue'
 import { Database, Statement } from './SqlDatabase'
 import * as Crypto from './Crypto'
 
-export type Feed = Feed<Block>
+export type Feed = HypercoreFeed<Block>
 export type FeedId = PublicId
 export type Block = Uint8Array
 
@@ -26,7 +26,7 @@ interface StorageFn {
 
 export default class FeedStore {
   private storage: (discoveryId: DiscoveryId) => (filename: string) => unknown
-  private loaded: Map<PublicId, Feed<Block>> = new Map()
+  private loaded: Map<PublicId, Feed> = new Map()
   info: FeedInfoStore
 
   constructor(db: Database, storageFn: StorageFn) {
@@ -119,7 +119,7 @@ export default class FeedStore {
     await Promise.all([...this.loaded.keys()].map((feedId) => this.closeFeed(feedId)))
   }
 
-  async getFeed(feedId: FeedId): Promise<Feed<Block>> {
+  async getFeed(feedId: FeedId): Promise<Feed> {
     return this.open(feedId)
   }
 
@@ -127,7 +127,7 @@ export default class FeedStore {
     return await this.openOrCreateFeed({ publicKey: publicId })
   }
 
-  private openOrCreateFeed(keys: KeyPair): Promise<Feed<Block>> {
+  private openOrCreateFeed(keys: KeyPair): Promise<Feed> {
     return new Promise((res, _rej) => {
       const publicId = keys.publicKey as FeedId
 

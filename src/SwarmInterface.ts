@@ -1,10 +1,9 @@
 import { Socket } from 'net'
-import { EventEmitter } from 'events'
 
 export { Socket }
 export type SocketType = 'tcp' | 'utp' | 'cloud'
 
-export interface Swarm extends EventEmitter {
+export interface Swarm {
   join(dk: Buffer, options?: JoinOptions): void
   leave(dk: Buffer): void
   on<K extends keyof SwarmEvents>(name: K, cb: SwarmEvents[K]): this
