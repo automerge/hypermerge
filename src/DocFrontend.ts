@@ -11,7 +11,7 @@ import { ActorId, DocId, DocUrl, toDocUrl } from './Misc'
 
 const log = Debug('hypermerge:front')
 
-export type Patch = Patch
+export { Patch }
 
 type Mode = 'pending' | 'read' | 'write'
 

@@ -8,7 +8,7 @@ interface TestMsg {
 }
 
 test('Network', (t) => {
-  t.plan(3)
+  t.plan(5)
 
   const topic = testDiscoveryId()
 
@@ -20,6 +20,7 @@ test('Network', (t) => {
 
   netA.peerQ.subscribe((peer) => {
     t.isEqual(peer.id, netB.selfId, 'netA finds netB')
+    t.assert(netA.discovered.size === 1, 'netA records a discovery')
 
     const bus = new MessageBus<TestMsg>(peer.connection.openChannel('TestMsg'))
 
@@ -30,6 +31,8 @@ test('Network', (t) => {
 
   netB.peerQ.subscribe((peer) => {
     t.isEqual(peer.id, netA.selfId, 'netB finds netA')
+    t.assert(netB.discovered.size === 1, 'netB records a discovery')
+
     const bus = new MessageBus<TestMsg>(peer.connection.openChannel('TestMsg'))
     bus.send({ senderId: netB.selfId })
   })

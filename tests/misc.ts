@@ -32,7 +32,11 @@ export function testDb(): SqlDatabase.Database {
 }
 
 export function testSwarm() {
-  return Hyperswarm()
+  return Hyperswarm({
+    queue: {
+      multiplex: true,
+    },
+  })
 }
 
 export function testDiscoveryId(): DiscoveryId {
