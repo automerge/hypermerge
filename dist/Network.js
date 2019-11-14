@@ -18,14 +18,23 @@ const Queue_1 = __importDefault(require("./Queue"));
 const PeerConnection_1 = __importDefault(require("./PeerConnection"));
 class Network {
     constructor(selfId) {
+        this.onListening = () => {
+            for (const discoveryId of this.joined) {
+                this.swarmJoin(discoveryId);
+            }
+        };
+        this.onDiscovery = (peerInfo) => {
+            const type = peerInfo.local ? 'mdns' : 'dht';
+            this.discovered.add(`${type}@${peerInfo.host}:${peerInfo.port}`);
+        };
         this.onConnection = (socket, details) => __awaiter(this, void 0, void 0, function* () {
-            details.reconnect(false);
             const conn = new PeerConnection_1.default(socket, {
                 isClient: details.client,
                 type: details.type,
                 onClose() {
+                    var _a, _b;
                     if (!conn.isConfirmed)
-                        details.ban();
+                        (_b = (_a = details).ban) === null || _b === void 0 ? void 0 : _b.call(_a);
                 },
             });
             conn.networkBus.send({
@@ -42,30 +51,22 @@ class Network {
         });
         this.selfId = selfId;
         this.joined = new Set();
-        this.pending = new Set();
         this.peers = new Map();
+        this.discovered = new Set();
         this.peerQ = new Queue_1.default('Network:peerQ');
         this.joinOptions = { announce: true, lookup: true };
     }
     join(discoveryId) {
-        if (this.swarm) {
-            if (this.joined.has(discoveryId))
-                return;
-            this.joined.add(discoveryId);
-            this.swarm.join(Misc_1.decodeId(discoveryId), this.joinOptions);
-            this.pending.delete(discoveryId);
-        }
-        else {
-            this.pending.add(discoveryId);
-        }
+        if (this.joined.has(discoveryId))
+            return;
+        this.joined.add(discoveryId);
+        this.swarmJoin(discoveryId);
     }
     leave(discoveryId) {
-        this.pending.delete(discoveryId);
         if (!this.joined.has(discoveryId))
             return;
-        if (this.swarm)
-            this.swarm.leave(Misc_1.decodeId(discoveryId));
         this.joined.delete(discoveryId);
+        this.swarmLeave(discoveryId);
     }
     setSwarm(swarm, joinOptions) {
         if (this.swarm)
@@ -74,9 +75,8 @@ class Network {
             this.joinOptions = joinOptions;
         this.swarm = swarm;
         this.swarm.on('connection', this.onConnection);
-        for (const discoveryId of this.pending) {
-            this.join(discoveryId);
-        }
+        this.swarm.on('listening', this.onListening);
+        this.swarm.on('peer', this.onDiscovery);
     }
     get closedConnectionCount() {
         let count = 0;
@@ -103,6 +103,14 @@ class Network {
             });
             return peer;
         });
+    }
+    swarmJoin(discoveryId) {
+        if (this.swarm)
+            this.swarm.join(Misc_1.decodeId(discoveryId), this.joinOptions);
+    }
+    swarmLeave(discoveryId) {
+        if (this.swarm)
+            this.swarm.leave(Misc_1.decodeId(discoveryId));
     }
 }
 exports.default = Network;

@@ -10,6 +10,6 @@ export default class Queue<T> {
     once(subscriber: (item: T) => void): void;
     subscribe(subscriber: (item: T) => void): void;
     unsubscribe(): void;
-    readonly length: number;
+    get length(): number;
     private enqueue;
 }

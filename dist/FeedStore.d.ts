@@ -1,12 +1,12 @@
 /// <reference types="better-sqlite3" />
 /// <reference types="node" />
 import { Readable, Writable } from 'stream';
-import { Feed } from 'hypercore';
+import { Feed as HypercoreFeed } from 'hypercore';
 import { KeyPair, PublicId, DiscoveryId } from './Keys';
 import Queue from './Queue';
 import { Database } from './SqlDatabase';
 import * as Crypto from './Crypto';
-export declare type Feed = Feed<Block>;
+export declare type Feed = HypercoreFeed<Block>;
 export declare type FeedId = PublicId;
 export declare type Block = Uint8Array;
 interface StorageFn {
@@ -40,7 +40,7 @@ export default class FeedStore {
     stream(feedId: FeedId, start?: number, end?: number): Promise<Readable>;
     closeFeed(feedId: FeedId): Promise<FeedId>;
     close(): Promise<void>;
-    getFeed(feedId: FeedId): Promise<Feed<Block>>;
+    getFeed(feedId: FeedId): Promise<Feed>;
     private open;
     private openOrCreateFeed;
 }

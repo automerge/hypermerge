@@ -20,6 +20,6 @@ export default class CursorStore {
     update(repoId: RepoId, docId: DocId, cursor: Cursor): CursorDescriptor;
     entry(repoId: RepoId, docId: DocId, actorId: ActorId): number;
     docsWithActor(repoId: RepoId, actorId: ActorId, seq?: number): DocId[];
-    addActor(repoId: RepoId, docId: DocId, actorId: ActorId, seq?: number): [Clock.Clock, DocId, RepoId];
+    addActor(repoId: RepoId, docId: DocId, actorId: ActorId, seq?: number): CursorDescriptor;
     getAllDocumentIds(repoId: RepoId): DocId[];
 }

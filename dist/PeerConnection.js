@@ -31,7 +31,9 @@ class PeerConnection {
         this.secureStream.write(VERSION_PREFIX);
         pump_1.default(this.secureStream, prefixMatch, this.multiplex, this.secureStream, (err) => {
             if (err instanceof StreamLogic_1.InvalidPrefixError) {
-                console.log('Closing connection to outdated peer. Prefix:', err.actual);
+                const { remoteAddress, remotePort } = this.rawSocket;
+                const host = `${this.type}@${remoteAddress}:${remotePort}`;
+                console.log('Closing connection to outdated peer: %s. Prefix: %s', host, err.actual);
                 this.close();
             }
         });

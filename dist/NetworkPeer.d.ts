@@ -13,7 +13,7 @@ export default class NetworkPeer {
     closedConnectionCount: number;
     connection: PeerConnection;
     constructor(selfId: PeerId, id: PeerId);
-    readonly isConnected: boolean;
+    get isConnected(): boolean;
     /**
      * Determines if we are the authority on which connection to use when
      * duplicate connections are created.
@@ -23,7 +23,7 @@ export default class NetworkPeer {
      * connection. Comparing our ids ensures only one of the two peers decides
      * which connection to close.
      */
-    readonly weHaveAuthority: boolean;
+    get weHaveAuthority(): boolean;
     /**
      * Attempts to add a connection to this peer.
      * If this connection is a duplicate of an existing connection, we close it.
