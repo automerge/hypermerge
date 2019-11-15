@@ -40,8 +40,11 @@ export default class Network {
     if (joinOptions) this.joinOptions = joinOptions
     this.swarm = swarm
     this.swarm.on('connection', this.onConnection)
-    this.swarm.on('listening', this.onListening)
     this.swarm.on('peer', this.onDiscovery)
+
+    for (const discoveryId of this.joined) {
+      this.swarmJoin(discoveryId)
+    }
   }
 
   get closedConnectionCount(): number {
@@ -80,12 +83,6 @@ export default class Network {
 
   private swarmLeave(discoveryId: DiscoveryId): void {
     if (this.swarm) this.swarm.leave(decodeId(discoveryId))
-  }
-
-  private onListening = () => {
-    for (const discoveryId of this.joined) {
-      this.swarmJoin(discoveryId)
-    }
   }
 
   private onDiscovery = (peerInfo: PeerInfo) => {
