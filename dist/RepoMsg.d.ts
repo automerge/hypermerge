@@ -3,8 +3,8 @@ import { PublicMetadata } from './Metadata';
 import { DocId, HyperfileId, ActorId } from './Misc';
 import { PublicId, SecretId } from './Keys';
 import * as Crypto from './Crypto';
-export declare type ToBackendQueryMsg = MaterializeMsg | MetadataMsg | SignMsg | VerifyMsg | SealedBoxMsg | OpenSealedBoxMsg | EncryptionKeyPairMsg;
-export declare type ToFrontendReplyMsg = MaterializeReplyMsg | MetadataReplyMsg | SignReplyMsg | VerifyReplyMsg | SealedBoxReplyMsg | OpenSealedBoxReplyMsg | EncryptionKeyPairReplyMsg;
+export declare type ToBackendQueryMsg = MaterializeMsg | MetadataMsg | SignMsg | VerifyMsg | BoxMsg | OpenBoxMsg | SealedBoxMsg | OpenSealedBoxMsg | EncryptionKeyPairMsg;
+export declare type ToFrontendReplyMsg = MaterializeReplyMsg | MetadataReplyMsg | SignReplyMsg | VerifyReplyMsg | BoxReplyMsg | OpenBoxReplyMsg | SealedBoxReplyMsg | OpenSealedBoxReplyMsg | EncryptionKeyPairReplyMsg;
 export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DocumentMsg | DestroyMsg | DebugMsg | QueryMsg;
 export interface QueryMsg {
     type: 'Query';
@@ -53,6 +53,40 @@ export interface OpenSealedBoxSuccessMsg {
 }
 export interface OpenSealedBoxErrorMsg {
     type: 'OpenSealedBoxReplyMsg';
+    success: false;
+}
+export interface BoxMsg {
+    type: 'BoxMsg';
+    message: string;
+    recipientPublicKey: Crypto.EncodedPublicEncryptionKey;
+    senderSecretKey: Crypto.EncodedSecretEncryptionKey;
+}
+export declare type BoxReplyMsg = BoxSuccessReplyMsg | BoxErrorReplyMsg;
+export interface BoxSuccessReplyMsg {
+    type: 'BoxReplyMsg';
+    success: true;
+    box: Crypto.EncodedBox;
+    nonce: Crypto.EncodedBoxNonce;
+}
+export interface BoxErrorReplyMsg {
+    type: 'BoxReplyMsg';
+    success: false;
+}
+export interface OpenBoxMsg {
+    type: 'OpenBoxMsg';
+    box: Crypto.EncodedBox;
+    nonce: Crypto.EncodedBoxNonce;
+    recipientSecretKey: Crypto.EncodedSecretEncryptionKey;
+    senderPublicKey: Crypto.EncodedPublicEncryptionKey;
+}
+export declare type OpenBoxReplyMsg = OpenBoxSuccessReplyMsg | OpenBoxErrorReplyMsg;
+export interface OpenBoxSuccessReplyMsg {
+    type: 'OpenBoxReplyMsg';
+    success: true;
+    message: string;
+}
+export interface OpenBoxErrorReplyMsg {
+    type: 'OpenBoxReplyMsg';
     success: false;
 }
 export interface EncryptionKeyPairMsg {

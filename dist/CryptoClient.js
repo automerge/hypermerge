@@ -23,6 +23,24 @@ class CryptoClient {
             });
         });
     }
+    box(senderSecretKey, recipientPublicKey, message) {
+        return new Promise((res, rej) => {
+            this.request({ type: 'BoxMsg', senderSecretKey, recipientPublicKey, message }, (msg) => {
+                if (msg.success)
+                    return res([msg.box, msg.nonce]);
+                rej();
+            });
+        });
+    }
+    openBox(senderPublicKey, recipientSecretKey, box, nonce) {
+        return new Promise((res, rej) => {
+            this.request({ type: 'OpenBoxMsg', senderPublicKey, recipientSecretKey, box, nonce }, (msg) => {
+                if (msg.success)
+                    return res(msg.message);
+                rej();
+            });
+        });
+    }
     sealedBox(publicKey, message) {
         return new Promise((res, rej) => {
             this.request({ type: 'SealedBoxMsg', publicKey, message }, (msg) => {

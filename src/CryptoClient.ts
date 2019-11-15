@@ -8,6 +8,8 @@ import {
   OpenSealedBoxReplyMsg,
   EncryptionKeyPairReplyMsg,
   ToBackendQueryMsg,
+  BoxReplyMsg,
+  OpenBoxReplyMsg,
 } from './RepoMsg'
 
 export type RequestFn = (msg: ToBackendQueryMsg, cb: (msg: any) => void) => void
@@ -33,6 +35,39 @@ export default class CryptoClient {
       this.request({ type: 'VerifyMsg', docId, message, signature }, (msg: VerifyReplyMsg) => {
         res(msg.success)
       })
+    })
+  }
+
+  box(
+    senderSecretKey: Crypto.EncodedSecretEncryptionKey,
+    recipientPublicKey: Crypto.EncodedPublicEncryptionKey,
+    message: string
+  ): Promise<[Crypto.EncodedBox, Crypto.EncodedBoxNonce]> {
+    return new Promise((res, rej) => {
+      this.request(
+        { type: 'BoxMsg', senderSecretKey, recipientPublicKey, message },
+        (msg: BoxReplyMsg) => {
+          if (msg.success) return res([msg.box, msg.nonce])
+          rej()
+        }
+      )
+    })
+  }
+
+  openBox(
+    senderPublicKey: Crypto.EncodedPublicEncryptionKey,
+    recipientSecretKey: Crypto.EncodedSecretEncryptionKey,
+    box: Crypto.EncodedBox,
+    nonce: Crypto.EncodedBoxNonce
+  ): Promise<string> {
+    return new Promise((res, rej) => {
+      this.request(
+        { type: 'OpenBoxMsg', senderPublicKey, recipientSecretKey, box, nonce },
+        (msg: OpenBoxReplyMsg) => {
+          if (msg.success) return res(msg.message)
+          rej()
+        }
+      )
     })
   }
 
