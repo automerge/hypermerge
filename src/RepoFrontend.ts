@@ -16,6 +16,7 @@ import { PublicMetadata, validateDocURL, validateURL } from './Metadata'
 import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId } from './Misc'
 import FileServerClient from './FileServerClient'
 import CryptoClient from './CryptoClient'
+import { Crawler } from './Crawler'
 
 export interface DocMetadata {
   clock: Clock
@@ -40,9 +41,11 @@ export class RepoFrontend {
   readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void> = new MapSet()
   files = new FileServerClient()
   crypto: CryptoClient
+  crawler: Crawler
 
   constructor() {
     this.crypto = new CryptoClient(this.queryBackend)
+    this.crawler = new Crawler(this)
   }
 
   create = <T>(init?: T): DocUrl => {
@@ -165,7 +168,8 @@ export class RepoFrontend {
     this.toBackend.push({ type: 'Query', id, query })
   }
 
-  open = <T>(url: DocUrl): Handle<T> => {
+  open = <T>(url: DocUrl, crawl: boolean = true): Handle<T> => {
+    if (crawl) this.crawler.crawl(url)
     const id = validateDocURL(url)
     const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id)
     return doc.handle()
@@ -200,6 +204,7 @@ export class RepoFrontend {
     this.toBackend.push({ type: 'CloseMsg' })
     this.docs.forEach((doc) => doc.close())
     this.docs.clear()
+    this.crawler.close()
   }
 
   destroy = (url: DocUrl): void => {

@@ -18,11 +18,6 @@ const Queue_1 = __importDefault(require("./Queue"));
 const PeerConnection_1 = __importDefault(require("./PeerConnection"));
 class Network {
     constructor(selfId) {
-        this.onListening = () => {
-            for (const discoveryId of this.joined) {
-                this.swarmJoin(discoveryId);
-            }
-        };
         this.onDiscovery = (peerInfo) => {
             const type = peerInfo.local ? 'mdns' : 'dht';
             this.discovered.add(`${type}@${peerInfo.host}:${peerInfo.port}`);
@@ -75,8 +70,10 @@ class Network {
             this.joinOptions = joinOptions;
         this.swarm = swarm;
         this.swarm.on('connection', this.onConnection);
-        this.swarm.on('listening', this.onListening);
         this.swarm.on('peer', this.onDiscovery);
+        for (const discoveryId of this.joined) {
+            this.swarmJoin(discoveryId);
+        }
     }
     get closedConnectionCount() {
         let count = 0;
