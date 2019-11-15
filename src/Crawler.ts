@@ -5,6 +5,8 @@ import { isHyperfileUrl } from './FileStore'
 import * as TraverseLogic from './TraverseLogic'
 import { Doc } from 'automerge'
 
+const log = require('debug')('hypermerge-crawler')
+
 export class Crawler {
   repo: RepoFrontend
   seen: Set<string> = new Set()
@@ -15,12 +17,14 @@ export class Crawler {
   }
 
   crawl(url: DocUrl) {
+    log(`Crawling from root ${url}`)
     this.onUrl(url)
   }
 
   onUrl = (urlVal: BaseUrl) => {
     const url = withoutQuery(urlVal)
     if (this.seen.has(url)) return
+    log(`Crawling ${url}`)
 
     if (isDocUrl(url)) {
       const handle = this.repo.open(url)

@@ -10,6 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Misc_1 = require("./Misc");
 const FileStore_1 = require("./FileStore");
 const TraverseLogic = __importStar(require("./TraverseLogic"));
+const log = require('debug')('hypermerge-crawler');
 class Crawler {
     constructor(repo) {
         this.seen = new Set();
@@ -18,6 +19,7 @@ class Crawler {
             const url = Misc_1.withoutQuery(urlVal);
             if (this.seen.has(url))
                 return;
+            log(`Crawling ${url}`);
             if (Misc_1.isDocUrl(url)) {
                 const handle = this.repo.open(url);
                 this.seen.add(url);
@@ -36,6 +38,7 @@ class Crawler {
         this.repo = repo;
     }
     crawl(url) {
+        log(`Crawling from root ${url}`);
         this.onUrl(url);
     }
     close() {
