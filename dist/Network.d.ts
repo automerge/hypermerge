@@ -19,7 +19,6 @@ export default class Network {
     getOrCreatePeer(peerId: PeerId): NetworkPeer;
     private swarmJoin;
     private swarmLeave;
-    private onListening;
     private onDiscovery;
     private onConnection;
 }

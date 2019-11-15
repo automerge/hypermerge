@@ -12,7 +12,6 @@ export interface Swarm {
 export interface SwarmEvents {
     connection(socket: Socket, details: ConnectionDetails): void;
     peer(peer: PeerInfo): void;
-    listening(): void;
 }
 export interface JoinOptions {
     announce?: boolean;
