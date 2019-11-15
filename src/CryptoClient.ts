@@ -14,27 +14,35 @@ import {
 
 export type RequestFn = (msg: ToBackendQueryMsg, cb: (msg: any) => void) => void
 
+export interface SignedValue<T extends string> {
+  value: T
+  signature: Crypto.EncodedSignature
+}
+
 export default class CryptoClient {
   request: RequestFn
   constructor(request: RequestFn) {
     this.request = request
   }
-  sign(url: DocUrl, message: string): Promise<Crypto.EncodedSignature> {
+  sign<T extends string>(url: DocUrl, value: T): Promise<SignedValue<T>> {
     return new Promise((res, rej) => {
       const docId = validateDocURL(url)
-      this.request({ type: 'SignMsg', docId, message }, (msg: SignReplyMsg) => {
-        if (msg.success) return res(msg.signature)
+      this.request({ type: 'SignMsg', docId, message: value }, (msg: SignReplyMsg) => {
+        if (msg.success) return res({ value, signature: msg.signature })
         rej()
       })
     })
   }
 
-  verify(url: DocUrl, message: string, signature: Crypto.EncodedSignature): Promise<boolean> {
+  verify<T extends string>(url: DocUrl, signedValue: SignedValue<T>): Promise<boolean> {
     return new Promise((res) => {
       const docId = validateDocURL(url)
-      this.request({ type: 'VerifyMsg', docId, message, signature }, (msg: VerifyReplyMsg) => {
-        res(msg.success)
-      })
+      this.request(
+        { type: 'VerifyMsg', docId, message: signedValue.value, signature: signedValue.signature },
+        (msg: VerifyReplyMsg) => {
+          res(msg.success)
+        }
+      )
     })
   }
 

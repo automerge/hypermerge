@@ -5,20 +5,20 @@ class CryptoClient {
     constructor(request) {
         this.request = request;
     }
-    sign(url, message) {
+    sign(url, value) {
         return new Promise((res, rej) => {
             const docId = Metadata_1.validateDocURL(url);
-            this.request({ type: 'SignMsg', docId, message }, (msg) => {
+            this.request({ type: 'SignMsg', docId, message: value }, (msg) => {
                 if (msg.success)
-                    return res(msg.signature);
+                    return res({ value, signature: msg.signature });
                 rej();
             });
         });
     }
-    verify(url, message, signature) {
+    verify(url, signedValue) {
         return new Promise((res) => {
             const docId = Metadata_1.validateDocURL(url);
-            this.request({ type: 'VerifyMsg', docId, message, signature }, (msg) => {
+            this.request({ type: 'VerifyMsg', docId, message: signedValue.value, signature: signedValue.signature }, (msg) => {
                 res(msg.success);
             });
         });
