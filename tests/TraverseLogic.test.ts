@@ -1,5 +1,6 @@
 import test from 'tape'
 import * as TraverseLogic from '../src/TraverseLogic'
+import * as Automerge from 'automerge'
 
 test('Test TraverseLogic', (t) => {
   t.test('Test arrays', (t) => {
@@ -32,5 +33,15 @@ test('Test TraverseLogic', (t) => {
     const select = (val: unknown) => val === 'bar'
     const results = TraverseLogic.iterativeDfs(select, val)
     t.deepEqual(results, ['bar'])
+  })
+
+  t.test("Test Automerge.Text isn't traversed", function(t) {
+    t.plan(1)
+    const doc = Automerge.change(Automerge.init(), function(doc: any) {
+      doc.text = new Automerge.Text()
+      doc.text.insertAt(0, 't', 'e', 's', 't')
+    })
+    const results = TraverseLogic.iterativeDfs((val: any) => val === 't', doc)
+    t.equals(results.length, 0)
   })
 })
