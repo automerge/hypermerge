@@ -14,7 +14,11 @@ export class Crawler {
     this.repo = repo
   }
 
-  crawl(urlVal: BaseUrl) {
+  crawl(url: DocUrl) {
+    this.onUrl(url)
+  }
+
+  onUrl = (urlVal: BaseUrl) => {
     const url = withoutQuery(urlVal)
     if (this.seen.has(url)) return
 
@@ -31,7 +35,7 @@ export class Crawler {
 
   onDocumentUpdate = (doc: Doc<any>) => {
     const urls = TraverseLogic.iterativeDfs<BaseUrl>(isHypermergeUrl, doc)
-    urls.forEach((url) => this.crawl(url))
+    urls.forEach(this.onUrl)
   }
 
   close() {

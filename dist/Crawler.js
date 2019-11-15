@@ -14,26 +14,29 @@ class Crawler {
     constructor(repo) {
         this.seen = new Set();
         this.handles = new Map();
+        this.onUrl = (urlVal) => {
+            const url = Misc_1.withoutQuery(urlVal);
+            if (this.seen.has(url))
+                return;
+            if (Misc_1.isDocUrl(url)) {
+                const handle = this.repo.open(url);
+                this.seen.add(url);
+                this.handles.set(url, handle);
+                setImmediate(() => handle.subscribe(this.onDocumentUpdate));
+            }
+            else if (FileStore_1.isHyperfileUrl(url)) {
+                this.seen.add(url);
+                setImmediate(() => this.repo.files.header(url));
+            }
+        };
         this.onDocumentUpdate = (doc) => {
             const urls = TraverseLogic.iterativeDfs(isHypermergeUrl, doc);
-            urls.forEach((url) => this.crawl(url));
+            urls.forEach(this.onUrl);
         };
         this.repo = repo;
     }
-    crawl(urlVal) {
-        const url = Misc_1.withoutQuery(urlVal);
-        if (this.seen.has(url))
-            return;
-        if (Misc_1.isDocUrl(url)) {
-            const handle = this.repo.open(url);
-            this.seen.add(url);
-            this.handles.set(url, handle);
-            setImmediate(() => handle.subscribe(this.onDocumentUpdate));
-        }
-        else if (FileStore_1.isHyperfileUrl(url)) {
-            this.seen.add(url);
-            setImmediate(() => this.repo.files.header(url));
-        }
+    crawl(url) {
+        this.onUrl(url);
     }
     close() {
         this.handles.forEach((handle) => handle.close());
