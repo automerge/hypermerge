@@ -8,6 +8,7 @@ import { Clock } from './Clock';
 import { DocUrl, DocId, ActorId, HyperfileId, HyperfileUrl } from './Misc';
 import FileServerClient from './FileServerClient';
 import CryptoClient from './CryptoClient';
+import { Crawler } from './Crawler';
 export interface DocMetadata {
     clock: Clock;
     history: number;
@@ -27,6 +28,7 @@ export declare class RepoFrontend {
     readFiles: MapSet<HyperfileId, (data: Uint8Array, mimeType: string) => void>;
     files: FileServerClient;
     crypto: CryptoClient;
+    crawler: Crawler;
     constructor();
     create: <T>(init?: T | undefined) => DocUrl;
     change: <T>(url: DocUrl, fn: ChangeFn<T>) => void;
@@ -39,7 +41,7 @@ export declare class RepoFrontend {
     doc: <T>(url: DocUrl, cb?: ((val: import("automerge").FreezeObject<T>, clock?: Clock | undefined) => void) | undefined) => Promise<import("automerge").FreezeObject<T>>;
     materialize: <T>(url: DocUrl, history: number, cb: (val: import("automerge").FreezeObject<T>) => void) => void;
     queryBackend: (query: ToBackendQueryMsg, cb: (arg: any) => void) => void;
-    open: <T>(url: DocUrl) => Handle<T>;
+    open: <T>(url: DocUrl, crawl?: boolean) => Handle<T>;
     debug(url: DocUrl): void;
     private openDocFrontend;
     subscribe: (subscriber: (message: ToBackendRepoMsg) => void) => void;
