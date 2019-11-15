@@ -20,6 +20,7 @@ const Metadata_1 = require("./Metadata");
 const Misc_1 = require("./Misc");
 const FileServerClient_1 = __importDefault(require("./FileServerClient"));
 const CryptoClient_1 = __importDefault(require("./CryptoClient"));
+const Crawler_1 = require("./Crawler");
 let msgid = 1;
 class RepoFrontend {
     constructor() {
@@ -134,7 +135,9 @@ class RepoFrontend {
             this.cb.set(id, cb);
             this.toBackend.push({ type: 'Query', id, query });
         };
-        this.open = (url) => {
+        this.open = (url, crawl = true) => {
+            if (crawl)
+                this.crawler.crawl(url);
             const id = Metadata_1.validateDocURL(url);
             const doc = this.docs.get(id) || this.openDocFrontend(id);
             return doc.handle();
@@ -146,6 +149,7 @@ class RepoFrontend {
             this.toBackend.push({ type: 'CloseMsg' });
             this.docs.forEach((doc) => doc.close());
             this.docs.clear();
+            this.crawler.close();
         };
         this.destroy = (url) => {
             const id = Metadata_1.validateDocURL(url);
@@ -226,6 +230,7 @@ class RepoFrontend {
             }
         };
         this.crypto = new CryptoClient_1.default(this.queryBackend);
+        this.crawler = new Crawler_1.Crawler(this);
     }
     debug(url) {
         const id = Metadata_1.validateDocURL(url);

@@ -1,3 +1,4 @@
+import * as Url from 'url'
 import { FeedId } from './FeedStore'
 import * as Keys from './Keys'
 import { Key, PublicKey, DiscoveryKey, DiscoveryId, PublicId, KeyId } from './Keys'
@@ -58,6 +59,25 @@ export function hyperfileActorId(hyperfileId: HyperfileId): ActorId {
 
 export function isBaseUrl(str: BaseUrl | KeyId): str is BaseUrl {
   return str.includes(':')
+}
+
+export function isDocUrl(str: string): str is DocUrl {
+  return Url.parse(str).protocol === 'hypermerge:'
+}
+
+export function withoutQuery(url: DocUrl): DocUrl
+export function withoutQuery(url: HyperfileUrl): HyperfileUrl
+export function withoutQuery(url: BaseUrl): BaseUrl
+export function withoutQuery(url: string): string {
+  return url.split('?')[0]
+}
+
+export function isString(val: unknown): val is string {
+  return typeof val === 'string'
+}
+
+export function isPlainObject(val: unknown): val is object {
+  return (val as any).constructor === Object.prototype.constructor
 }
 
 export function joinSets<T>(sets: Set<T>[]): Set<T> {

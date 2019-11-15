@@ -13,11 +13,13 @@ export default class CursorStore {
     private preparedInsert;
     private preparedEntry;
     private preparedDocsWithActor;
+    private preparedAllDocumentIds;
     updateQ: Queue<CursorDescriptor>;
     constructor(db: Database);
     get(repoId: RepoId, docId: DocId): Cursor;
     update(repoId: RepoId, docId: DocId, cursor: Cursor): CursorDescriptor;
     entry(repoId: RepoId, docId: DocId, actorId: ActorId): number;
     docsWithActor(repoId: RepoId, actorId: ActorId, seq?: number): DocId[];
-    addActor(repoId: RepoId, docId: DocId, actorId: ActorId, seq?: number): [Clock.Clock, DocId, RepoId];
+    addActor(repoId: RepoId, docId: DocId, actorId: ActorId, seq?: number): CursorDescriptor;
+    getAllDocumentIds(repoId: RepoId): DocId[];
 }

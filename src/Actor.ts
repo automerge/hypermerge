@@ -8,7 +8,7 @@ import FeedStore, { FeedId, Feed } from './FeedStore'
 
 const log = Debug('repo:actor')
 
-export type ActorMsg = ActorFeedReady | ActorInitialized | ActorSync | Download
+export type ActorMsg = ActorFeedReady | ActorSync | Download
 
 interface ActorSync {
   type: 'ActorSync'
@@ -20,11 +20,6 @@ interface ActorFeedReady {
   actor: Actor
   feed: Feed
   writable: boolean
-}
-
-interface ActorInitialized {
-  type: 'ActorInitialized'
-  actor: Actor
 }
 
 interface Download {
@@ -111,7 +106,6 @@ export class Actor {
       hasData = true
     })
     data.on('end', () => {
-      this.notify({ type: 'ActorInitialized', actor: this })
       this.q.subscribe((f) => f(this))
       if (hasData) this.onSync()
     })

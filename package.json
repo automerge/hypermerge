@@ -1,6 +1,6 @@
 {
   "name": "hypermerge",
-  "version": "2.0.0-beta.15",
+  "version": "2.0.0-beta.18",
   "description": "Node.js library for building p2p collaborative applications without server infrastructure",
   "main": "dist/index.js",
   "scripts": {
@@ -56,14 +56,15 @@
     "@types/uuid": "^3.4.5",
     "@types/ws": "^6.0.3",
     "husky": "^3.0.5",
-    "hyperswarm": "^2.1.0",
-    "prettier": "^1.18.2",
+    "hyperswarm": "^2.3.1",
+    "prettier": "^1.19.1",
     "tape": "^4.11.0",
     "ts-node": "^8.3.0",
-    "typescript": "^3.6.2",
+    "typescript": "^3.7.2",
     "uuid": "^3.3.3"
   },
   "resolutions": {
-    "sodium-native": "^2.4.6"
+    "sodium-native": "^2.4.6",
+    "memory-pager": "1.4.0"
   }
 }

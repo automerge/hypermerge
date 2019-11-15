@@ -71,12 +71,6 @@ class RepoBackend {
                 this.fileServer.close(),
             ]);
         };
-        this.join = (actorId) => {
-            this.network.join(Misc_1.toDiscoveryId(actorId));
-        };
-        this.leave = (actorId) => {
-            this.network.leave(Misc_1.toDiscoveryId(actorId));
-        };
         this.getReadyActor = (actorId) => {
             const publicKey = Keys.decode(actorId);
             const actor = this.actors.get(actorId) || this.initActor({ publicKey });
@@ -241,12 +235,6 @@ class RepoBackend {
                         cursors: cursors,
                         clocks: clocks,
                     });
-                    this.join(actor.id);
-                    break;
-                }
-                case 'ActorInitialized': {
-                    // Swarm on the actor's feed.
-                    this.join(msg.actor.id);
                     break;
                 }
                 case 'ActorSync':
@@ -521,21 +509,21 @@ class RepoBackend {
         this.id = Misc_1.encodeRepoId(repoKeys.publicKey);
         // initialize the various stores
         this.cursors = new CursorStore_1.default(this.db);
-        this.cursors.updateQ.subscribe((_) => {
-            //console.log(descriptor)
-        });
         this.clocks = new ClockStore_1.default(this.db);
-        this.clocks.updateQ.subscribe((_) => {
-            //console.log(descriptor)
+        this.fileServer = new FileServer_1.default(this.files);
+        this.replication = new ReplicationManager_1.default(this.feeds);
+        this.meta = new Metadata_1.Metadata(this.storageFn);
+        this.network = new Network_1.default(toPeerId(this.id));
+        this.messages = new MessageRouter_1.default('HypermergeMessages');
+        for (const docId of this.cursors.getAllDocumentIds(this.id)) {
+            this.network.join(Misc_1.toDiscoveryId(docId));
+        }
+        this.cursors.updateQ.subscribe(([_, docId]) => {
+            this.network.join(Misc_1.toDiscoveryId(docId));
         });
         this.files.writeLog.subscribe((header) => {
             this.meta.addFile(header.url, header.size, header.mimeType);
         });
-        this.fileServer = new FileServer_1.default(this.files);
-        this.replication = new ReplicationManager_1.default(this.feeds);
-        this.meta = new Metadata_1.Metadata(this.storageFn, this.join);
-        this.network = new Network_1.default(toPeerId(this.id));
-        this.messages = new MessageRouter_1.default('HypermergeMessages');
         this.messages.inboxQ.subscribe(this.onMessage);
         this.replication.discoveryQ.subscribe(this.onDiscovery);
         this.network.peerQ.subscribe(this.onPeer);

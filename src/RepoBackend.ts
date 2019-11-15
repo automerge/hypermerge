@@ -106,23 +106,23 @@ export class RepoBackend {
 
     // initialize the various stores
     this.cursors = new CursorStore(this.db)
-    this.cursors.updateQ.subscribe((_) => {
-      //console.log(descriptor)
-    })
     this.clocks = new ClockStore(this.db)
-    this.clocks.updateQ.subscribe((_) => {
-      //console.log(descriptor)
+    this.fileServer = new FileServer(this.files)
+
+    this.replication = new ReplicationManager(this.feeds)
+    this.meta = new Metadata(this.storageFn)
+    this.network = new Network(toPeerId(this.id))
+    this.messages = new MessageRouter('HypermergeMessages')
+
+    for (const docId of this.cursors.getAllDocumentIds(this.id)) {
+      this.network.join(toDiscoveryId(docId))
+    }
+    this.cursors.updateQ.subscribe(([_, docId]) => {
+      this.network.join(toDiscoveryId(docId))
     })
     this.files.writeLog.subscribe((header) => {
       this.meta.addFile(header.url, header.size, header.mimeType)
     })
-    this.fileServer = new FileServer(this.files)
-
-    this.replication = new ReplicationManager(this.feeds)
-    this.meta = new Metadata(this.storageFn, this.join)
-    this.network = new Network(toPeerId(this.id))
-    this.messages = new MessageRouter('HypermergeMessages')
-
     this.messages.inboxQ.subscribe(this.onMessage)
     this.replication.discoveryQ.subscribe(this.onDiscovery)
     this.network.peerQ.subscribe(this.onPeer)
@@ -274,14 +274,6 @@ export class RepoBackend {
       ? (await this.getReadyActor(localActorId)).id
       : this.initActorFeed(doc)
     doc.init(changes, actorId)
-  }
-
-  join = (actorId: ActorId) => {
-    this.network.join(toDiscoveryId(actorId))
-  }
-
-  leave = (actorId: ActorId) => {
-    this.network.leave(toDiscoveryId(actorId))
   }
 
   private getReadyActor = (actorId: ActorId): Promise<Actor> => {
@@ -489,13 +481,6 @@ export class RepoBackend {
           clocks: clocks,
         })
 
-        this.join(actor.id)
-
-        break
-      }
-      case 'ActorInitialized': {
-        // Swarm on the actor's feed.
-        this.join(msg.actor.id)
         break
       }
       case 'ActorSync':

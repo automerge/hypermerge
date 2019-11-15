@@ -4,7 +4,7 @@ import { Channel } from './Multiplex';
 import MessageBus from './MessageBus';
 import { NetworkMsg } from './NetworkMsg';
 export interface SocketInfo {
-    type: 'tcp' | 'utp';
+    type: 'tcp' | 'utp' | 'cloud';
     isClient: boolean;
     onClose?(): void;
 }
@@ -18,8 +18,8 @@ export default class PeerConnection {
     private secureStream;
     private onClose?;
     constructor(rawSocket: Duplex, info: SocketInfo);
-    readonly isOpen: boolean;
-    readonly isClosed: boolean;
+    get isOpen(): boolean;
+    get isClosed(): boolean;
     openChannel(name: string): Channel;
     close(): Promise<void>;
 }

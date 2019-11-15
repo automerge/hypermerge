@@ -45,6 +45,7 @@ class NetworkPeer {
      * add hold onto it and wait for a ConfirmConnection message.
      */
     addConnection(conn) {
+        this.pendingConnections.add(conn);
         if (this.isConnected) {
             this.closeConnection(conn);
             return;
@@ -54,7 +55,6 @@ class NetworkPeer {
             this.confirmConnection(conn);
             return;
         }
-        this.pendingConnections.add(conn);
         conn.networkBus.subscribe((msg) => {
             if (msg.type === 'ConfirmConnection') {
                 this.confirmConnection(conn);
@@ -68,10 +68,10 @@ class NetworkPeer {
         for (const pendingConn of this.pendingConnections) {
             this.closeConnection(pendingConn);
         }
-        this.pendingConnections.clear();
         this.connectionQ.push(conn);
     }
     closeConnection(conn) {
+        this.pendingConnections.delete(conn);
         conn.close();
         this.closedConnectionCount += 1;
     }

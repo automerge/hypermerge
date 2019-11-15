@@ -1,45 +1,37 @@
 import { DiscoveryId, getOrCreate, decodeId } from './Misc'
 import NetworkPeer, { PeerId } from './NetworkPeer'
-import { Swarm, JoinOptions, Socket, ConnectionDetails } from './SwarmInterface'
+import { Swarm, JoinOptions, Socket, ConnectionDetails, PeerInfo } from './SwarmInterface'
 import Queue from './Queue'
 import PeerConnection from './PeerConnection'
 
 export default class Network {
   selfId: PeerId
   joined: Set<DiscoveryId>
-  pending: Set<DiscoveryId>
   peers: Map<PeerId, NetworkPeer>
   peerQ: Queue<NetworkPeer>
+  discovered: Set<string>
   swarm?: Swarm
   joinOptions?: JoinOptions
 
   constructor(selfId: PeerId) {
     this.selfId = selfId
     this.joined = new Set()
-    this.pending = new Set()
     this.peers = new Map()
+    this.discovered = new Set()
     this.peerQ = new Queue('Network:peerQ')
     this.joinOptions = { announce: true, lookup: true }
   }
 
   join(discoveryId: DiscoveryId): void {
-    if (this.swarm) {
-      if (this.joined.has(discoveryId)) return
-
-      this.joined.add(discoveryId)
-      this.swarm.join(decodeId(discoveryId), this.joinOptions)
-      this.pending.delete(discoveryId)
-    } else {
-      this.pending.add(discoveryId)
-    }
+    if (this.joined.has(discoveryId)) return
+    this.joined.add(discoveryId)
+    this.swarmJoin(discoveryId)
   }
 
   leave(discoveryId: DiscoveryId): void {
-    this.pending.delete(discoveryId)
     if (!this.joined.has(discoveryId)) return
-
-    if (this.swarm) this.swarm.leave(decodeId(discoveryId))
     this.joined.delete(discoveryId)
+    this.swarmLeave(discoveryId)
   }
 
   setSwarm(swarm: Swarm, joinOptions?: JoinOptions): void {
@@ -48,9 +40,10 @@ export default class Network {
     if (joinOptions) this.joinOptions = joinOptions
     this.swarm = swarm
     this.swarm.on('connection', this.onConnection)
+    this.swarm.on('peer', this.onDiscovery)
 
-    for (const discoveryId of this.pending) {
-      this.join(discoveryId)
+    for (const discoveryId of this.joined) {
+      this.swarmJoin(discoveryId)
     }
   }
 
@@ -84,14 +77,25 @@ export default class Network {
     })
   }
 
-  private onConnection = async (socket: Socket, details: ConnectionDetails) => {
-    details.reconnect(false)
+  private swarmJoin(discoveryId: DiscoveryId): void {
+    if (this.swarm) this.swarm.join(decodeId(discoveryId), this.joinOptions)
+  }
 
+  private swarmLeave(discoveryId: DiscoveryId): void {
+    if (this.swarm) this.swarm.leave(decodeId(discoveryId))
+  }
+
+  private onDiscovery = (peerInfo: PeerInfo) => {
+    const type = peerInfo.local ? 'mdns' : 'dht'
+    this.discovered.add(`${type}@${peerInfo.host}:${peerInfo.port}`)
+  }
+
+  private onConnection = async (socket: Socket, details: ConnectionDetails) => {
     const conn = new PeerConnection(socket, {
       isClient: details.client,
       type: details.type,
       onClose() {
-        if (!conn.isConfirmed) details.ban()
+        if (!conn.isConfirmed) details.ban?.()
       },
     })
 

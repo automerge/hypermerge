@@ -3,7 +3,7 @@ import { RepoFrontend, ProgressEvent } from './RepoFrontend';
 import { Clock } from './Clock';
 import { Handle } from './Handle';
 import { ActorId, DocId } from './Misc';
-export declare type Patch = Patch;
+export { Patch };
 interface Config {
     docId: DocId;
     actorId?: ActorId;
@@ -37,4 +37,3 @@ export declare class DocFrontend<T> {
     bench(msg: string, f: () => void): void;
     close(): void;
 }
-export {};

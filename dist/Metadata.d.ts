@@ -28,8 +28,7 @@ export declare class Metadata {
     private ready;
     private replay;
     private ledger;
-    private join;
-    constructor(storageFn: Function, joinFn: (id: ActorId) => void);
+    constructor(storageFn: Function);
     private loadLedger;
     private batchAdd;
     private writeThrough;

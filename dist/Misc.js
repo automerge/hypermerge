@@ -7,6 +7,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const Url = __importStar(require("url"));
 const Keys = __importStar(require("./Keys"));
 function decodeId(id) {
     return Keys.decode(id);
@@ -56,6 +57,22 @@ function isBaseUrl(str) {
     return str.includes(':');
 }
 exports.isBaseUrl = isBaseUrl;
+function isDocUrl(str) {
+    return Url.parse(str).protocol === 'hypermerge:';
+}
+exports.isDocUrl = isDocUrl;
+function withoutQuery(url) {
+    return url.split('?')[0];
+}
+exports.withoutQuery = withoutQuery;
+function isString(val) {
+    return typeof val === 'string';
+}
+exports.isString = isString;
+function isPlainObject(val) {
+    return val.constructor === Object.prototype.constructor;
+}
+exports.isPlainObject = isPlainObject;
 function joinSets(sets) {
     const total = [].concat(...sets.map((a) => [...a]));
     return new Set(total);

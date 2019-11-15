@@ -9,7 +9,7 @@ import { PrefixMatchPassThrough, InvalidPrefixError } from './StreamLogic'
 const VERSION_PREFIX = Buffer.from('hypermerge.v1')
 
 export interface SocketInfo {
-  type: 'tcp' | 'utp'
+  type: 'tcp' | 'utp' | 'cloud'
   isClient: boolean
   onClose?(): void
 }
@@ -39,7 +39,9 @@ export default class PeerConnection {
 
     pump(this.secureStream, prefixMatch, this.multiplex, this.secureStream, (err) => {
       if (err instanceof InvalidPrefixError) {
-        console.log('Closing connection to outdated peer. Prefix:', err.actual)
+        const { remoteAddress, remotePort } = this.rawSocket as any
+        const host = `${this.type}@${remoteAddress}:${remotePort}`
+        console.log('Closing connection to outdated peer: %s. Prefix: %s', host, err.actual)
         this.close()
       }
     })
