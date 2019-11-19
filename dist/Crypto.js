@@ -38,13 +38,13 @@ function sign(secretKey, message) {
     const secretKeyBuffer = decode(secretKey);
     const signatureBuffer = Buffer.alloc(sodium_native_1.default.crypto_sign_BYTES);
     sodium_native_1.default.crypto_sign_detached(signatureBuffer, message, secretKeyBuffer);
-    return encode(signatureBuffer);
+    return { message, signature: encode(signatureBuffer) };
 }
 exports.sign = sign;
-function verify(publicKey, message, signature) {
-    const publicKeyBuffer = decode(publicKey);
-    const signatureBuffer = decode(signature);
-    return sodium_native_1.default.crypto_sign_verify_detached(signatureBuffer, message, publicKeyBuffer);
+function verify(encodedPublicKey, signedMessage) {
+    const publicKey = decode(encodedPublicKey);
+    const signature = decode(signedMessage.signature);
+    return sodium_native_1.default.crypto_sign_verify_detached(signature, signedMessage.message, publicKey);
 }
 exports.verify = verify;
 function sealedBox(publicKey, message) {
@@ -68,12 +68,13 @@ function box(senderSecretKey, recipientPublicKey, message) {
     const nonce = Buffer.alloc(sodium_native_1.default.crypto_box_NONCEBYTES);
     sodium_native_1.default.randombytes_buf(nonce);
     sodium_native_1.default.crypto_box_easy(box, message, nonce, decode(recipientPublicKey), decode(senderSecretKey));
-    return [encode(box), encode(nonce)];
+    return { message: encode(box), nonce: encode(nonce) };
 }
 exports.box = box;
-function openBox(senderPublicKey, recipientSecretKey, box, nonce) {
-    const message = Buffer.alloc(box.length - sodium_native_1.default.crypto_box_MACBYTES);
-    const success = sodium_native_1.default.crypto_box_open_easy(message, decode(box), decode(nonce), decode(senderPublicKey), decode(recipientSecretKey));
+function openBox(senderPublicKey, recipientSecretKey, box) {
+    const ciphertext = decode(box.message);
+    const message = Buffer.alloc(ciphertext.length - sodium_native_1.default.crypto_box_MACBYTES);
+    const success = sodium_native_1.default.crypto_box_open_easy(message, ciphertext, decode(box.nonce), decode(senderPublicKey), decode(recipientSecretKey));
     if (!success)
         throw new Error('Unable to open box');
     return message;

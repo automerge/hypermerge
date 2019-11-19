@@ -301,11 +301,11 @@ class RepoBackend {
                 case 'BoxMsg': {
                     let payload;
                     try {
-                        const [box, nonce] = Crypto.box(query.senderSecretKey, query.recipientPublicKey, Buffer.from(query.message));
-                        payload = { type: 'BoxReplyMsg', success: true, box, nonce };
+                        const box = Crypto.box(query.senderSecretKey, query.recipientPublicKey, Buffer.from(query.message));
+                        payload = { type: 'BoxReplyMsg', success: true, box };
                     }
-                    catch (_a) {
-                        payload = { type: 'BoxReplyMsg', success: false };
+                    catch (e) {
+                        payload = { type: 'BoxReplyMsg', success: false, error: Misc_1.errorMessage(e) };
                     }
                     this.toFrontend.push({ type: 'Reply', id, payload });
                     break;
@@ -313,11 +313,11 @@ class RepoBackend {
                 case 'OpenBoxMsg': {
                     let payload;
                     try {
-                        const message = Crypto.openBox(query.senderPublicKey, query.recipientSecretKey, query.box, query.nonce);
+                        const message = Crypto.openBox(query.senderPublicKey, query.recipientSecretKey, query.box);
                         payload = { type: 'OpenBoxReplyMsg', success: true, message: message.toString() };
                     }
-                    catch (_b) {
-                        payload = { type: 'OpenBoxReplyMsg', success: false };
+                    catch (e) {
+                        payload = { type: 'OpenBoxReplyMsg', success: false, error: Misc_1.errorMessage(e) };
                     }
                     this.toFrontend.push({ type: 'Reply', id, payload });
                     break;
@@ -328,8 +328,8 @@ class RepoBackend {
                         const sealedBox = Crypto.sealedBox(query.publicKey, Buffer.from(query.message));
                         payload = { type: 'SealedBoxReplyMsg', success: true, sealedBox };
                     }
-                    catch (_c) {
-                        payload = { type: 'SealedBoxReplyMsg', success: false };
+                    catch (e) {
+                        payload = { type: 'SealedBoxReplyMsg', success: false, error: Misc_1.errorMessage(e) };
                     }
                     this.toFrontend.push({ type: 'Reply', id, payload });
                     break;
@@ -340,8 +340,8 @@ class RepoBackend {
                         const message = Crypto.openSealedBox(query.keyPair, query.sealedBox);
                         payload = { type: 'OpenSealedBoxReplyMsg', success: true, message: message.toString() };
                     }
-                    catch (_d) {
-                        payload = { type: 'OpenSealedBoxReplyMsg', success: false };
+                    catch (e) {
+                        payload = { type: 'OpenSealedBoxReplyMsg', success: false, error: Misc_1.errorMessage(e) };
                     }
                     this.toFrontend.push({ type: 'Reply', id, payload });
                     break;
@@ -349,15 +349,15 @@ class RepoBackend {
                 case 'SignMsg': {
                     let payload;
                     try {
-                        const signature = yield this.feeds.sign(query.docId, Buffer.from(query.message));
+                        const signedMessage = yield this.feeds.sign(query.docId, Buffer.from(query.message));
                         payload = {
                             type: 'SignReplyMsg',
                             success: true,
-                            signature: signature,
+                            signedMessage: { message: query.message, signature: signedMessage.signature },
                         };
                     }
-                    catch (_e) {
-                        payload = { type: 'SignReplyMsg', success: false };
+                    catch (e) {
+                        payload = { type: 'SignReplyMsg', success: false, error: Misc_1.errorMessage(e) };
                     }
                     this.toFrontend.push({
                         type: 'Reply',
@@ -369,9 +369,10 @@ class RepoBackend {
                 case 'VerifyMsg': {
                     let success;
                     try {
-                        success = this.feeds.verify(query.docId, Buffer.from(query.message), query.signature);
+                        const signedMessage = { message: Buffer.from(query.message), signature: query.signature };
+                        success = this.feeds.verify(query.docId, signedMessage);
                     }
-                    catch (_f) {
+                    catch (e) {
                         success = false;
                     }
                     this.toFrontend.push({

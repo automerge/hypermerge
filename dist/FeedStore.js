@@ -59,8 +59,8 @@ class FeedStore {
             return signature;
         });
     }
-    verify(feedId, message, signature) {
-        return Crypto.verify(feedId, message, signature);
+    verify(feedId, signedMessage) {
+        return Crypto.verify(feedId, signedMessage);
     }
     append(feedId, ...blocks) {
         return __awaiter(this, void 0, void 0, function* () {

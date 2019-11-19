@@ -34,16 +34,17 @@ export declare type SealedBoxReplyMsg = SealedBoxSuccessReplyMsg | SealedBoxErro
 export interface SealedBoxSuccessReplyMsg {
     type: 'SealedBoxReplyMsg';
     success: true;
-    sealedBox: Crypto.EncodedSealedBox;
+    sealedBox: Crypto.EncodedSealedBoxCiphertext;
 }
 export interface SealedBoxErrorReplyMsg {
     type: 'SealedBoxReplyMsg';
     success: false;
+    error: string;
 }
 export interface OpenSealedBoxMsg {
     type: 'OpenSealedBoxMsg';
     keyPair: Crypto.EncodedEncryptionKeyPair;
-    sealedBox: Crypto.EncodedSealedBox;
+    sealedBox: Crypto.EncodedSealedBoxCiphertext;
 }
 export declare type OpenSealedBoxReplyMsg = OpenSealedBoxSuccessMsg | OpenSealedBoxErrorMsg;
 export interface OpenSealedBoxSuccessMsg {
@@ -54,6 +55,7 @@ export interface OpenSealedBoxSuccessMsg {
 export interface OpenSealedBoxErrorMsg {
     type: 'OpenSealedBoxReplyMsg';
     success: false;
+    error: string;
 }
 export interface BoxMsg {
     type: 'BoxMsg';
@@ -65,17 +67,16 @@ export declare type BoxReplyMsg = BoxSuccessReplyMsg | BoxErrorReplyMsg;
 export interface BoxSuccessReplyMsg {
     type: 'BoxReplyMsg';
     success: true;
-    box: Crypto.EncodedBox;
-    nonce: Crypto.EncodedBoxNonce;
+    box: Crypto.Box;
 }
 export interface BoxErrorReplyMsg {
     type: 'BoxReplyMsg';
     success: false;
+    error: string;
 }
 export interface OpenBoxMsg {
     type: 'OpenBoxMsg';
-    box: Crypto.EncodedBox;
-    nonce: Crypto.EncodedBoxNonce;
+    box: Crypto.Box;
     recipientSecretKey: Crypto.EncodedSecretEncryptionKey;
     senderPublicKey: Crypto.EncodedPublicEncryptionKey;
 }
@@ -88,6 +89,7 @@ export interface OpenBoxSuccessReplyMsg {
 export interface OpenBoxErrorReplyMsg {
     type: 'OpenBoxReplyMsg';
     success: false;
+    error: string;
 }
 export interface EncryptionKeyPairMsg {
     type: 'EncryptionKeyPairMsg';
@@ -101,6 +103,7 @@ export interface EncryptionKeyPairSuccessReplyMsg {
 export interface EncryptionKeyPairErrorReplyMsg {
     type: 'EncryptionKeyPairReplyMsg';
     success: false;
+    error: string;
 }
 export interface SignMsg {
     type: 'SignMsg';
@@ -111,11 +114,12 @@ export declare type SignReplyMsg = SignSuccessReplyMsg | SignErrorReplyMsg;
 export interface SignSuccessReplyMsg {
     type: 'SignReplyMsg';
     success: true;
-    signature: Crypto.EncodedSignature;
+    signedMessage: Crypto.SignedMessage<string>;
 }
 export interface SignErrorReplyMsg {
     type: 'SignReplyMsg';
     success: false;
+    error: string;
 }
 export interface VerifyMsg {
     type: 'VerifyMsg';

@@ -108,11 +108,19 @@ export function box(
   recipientPublicKey: EncodedPublicEncryptionKey,
   message: Buffer
 ): Box {
-  const box = Buffer.alloc(message.length + sodium.crypto_box_MACBYTES) as sodium.BoxCiphertext
+  const ciphertext = Buffer.alloc(
+    message.length + sodium.crypto_box_MACBYTES
+  ) as sodium.BoxCiphertext
   const nonce = Buffer.alloc(sodium.crypto_box_NONCEBYTES) as sodium.BoxNonce
   sodium.randombytes_buf(nonce)
-  sodium.crypto_box_easy(box, message, nonce, decode(recipientPublicKey), decode(senderSecretKey))
-  return { message: encode(box), nonce: encode(nonce) }
+  sodium.crypto_box_easy(
+    ciphertext,
+    message,
+    nonce,
+    decode(recipientPublicKey),
+    decode(senderSecretKey)
+  )
+  return { message: encode(ciphertext), nonce: encode(nonce) }
 }
 
 export function openBox(

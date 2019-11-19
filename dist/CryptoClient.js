@@ -10,15 +10,20 @@ class CryptoClient {
             const docId = Metadata_1.validateDocURL(url);
             this.request({ type: 'SignMsg', docId, message }, (msg) => {
                 if (msg.success)
-                    return res(msg.signature);
-                rej();
+                    return res(msg.signedMessage);
+                rej(msg.error);
             });
         });
     }
-    verify(url, message, signature) {
+    verify(url, signedMessage) {
         return new Promise((res) => {
             const docId = Metadata_1.validateDocURL(url);
-            this.request({ type: 'VerifyMsg', docId, message, signature }, (msg) => {
+            this.request({
+                type: 'VerifyMsg',
+                docId,
+                message: signedMessage.message,
+                signature: signedMessage.signature,
+            }, (msg) => {
                 res(msg.success);
             });
         });
@@ -27,17 +32,17 @@ class CryptoClient {
         return new Promise((res, rej) => {
             this.request({ type: 'BoxMsg', senderSecretKey, recipientPublicKey, message }, (msg) => {
                 if (msg.success)
-                    return res([msg.box, msg.nonce]);
-                rej();
+                    return res(msg.box);
+                rej(msg.error);
             });
         });
     }
-    openBox(senderPublicKey, recipientSecretKey, box, nonce) {
+    openBox(senderPublicKey, recipientSecretKey, box) {
         return new Promise((res, rej) => {
-            this.request({ type: 'OpenBoxMsg', senderPublicKey, recipientSecretKey, box, nonce }, (msg) => {
+            this.request({ type: 'OpenBoxMsg', senderPublicKey, recipientSecretKey, box: box }, (msg) => {
                 if (msg.success)
                     return res(msg.message);
-                rej();
+                rej(msg.error);
             });
         });
     }
@@ -46,7 +51,7 @@ class CryptoClient {
             this.request({ type: 'SealedBoxMsg', publicKey, message }, (msg) => {
                 if (msg.success)
                     return res(msg.sealedBox);
-                rej();
+                rej(msg.error);
             });
         });
     }
@@ -55,7 +60,7 @@ class CryptoClient {
             this.request({ type: 'OpenSealedBoxMsg', keyPair, sealedBox }, (msg) => {
                 if (msg.success)
                     return res(msg.message);
-                rej();
+                rej(msg.error);
             });
         });
     }
@@ -64,7 +69,7 @@ class CryptoClient {
             this.request({ type: 'EncryptionKeyPairMsg' }, (msg) => {
                 if (msg.success)
                     return res(msg.keyPair);
-                rej();
+                rej(msg.error);
             });
         });
     }
