@@ -169,8 +169,8 @@ test('Test signing and verifying', async (t) => {
   const repo = testRepo()
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
-  const signature = await repo.crypto.sign(url, message)
-  const success = await repo.crypto.verify(url, message, signature)
+  const signedMessage = await repo.crypto.sign(url, message)
+  const success = await repo.crypto.verify(url, signedMessage)
   t.true(success)
   test.onFinish(() => repo.close())
 })
@@ -181,11 +181,10 @@ test("Test verifying garbage returns false and doesn't throw", async (t) => {
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
   await repo.crypto.sign(url, message)
-  const success = await repo.crypto.verify(
-    url,
+  const success = await repo.crypto.verify(url, {
     message,
-    'thisisnotasignature' as Crypto.EncodedSignature
-  )
+    signature: 'thisisnotasignature' as Crypto.EncodedSignature,
+  })
   t.false(success)
   test.onFinish(() => repo.close())
 })
@@ -196,8 +195,8 @@ test('Test verifying with wrong signature fails', async (t) => {
   const url1 = repo.create({ foo: 'bar0' })
   const url2 = repo.create({ foo2: 'bar1' })
   const message = 'test message'
-  const signature2 = await repo.crypto.sign(url2, message)
-  const success = await repo.crypto.verify(url1, message, signature2)
+  const signedMessage2 = await repo.crypto.sign(url2, message)
+  const success = await repo.crypto.verify(url1, { message, signature: signedMessage2.signature })
   t.false(success)
   test.onFinish(() => repo.close())
 })
@@ -208,9 +207,10 @@ test('Test signing as document from another repo', async (t) => {
   const repo2 = testRepo()
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
-  repo2.crypto
-    .sign(url, message)
-    .then(() => t.fail('sign() promise should reject'), () => t.pass('Should reject'))
+  repo2.crypto.sign(url, message).then(
+    () => t.fail('sign() promise should reject'),
+    () => t.pass('Should reject')
+  )
   test.onFinish(() => {
     repo.close()
     repo2.close()
@@ -223,8 +223,8 @@ test('Test verifying a signature from another repo succeeds', async (t) => {
   const repo2 = testRepo()
   const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
-  const signature = await repo.crypto.sign(url, message)
-  const success = await repo2.crypto.verify(url, message, signature)
+  const signedMessage = await repo.crypto.sign(url, message)
+  const success = await repo2.crypto.verify(url, signedMessage)
   t.true(success)
   test.onFinish(() => {
     repo.close()
@@ -267,9 +267,10 @@ test('Test fails with wrong keypair', async (t) => {
   const keyPair2 = Crypto.encodedEncryptionKeyPair()
   const message = 'test message'
   const sealedBox = await repo.crypto.sealedBox(keyPair.publicKey, message)
-  repo.crypto
-    .openSealedBox(keyPair2, sealedBox)
-    .then(() => t.fail('openSealedBox should reject'), () => t.pass('Should reject'))
+  repo.crypto.openSealedBox(keyPair2, sealedBox).then(
+    () => t.fail('openSealedBox should reject'),
+    () => t.pass('Should reject')
+  )
   test.onFinish(() => {
     repo.close()
   })

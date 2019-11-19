@@ -12,8 +12,6 @@ import {
   OpenBoxReplyMsg,
 } from './RepoMsg'
 
-// Re-export crypto types for conveniance
-
 export type RequestFn = (msg: ToBackendQueryMsg, cb: (msg: any) => void) => void
 
 export default class CryptoClient {
@@ -21,17 +19,17 @@ export default class CryptoClient {
   constructor(request: RequestFn) {
     this.request = request
   }
-  sign<T extends string>(url: DocUrl, message: T): Promise<Crypto.SignedMessage<T>> {
+  sign(url: DocUrl, message: string): Promise<Crypto.SignedMessage<string>> {
     return new Promise((res, rej) => {
       const docId = validateDocURL(url)
       this.request({ type: 'SignMsg', docId, message }, (msg: SignReplyMsg) => {
-        if (msg.success) return res({ message, signature: msg.signature })
+        if (msg.success) return res(msg.signedMessage)
         rej(msg.error)
       })
     })
   }
 
-  verify<T extends string>(url: DocUrl, signedMessage: Crypto.SignedMessage<T>): Promise<boolean> {
+  verify(url: DocUrl, signedMessage: Crypto.SignedMessage<string>): Promise<boolean> {
     return new Promise((res) => {
       const docId = validateDocURL(url)
       this.request(

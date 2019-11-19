@@ -177,7 +177,7 @@ export type SignReplyMsg = SignSuccessReplyMsg | SignErrorReplyMsg
 export interface SignSuccessReplyMsg {
   type: 'SignReplyMsg'
   success: true
-  signature: Crypto.EncodedSignature
+  signedMessage: Crypto.SignedMessage<string>
 }
 
 export interface SignErrorReplyMsg {

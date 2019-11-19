@@ -610,11 +610,11 @@ export class RepoBackend {
       case 'SignMsg': {
         let payload: SignReplyMsg
         try {
-          const signature = await this.feeds.sign(query.docId, Buffer.from(query.message))
+          const signedMessage = await this.feeds.sign(query.docId, Buffer.from(query.message))
           payload = {
             type: 'SignReplyMsg',
             success: true,
-            signature: signature,
+            signedMessage: { message: query.message, signature: signedMessage.signature },
           }
         } catch (e) {
           payload = { type: 'SignReplyMsg', success: false, error: errorMessage(e) }
@@ -629,7 +629,8 @@ export class RepoBackend {
       case 'VerifyMsg': {
         let success
         try {
-          success = this.feeds.verify(query.docId, Buffer.from(query.message), query.signature)
+          const signedMessage = { message: Buffer.from(query.message), signature: query.signature }
+          success = this.feeds.verify(query.docId, signedMessage)
         } catch (e) {
           success = false
         }
