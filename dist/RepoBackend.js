@@ -281,8 +281,15 @@ class RepoBackend {
                 }
             });
         };
+        /** @deprecated Use addSwarm */
         this.setSwarm = (swarm, joinOptions) => {
-            this.network.setSwarm(swarm, joinOptions);
+            this.addSwarm(swarm, joinOptions);
+        };
+        this.addSwarm = (swarm, joinOptions) => {
+            this.network.addSwarm(swarm, joinOptions);
+        };
+        this.removeSwarm = (swarm) => {
+            this.network.removeSwarm(swarm);
         };
         this.subscribe = (subscriber) => {
             this.toFrontend.subscribe(subscriber);

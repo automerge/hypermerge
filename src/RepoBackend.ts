@@ -540,8 +540,17 @@ export class RepoBackend {
     })
   }
 
+  /** @deprecated Use addSwarm */
   setSwarm = (swarm: Swarm, joinOptions?: JoinOptions) => {
-    this.network.setSwarm(swarm, joinOptions)
+    this.addSwarm(swarm, joinOptions)
+  }
+
+  addSwarm = (swarm: Swarm, joinOptions?: JoinOptions) => {
+    this.network.addSwarm(swarm, joinOptions)
+  }
+
+  removeSwarm = (swarm: Swarm) => {
+    this.network.removeSwarm(swarm)
   }
 
   subscribe = (subscriber: (message: ToFrontendRepoMsg) => void) => {

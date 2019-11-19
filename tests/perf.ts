@@ -25,8 +25,8 @@ test(`Create ${cycles} docs and share one`, (t) => {
     url: 'wss://discovery-cloud.herokuapp.com',
   })
 
-  repoA.setSwarm(clientA)
-  repoB.setSwarm(clientB)
+  repoA.addSwarm(clientA)
+  repoB.addSwarm(clientB)
 
   // connect the repos
 

@@ -1,6 +1,5 @@
 /// <reference types="node" />
-import { Socket } from 'net';
-export { Socket };
+import { Duplex } from 'stream';
 export declare type SocketType = 'tcp' | 'utp' | 'cloud';
 export interface Swarm {
     join(dk: Buffer, options?: JoinOptions): void;
@@ -10,35 +9,22 @@ export interface Swarm {
     destroy(cb: () => void): void;
 }
 export interface SwarmEvents {
-    connection(socket: Socket, details: ConnectionDetails): void;
+    connection(socket: Duplex, details: ConnectionDetails): void;
     peer(peer: PeerInfo): void;
 }
 export interface JoinOptions {
     announce?: boolean;
     lookup?: boolean;
 }
-export interface BaseConnectionDetails {
+export interface ConnectionDetails {
     type: SocketType;
     reconnect?(shouldReconnect: boolean): void;
     ban?(): void;
+    client: boolean;
+    peer: PeerInfo | null;
 }
-export interface InitiatedConnectionDetails extends BaseConnectionDetails {
-    client: true;
-    peer: PeerInfo;
-}
-export interface ReceivedConnectionDetails extends BaseConnectionDetails {
-    client: false;
-    peer: null;
-}
-export declare type ConnectionDetails = InitiatedConnectionDetails | ReceivedConnectionDetails;
 export interface PeerInfo {
     port: number;
     host: string;
     local: boolean;
-    topic?: Buffer;
-    referrer: null | {
-        port: number;
-        host: string;
-        id: Buffer;
-    };
 }

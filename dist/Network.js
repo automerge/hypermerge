@@ -47,33 +47,50 @@ class Network {
         this.selfId = selfId;
         this.joined = new Set();
         this.peers = new Map();
+        this.swarms = new Map();
         this.discovered = new Set();
         this.peerQ = new Queue_1.default('Network:peerQ');
-        this.joinOptions = { announce: true, lookup: true };
     }
     join(discoveryId) {
         if (this.joined.has(discoveryId))
             return;
         this.joined.add(discoveryId);
-        this.swarmJoin(discoveryId);
+        for (const swarm of this.swarms.keys()) {
+            this.swarmJoin(swarm, discoveryId);
+        }
     }
     leave(discoveryId) {
         if (!this.joined.has(discoveryId))
             return;
         this.joined.delete(discoveryId);
-        this.swarmLeave(discoveryId);
-    }
-    setSwarm(swarm, joinOptions) {
-        if (this.swarm)
-            throw new Error('Swarm already exists!');
-        if (joinOptions)
-            this.joinOptions = joinOptions;
-        this.swarm = swarm;
-        this.swarm.on('connection', this.onConnection);
-        this.swarm.on('peer', this.onDiscovery);
-        for (const discoveryId of this.joined) {
-            this.swarmJoin(discoveryId);
+        for (const swarm of this.swarms.keys()) {
+            this.swarmLeave(swarm, discoveryId);
         }
+    }
+    /** @deprecated */
+    get swarm() {
+        return Array.from(this.swarms.keys())[0];
+    }
+    /**
+     * @deprecated Use `addSwarm`
+     */
+    setSwarm(swarm, joinOptions) {
+        this.addSwarm(swarm, joinOptions);
+    }
+    addSwarm(swarm, joinOptions = { announce: true, lookup: true }) {
+        if (this.swarms.has(swarm))
+            return;
+        this.swarms.set(swarm, joinOptions);
+        swarm.on('connection', this.onConnection);
+        swarm.on('peer', this.onDiscovery);
+        for (const discoveryId of this.joined) {
+            this.swarmJoin(swarm, discoveryId);
+        }
+    }
+    removeSwarm(swarm) {
+        this.swarms.delete(swarm);
+        swarm.off('connection', this.onConnection);
+        swarm.off('peer', this.onDiscovery);
     }
     get closedConnectionCount() {
         let count = 0;
@@ -87,9 +104,7 @@ class Network {
             this.peers.forEach((peer) => {
                 peer.close();
             });
-            return new Promise((res) => {
-                this.swarm ? this.swarm.destroy(res) : res();
-            });
+            yield Promise.all(Array.from(this.swarms.keys()).map((swarm) => this.closeSwarm(swarm)));
         });
     }
     getOrCreatePeer(peerId) {
@@ -101,13 +116,17 @@ class Network {
             return peer;
         });
     }
-    swarmJoin(discoveryId) {
-        if (this.swarm)
-            this.swarm.join(Misc_1.decodeId(discoveryId), this.joinOptions);
+    closeSwarm(swarm) {
+        return new Promise((res) => {
+            this.removeSwarm(swarm);
+            swarm.destroy(res);
+        });
     }
-    swarmLeave(discoveryId) {
-        if (this.swarm)
-            this.swarm.leave(Misc_1.decodeId(discoveryId));
+    swarmJoin(swarm, discoveryId) {
+        swarm.join(Misc_1.decodeId(discoveryId), this.swarms.get(swarm));
+    }
+    swarmLeave(swarm, discoveryId) {
+        swarm.leave(Misc_1.decodeId(discoveryId));
     }
 }
 exports.default = Network;
