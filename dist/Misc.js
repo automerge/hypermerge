@@ -126,4 +126,8 @@ function toWindowsNamedPipe(path) {
     const sanitizedPath = path.replace(/^\//, '').replace(/\//g, '-');
     return `\\\\.\\pipe\\${sanitizedPath}`;
 }
+function errorMessage(e) {
+    return `${e.name}: ${e.message}`;
+}
+exports.errorMessage = errorMessage;
 //# sourceMappingURL=Misc.js.map

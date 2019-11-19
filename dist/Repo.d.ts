@@ -15,7 +15,10 @@ export declare class Repo {
     create: <T>(init?: T) => DocUrl;
     open: <T>(id: DocUrl) => Handle<T>;
     destroy: (id: DocUrl) => void;
+    /** @deprecated Use addSwarm */
     setSwarm: (swarm: Swarm, joinOptions?: JoinOptions) => void;
+    addSwarm: (swarm: Swarm, joinOptions?: JoinOptions) => void;
+    removeSwarm: (swarm: Swarm, joinOptions?: JoinOptions) => void;
     message: (url: DocUrl, message: any) => void;
     crypto: CryptoClient;
     files: FileServerClient;

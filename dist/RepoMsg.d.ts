@@ -39,6 +39,7 @@ export interface SealedBoxSuccessReplyMsg {
 export interface SealedBoxErrorReplyMsg {
     type: 'SealedBoxReplyMsg';
     success: false;
+    error: string;
 }
 export interface OpenSealedBoxMsg {
     type: 'OpenSealedBoxMsg';
@@ -54,6 +55,7 @@ export interface OpenSealedBoxSuccessMsg {
 export interface OpenSealedBoxErrorMsg {
     type: 'OpenSealedBoxReplyMsg';
     success: false;
+    error: string;
 }
 export interface BoxMsg {
     type: 'BoxMsg';
@@ -71,6 +73,7 @@ export interface BoxSuccessReplyMsg {
 export interface BoxErrorReplyMsg {
     type: 'BoxReplyMsg';
     success: false;
+    error: string;
 }
 export interface OpenBoxMsg {
     type: 'OpenBoxMsg';
@@ -88,6 +91,7 @@ export interface OpenBoxSuccessReplyMsg {
 export interface OpenBoxErrorReplyMsg {
     type: 'OpenBoxReplyMsg';
     success: false;
+    error: string;
 }
 export interface EncryptionKeyPairMsg {
     type: 'EncryptionKeyPairMsg';
@@ -101,6 +105,7 @@ export interface EncryptionKeyPairSuccessReplyMsg {
 export interface EncryptionKeyPairErrorReplyMsg {
     type: 'EncryptionKeyPairReplyMsg';
     success: false;
+    error: string;
 }
 export interface SignMsg {
     type: 'SignMsg';
@@ -116,6 +121,7 @@ export interface SignSuccessReplyMsg {
 export interface SignErrorReplyMsg {
     type: 'SignReplyMsg';
     success: false;
+    error: string;
 }
 export interface VerifyMsg {
     type: 'VerifyMsg';

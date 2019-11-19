@@ -18,7 +18,11 @@ export class Repo {
   open: <T>(id: DocUrl) => Handle<T>
   destroy: (id: DocUrl) => void
   //follow: (id: string, target: string) => void;
+  /** @deprecated Use addSwarm */
   setSwarm: (swarm: Swarm, joinOptions?: JoinOptions) => void
+
+  addSwarm: (swarm: Swarm, joinOptions?: JoinOptions) => void
+  removeSwarm: (swarm: Swarm, joinOptions?: JoinOptions) => void
 
   message: (url: DocUrl, message: any) => void
 
@@ -55,6 +59,8 @@ export class Repo {
     this.watch = this.front.watch
     this.merge = this.front.merge
     this.setSwarm = this.back.setSwarm
+    this.addSwarm = this.back.addSwarm
+    this.removeSwarm = this.back.removeSwarm
     this.startFileServer = this.back.startFileServer
     this.materialize = this.front.materialize
     this.crypto = this.front.crypto

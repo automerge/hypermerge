@@ -71,7 +71,10 @@ export declare class RepoBackend {
     private actorNotify;
     private initActor;
     syncChanges: (actor: Actor) => void;
+    /** @deprecated Use addSwarm */
     setSwarm: (swarm: Swarm, joinOptions?: JoinOptions | undefined) => void;
+    addSwarm: (swarm: Swarm, joinOptions?: JoinOptions | undefined) => void;
+    removeSwarm: (swarm: Swarm) => void;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;
     handleQuery: (id: number, query: ToBackendQueryMsg) => Promise<void>;
     receive: (msg: ToBackendRepoMsg) => void;

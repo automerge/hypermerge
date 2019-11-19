@@ -51,3 +51,4 @@ export declare function getOrCreate<K, V>(map: Map<K, V>, key: K, create: (key: 
  */
 export declare function createMultiPromise<T>(n: number, factory: (resolver: (value: T) => void, rejector: (err: Error) => void) => void): Promise<T>;
 export declare function toIpcPath(path: string): string;
+export declare function errorMessage(e: Error): string;

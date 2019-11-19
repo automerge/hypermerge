@@ -10,8 +10,8 @@ test('Share a doc between two repos', (t) => {
   ;(global as any).repoA = repoA
   ;(global as any).repoB = repoB
 
-  repoA.setSwarm(testSwarm())
-  repoB.setSwarm(testSwarm())
+  repoA.addSwarm(testSwarm())
+  repoB.addSwarm(testSwarm())
 
   const id = repoA.create({ a: 1 })
 
@@ -47,8 +47,8 @@ test("Three way docs don't load until all changes are in", (t) => {
   const repoB = testRepo()
   const repoC = testRepo()
 
-  repoA.setSwarm(testSwarm())
-  repoB.setSwarm(testSwarm())
+  repoA.addSwarm(testSwarm())
+  repoB.addSwarm(testSwarm())
 
   // connect repos A and B
 
@@ -73,7 +73,7 @@ test("Three way docs don't load until all changes are in", (t) => {
         { a: 1, b: 2 },
         "repoB gets repoA's change and its local changes at once",
         () => {
-          repoC.setSwarm(testSwarm())
+          repoC.addSwarm(testSwarm())
 
           repoC.doc(id, (doc) => {
             t.deepEqual(doc, { a: 1, b: 2 }, "repoC gets repoA's and repoB's changes")
@@ -97,8 +97,8 @@ test('Message about a doc between two repos', (t) => {
   const repoA = testRepo()
   const repoB = testRepo()
 
-  repoA.setSwarm(testSwarm())
-  repoB.setSwarm(testSwarm())
+  repoA.addSwarm(testSwarm())
+  repoB.addSwarm(testSwarm())
 
   // connect the repos
 
@@ -128,8 +128,8 @@ test('Share a file between two repos', async (t) => {
   const repoB = testRepo()
   repoA.startFileServer(generateServerPath())
   repoB.startFileServer(generateServerPath())
-  repoA.setSwarm(testSwarm())
-  repoB.setSwarm(testSwarm())
+  repoA.addSwarm(testSwarm())
+  repoB.addSwarm(testSwarm())
 
   const discoveryId = testDiscoveryId()
   repoA.back.network.join(discoveryId)
