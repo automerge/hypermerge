@@ -21,11 +21,11 @@ export default class CryptoClient {
     this.request = request
   }
 
-  sign(url: DocUrl, message: string): Promise<Crypto.SignedMessage<string>> {
+  sign<T extends string>(url: DocUrl, message: T): Promise<Crypto.SignedMessage<T>> {
     return new Promise((res, rej) => {
       const docId = validateDocURL(url)
       this.request({ type: 'SignMsg', docId, message }, (msg: SignReplyMsg) => {
-        if (msg.success) return res(msg.signedMessage)
+        if (msg.success) return res(msg.signedMessage as Crypto.SignedMessage<T>)
         rej(msg.error)
       })
     })
@@ -51,7 +51,10 @@ export default class CryptoClient {
    * Helper function to extract the message from a SignedMessage.
    * Verifies the signature and returns the message if valid, otherwise rejects.
    */
-  async verifiedMessage(url: DocUrl, signedMessage: Crypto.SignedMessage<string>): Promise<string> {
+  async verifiedMessage<T extends string>(
+    url: DocUrl,
+    signedMessage: Crypto.SignedMessage<T>
+  ): Promise<T> {
     const verified = this.verify(url, signedMessage)
     if (!verified) throw new Error('Could not verify signedMessage')
     return signedMessage.message
