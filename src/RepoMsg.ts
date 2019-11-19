@@ -75,7 +75,7 @@ export type SealedBoxReplyMsg = SealedBoxSuccessReplyMsg | SealedBoxErrorReplyMs
 export interface SealedBoxSuccessReplyMsg {
   type: 'SealedBoxReplyMsg'
   success: true
-  sealedBox: Crypto.EncodedSealedBox
+  sealedBox: Crypto.EncodedSealedBoxCiphertext
 }
 
 export interface SealedBoxErrorReplyMsg {
@@ -87,7 +87,7 @@ export interface SealedBoxErrorReplyMsg {
 export interface OpenSealedBoxMsg {
   type: 'OpenSealedBoxMsg'
   keyPair: Crypto.EncodedEncryptionKeyPair
-  sealedBox: Crypto.EncodedSealedBox
+  sealedBox: Crypto.EncodedSealedBoxCiphertext
 }
 
 export type OpenSealedBoxReplyMsg = OpenSealedBoxSuccessMsg | OpenSealedBoxErrorMsg
@@ -116,8 +116,7 @@ export type BoxReplyMsg = BoxSuccessReplyMsg | BoxErrorReplyMsg
 export interface BoxSuccessReplyMsg {
   type: 'BoxReplyMsg'
   success: true
-  box: Crypto.EncodedBox
-  nonce: Crypto.EncodedBoxNonce
+  box: Crypto.Box
 }
 
 export interface BoxErrorReplyMsg {
@@ -128,8 +127,7 @@ export interface BoxErrorReplyMsg {
 
 export interface OpenBoxMsg {
   type: 'OpenBoxMsg'
-  box: Crypto.EncodedBox
-  nonce: Crypto.EncodedBoxNonce
+  box: Crypto.Box
   recipientSecretKey: Crypto.EncodedSecretEncryptionKey
   senderPublicKey: Crypto.EncodedPublicEncryptionKey
 }

@@ -12,6 +12,8 @@ import {
   OpenBoxReplyMsg,
 } from './RepoMsg'
 
+// Re-export crypto types for conveniance
+
 export type RequestFn = (msg: ToBackendQueryMsg, cb: (msg: any) => void) => void
 
 export default class CryptoClient {
@@ -19,22 +21,30 @@ export default class CryptoClient {
   constructor(request: RequestFn) {
     this.request = request
   }
-  sign(url: DocUrl, message: string): Promise<Crypto.EncodedSignature> {
+  sign<T extends string>(url: DocUrl, message: T): Promise<Crypto.SignedMessage<T>> {
     return new Promise((res, rej) => {
       const docId = validateDocURL(url)
       this.request({ type: 'SignMsg', docId, message }, (msg: SignReplyMsg) => {
-        if (msg.success) return res(msg.signature)
+        if (msg.success) return res({ message, signature: msg.signature })
         rej(msg.error)
       })
     })
   }
 
-  verify(url: DocUrl, message: string, signature: Crypto.EncodedSignature): Promise<boolean> {
+  verify<T extends string>(url: DocUrl, signedMessage: Crypto.SignedMessage<T>): Promise<boolean> {
     return new Promise((res) => {
       const docId = validateDocURL(url)
-      this.request({ type: 'VerifyMsg', docId, message, signature }, (msg: VerifyReplyMsg) => {
-        res(msg.success)
-      })
+      this.request(
+        {
+          type: 'VerifyMsg',
+          docId,
+          message: signedMessage.message,
+          signature: signedMessage.signature,
+        },
+        (msg: VerifyReplyMsg) => {
+          res(msg.success)
+        }
+      )
     })
   }
 
@@ -42,12 +52,12 @@ export default class CryptoClient {
     senderSecretKey: Crypto.EncodedSecretEncryptionKey,
     recipientPublicKey: Crypto.EncodedPublicEncryptionKey,
     message: string
-  ): Promise<[Crypto.EncodedBox, Crypto.EncodedBoxNonce]> {
+  ): Promise<Crypto.Box> {
     return new Promise((res, rej) => {
       this.request(
         { type: 'BoxMsg', senderSecretKey, recipientPublicKey, message },
         (msg: BoxReplyMsg) => {
-          if (msg.success) return res([msg.box, msg.nonce])
+          if (msg.success) return res(msg.box)
           rej(msg.error)
         }
       )
@@ -57,12 +67,11 @@ export default class CryptoClient {
   openBox(
     senderPublicKey: Crypto.EncodedPublicEncryptionKey,
     recipientSecretKey: Crypto.EncodedSecretEncryptionKey,
-    box: Crypto.EncodedBox,
-    nonce: Crypto.EncodedBoxNonce
+    box: Crypto.Box
   ): Promise<string> {
     return new Promise((res, rej) => {
       this.request(
-        { type: 'OpenBoxMsg', senderPublicKey, recipientSecretKey, box, nonce },
+        { type: 'OpenBoxMsg', senderPublicKey, recipientSecretKey, box: box },
         (msg: OpenBoxReplyMsg) => {
           if (msg.success) return res(msg.message)
           rej(msg.error)
@@ -74,7 +83,7 @@ export default class CryptoClient {
   sealedBox(
     publicKey: Crypto.EncodedPublicEncryptionKey,
     message: string
-  ): Promise<Crypto.EncodedSealedBox> {
+  ): Promise<Crypto.EncodedSealedBoxCiphertext> {
     return new Promise((res, rej) => {
       this.request({ type: 'SealedBoxMsg', publicKey, message }, (msg: SealedBoxReplyMsg) => {
         if (msg.success) return res(msg.sealedBox)
@@ -85,7 +94,7 @@ export default class CryptoClient {
 
   openSealedBox(
     keyPair: Crypto.EncodedEncryptionKeyPair,
-    sealedBox: Crypto.EncodedSealedBox
+    sealedBox: Crypto.EncodedSealedBoxCiphertext
   ): Promise<string> {
     return new Promise((res, rej) => {
       this.request(

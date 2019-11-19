@@ -562,12 +562,12 @@ export class RepoBackend {
       case 'BoxMsg': {
         let payload: BoxReplyMsg
         try {
-          const [box, nonce] = Crypto.box(
+          const box = Crypto.box(
             query.senderSecretKey,
             query.recipientPublicKey,
             Buffer.from(query.message)
           )
-          payload = { type: 'BoxReplyMsg', success: true, box, nonce }
+          payload = { type: 'BoxReplyMsg', success: true, box }
         } catch (e) {
           payload = { type: 'BoxReplyMsg', success: false, error: errorMessage(e) }
         }
@@ -577,12 +577,7 @@ export class RepoBackend {
       case 'OpenBoxMsg': {
         let payload: OpenBoxReplyMsg
         try {
-          const message = Crypto.openBox(
-            query.senderPublicKey,
-            query.recipientSecretKey,
-            query.box,
-            query.nonce
-          )
+          const message = Crypto.openBox(query.senderPublicKey, query.recipientSecretKey, query.box)
           payload = { type: 'OpenBoxReplyMsg', success: true, message: message.toString() }
         } catch (e) {
           payload = { type: 'OpenBoxReplyMsg', success: false, error: errorMessage(e) }
