@@ -32,7 +32,7 @@ export interface Box {
   nonce: EncodedBoxNonce
 }
 
-export interface SignedMessage<T> {
+export interface SignedMessage<T extends Buffer | string> {
   message: T
   signature: EncodedSignature
 }
