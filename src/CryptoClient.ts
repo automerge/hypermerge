@@ -24,7 +24,7 @@ export default class CryptoClient {
       const docId = validateDocURL(url)
       this.request({ type: 'SignMsg', docId, message }, (msg: SignReplyMsg) => {
         if (msg.success) return res(msg.signature)
-        rej()
+        rej(msg.error)
       })
     })
   }
@@ -48,7 +48,7 @@ export default class CryptoClient {
         { type: 'BoxMsg', senderSecretKey, recipientPublicKey, message },
         (msg: BoxReplyMsg) => {
           if (msg.success) return res([msg.box, msg.nonce])
-          rej()
+          rej(msg.error)
         }
       )
     })
@@ -65,7 +65,7 @@ export default class CryptoClient {
         { type: 'OpenBoxMsg', senderPublicKey, recipientSecretKey, box, nonce },
         (msg: OpenBoxReplyMsg) => {
           if (msg.success) return res(msg.message)
-          rej()
+          rej(msg.error)
         }
       )
     })
@@ -78,7 +78,7 @@ export default class CryptoClient {
     return new Promise((res, rej) => {
       this.request({ type: 'SealedBoxMsg', publicKey, message }, (msg: SealedBoxReplyMsg) => {
         if (msg.success) return res(msg.sealedBox)
-        rej()
+        rej(msg.error)
       })
     })
   }
@@ -92,7 +92,7 @@ export default class CryptoClient {
         { type: 'OpenSealedBoxMsg', keyPair, sealedBox },
         (msg: OpenSealedBoxReplyMsg) => {
           if (msg.success) return res(msg.message)
-          rej()
+          rej(msg.error)
         }
       )
     })
@@ -102,7 +102,7 @@ export default class CryptoClient {
     return new Promise((res, rej) => {
       this.request({ type: 'EncryptionKeyPairMsg' }, (msg: EncryptionKeyPairReplyMsg) => {
         if (msg.success) return res(msg.keyPair)
-        rej()
+        rej(msg.error)
       })
     })
   }
