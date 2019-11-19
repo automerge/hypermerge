@@ -16,9 +16,11 @@ export type RequestFn = (msg: ToBackendQueryMsg, cb: (msg: any) => void) => void
 
 export default class CryptoClient {
   request: RequestFn
+
   constructor(request: RequestFn) {
     this.request = request
   }
+
   sign(url: DocUrl, message: string): Promise<Crypto.SignedMessage<string>> {
     return new Promise((res, rej) => {
       const docId = validateDocURL(url)
@@ -36,14 +38,23 @@ export default class CryptoClient {
         {
           type: 'VerifyMsg',
           docId,
-          message: signedMessage.message,
-          signature: signedMessage.signature,
+          signedMessage,
         },
         (msg: VerifyReplyMsg) => {
           res(msg.success)
         }
       )
     })
+  }
+
+  /**
+   * Helper function to extract the message from a SignedMessage.
+   * Verifies the signature and returns the message if valid, otherwise rejects.
+   */
+  async verifiedMessage(url: DocUrl, signedMessage: Crypto.SignedMessage<string>): Promise<string> {
+    const verified = this.verify(url, signedMessage)
+    if (!verified) throw new Error('Could not verify signedMessage')
+    return signedMessage.message
   }
 
   box(

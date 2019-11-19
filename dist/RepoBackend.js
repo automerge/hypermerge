@@ -349,11 +349,11 @@ class RepoBackend {
                 case 'SignMsg': {
                     let payload;
                     try {
-                        const signedMessage = yield this.feeds.sign(query.docId, Buffer.from(query.message));
+                        const { signature } = yield this.feeds.sign(query.docId, Buffer.from(query.message));
                         payload = {
                             type: 'SignReplyMsg',
                             success: true,
-                            signedMessage: { message: query.message, signature: signedMessage.signature },
+                            signedMessage: { message: query.message, signature },
                         };
                     }
                     catch (e) {
@@ -369,7 +369,7 @@ class RepoBackend {
                 case 'VerifyMsg': {
                     let success;
                     try {
-                        const signedMessage = { message: Buffer.from(query.message), signature: query.signature };
+                        const signedMessage = Object.assign(Object.assign({}, query.signedMessage), { message: Buffer.from(query.signedMessage.message) });
                         success = this.feeds.verify(query.docId, signedMessage);
                     }
                     catch (e) {

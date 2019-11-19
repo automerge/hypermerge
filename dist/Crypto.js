@@ -64,11 +64,11 @@ function openSealedBox(keyPair, sealedBox) {
 }
 exports.openSealedBox = openSealedBox;
 function box(senderSecretKey, recipientPublicKey, message) {
-    const box = Buffer.alloc(message.length + sodium_native_1.default.crypto_box_MACBYTES);
+    const ciphertext = Buffer.alloc(message.length + sodium_native_1.default.crypto_box_MACBYTES);
     const nonce = Buffer.alloc(sodium_native_1.default.crypto_box_NONCEBYTES);
     sodium_native_1.default.randombytes_buf(nonce);
-    sodium_native_1.default.crypto_box_easy(box, message, nonce, decode(recipientPublicKey), decode(senderSecretKey));
-    return { message: encode(box), nonce: encode(nonce) };
+    sodium_native_1.default.crypto_box_easy(ciphertext, message, nonce, decode(recipientPublicKey), decode(senderSecretKey));
+    return { message: encode(ciphertext), nonce: encode(nonce) };
 }
 exports.box = box;
 function openBox(senderPublicKey, recipientSecretKey, box) {

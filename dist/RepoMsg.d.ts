@@ -124,8 +124,7 @@ export interface SignErrorReplyMsg {
 export interface VerifyMsg {
     type: 'VerifyMsg';
     docId: DocId;
-    message: string;
-    signature: Crypto.EncodedSignature;
+    signedMessage: Crypto.SignedMessage<string>;
 }
 export interface VerifyReplyMsg {
     type: 'VerifyReplyMsg';

@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const Metadata_1 = require("./Metadata");
 class CryptoClient {
@@ -21,11 +30,22 @@ class CryptoClient {
             this.request({
                 type: 'VerifyMsg',
                 docId,
-                message: signedMessage.message,
-                signature: signedMessage.signature,
+                signedMessage,
             }, (msg) => {
                 res(msg.success);
             });
+        });
+    }
+    /**
+     * Helper function to extract the message from a SignedMessage.
+     * Verifies the signature and returns the message if valid, otherwise rejects.
+     */
+    verifiedMessage(url, signedMessage) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const verified = this.verify(url, signedMessage);
+            if (!verified)
+                throw new Error('Could not verify signedMessage');
+            return signedMessage.message;
         });
     }
     box(senderSecretKey, recipientPublicKey, message) {

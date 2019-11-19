@@ -7,6 +7,11 @@ export default class CryptoClient {
     constructor(request: RequestFn);
     sign(url: DocUrl, message: string): Promise<Crypto.SignedMessage<string>>;
     verify(url: DocUrl, signedMessage: Crypto.SignedMessage<string>): Promise<boolean>;
+    /**
+     * Helper function to extract the message from a SignedMessage.
+     * Verifies the signature and returns the message if valid, otherwise rejects.
+     */
+    verifiedMessage(url: DocUrl, signedMessage: Crypto.SignedMessage<string>): Promise<string>;
     box(senderSecretKey: Crypto.EncodedSecretEncryptionKey, recipientPublicKey: Crypto.EncodedPublicEncryptionKey, message: string): Promise<Crypto.Box>;
     openBox(senderPublicKey: Crypto.EncodedPublicEncryptionKey, recipientSecretKey: Crypto.EncodedSecretEncryptionKey, box: Crypto.Box): Promise<string>;
     sealedBox(publicKey: Crypto.EncodedPublicEncryptionKey, message: string): Promise<Crypto.EncodedSealedBoxCiphertext>;
