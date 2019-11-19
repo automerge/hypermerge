@@ -281,8 +281,15 @@ class RepoBackend {
                 }
             });
         };
+        /** @deprecated Use addSwarm */
         this.setSwarm = (swarm, joinOptions) => {
-            this.network.setSwarm(swarm, joinOptions);
+            this.addSwarm(swarm, joinOptions);
+        };
+        this.addSwarm = (swarm, joinOptions) => {
+            this.network.addSwarm(swarm, joinOptions);
+        };
+        this.removeSwarm = (swarm) => {
+            this.network.removeSwarm(swarm);
         };
         this.subscribe = (subscriber) => {
             this.toFrontend.subscribe(subscriber);
@@ -304,8 +311,8 @@ class RepoBackend {
                         const [box, nonce] = Crypto.box(query.senderSecretKey, query.recipientPublicKey, Buffer.from(query.message));
                         payload = { type: 'BoxReplyMsg', success: true, box, nonce };
                     }
-                    catch (_a) {
-                        payload = { type: 'BoxReplyMsg', success: false };
+                    catch (e) {
+                        payload = { type: 'BoxReplyMsg', success: false, error: Misc_1.errorMessage(e) };
                     }
                     this.toFrontend.push({ type: 'Reply', id, payload });
                     break;
@@ -316,8 +323,8 @@ class RepoBackend {
                         const message = Crypto.openBox(query.senderPublicKey, query.recipientSecretKey, query.box, query.nonce);
                         payload = { type: 'OpenBoxReplyMsg', success: true, message: message.toString() };
                     }
-                    catch (_b) {
-                        payload = { type: 'OpenBoxReplyMsg', success: false };
+                    catch (e) {
+                        payload = { type: 'OpenBoxReplyMsg', success: false, error: Misc_1.errorMessage(e) };
                     }
                     this.toFrontend.push({ type: 'Reply', id, payload });
                     break;
@@ -328,8 +335,8 @@ class RepoBackend {
                         const sealedBox = Crypto.sealedBox(query.publicKey, Buffer.from(query.message));
                         payload = { type: 'SealedBoxReplyMsg', success: true, sealedBox };
                     }
-                    catch (_c) {
-                        payload = { type: 'SealedBoxReplyMsg', success: false };
+                    catch (e) {
+                        payload = { type: 'SealedBoxReplyMsg', success: false, error: Misc_1.errorMessage(e) };
                     }
                     this.toFrontend.push({ type: 'Reply', id, payload });
                     break;
@@ -340,8 +347,8 @@ class RepoBackend {
                         const message = Crypto.openSealedBox(query.keyPair, query.sealedBox);
                         payload = { type: 'OpenSealedBoxReplyMsg', success: true, message: message.toString() };
                     }
-                    catch (_d) {
-                        payload = { type: 'OpenSealedBoxReplyMsg', success: false };
+                    catch (e) {
+                        payload = { type: 'OpenSealedBoxReplyMsg', success: false, error: Misc_1.errorMessage(e) };
                     }
                     this.toFrontend.push({ type: 'Reply', id, payload });
                     break;
@@ -356,8 +363,8 @@ class RepoBackend {
                             signature: signature,
                         };
                     }
-                    catch (_e) {
-                        payload = { type: 'SignReplyMsg', success: false };
+                    catch (e) {
+                        payload = { type: 'SignReplyMsg', success: false, error: Misc_1.errorMessage(e) };
                     }
                     this.toFrontend.push({
                         type: 'Reply',
@@ -371,7 +378,7 @@ class RepoBackend {
                     try {
                         success = this.feeds.verify(query.docId, Buffer.from(query.message), query.signature);
                     }
-                    catch (_f) {
+                    catch (e) {
                         success = false;
                     }
                     this.toFrontend.push({

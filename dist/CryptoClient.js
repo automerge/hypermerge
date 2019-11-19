@@ -11,7 +11,7 @@ class CryptoClient {
             this.request({ type: 'SignMsg', docId, message }, (msg) => {
                 if (msg.success)
                     return res(msg.signature);
-                rej();
+                rej(msg.error);
             });
         });
     }
@@ -28,7 +28,7 @@ class CryptoClient {
             this.request({ type: 'BoxMsg', senderSecretKey, recipientPublicKey, message }, (msg) => {
                 if (msg.success)
                     return res([msg.box, msg.nonce]);
-                rej();
+                rej(msg.error);
             });
         });
     }
@@ -37,7 +37,7 @@ class CryptoClient {
             this.request({ type: 'OpenBoxMsg', senderPublicKey, recipientSecretKey, box, nonce }, (msg) => {
                 if (msg.success)
                     return res(msg.message);
-                rej();
+                rej(msg.error);
             });
         });
     }
@@ -46,7 +46,7 @@ class CryptoClient {
             this.request({ type: 'SealedBoxMsg', publicKey, message }, (msg) => {
                 if (msg.success)
                     return res(msg.sealedBox);
-                rej();
+                rej(msg.error);
             });
         });
     }
@@ -55,7 +55,7 @@ class CryptoClient {
             this.request({ type: 'OpenSealedBoxMsg', keyPair, sealedBox }, (msg) => {
                 if (msg.success)
                     return res(msg.message);
-                rej();
+                rej(msg.error);
             });
         });
     }
@@ -64,7 +64,7 @@ class CryptoClient {
             this.request({ type: 'EncryptionKeyPairMsg' }, (msg) => {
                 if (msg.success)
                     return res(msg.keyPair);
-                rej();
+                rej(msg.error);
             });
         });
     }

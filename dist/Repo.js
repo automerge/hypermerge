@@ -22,6 +22,8 @@ class Repo {
         this.watch = this.front.watch;
         this.merge = this.front.merge;
         this.setSwarm = this.back.setSwarm;
+        this.addSwarm = this.back.addSwarm;
+        this.removeSwarm = this.back.removeSwarm;
         this.startFileServer = this.back.startFileServer;
         this.materialize = this.front.materialize;
         this.crypto = this.front.crypto;
