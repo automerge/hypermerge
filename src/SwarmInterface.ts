@@ -1,6 +1,6 @@
 import { Duplex } from 'stream'
 
-export type SocketType = 'tcp' | 'utp' | 'cloud'
+export type SocketType = string
 
 export interface Swarm {
   join(dk: Buffer, options?: JoinOptions): void

@@ -9,7 +9,7 @@ import { PrefixMatchPassThrough, InvalidPrefixError } from './StreamLogic'
 const VERSION_PREFIX = Buffer.from('hypermerge.v1')
 
 export interface SocketInfo {
-  type: 'tcp' | 'utp' | 'cloud'
+  type: string
   isClient: boolean
   onClose?(): void
 }

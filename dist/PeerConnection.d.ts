@@ -4,7 +4,7 @@ import { Channel } from './Multiplex';
 import MessageBus from './MessageBus';
 import { NetworkMsg } from './NetworkMsg';
 export interface SocketInfo {
-    type: 'tcp' | 'utp' | 'cloud';
+    type: string;
     isClient: boolean;
     onClose?(): void;
 }

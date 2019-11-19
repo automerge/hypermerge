@@ -1,6 +1,6 @@
 {
   "name": "hypermerge",
-  "version": "2.0.0-beta.21",
+  "version": "2.0.0-beta.22",
   "description": "Node.js library for building p2p collaborative applications without server infrastructure",
   "main": "dist/index.js",
   "scripts": {

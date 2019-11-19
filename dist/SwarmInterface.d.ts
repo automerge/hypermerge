@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { Duplex } from 'stream';
-export declare type SocketType = 'tcp' | 'utp' | 'cloud';
+export declare type SocketType = string;
 export interface Swarm {
     join(dk: Buffer, options?: JoinOptions): void;
     leave(dk: Buffer): void;
