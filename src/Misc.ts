@@ -147,3 +147,7 @@ function toWindowsNamedPipe(path: string): string {
   const sanitizedPath = path.replace(/^\//, '').replace(/\//g, '-')
   return `\\\\.\\pipe\\${sanitizedPath}`
 }
+
+export function errorMessage(e: Error) {
+  return `${e.name}: ${e.message}`
+}

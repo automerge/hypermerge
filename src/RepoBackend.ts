@@ -28,6 +28,7 @@ import {
   rootActorId,
   encodeActorId,
   toDiscoveryId,
+  errorMessage,
 } from './Misc'
 import Debug from 'debug'
 import * as Keys from './Keys'
@@ -567,8 +568,8 @@ export class RepoBackend {
             Buffer.from(query.message)
           )
           payload = { type: 'BoxReplyMsg', success: true, box, nonce }
-        } catch {
-          payload = { type: 'BoxReplyMsg', success: false }
+        } catch (e) {
+          payload = { type: 'BoxReplyMsg', success: false, error: errorMessage(e) }
         }
         this.toFrontend.push({ type: 'Reply', id, payload })
         break
@@ -583,8 +584,8 @@ export class RepoBackend {
             query.nonce
           )
           payload = { type: 'OpenBoxReplyMsg', success: true, message: message.toString() }
-        } catch {
-          payload = { type: 'OpenBoxReplyMsg', success: false }
+        } catch (e) {
+          payload = { type: 'OpenBoxReplyMsg', success: false, error: errorMessage(e) }
         }
         this.toFrontend.push({ type: 'Reply', id, payload })
         break
@@ -594,8 +595,8 @@ export class RepoBackend {
         try {
           const sealedBox = Crypto.sealedBox(query.publicKey, Buffer.from(query.message))
           payload = { type: 'SealedBoxReplyMsg', success: true, sealedBox }
-        } catch {
-          payload = { type: 'SealedBoxReplyMsg', success: false }
+        } catch (e) {
+          payload = { type: 'SealedBoxReplyMsg', success: false, error: errorMessage(e) }
         }
         this.toFrontend.push({ type: 'Reply', id, payload })
         break
@@ -605,8 +606,8 @@ export class RepoBackend {
         try {
           const message = Crypto.openSealedBox(query.keyPair, query.sealedBox)
           payload = { type: 'OpenSealedBoxReplyMsg', success: true, message: message.toString() }
-        } catch {
-          payload = { type: 'OpenSealedBoxReplyMsg', success: false }
+        } catch (e) {
+          payload = { type: 'OpenSealedBoxReplyMsg', success: false, error: errorMessage(e) }
         }
         this.toFrontend.push({ type: 'Reply', id, payload })
         break
@@ -620,8 +621,8 @@ export class RepoBackend {
             success: true,
             signature: signature,
           }
-        } catch {
-          payload = { type: 'SignReplyMsg', success: false }
+        } catch (e) {
+          payload = { type: 'SignReplyMsg', success: false, error: errorMessage(e) }
         }
         this.toFrontend.push({
           type: 'Reply',
@@ -634,7 +635,7 @@ export class RepoBackend {
         let success
         try {
           success = this.feeds.verify(query.docId, Buffer.from(query.message), query.signature)
-        } catch {
+        } catch (e) {
           success = false
         }
         this.toFrontend.push({
