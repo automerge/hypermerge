@@ -22,8 +22,8 @@ declare module 'sodium-native' {
   }
 
   export type Signature = Buffer & { __signature: true }
-  export type SealedBox = Buffer & { __sealedBox: true }
-  export type Box = Buffer & { __box: true }
+  export type SealedBoxCiphertext = Buffer & { __sealedBoxCiphertext: true }
+  export type BoxCiphertext = Buffer & { __boxCiphertext: true }
   export type BoxNonce = Buffer & { __nonce: true }
 
   export const crypto_sign_BYTES: number
@@ -60,20 +60,20 @@ declare module 'sodium-native' {
   ): boolean
 
   export function crypto_box_seal(
-    ciphertext: SealedBox,
+    ciphertext: SealedBoxCiphertext,
     message: Buffer,
     publicKey: PublicEncryptionKey
   ): void
 
   export function crypto_box_seal_open(
     message: Buffer,
-    ciphertext: SealedBox,
+    ciphertext: SealedBoxCiphertext,
     publicKey: PublicEncryptionKey,
     secretKey: SecretEncryptionKey
   ): boolean
 
   export function crypto_box_easy(
-    ciphertext: Box,
+    ciphertext: BoxCiphertext,
     message: Buffer,
     nonce: BoxNonce,
     publicKey: PublicEncryptionKey,
@@ -82,7 +82,7 @@ declare module 'sodium-native' {
 
   export function crypto_box_open_easy(
     message: Buffer,
-    ciphertext: Box,
+    ciphertext: BoxCiphertext,
     nonce: BoxNonce,
     publicKey: PublicEncryptionKey,
     secretKey: SecretEncryptionKey

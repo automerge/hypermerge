@@ -43,7 +43,7 @@ export default class FeedStore {
     return keys.publicKey as FeedId
   }
 
-  async sign(feedId: FeedId, message: Buffer): Promise<Crypto.EncodedSignature> {
+  async sign(feedId: FeedId, message: Buffer): Promise<Crypto.SignedMessage<Buffer>> {
     const feed = await this.open(feedId)
     if (!feed || !feed.secretKey) {
       throw new Error(`Can't sign with feed ${feedId}`)
@@ -52,8 +52,8 @@ export default class FeedStore {
     return signature
   }
 
-  verify(feedId: FeedId, message: Buffer, signature: Crypto.EncodedSignature): boolean {
-    return Crypto.verify(feedId, message, signature)
+  verify(feedId: FeedId, signedMessage: Crypto.SignedMessage<Buffer>): boolean {
+    return Crypto.verify(feedId, signedMessage)
   }
 
   async append(feedId: FeedId, ...blocks: Block[]): Promise<number> {

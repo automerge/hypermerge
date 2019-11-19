@@ -5,11 +5,16 @@ export declare type RequestFn = (msg: ToBackendQueryMsg, cb: (msg: any) => void)
 export default class CryptoClient {
     request: RequestFn;
     constructor(request: RequestFn);
-    sign(url: DocUrl, message: string): Promise<Crypto.EncodedSignature>;
-    verify(url: DocUrl, message: string, signature: Crypto.EncodedSignature): Promise<boolean>;
-    box(senderSecretKey: Crypto.EncodedSecretEncryptionKey, recipientPublicKey: Crypto.EncodedPublicEncryptionKey, message: string): Promise<[Crypto.EncodedBox, Crypto.EncodedBoxNonce]>;
-    openBox(senderPublicKey: Crypto.EncodedPublicEncryptionKey, recipientSecretKey: Crypto.EncodedSecretEncryptionKey, box: Crypto.EncodedBox, nonce: Crypto.EncodedBoxNonce): Promise<string>;
-    sealedBox(publicKey: Crypto.EncodedPublicEncryptionKey, message: string): Promise<Crypto.EncodedSealedBox>;
-    openSealedBox(keyPair: Crypto.EncodedEncryptionKeyPair, sealedBox: Crypto.EncodedSealedBox): Promise<string>;
+    sign(url: DocUrl, message: string): Promise<Crypto.SignedMessage<string>>;
+    verify(url: DocUrl, signedMessage: Crypto.SignedMessage<string>): Promise<boolean>;
+    /**
+     * Helper function to extract the message from a SignedMessage.
+     * Verifies the signature and returns the message if valid, otherwise rejects.
+     */
+    verifiedMessage(url: DocUrl, signedMessage: Crypto.SignedMessage<string>): Promise<string>;
+    box(senderSecretKey: Crypto.EncodedSecretEncryptionKey, recipientPublicKey: Crypto.EncodedPublicEncryptionKey, message: string): Promise<Crypto.Box>;
+    openBox(senderPublicKey: Crypto.EncodedPublicEncryptionKey, recipientSecretKey: Crypto.EncodedSecretEncryptionKey, box: Crypto.Box): Promise<string>;
+    sealedBox(publicKey: Crypto.EncodedPublicEncryptionKey, message: string): Promise<Crypto.EncodedSealedBoxCiphertext>;
+    openSealedBox(keyPair: Crypto.EncodedEncryptionKeyPair, sealedBox: Crypto.EncodedSealedBoxCiphertext): Promise<string>;
     encryptionKeyPair(): Promise<Crypto.EncodedEncryptionKeyPair>;
 }

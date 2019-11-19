@@ -16,38 +16,57 @@ export type RequestFn = (msg: ToBackendQueryMsg, cb: (msg: any) => void) => void
 
 export default class CryptoClient {
   request: RequestFn
+
   constructor(request: RequestFn) {
     this.request = request
   }
-  sign(url: DocUrl, message: string): Promise<Crypto.EncodedSignature> {
+
+  sign(url: DocUrl, message: string): Promise<Crypto.SignedMessage<string>> {
     return new Promise((res, rej) => {
       const docId = validateDocURL(url)
       this.request({ type: 'SignMsg', docId, message }, (msg: SignReplyMsg) => {
-        if (msg.success) return res(msg.signature)
+        if (msg.success) return res(msg.signedMessage)
         rej(msg.error)
       })
     })
   }
 
-  verify(url: DocUrl, message: string, signature: Crypto.EncodedSignature): Promise<boolean> {
+  verify(url: DocUrl, signedMessage: Crypto.SignedMessage<string>): Promise<boolean> {
     return new Promise((res) => {
       const docId = validateDocURL(url)
-      this.request({ type: 'VerifyMsg', docId, message, signature }, (msg: VerifyReplyMsg) => {
-        res(msg.success)
-      })
+      this.request(
+        {
+          type: 'VerifyMsg',
+          docId,
+          signedMessage,
+        },
+        (msg: VerifyReplyMsg) => {
+          res(msg.success)
+        }
+      )
     })
+  }
+
+  /**
+   * Helper function to extract the message from a SignedMessage.
+   * Verifies the signature and returns the message if valid, otherwise rejects.
+   */
+  async verifiedMessage(url: DocUrl, signedMessage: Crypto.SignedMessage<string>): Promise<string> {
+    const verified = this.verify(url, signedMessage)
+    if (!verified) throw new Error('Could not verify signedMessage')
+    return signedMessage.message
   }
 
   box(
     senderSecretKey: Crypto.EncodedSecretEncryptionKey,
     recipientPublicKey: Crypto.EncodedPublicEncryptionKey,
     message: string
-  ): Promise<[Crypto.EncodedBox, Crypto.EncodedBoxNonce]> {
+  ): Promise<Crypto.Box> {
     return new Promise((res, rej) => {
       this.request(
         { type: 'BoxMsg', senderSecretKey, recipientPublicKey, message },
         (msg: BoxReplyMsg) => {
-          if (msg.success) return res([msg.box, msg.nonce])
+          if (msg.success) return res(msg.box)
           rej(msg.error)
         }
       )
@@ -57,12 +76,11 @@ export default class CryptoClient {
   openBox(
     senderPublicKey: Crypto.EncodedPublicEncryptionKey,
     recipientSecretKey: Crypto.EncodedSecretEncryptionKey,
-    box: Crypto.EncodedBox,
-    nonce: Crypto.EncodedBoxNonce
+    box: Crypto.Box
   ): Promise<string> {
     return new Promise((res, rej) => {
       this.request(
-        { type: 'OpenBoxMsg', senderPublicKey, recipientSecretKey, box, nonce },
+        { type: 'OpenBoxMsg', senderPublicKey, recipientSecretKey, box: box },
         (msg: OpenBoxReplyMsg) => {
           if (msg.success) return res(msg.message)
           rej(msg.error)
@@ -74,7 +92,7 @@ export default class CryptoClient {
   sealedBox(
     publicKey: Crypto.EncodedPublicEncryptionKey,
     message: string
-  ): Promise<Crypto.EncodedSealedBox> {
+  ): Promise<Crypto.EncodedSealedBoxCiphertext> {
     return new Promise((res, rej) => {
       this.request({ type: 'SealedBoxMsg', publicKey, message }, (msg: SealedBoxReplyMsg) => {
         if (msg.success) return res(msg.sealedBox)
@@ -85,7 +103,7 @@ export default class CryptoClient {
 
   openSealedBox(
     keyPair: Crypto.EncodedEncryptionKeyPair,
-    sealedBox: Crypto.EncodedSealedBox
+    sealedBox: Crypto.EncodedSealedBoxCiphertext
   ): Promise<string> {
     return new Promise((res, rej) => {
       this.request(

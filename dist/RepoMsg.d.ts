@@ -34,7 +34,7 @@ export declare type SealedBoxReplyMsg = SealedBoxSuccessReplyMsg | SealedBoxErro
 export interface SealedBoxSuccessReplyMsg {
     type: 'SealedBoxReplyMsg';
     success: true;
-    sealedBox: Crypto.EncodedSealedBox;
+    sealedBox: Crypto.EncodedSealedBoxCiphertext;
 }
 export interface SealedBoxErrorReplyMsg {
     type: 'SealedBoxReplyMsg';
@@ -44,7 +44,7 @@ export interface SealedBoxErrorReplyMsg {
 export interface OpenSealedBoxMsg {
     type: 'OpenSealedBoxMsg';
     keyPair: Crypto.EncodedEncryptionKeyPair;
-    sealedBox: Crypto.EncodedSealedBox;
+    sealedBox: Crypto.EncodedSealedBoxCiphertext;
 }
 export declare type OpenSealedBoxReplyMsg = OpenSealedBoxSuccessMsg | OpenSealedBoxErrorMsg;
 export interface OpenSealedBoxSuccessMsg {
@@ -67,8 +67,7 @@ export declare type BoxReplyMsg = BoxSuccessReplyMsg | BoxErrorReplyMsg;
 export interface BoxSuccessReplyMsg {
     type: 'BoxReplyMsg';
     success: true;
-    box: Crypto.EncodedBox;
-    nonce: Crypto.EncodedBoxNonce;
+    box: Crypto.Box;
 }
 export interface BoxErrorReplyMsg {
     type: 'BoxReplyMsg';
@@ -77,8 +76,7 @@ export interface BoxErrorReplyMsg {
 }
 export interface OpenBoxMsg {
     type: 'OpenBoxMsg';
-    box: Crypto.EncodedBox;
-    nonce: Crypto.EncodedBoxNonce;
+    box: Crypto.Box;
     recipientSecretKey: Crypto.EncodedSecretEncryptionKey;
     senderPublicKey: Crypto.EncodedPublicEncryptionKey;
 }
@@ -116,7 +114,7 @@ export declare type SignReplyMsg = SignSuccessReplyMsg | SignErrorReplyMsg;
 export interface SignSuccessReplyMsg {
     type: 'SignReplyMsg';
     success: true;
-    signature: Crypto.EncodedSignature;
+    signedMessage: Crypto.SignedMessage<string>;
 }
 export interface SignErrorReplyMsg {
     type: 'SignReplyMsg';
@@ -126,8 +124,7 @@ export interface SignErrorReplyMsg {
 export interface VerifyMsg {
     type: 'VerifyMsg';
     docId: DocId;
-    message: string;
-    signature: Crypto.EncodedSignature;
+    signedMessage: Crypto.SignedMessage<string>;
 }
 export interface VerifyReplyMsg {
     type: 'VerifyReplyMsg';

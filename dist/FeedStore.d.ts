@@ -31,8 +31,8 @@ export default class FeedStore {
      * Promises the FeedId.
      */
     create(keys: Required<KeyPair>): Promise<FeedId>;
-    sign(feedId: FeedId, message: Buffer): Promise<Crypto.EncodedSignature>;
-    verify(feedId: FeedId, message: Buffer, signature: Crypto.EncodedSignature): boolean;
+    sign(feedId: FeedId, message: Buffer): Promise<Crypto.SignedMessage<Buffer>>;
+    verify(feedId: FeedId, signedMessage: Crypto.SignedMessage<Buffer>): boolean;
     append(feedId: FeedId, ...blocks: Block[]): Promise<number>;
     appendStream(feedId: FeedId): Promise<Writable>;
     read(feedId: FeedId, seq: number): Promise<Block>;

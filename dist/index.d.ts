@@ -8,5 +8,7 @@ export { DocBackend } from './DocBackend';
 export { DocFrontend } from './DocFrontend';
 export { DocUrl, HyperfileUrl } from './Misc';
 export { Header as HyperfileHeader } from './FileStore';
+import * as CryptoClient from './CryptoClient';
+export { CryptoClient };
 import * as Crypto from './Crypto';
 export { Crypto };

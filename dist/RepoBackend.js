@@ -308,8 +308,8 @@ class RepoBackend {
                 case 'BoxMsg': {
                     let payload;
                     try {
-                        const [box, nonce] = Crypto.box(query.senderSecretKey, query.recipientPublicKey, Buffer.from(query.message));
-                        payload = { type: 'BoxReplyMsg', success: true, box, nonce };
+                        const box = Crypto.box(query.senderSecretKey, query.recipientPublicKey, Buffer.from(query.message));
+                        payload = { type: 'BoxReplyMsg', success: true, box };
                     }
                     catch (e) {
                         payload = { type: 'BoxReplyMsg', success: false, error: Misc_1.errorMessage(e) };
@@ -320,7 +320,7 @@ class RepoBackend {
                 case 'OpenBoxMsg': {
                     let payload;
                     try {
-                        const message = Crypto.openBox(query.senderPublicKey, query.recipientSecretKey, query.box, query.nonce);
+                        const message = Crypto.openBox(query.senderPublicKey, query.recipientSecretKey, query.box);
                         payload = { type: 'OpenBoxReplyMsg', success: true, message: message.toString() };
                     }
                     catch (e) {
@@ -356,11 +356,11 @@ class RepoBackend {
                 case 'SignMsg': {
                     let payload;
                     try {
-                        const signature = yield this.feeds.sign(query.docId, Buffer.from(query.message));
+                        const { signature } = yield this.feeds.sign(query.docId, Buffer.from(query.message));
                         payload = {
                             type: 'SignReplyMsg',
                             success: true,
-                            signature: signature,
+                            signedMessage: { message: query.message, signature },
                         };
                     }
                     catch (e) {
@@ -376,7 +376,8 @@ class RepoBackend {
                 case 'VerifyMsg': {
                     let success;
                     try {
-                        success = this.feeds.verify(query.docId, Buffer.from(query.message), query.signature);
+                        const signedMessage = Object.assign(Object.assign({}, query.signedMessage), { message: Buffer.from(query.signedMessage.message) });
+                        success = this.feeds.verify(query.docId, signedMessage);
                     }
                     catch (e) {
                         success = false;

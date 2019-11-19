@@ -6,17 +6,20 @@ test('Test sign and verify', (t) => {
   const keyPair = Crypto.encodedSigningKeyPair()
   const message = 'test message'
   const signature = Crypto.sign(keyPair.secretKey, Buffer.from(message))
-  const success = Crypto.verify(keyPair.publicKey, Buffer.from(message), signature)
+  const success = Crypto.verify(keyPair.publicKey, signature)
   t.true(success)
 })
 
 test('Test verify fails with wrong signature', (t) => {
   t.plan(1)
   const keyPair = Crypto.encodedSigningKeyPair()
-  const message = 'test message'
-  const message2 = 'test message 2'
-  const signature2 = Crypto.sign(keyPair.secretKey, Buffer.from(message2))
-  const success = Crypto.verify(keyPair.publicKey, Buffer.from(message), signature2)
+  const message = Buffer.from('test message')
+  const message2 = Buffer.from('test message 2')
+  const signedMessage = Crypto.sign(keyPair.secretKey, message2)
+  const success = Crypto.verify(keyPair.publicKey, {
+    message,
+    signature: signedMessage.signature,
+  })
   t.false(success)
 })
 
@@ -24,9 +27,9 @@ test('Test verify fails with wrong signature', (t) => {
 test('Test verify throws with garbage signature', (t) => {
   t.plan(1)
   const keyPair = Crypto.encodedSigningKeyPair()
-  const message = 'test message'
+  const message = Buffer.from('test message')
   const signature = 'contains non-base58 characters' as Crypto.EncodedSignature
-  t.throws(() => Crypto.verify(keyPair.publicKey, Buffer.from(message), signature))
+  t.throws(() => Crypto.verify(keyPair.publicKey, { message, signature }))
 })
 
 test('Test sealedBox and openSealedBox', (t) => {

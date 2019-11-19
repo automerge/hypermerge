@@ -23,9 +23,19 @@ export interface EncodedEncryptionKeyPair extends EncodedKeyPair {
 }
 
 export type EncodedSignature = string & { __encodedSignature: true }
-export type EncodedSealedBox = string & { __encodedSealedBox: true }
-export type EncodedBox = string & { __encodedBox: true }
+export type EncodedSealedBoxCiphertext = string & { __encodedSealedBoxCiphertext: true }
+export type EncodedBoxCiphertext = string & { __encodedBoxCiphertext: true }
 export type EncodedBoxNonce = string & { __encodedBoxNonce: true }
+
+export interface Box {
+  message: EncodedBoxCiphertext
+  nonce: EncodedBoxNonce
+}
+
+export interface SignedMessage<T extends Buffer | string> {
+  message: T
+  signature: EncodedSignature
+}
 
 export function encodedSigningKeyPair(): EncodedSigningKeyPair {
   return encodePair(signingKeyPair())
@@ -49,35 +59,36 @@ export function encryptionKeyPair(): sodium.EncryptionKeyPair {
   return { publicKey, secretKey }
 }
 
-export function sign(secretKey: EncodedSecretSigningKey, message: Buffer): EncodedSignature {
+export function sign(secretKey: EncodedSecretSigningKey, message: Buffer): SignedMessage<Buffer> {
   const secretKeyBuffer = decode(secretKey)
   const signatureBuffer = Buffer.alloc(sodium.crypto_sign_BYTES) as sodium.Signature
   sodium.crypto_sign_detached(signatureBuffer, message, secretKeyBuffer)
-  return encode(signatureBuffer)
+  return { message, signature: encode(signatureBuffer) }
 }
 
 export function verify(
-  publicKey: EncodedPublicSigningKey,
-  message: Buffer,
-  signature: EncodedSignature
+  encodedPublicKey: EncodedPublicSigningKey,
+  signedMessage: SignedMessage<Buffer>
 ): boolean {
-  const publicKeyBuffer = decode(publicKey)
-  const signatureBuffer = decode(signature)
-  return sodium.crypto_sign_verify_detached(signatureBuffer, message, publicKeyBuffer)
+  const publicKey = decode(encodedPublicKey)
+  const signature = decode(signedMessage.signature)
+  return sodium.crypto_sign_verify_detached(signature, signedMessage.message, publicKey)
 }
 
 export function sealedBox(
   publicKey: EncodedPublicEncryptionKey,
   message: Buffer
-): EncodedSealedBox {
-  const sealedBox = Buffer.alloc(message.length + sodium.crypto_box_SEALBYTES) as sodium.SealedBox
+): EncodedSealedBoxCiphertext {
+  const sealedBox = Buffer.alloc(
+    message.length + sodium.crypto_box_SEALBYTES
+  ) as sodium.SealedBoxCiphertext
   sodium.crypto_box_seal(sealedBox, message, decode(publicKey))
   return encode(sealedBox)
 }
 
 export function openSealedBox(
   keyPair: EncodedEncryptionKeyPair,
-  sealedBox: EncodedSealedBox
+  sealedBox: EncodedSealedBoxCiphertext
 ): Buffer {
   const keyPairBuffer = decodePair(keyPair)
   const sealedBoxBuffer = decode(sealedBox)
@@ -96,25 +107,33 @@ export function box(
   senderSecretKey: EncodedSecretEncryptionKey,
   recipientPublicKey: EncodedPublicEncryptionKey,
   message: Buffer
-): [EncodedBox, EncodedBoxNonce] {
-  const box = Buffer.alloc(message.length + sodium.crypto_box_MACBYTES) as sodium.Box
+): Box {
+  const ciphertext = Buffer.alloc(
+    message.length + sodium.crypto_box_MACBYTES
+  ) as sodium.BoxCiphertext
   const nonce = Buffer.alloc(sodium.crypto_box_NONCEBYTES) as sodium.BoxNonce
   sodium.randombytes_buf(nonce)
-  sodium.crypto_box_easy(box, message, nonce, decode(recipientPublicKey), decode(senderSecretKey))
-  return [encode(box), encode(nonce)]
+  sodium.crypto_box_easy(
+    ciphertext,
+    message,
+    nonce,
+    decode(recipientPublicKey),
+    decode(senderSecretKey)
+  )
+  return { message: encode(ciphertext), nonce: encode(nonce) }
 }
 
 export function openBox(
   senderPublicKey: EncodedPublicEncryptionKey,
   recipientSecretKey: EncodedSecretEncryptionKey,
-  box: EncodedBox,
-  nonce: EncodedBoxNonce
+  box: Box
 ): Buffer {
-  const message = Buffer.alloc(box.length - sodium.crypto_box_MACBYTES)
+  const ciphertext = decode(box.message)
+  const message = Buffer.alloc(ciphertext.length - sodium.crypto_box_MACBYTES)
   const success = sodium.crypto_box_open_easy(
     message,
-    decode(box),
-    decode(nonce),
+    ciphertext,
+    decode(box.nonce),
     decode(senderPublicKey),
     decode(recipientSecretKey)
   )
@@ -127,8 +146,8 @@ export function encode(val: sodium.SecretSigningKey): EncodedSecretSigningKey
 export function encode(val: sodium.PublicEncryptionKey): EncodedPublicEncryptionKey
 export function encode(val: sodium.SecretEncryptionKey): EncodedSecretSigningKey
 export function encode(val: sodium.Signature): EncodedSignature
-export function encode(val: sodium.SealedBox): EncodedSealedBox
-export function encode(val: sodium.Box): EncodedBox
+export function encode(val: sodium.SealedBoxCiphertext): EncodedSealedBoxCiphertext
+export function encode(val: sodium.BoxCiphertext): EncodedBoxCiphertext
 export function encode(val: sodium.BoxNonce): EncodedBoxNonce
 export function encode(val: Buffer): string
 export function encode(val: Buffer): string {
@@ -140,8 +159,8 @@ export function decode(val: EncodedSecretSigningKey): sodium.SecretSigningKey
 export function decode(val: EncodedPublicEncryptionKey): sodium.PublicEncryptionKey
 export function decode(val: EncodedSecretEncryptionKey): sodium.SecretEncryptionKey
 export function decode(val: EncodedSignature): sodium.Signature
-export function decode(val: EncodedSealedBox): sodium.SealedBox
-export function decode(val: EncodedBox): sodium.Box
+export function decode(val: EncodedSealedBoxCiphertext): sodium.SealedBoxCiphertext
+export function decode(val: EncodedBoxCiphertext): sodium.BoxCiphertext
 export function decode(val: EncodedBoxNonce): sodium.BoxNonce
 export function decode(val: string): Buffer
 export function decode(val: string): Buffer {
