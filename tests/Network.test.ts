@@ -15,8 +15,8 @@ test('Network', (t) => {
   const netA = testNetwork()
   const netB = testNetwork()
 
-  netA.setSwarm(testSwarm())
-  netB.setSwarm(testSwarm())
+  netA.addSwarm(testSwarm())
+  netB.addSwarm(testSwarm())
 
   netA.peerQ.subscribe((peer) => {
     t.isEqual(peer.id, netB.selfId, 'netA finds netB')
