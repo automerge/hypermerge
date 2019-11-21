@@ -1,10 +1,10 @@
 import path from 'path'
-import Debug from 'debug'
+import Debug from './Debug'
 import sqlite3, { Database } from 'better-sqlite3'
 import fs from 'fs'
 export { Database, Statement } from 'better-sqlite3'
 
-const log = Debug('hypermerge:Database')
+const log = Debug('SqlDatabase')
 
 const migrationsPath = path.resolve(__dirname, './migrations/0001_initial_schema.sql')
 

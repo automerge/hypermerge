@@ -1,15 +1,15 @@
-import Debug from 'debug'
+import Debug, { IDebugger } from './Debug'
 
 export default class Queue<T> {
   push: (item: T) => void
   name: string
   private queue: T[] = []
-  private log: Debug.IDebugger
+  private log: IDebugger
   private subscription?: (item: T) => void
 
   constructor(name: string = 'unknown') {
     this.name = name
-    this.log = Debug(`queue:${name}`)
+    this.log = Debug(`Queue:${name}`)
     this.push = this.enqueue
   }
 

@@ -1,10 +1,10 @@
 import { Backend, Change, BackendState as BackDoc, Patch } from 'automerge'
 import Queue from './Queue'
-import Debug from 'debug'
+import Debug from './Debug'
 import { Clock } from './Clock'
 import { ActorId, DocId, rootActorId } from './Misc'
 
-const log = Debug('repo:doc:back')
+const log = Debug('DocBackend')
 
 export type DocBackendMessage = ReadyMsg | ActorIdMsg | RemotePatchMsg | LocalPatchMsg
 

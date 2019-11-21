@@ -2,10 +2,10 @@ import Queue from './Queue'
 import * as Base58 from 'bs58'
 import hypercore, { Feed } from 'hypercore'
 import { readFeed } from './hypercore'
-import Debug from 'debug'
+import Debug from './Debug'
 import * as JsonBuffer from './JsonBuffer'
 import * as URL from 'url'
-const log = Debug('repo:metadata')
+const log = Debug('Metadata')
 
 import { Clock } from './Clock'
 import { DocUrl, DocId, ActorId, BaseUrl, isBaseUrl, HyperfileId, HyperfileUrl } from './Misc'
