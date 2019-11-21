@@ -7,7 +7,7 @@ import uuid from 'uuid'
 import { PrefixMatchPassThrough, InvalidPrefixError } from './StreamLogic'
 import Heartbeat from './Heartbeat'
 
-const VERSION_PREFIX = Buffer.from('hypermerge.v1')
+const VERSION_PREFIX = Buffer.from('hypermerge.v2')
 
 export interface SocketInfo {
   type: string
