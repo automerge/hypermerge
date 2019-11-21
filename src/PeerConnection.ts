@@ -1,4 +1,5 @@
 import { Duplex } from 'stream'
+import Debug from './Debug'
 import noise from 'noise-peer'
 import Multiplex, { Channel } from './Multiplex'
 import MessageBus from './MessageBus'
@@ -7,7 +8,10 @@ import uuid from 'uuid'
 import { PrefixMatchPassThrough, InvalidPrefixError } from './StreamLogic'
 import Heartbeat from './Heartbeat'
 
+const log = Debug('PeerConnection')
 const VERSION_PREFIX = Buffer.from('hypermerge.v2')
+
+type CloseReason = 'outdated' | 'timeout' | 'error' | 'shutdown' | 'unknown'
 
 export interface SocketInfo {
   type: string
@@ -18,7 +22,7 @@ export default class PeerConnection {
   isClient: boolean
   type: SocketInfo['type']
   id?: string
-  onClose?: () => void
+  onClose?: (reason: CloseReason) => void
 
   private heartbeat: Heartbeat
   private rawSocket: Duplex
@@ -31,7 +35,7 @@ export default class PeerConnection {
     this.isClient = info.isClient
     this.heartbeat = new Heartbeat(2000, {
       onBeat: () => this.internalBus.send({ type: 'Heartbeat' }),
-      onTimeout: () => this.close(),
+      onTimeout: () => this.close('timeout'),
     }).start()
 
     this.rawSocket = rawSocket
@@ -73,10 +77,11 @@ export default class PeerConnection {
     return this.multiplex.openChannel(name)
   }
 
-  close(): void {
+  close(reason: CloseReason = 'unknown'): void {
+    this.log('Closing connection: %s', reason)
     this.heartbeat.stop()
     this.rawSocket.destroy()
-    this.onClose?.()
+    this.onClose?.(reason)
   }
 
   private onMsg = (msg: Msg) => {
@@ -93,7 +98,11 @@ export default class PeerConnection {
     const { remoteAddress, remotePort } = this.rawSocket as any
     const host = `${this.type}@${remoteAddress}:${remotePort}`
     console.log('Closing connection to outdated peer: %s. Prefix: %s', host, err.actual)
-    return this.close()
+    return this.close('outdated')
+  }
+
+  private log(str: string, ...args: any): void {
+    log(`[${this.id}] ${str}`, ...args)
   }
 }
 

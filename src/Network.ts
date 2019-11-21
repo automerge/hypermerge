@@ -129,6 +129,10 @@ export default class Network {
       type: details.type,
     })
 
+    conn.onClose = (reason) => {
+      if (reason === 'outdated') details.ban?.()
+    }
+
     const networkBus = conn.openBus<NetworkMsg>('NetworkMsg')
 
     networkBus.send({

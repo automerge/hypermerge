@@ -58,7 +58,7 @@ export default class NetworkPeer {
    * hold onto it and wait for a ConfirmConnection message.
    */
   addConnection(conn: PeerConnection): void {
-    if (this.isClosing) return conn.close()
+    if (this.isClosing) return conn.close('shutdown')
 
     this.pendingConnections.add(conn)
     this.busCache.getOrCreate(conn)
@@ -95,7 +95,7 @@ export default class NetworkPeer {
 
   closeConnection(conn: PeerConnection): void {
     this.closedConnectionCount += 1
-    conn.close()
+    conn.close('shutdown')
   }
 
   close(): void {
