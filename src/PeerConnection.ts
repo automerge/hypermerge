@@ -2,34 +2,38 @@ import { Duplex } from 'stream'
 import noise from 'noise-peer'
 import Multiplex, { Channel } from './Multiplex'
 import MessageBus from './MessageBus'
-import { NetworkMsg } from './NetworkMsg'
 import pump from 'pump'
+import uuid from 'uuid'
 import { PrefixMatchPassThrough, InvalidPrefixError } from './StreamLogic'
+import Heartbeat from './Heartbeat'
 
 const VERSION_PREFIX = Buffer.from('hypermerge.v1')
 
 export interface SocketInfo {
   type: string
   isClient: boolean
-  onClose?(): void
 }
 
 export default class PeerConnection {
-  networkBus: MessageBus<NetworkMsg>
   isClient: boolean
-  isConfirmed: boolean
   type: SocketInfo['type']
+  id?: string
+  onClose?: () => void
 
+  private heartbeat: Heartbeat
   private rawSocket: Duplex
   private multiplex: Multiplex
   private secureStream: Duplex
-  private onClose?: () => void
+  private internalBus: MessageBus<Msg>
 
   constructor(rawSocket: Duplex, info: SocketInfo) {
-    this.isConfirmed = false
     this.type = info.type
-    this.onClose = info.onClose
     this.isClient = info.isClient
+    this.heartbeat = new Heartbeat(2000, {
+      onBeat: () => this.internalBus.send({ type: 'Heartbeat' }),
+      onTimeout: () => this.close(),
+    }).start()
+
     this.rawSocket = rawSocket
     this.secureStream = noise(rawSocket, this.isClient)
     this.multiplex = new Multiplex()
@@ -39,14 +43,16 @@ export default class PeerConnection {
 
     pump(this.secureStream, prefixMatch, this.multiplex, this.secureStream, (err) => {
       if (err instanceof InvalidPrefixError) {
-        const { remoteAddress, remotePort } = this.rawSocket as any
-        const host = `${this.type}@${remoteAddress}:${remotePort}`
-        console.log('Closing connection to outdated peer: %s. Prefix: %s', host, err.actual)
-        this.close()
+        this.closeOutdated(err)
       }
     })
 
-    this.networkBus = new MessageBus<NetworkMsg>(this.openChannel('NetworkMsg'))
+    this.internalBus = this.openBus('PeerConnection', this.onMsg)
+
+    if (this.isClient) {
+      this.id = uuid()
+      this.internalBus.send({ type: 'Id', id: this.id })
+    }
   }
 
   get isOpen() {
@@ -57,14 +63,47 @@ export default class PeerConnection {
     return !this.isOpen
   }
 
+  openBus<M>(name: string, subscriber?: (msg: M) => void): MessageBus<M> {
+    return new MessageBus(this.openChannel(name), subscriber)
+  }
+
   openChannel(name: string): Channel {
     if (this.isClosed) throw new Error('Connection is closed')
 
     return this.multiplex.openChannel(name)
   }
 
-  async close(): Promise<void> {
-    this.onClose && this.onClose()
+  close(): void {
+    this.heartbeat.stop()
     this.rawSocket.destroy()
+    this.onClose?.()
   }
+
+  private onMsg = (msg: Msg) => {
+    this.heartbeat.bump()
+
+    switch (msg.type) {
+      case 'Id':
+        this.id = msg.id
+        break
+    }
+  }
+
+  private closeOutdated(err: InvalidPrefixError): void {
+    const { remoteAddress, remotePort } = this.rawSocket as any
+    const host = `${this.type}@${remoteAddress}:${remotePort}`
+    console.log('Closing connection to outdated peer: %s. Prefix: %s', host, err.actual)
+    return this.close()
+  }
+}
+
+type Msg = IdMsg | HeartbeatMsg
+
+interface IdMsg {
+  type: 'Id'
+  id: string
+}
+
+interface HeartbeatMsg {
+  type: 'Heartbeat'
 }

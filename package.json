@@ -44,7 +44,8 @@
     "random-access-memory": "^3.0.0",
     "simple-message-channels": "^1.2.1",
     "sodium-native": "^2.4.6",
-    "streamx": "^2.5.0"
+    "streamx": "^2.5.0",
+    "uuid": "^3.3.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^5.4.0",
@@ -60,8 +61,7 @@
     "prettier": "^1.19.1",
     "tape": "^4.11.0",
     "ts-node": "^8.3.0",
-    "typescript": "^3.7.2",
-    "uuid": "^3.3.3"
+    "typescript": "^3.7.2"
   },
   "resolutions": {
     "sodium-native": "^2.4.6",

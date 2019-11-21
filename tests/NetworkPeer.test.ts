@@ -8,12 +8,12 @@ test('NetworkPeer', (t) => {
     t.plan(4)
 
     peerA.connectionQ.subscribe((conn) => {
-      t.assert(conn.isConfirmed, 'peerA gets confirmed connection')
+      t.assert(peerA.connection === conn, 'peerA gets confirmed connection')
       t.assert(peerA.isConnected, 'peerA is connected')
     })
 
     peerB.connectionQ.subscribe((conn) => {
-      t.assert(conn.isConfirmed, 'peerB gets confirmed connection')
+      t.assert(peerB.connection === conn, 'peerB gets confirmed connection')
       t.assert(peerB.isConnected, 'peerB is connected')
     })
   })

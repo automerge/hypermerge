@@ -5,6 +5,13 @@ import Queue from './Queue'
 import PeerConnection from './PeerConnection'
 import { Duplex } from 'stream'
 
+export type NetworkMsg = InfoMsg
+
+export interface InfoMsg {
+  type: 'Info'
+  peerId: PeerId
+}
+
 export default class Network {
   selfId: PeerId
   joined: Set<DiscoveryId>
@@ -120,17 +127,18 @@ export default class Network {
     const conn = new PeerConnection(socket, {
       isClient: details.client,
       type: details.type,
-      onClose() {
-        if (!conn.isConfirmed) details.ban?.()
-      },
     })
 
-    conn.networkBus.send({
+    const networkBus = conn.openBus<NetworkMsg>('NetworkMsg')
+
+    networkBus.send({
       type: 'Info',
       peerId: this.selfId,
     })
 
-    const firstMsg = await conn.networkBus.receiveQ.first()
+    const firstMsg = await networkBus.receiveQ.first()
+
+    networkBus.close()
 
     if (firstMsg.type !== 'Info') throw new Error('First message must be Info.')
 
