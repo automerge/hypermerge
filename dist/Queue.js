@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const debug_1 = __importDefault(require("debug"));
+const Debug_1 = __importDefault(require("./Debug"));
 class Queue {
     constructor(name = 'unknown') {
         this.queue = [];
@@ -12,7 +12,7 @@ class Queue {
             this.queue.push(item);
         };
         this.name = name;
-        this.log = debug_1.default(`queue:${name}`);
+        this.log = Debug_1.default(`Queue:${name}`);
         this.push = this.enqueue;
     }
     first() {

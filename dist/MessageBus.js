@@ -13,7 +13,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Queue_1 = __importDefault(require("./Queue"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 class MessageBus {
-    constructor(stream) {
+    constructor(stream, subscriber) {
         this.onData = (data) => {
             this.receiveQ.push(JsonBuffer.parse(data));
         };
@@ -27,6 +27,8 @@ class MessageBus {
         this.sendQ.subscribe((msg) => {
             this.stream.write(JsonBuffer.bufferify(msg));
         });
+        if (subscriber)
+            this.subscribe(subscriber);
     }
     send(msg) {
         this.sendQ.push(msg);

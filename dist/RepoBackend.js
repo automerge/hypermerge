@@ -28,7 +28,7 @@ const DocBackend = __importStar(require("./DocBackend"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const Misc_1 = require("./Misc");
-const debug_1 = __importDefault(require("debug"));
+const Debug_1 = __importDefault(require("./Debug"));
 const Keys = __importStar(require("./Keys"));
 const FeedStore_1 = __importDefault(require("./FeedStore"));
 const FileStore_1 = __importDefault(require("./FileStore"));
@@ -43,8 +43,7 @@ const random_access_file_1 = __importDefault(require("random-access-file"));
 const KeyStore_1 = __importDefault(require("./KeyStore"));
 const ReplicationManager_1 = __importDefault(require("./ReplicationManager"));
 const Crypto = __importStar(require("./Crypto"));
-debug_1.default.formatters.b = Keys.encode;
-const log = debug_1.default('repo:backend');
+const log = Debug_1.default('RepoBackend');
 class RepoBackend {
     constructor(opts) {
         this.actors = new Map();

@@ -2,16 +2,24 @@ import { RepoId } from './Misc';
 import PeerConnection from './PeerConnection';
 import Queue from './Queue';
 import * as Keys from './Keys';
+import WeakCache from './WeakCache';
+import MessageBus from './MessageBus';
 export declare type PeerId = RepoId & {
     __peerId: true;
 };
+export declare type Msg = ConfirmConnectionMsg;
+export interface ConfirmConnectionMsg {
+    type: 'ConfirmConnection';
+}
 export default class NetworkPeer {
     selfId: PeerId;
     id: PeerId;
     pendingConnections: Set<PeerConnection>;
     connectionQ: Queue<PeerConnection>;
     closedConnectionCount: number;
-    connection: PeerConnection;
+    busCache: WeakCache<PeerConnection, MessageBus<Msg>>;
+    isClosing: boolean;
+    connection?: PeerConnection;
     constructor(selfId: PeerId, id: PeerId);
     get isConnected(): boolean;
     /**
@@ -28,12 +36,16 @@ export default class NetworkPeer {
      * Attempts to add a connection to this peer.
      * If this connection is a duplicate of an existing connection, we close it.
      * If we aren't the authority, and we don't have a confirmed connection, we
-     * add hold onto it and wait for a ConfirmConnection message.
+     * hold onto it and wait for a ConfirmConnection message.
      */
     addConnection(conn: PeerConnection): void;
+    pickNewConnection(): void;
     confirmConnection(conn: PeerConnection): void;
     closeConnection(conn: PeerConnection): void;
     close(): void;
+    private send;
+    private onMsg;
+    private onConnectionClosed;
 }
 export declare function encodePeerId(key: Keys.PublicKey): PeerId;
 export declare function decodePeerId(id: PeerId): Keys.PublicKey;

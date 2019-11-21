@@ -2,24 +2,29 @@
 import { Duplex } from 'stream';
 import { Channel } from './Multiplex';
 import MessageBus from './MessageBus';
-import { NetworkMsg } from './NetworkMsg';
+declare type CloseReason = 'outdated' | 'timeout' | 'error' | 'shutdown' | 'unknown';
 export interface SocketInfo {
     type: string;
     isClient: boolean;
-    onClose?(): void;
 }
 export default class PeerConnection {
-    networkBus: MessageBus<NetworkMsg>;
     isClient: boolean;
-    isConfirmed: boolean;
     type: SocketInfo['type'];
+    id?: string;
+    onClose?: (reason: CloseReason) => void;
+    private heartbeat;
     private rawSocket;
     private multiplex;
     private secureStream;
-    private onClose?;
+    private internalBus;
     constructor(rawSocket: Duplex, info: SocketInfo);
     get isOpen(): boolean;
     get isClosed(): boolean;
+    openBus<M>(name: string, subscriber?: (msg: M) => void): MessageBus<M>;
     openChannel(name: string): Channel;
-    close(): Promise<void>;
+    close(reason?: CloseReason): void;
+    private onMsg;
+    private closeOutdated;
+    private log;
 }
+export {};

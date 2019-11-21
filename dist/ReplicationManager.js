@@ -84,6 +84,8 @@ class ReplicationManager {
         }
     }
     getOrCreateProtocol(peer) {
+        if (!peer.connection)
+            throw new Error('peer has no connection');
         return Misc_1.getOrCreate(this.protocols, peer.connection, (conn) => {
             const stream = conn.openChannel('FeedReplication');
             const protocol = new hypercore_protocol_1.default(conn.isClient, {

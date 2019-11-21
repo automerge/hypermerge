@@ -7,11 +7,11 @@ const automerge_1 = require("automerge");
 const Clock_1 = require("./Clock");
 const Queue_1 = __importDefault(require("./Queue"));
 const Handle_1 = require("./Handle");
-const debug_1 = __importDefault(require("debug"));
+const Debug_1 = __importDefault(require("./Debug"));
 const Misc_1 = require("./Misc");
 // TODO - i bet this can be rewritten where the Frontend allocates the actorid on write - this
 // would make first writes a few ms faster
-const log = debug_1.default('hypermerge:front');
+const log = Debug_1.default('DocFrontend');
 class DocFrontend {
     constructor(repo, config) {
         //super()

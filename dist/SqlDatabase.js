@@ -4,10 +4,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const path_1 = __importDefault(require("path"));
-const debug_1 = __importDefault(require("debug"));
+const Debug_1 = __importDefault(require("./Debug"));
 const better_sqlite3_1 = __importDefault(require("better-sqlite3"));
 const fs_1 = __importDefault(require("fs"));
-const log = debug_1.default('hypermerge:Database');
+const log = Debug_1.default('SqlDatabase');
 const migrationsPath = path_1.default.resolve(__dirname, './migrations/0001_initial_schema.sql');
 function open(storage, memory) {
     const db = new better_sqlite3_1.default(storage, { memory });
