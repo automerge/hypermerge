@@ -1,8 +1,8 @@
 import { Feed } from 'hypercore'
 
-import Debug from 'debug'
+import Debug from './Debug'
 import { ID, ActorId } from './Misc'
-const log = Debug('repo:hypermerge')
+const log = Debug('hypercore')
 
 function readFeedN<T>(
   id: ActorId | 'ledger',

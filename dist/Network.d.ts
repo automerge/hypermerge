@@ -2,6 +2,11 @@ import { DiscoveryId } from './Misc';
 import NetworkPeer, { PeerId } from './NetworkPeer';
 import { Swarm, JoinOptions } from './SwarmInterface';
 import Queue from './Queue';
+export declare type NetworkMsg = InfoMsg;
+export interface InfoMsg {
+    type: 'Info';
+    peerId: PeerId;
+}
 export default class Network {
     selfId: PeerId;
     joined: Set<DiscoveryId>;

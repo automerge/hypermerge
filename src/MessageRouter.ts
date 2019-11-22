@@ -37,6 +37,8 @@ export default class MessageRouter<Msg> {
   }
 
   getBus(peer: NetworkPeer): MessageBus<Msg> {
+    if (!peer.connection) throw new Error('peer has no connection')
+
     return getOrCreate(this.buses, peer.connection, (conn) => {
       const bus = new MessageBus<Msg>(conn.openChannel(this.channelName))
 

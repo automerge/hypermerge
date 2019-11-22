@@ -26,17 +26,19 @@ class Network {
             const conn = new PeerConnection_1.default(socket, {
                 isClient: details.client,
                 type: details.type,
-                onClose() {
-                    var _a, _b;
-                    if (!conn.isConfirmed)
-                        (_b = (_a = details).ban) === null || _b === void 0 ? void 0 : _b.call(_a);
-                },
             });
-            conn.networkBus.send({
+            conn.onClose = (reason) => {
+                var _a, _b;
+                if (reason === 'outdated')
+                    (_b = (_a = details).ban) === null || _b === void 0 ? void 0 : _b.call(_a);
+            };
+            const networkBus = conn.openBus('NetworkMsg');
+            networkBus.send({
                 type: 'Info',
                 peerId: this.selfId,
             });
-            const firstMsg = yield conn.networkBus.receiveQ.first();
+            const firstMsg = yield networkBus.receiveQ.first();
+            networkBus.close();
             if (firstMsg.type !== 'Info')
                 throw new Error('First message must be Info.');
             const { peerId } = firstMsg;

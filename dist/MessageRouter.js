@@ -25,6 +25,8 @@ class MessageRouter {
         bus.send(msg);
     }
     getBus(peer) {
+        if (!peer.connection)
+            throw new Error('peer has no connection');
         return Misc_1.getOrCreate(this.buses, peer.connection, (conn) => {
             const bus = new MessageBus_1.default(conn.openChannel(this.channelName));
             bus.receiveQ.subscribe((msg) => {

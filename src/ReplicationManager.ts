@@ -112,6 +112,8 @@ export default class ReplicationManager {
   }
 
   private getOrCreateProtocol(peer: NetworkPeer): HypercoreProtocol {
+    if (!peer.connection) throw new Error('peer has no connection')
+
     return getOrCreate(this.protocols, peer.connection, (conn) => {
       const stream = conn.openChannel('FeedReplication')
       const protocol = new HypercoreProtocol(conn.isClient, {

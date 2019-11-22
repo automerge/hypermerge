@@ -23,8 +23,8 @@ const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
 const Block = __importStar(require("./Block"));
 const Keys = __importStar(require("./Keys"));
-const debug_1 = __importDefault(require("debug"));
-const log = debug_1.default('repo:actor');
+const Debug_1 = __importDefault(require("./Debug"));
+const log = Debug_1.default('Actor');
 class Actor {
     constructor(config) {
         this.changes = [];

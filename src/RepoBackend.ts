@@ -30,7 +30,7 @@ import {
   toDiscoveryId,
   errorMessage,
 } from './Misc'
-import Debug from 'debug'
+import Debug from './Debug'
 import * as Keys from './Keys'
 import FeedStore from './FeedStore'
 import FileStore from './FileStore'
@@ -49,9 +49,7 @@ import KeyStore from './KeyStore'
 import ReplicationManager, { Discovery } from './ReplicationManager'
 import * as Crypto from './Crypto'
 
-Debug.formatters.b = Keys.encode
-
-const log = Debug('repo:backend')
+const log = Debug('RepoBackend')
 
 export interface FeedData {
   actorId: ActorId

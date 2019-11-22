@@ -14,10 +14,10 @@ const Queue_1 = __importDefault(require("./Queue"));
 const Base58 = __importStar(require("bs58"));
 const hypercore_1 = __importDefault(require("hypercore"));
 const hypercore_2 = require("./hypercore");
-const debug_1 = __importDefault(require("debug"));
+const Debug_1 = __importDefault(require("./Debug"));
 const JsonBuffer = __importStar(require("./JsonBuffer"));
 const URL = __importStar(require("url"));
-const log = debug_1.default('repo:metadata');
+const log = Debug_1.default('Metadata');
 const Misc_1 = require("./Misc");
 const Keys = __importStar(require("./Keys"));
 function cleanMetadataInput(input) {

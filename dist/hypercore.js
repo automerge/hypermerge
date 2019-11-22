@@ -3,9 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const debug_1 = __importDefault(require("debug"));
+const Debug_1 = __importDefault(require("./Debug"));
 const Misc_1 = require("./Misc");
-const log = debug_1.default('repo:hypermerge');
+const log = Debug_1.default('hypercore');
 function readFeedN(id, feed, index, cb) {
     log(`readFeedN id=${Misc_1.ID(id)} (0..${index})`);
     if (index === 0) {

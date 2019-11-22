@@ -3,13 +3,13 @@ import { RepoFrontend, ProgressEvent } from './RepoFrontend'
 import { Clock, union } from './Clock'
 import Queue from './Queue'
 import { Handle } from './Handle'
-import Debug from 'debug'
+import Debug from './Debug'
 import { ActorId, DocId, DocUrl, toDocUrl } from './Misc'
 
 // TODO - i bet this can be rewritten where the Frontend allocates the actorid on write - this
 // would make first writes a few ms faster
 
-const log = Debug('hypermerge:front')
+const log = Debug('DocFrontend')
 
 export { Patch }
 

@@ -3,10 +3,10 @@ import { ID, ActorId, DiscoveryId, encodeActorId } from './Misc'
 import Queue from './Queue'
 import * as Block from './Block'
 import * as Keys from './Keys'
-import Debug from 'debug'
+import Debug from './Debug'
 import FeedStore, { FeedId, Feed } from './FeedStore'
 
-const log = Debug('repo:actor')
+const log = Debug('Actor')
 
 export type ActorMsg = ActorFeedReady | ActorSync | Download
 

@@ -6,7 +6,7 @@ export default class MessageBus<Msg> {
   sendQ: Queue<Msg>
   receiveQ: Queue<Msg>
 
-  constructor(stream: NodeJS.ReadWriteStream) {
+  constructor(stream: NodeJS.ReadWriteStream, subscriber?: (msg: Msg) => void) {
     this.stream = stream
 
     this.sendQ = new Queue('MessageBus:sendQ')
@@ -20,6 +20,8 @@ export default class MessageBus<Msg> {
     this.sendQ.subscribe((msg) => {
       this.stream.write(JsonBuffer.bufferify(msg))
     })
+
+    if (subscriber) this.subscribe(subscriber)
   }
 
   onData = (data: Buffer): void => {

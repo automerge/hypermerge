@@ -10,6 +10,7 @@ import * as Keys from '../src/Keys'
 import * as SqlDatabase from '../src/SqlDatabase'
 import NetworkPeer, { PeerId } from '../src/NetworkPeer'
 import PeerConnection from '../src/PeerConnection'
+import { inspect } from 'util'
 
 type DocMsg = [any, string]
 type DocMsgCB = [any, string, any]
@@ -216,6 +217,21 @@ export function expectDocs(t: test.Test, docs: DocInfo[]) {
   }
 }
 
+export type Fn = (...args: any[]) => any
+export function eachCall<F extends Fn>(fns: F[]): F {
+  let i = 0
+
+  const newFn = (...args: any[]): any => {
+    const fn = fns[i++]
+
+    if (!fn) throw new Error(`Invoked more times than expected. Invoked with: ${inspect(args)}`)
+
+    return fn(...args)
+  }
+
+  return newFn as any
+}
+
 export function expect<T, Args extends any[]>(
   t: test.Test,
   getValue: (...args: Args) => T,
@@ -229,7 +245,7 @@ export function expect<T, Args extends any[]>(
   return (...args: Args) => {
     const currentExpected = expected[i++]
     if (currentExpected === undefined) {
-      t.fail(`Invoked more times than expected. Invoked with: ${JSON.stringify(args)}`)
+      t.fail(`Invoked more times than expected. Invoked with: ${inspect(args)}`)
     } else {
       const val = getValue(...args)
       const [expected, msg, cb] = currentExpected

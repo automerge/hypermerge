@@ -13,18 +13,32 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Misc_1 = require("./Misc");
 const Queue_1 = __importDefault(require("./Queue"));
 const Keys = __importStar(require("./Keys"));
+const WeakCache_1 = __importDefault(require("./WeakCache"));
 class NetworkPeer {
     constructor(selfId, id) {
+        this.onMsg = (conn) => (msg) => {
+            if (msg.type === 'ConfirmConnection') {
+                this.confirmConnection(conn);
+            }
+        };
+        this.onConnectionClosed = (conn) => {
+            this.pendingConnections.delete(conn);
+            if (conn === this.connection) {
+                delete this.connection;
+                this.pickNewConnection();
+            }
+        };
+        this.isClosing = false;
         this.closedConnectionCount = 0;
         this.pendingConnections = new Set();
         this.connectionQ = new Queue_1.default('NetworkPeer:connectionQ');
         this.selfId = selfId;
         this.id = id;
+        this.busCache = new WeakCache_1.default((conn) => conn.openBus('NetworkPeer', this.onMsg(conn)));
     }
     get isConnected() {
-        if (!this.connection)
-            return false;
-        return this.connection.isOpen && this.connection.isConfirmed;
+        var _a, _b;
+        return _b = (_a = this.connection) === null || _a === void 0 ? void 0 : _a.isOpen, (_b !== null && _b !== void 0 ? _b : false);
     }
     /**
      * Determines if we are the authority on which connection to use when
@@ -42,44 +56,54 @@ class NetworkPeer {
      * Attempts to add a connection to this peer.
      * If this connection is a duplicate of an existing connection, we close it.
      * If we aren't the authority, and we don't have a confirmed connection, we
-     * add hold onto it and wait for a ConfirmConnection message.
+     * hold onto it and wait for a ConfirmConnection message.
      */
     addConnection(conn) {
+        if (this.isClosing)
+            return conn.close('shutdown');
         this.pendingConnections.add(conn);
-        if (this.isConnected) {
-            this.closeConnection(conn);
+        this.busCache.getOrCreate(conn);
+        conn.onClose = () => this.onConnectionClosed(conn);
+        if (this.isConnected)
             return;
-        }
         if (this.weHaveAuthority) {
-            conn.networkBus.send({ type: 'ConfirmConnection' });
             this.confirmConnection(conn);
             return;
         }
-        conn.networkBus.subscribe((msg) => {
-            if (msg.type === 'ConfirmConnection') {
+    }
+    pickNewConnection() {
+        if (this.isClosing)
+            return;
+        if (!this.weHaveAuthority)
+            return;
+        for (const conn of this.pendingConnections) {
+            if (conn.isOpen) {
                 this.confirmConnection(conn);
+                break;
             }
-        });
+        }
     }
     confirmConnection(conn) {
-        conn.isConfirmed = true;
+        if (this.weHaveAuthority)
+            this.send(conn, { type: 'ConfirmConnection' });
         this.connection = conn;
         this.pendingConnections.delete(conn);
-        for (const pendingConn of this.pendingConnections) {
-            this.closeConnection(pendingConn);
-        }
         this.connectionQ.push(conn);
     }
     closeConnection(conn) {
-        this.pendingConnections.delete(conn);
-        conn.close();
         this.closedConnectionCount += 1;
+        conn.close('shutdown');
     }
     close() {
-        this.connection && this.closeConnection(this.connection);
+        this.isClosing = true;
+        if (this.connection)
+            this.closeConnection(this.connection);
         for (const pendingConn of this.pendingConnections) {
             this.closeConnection(pendingConn);
         }
+    }
+    send(conn, msg) {
+        this.busCache.getOrCreate(conn).send(msg);
     }
 }
 exports.default = NetworkPeer;

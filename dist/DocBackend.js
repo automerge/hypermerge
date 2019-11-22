@@ -5,9 +5,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const automerge_1 = require("automerge");
 const Queue_1 = __importDefault(require("./Queue"));
-const debug_1 = __importDefault(require("debug"));
+const Debug_1 = __importDefault(require("./Debug"));
 const Misc_1 = require("./Misc");
-const log = debug_1.default('repo:doc:back');
+const log = Debug_1.default('DocBackend');
 class DocBackend {
     constructor(documentId, back) {
         this.clock = {};

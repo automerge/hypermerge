@@ -1,29 +1,34 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const Debug_1 = __importDefault(require("./Debug"));
 const noise_peer_1 = __importDefault(require("noise-peer"));
 const Multiplex_1 = __importDefault(require("./Multiplex"));
 const MessageBus_1 = __importDefault(require("./MessageBus"));
 const pump_1 = __importDefault(require("pump"));
+const uuid_1 = __importDefault(require("uuid"));
 const StreamLogic_1 = require("./StreamLogic");
-const VERSION_PREFIX = Buffer.from('hypermerge.v1');
+const Heartbeat_1 = __importDefault(require("./Heartbeat"));
+const log = Debug_1.default('PeerConnection');
+const VERSION_PREFIX = Buffer.from('hypermerge.v2');
 class PeerConnection {
     constructor(rawSocket, info) {
-        this.isConfirmed = false;
+        this.onMsg = (msg) => {
+            this.heartbeat.bump();
+            switch (msg.type) {
+                case 'Id':
+                    this.id = msg.id;
+                    break;
+            }
+        };
         this.type = info.type;
-        this.onClose = info.onClose;
         this.isClient = info.isClient;
+        this.heartbeat = new Heartbeat_1.default(2000, {
+            onBeat: () => this.internalBus.send({ type: 'Heartbeat' }),
+            onTimeout: () => this.close('timeout'),
+        }).start();
         this.rawSocket = rawSocket;
         this.secureStream = noise_peer_1.default(rawSocket, this.isClient);
         this.multiplex = new Multiplex_1.default();
@@ -31,13 +36,14 @@ class PeerConnection {
         this.secureStream.write(VERSION_PREFIX);
         pump_1.default(this.secureStream, prefixMatch, this.multiplex, this.secureStream, (err) => {
             if (err instanceof StreamLogic_1.InvalidPrefixError) {
-                const { remoteAddress, remotePort } = this.rawSocket;
-                const host = `${this.type}@${remoteAddress}:${remotePort}`;
-                console.log('Closing connection to outdated peer: %s. Prefix: %s', host, err.actual);
-                this.close();
+                this.closeOutdated(err);
             }
         });
-        this.networkBus = new MessageBus_1.default(this.openChannel('NetworkMsg'));
+        this.internalBus = this.openBus('PeerConnection', this.onMsg);
+        if (this.isClient) {
+            this.id = uuid_1.default();
+            this.internalBus.send({ type: 'Id', id: this.id });
+        }
     }
     get isOpen() {
         return this.rawSocket.writable;
@@ -45,16 +51,29 @@ class PeerConnection {
     get isClosed() {
         return !this.isOpen;
     }
+    openBus(name, subscriber) {
+        return new MessageBus_1.default(this.openChannel(name), subscriber);
+    }
     openChannel(name) {
         if (this.isClosed)
             throw new Error('Connection is closed');
         return this.multiplex.openChannel(name);
     }
-    close() {
-        return __awaiter(this, void 0, void 0, function* () {
-            this.onClose && this.onClose();
-            this.rawSocket.destroy();
-        });
+    close(reason = 'unknown') {
+        var _a, _b;
+        this.log('Closing connection: %s', reason);
+        this.heartbeat.stop();
+        this.rawSocket.destroy();
+        (_b = (_a = this).onClose) === null || _b === void 0 ? void 0 : _b.call(_a, reason);
+    }
+    closeOutdated(err) {
+        const { remoteAddress, remotePort } = this.rawSocket;
+        const host = `${this.type}@${remoteAddress}:${remotePort}`;
+        console.log('Closing connection to outdated peer: %s. Prefix: %s', host, err.actual);
+        return this.close('outdated');
+    }
+    log(str, ...args) {
+        log(`[${this.id}] ${str}`, ...args);
     }
 }
 exports.default = PeerConnection;

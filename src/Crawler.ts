@@ -1,3 +1,4 @@
+import Debug from './Debug'
 import { RepoFrontend } from './RepoFrontend'
 import { DocUrl, withoutQuery, isString, isDocUrl, BaseUrl } from './Misc'
 import { Handle } from './Handle'
@@ -5,7 +6,7 @@ import { isHyperfileUrl } from './FileStore'
 import * as TraverseLogic from './TraverseLogic'
 import { Doc } from 'automerge'
 
-const log = require('debug')('hypermerge-crawler')
+const log = Debug('Crawler')
 
 export class Crawler {
   repo: RepoFrontend

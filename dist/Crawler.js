@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -7,10 +10,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const Debug_1 = __importDefault(require("./Debug"));
 const Misc_1 = require("./Misc");
 const FileStore_1 = require("./FileStore");
 const TraverseLogic = __importStar(require("./TraverseLogic"));
-const log = require('debug')('hypermerge-crawler');
+const log = Debug_1.default('Crawler');
 class Crawler {
     constructor(repo) {
         this.seen = new Set();
