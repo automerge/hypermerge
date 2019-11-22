@@ -40,10 +40,10 @@ class Network {
             const firstMsg = yield networkBus.receiveQ.first();
             networkBus.close();
             if (firstMsg.type !== 'Info')
-                throw new Error('First message must be Info.');
+                return conn.close('error');
             const { peerId } = firstMsg;
             if (peerId === this.selfId)
-                throw new Error('Connected to self.');
+                return conn.close('self-connection');
             this.getOrCreatePeer(peerId).addConnection(conn);
         });
         this.selfId = selfId;

@@ -3,7 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const MessageBus_1 = __importDefault(require("./MessageBus"));
 const Queue_1 = __importDefault(require("./Queue"));
 const Misc_1 = require("./Misc");
 class MessageRouter {
@@ -21,14 +20,15 @@ class MessageRouter {
         }
     }
     sendToPeer(peer, msg) {
+        var _a;
         const bus = this.getBus(peer);
-        bus.send(msg);
+        (_a = bus) === null || _a === void 0 ? void 0 : _a.send(msg);
     }
     getBus(peer) {
         if (!peer.connection)
-            throw new Error('peer has no connection');
+            return;
         return Misc_1.getOrCreate(this.buses, peer.connection, (conn) => {
-            const bus = new MessageBus_1.default(conn.openChannel(this.channelName));
+            const bus = conn.openBus(this.channelName);
             bus.receiveQ.subscribe((msg) => {
                 this.inboxQ.push({
                     sender: peer,

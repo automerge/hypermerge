@@ -33,14 +33,14 @@ export default class MessageRouter<Msg> {
 
   sendToPeer(peer: NetworkPeer, msg: Msg): void {
     const bus = this.getBus(peer)
-    bus.send(msg)
+    bus?.send(msg)
   }
 
-  getBus(peer: NetworkPeer): MessageBus<Msg> {
-    if (!peer.connection) throw new Error('peer has no connection')
+  getBus(peer: NetworkPeer): MessageBus<Msg> | undefined {
+    if (!peer.connection) return
 
     return getOrCreate(this.buses, peer.connection, (conn) => {
-      const bus = new MessageBus<Msg>(conn.openChannel(this.channelName))
+      const bus = conn.openBus<Msg>(this.channelName)
 
       bus.receiveQ.subscribe((msg) => {
         this.inboxQ.push({

@@ -11,7 +11,7 @@ import Heartbeat from './Heartbeat'
 const log = Debug('PeerConnection')
 const VERSION_PREFIX = Buffer.from('hypermerge.v2')
 
-type CloseReason = 'outdated' | 'timeout' | 'error' | 'shutdown' | 'unknown'
+type CloseReason = 'outdated' | 'timeout' | 'error' | 'shutdown' | 'self-connection' | 'unknown'
 
 export interface SocketInfo {
   type: string

@@ -144,10 +144,10 @@ export default class Network {
 
     networkBus.close()
 
-    if (firstMsg.type !== 'Info') throw new Error('First message must be Info.')
+    if (firstMsg.type !== 'Info') return conn.close('error')
 
     const { peerId } = firstMsg
-    if (peerId === this.selfId) throw new Error('Connected to self.')
+    if (peerId === this.selfId) return conn.close('self-connection')
 
     this.getOrCreatePeer(peerId).addConnection(conn)
   }

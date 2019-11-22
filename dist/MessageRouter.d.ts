@@ -15,5 +15,5 @@ export default class MessageRouter<Msg> {
     listenTo(peer: NetworkPeer): void;
     sendToPeers(peers: Iterable<NetworkPeer>, msg: Msg): void;
     sendToPeer(peer: NetworkPeer, msg: Msg): void;
-    getBus(peer: NetworkPeer): MessageBus<Msg>;
+    getBus(peer: NetworkPeer): MessageBus<Msg> | undefined;
 }
