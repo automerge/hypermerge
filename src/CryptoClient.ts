@@ -14,7 +14,7 @@ import {
 
 export type RequestFn = (msg: ToBackendQueryMsg, cb: (msg: any) => void) => void
 
-export default class CryptoClient {
+export class CryptoClient {
   request: RequestFn
 
   constructor(request: RequestFn) {

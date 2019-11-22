@@ -2,7 +2,7 @@ import * as Crypto from './Crypto';
 import { DocUrl } from './Misc';
 import { ToBackendQueryMsg } from './RepoMsg';
 export declare type RequestFn = (msg: ToBackendQueryMsg, cb: (msg: any) => void) => void;
-export default class CryptoClient {
+export declare class CryptoClient {
     request: RequestFn;
     constructor(request: RequestFn);
     sign<T extends string>(url: DocUrl, message: T): Promise<Crypto.SignedMessage<T>>;

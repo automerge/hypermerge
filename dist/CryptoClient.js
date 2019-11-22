@@ -94,5 +94,5 @@ class CryptoClient {
         });
     }
 }
-exports.default = CryptoClient;
+exports.CryptoClient = CryptoClient;
 //# sourceMappingURL=CryptoClient.js.map

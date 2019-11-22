@@ -19,7 +19,7 @@ const Keys = __importStar(require("./Keys"));
 const Metadata_1 = require("./Metadata");
 const Misc_1 = require("./Misc");
 const FileServerClient_1 = __importDefault(require("./FileServerClient"));
-const CryptoClient_1 = __importDefault(require("./CryptoClient"));
+const CryptoClient_1 = require("./CryptoClient");
 const Crawler_1 = require("./Crawler");
 let msgid = 1;
 class RepoFrontend {
@@ -229,7 +229,7 @@ class RepoFrontend {
                     break;
             }
         };
-        this.crypto = new CryptoClient_1.default(this.queryBackend);
+        this.crypto = new CryptoClient_1.CryptoClient(this.queryBackend);
         this.crawler = new Crawler_1.Crawler(this);
     }
     debug(url) {

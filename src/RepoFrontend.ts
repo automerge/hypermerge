@@ -15,7 +15,7 @@ import * as Keys from './Keys'
 import { PublicMetadata, validateDocURL, validateURL } from './Metadata'
 import { DocUrl, DocId, ActorId, toDocUrl, HyperfileId, HyperfileUrl, rootActorId } from './Misc'
 import FileServerClient from './FileServerClient'
-import CryptoClient from './CryptoClient'
+import { CryptoClient } from './CryptoClient'
 import { Crawler } from './Crawler'
 
 export interface DocMetadata {
