@@ -7,7 +7,7 @@ import { DocUrl, HyperfileUrl, RepoId } from './Misc';
 import FileServerClient from './FileServerClient';
 import { Swarm, JoinOptions } from './SwarmInterface';
 import { Doc, Proxy } from 'automerge';
-import CryptoClient from './CryptoClient';
+import { CryptoClient } from './CryptoClient';
 export declare class Repo {
     front: RepoFrontend;
     back: RepoBackend;

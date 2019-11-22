@@ -7,7 +7,7 @@ import { DocFrontend } from './DocFrontend';
 import { Clock } from './Clock';
 import { DocUrl, DocId, ActorId, HyperfileId, HyperfileUrl } from './Misc';
 import FileServerClient from './FileServerClient';
-import CryptoClient from './CryptoClient';
+import { CryptoClient } from './CryptoClient';
 import { Crawler } from './Crawler';
 export interface DocMetadata {
     clock: Clock;
