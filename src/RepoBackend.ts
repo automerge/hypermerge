@@ -1,3 +1,4 @@
+import lockfile from 'proper-lockfile'
 import Queue from './Queue'
 import { Metadata, PublicMetadata } from './Metadata'
 import { Actor, ActorMsg } from './Actor'
@@ -79,6 +80,7 @@ export class RepoBackend {
   network: Network
   messages: MessageRouter<PeerMsg>
   replication: ReplicationManager
+  lockRelease?: () => void
   swarmKey: Buffer // TODO: Remove this once we no longer use discovery-swarm/discovery-cloud
   private db: SqlDatabase.Database
   private fileServer: FileServer
@@ -90,6 +92,8 @@ export class RepoBackend {
     // initialize storage
     if (!opts.memory) {
       ensureDirectoryExists(this.path)
+      // Attempt to acquite a lock on the repo to prevent concurrent corrupting access.
+      this.lockRelease = lockfile.lockSync(this.path)
     }
     this.storage = opts.memory ? ram : raf
     this.db = SqlDatabase.open(path.resolve(this.path, 'hypermerge.db'), opts.memory || false)
@@ -245,7 +249,9 @@ export class RepoBackend {
       this.replication.close(),
       this.network.close(),
       this.fileServer.close(),
-    ])
+    ]).then(() => {
+      this.lockRelease?.()
+    })
   }
 
   private async allReadyActors(docId: DocId): Promise<Actor[]> {

@@ -44,6 +44,7 @@ export declare class RepoBackend {
     network: Network;
     messages: MessageRouter<PeerMsg>;
     replication: ReplicationManager;
+    lockRelease?: () => void;
     swarmKey: Buffer;
     private db;
     private fileServer;
@@ -54,7 +55,7 @@ export declare class RepoBackend {
     private debug;
     private open;
     merge(id: DocId, clock: Clock.Clock): void;
-    close: () => Promise<[void, void, void, void]>;
+    close: () => Promise<void>;
     private allReadyActors;
     private loadDocument;
     private getReadyActor;
