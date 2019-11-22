@@ -2,7 +2,7 @@
 import { Duplex } from 'stream';
 import { Channel } from './Multiplex';
 import MessageBus from './MessageBus';
-declare type CloseReason = 'outdated' | 'timeout' | 'error' | 'shutdown' | 'unknown';
+declare type CloseReason = 'outdated' | 'timeout' | 'error' | 'shutdown' | 'self-connection' | 'unknown';
 export interface SocketInfo {
     type: string;
     isClient: boolean;
