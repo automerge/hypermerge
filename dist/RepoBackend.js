@@ -19,6 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const proper_lockfile_1 = __importDefault(require("proper-lockfile"));
 const Queue_1 = __importDefault(require("./Queue"));
 const Metadata_1 = require("./Metadata");
 const Actor_1 = require("./Actor");
@@ -68,7 +69,10 @@ class RepoBackend {
                 this.replication.close(),
                 this.network.close(),
                 this.fileServer.close(),
-            ]);
+            ]).then(() => {
+                var _a, _b;
+                (_b = (_a = this).lockRelease) === null || _b === void 0 ? void 0 : _b.call(_a);
+            });
         };
         this.getReadyActor = (actorId) => {
             const publicKey = Keys.decode(actorId);
@@ -504,6 +508,8 @@ class RepoBackend {
         // initialize storage
         if (!opts.memory) {
             ensureDirectoryExists(this.path);
+            // Attempt to acquite a lock on the repo to prevent concurrent corrupting access.
+            this.lockRelease = proper_lockfile_1.default.lockSync(this.path);
         }
         this.storage = opts.memory ? random_access_memory_1.default : random_access_file_1.default;
         this.db = SqlDatabase.open(path_1.default.resolve(this.path, 'hypermerge.db'), opts.memory || false);
