@@ -1,4 +1,4 @@
-# Basic code work with HyperMerge Repos
+# Basic code for working with HyperMerge Repos
 
 ## Install and Run
 ```
