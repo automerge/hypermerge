@@ -2,6 +2,6 @@
 
 ## Install and Run
 ```
-   $yarn 
-   $yarn test
+   $ yarn 
+   $ yarn test
 ```

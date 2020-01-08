@@ -1,4 +1,4 @@
-/// <reference types="./types/hyperswarm" />
+/// <reference types="../../../src/types/hyperswarm" />
 import { Repo } from "hypermerge"
 import Hyperswarm from 'hyperswarm'
 
