@@ -8,6 +8,7 @@
     "test": "ts-node src/main.ts"
   },
   "dependencies": {
+    "@types/bs58": "^4.0.1",
     "hypermerge": "github:automerge/hypermerge"
   },
   "devDependencies": {
