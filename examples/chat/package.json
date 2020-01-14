@@ -2,17 +2,30 @@
   "name": "hm-chat",
   "version": "1.0.8",
   "description": "Simple chat client using hypermerge",
-  "main": "./chat.js",
-  "bin": {
-    "hm-chat": "./chat.js"
+  "main": "dist/index.js",
+  "scripts": {
+    "chat": "ts-node src/chat.ts"
   },
   "license": "MIT",
   "dependencies": {
-    "diffy": "^1.3.1",
-    "hypermerge": "^0.3.1",
+    "diffy": "^2.1.0",
+    "hypermerge": "github:automerge/hypermerge",
     "minimist": "^1.2.0",
     "prompt-sync": "^4.1.5",
-    "random-access-memory": "^2.4.0",
-    "strip-ansi": "^4.0.0"
+    "strip-ansi": "5.2.0"
+  },
+  "devDependencies": {
+    "@types/bs58": "^4.0.1",
+    "@types/node": "^12.12.6",
+    "@types/proper-lockfile": "^4.1.1",
+    "@types/tape": "^4.2.32",
+    "@types/uuid": "^3.4.5",
+    "@types/minimist": "^1.2.0",
+    "@types/strip-ansi": "^5.2.1",
+    "hyperswarm": "^2.3.1",
+    "prettier": "^1.19.1",
+    "tape": "^4.11.0",
+    "ts-node": "^8.3.0",
+    "typescript": "^3.7.2"
   }
 }

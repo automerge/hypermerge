@@ -1,8 +1,4 @@
-#!/usr/bin/env node
-
-const minimist = require('minimist')
-const Channel = require('./channel')
-const initUI = require('./ui')
+import minimist from 'minimist'
 
 const argv = minimist(process.argv.slice(2))
 if (argv.help || argv._.length > 1) {
@@ -18,7 +14,11 @@ if (!argv.nick) {
 
 const channelKey = argv._[0]
 
-const channel = new Channel({channelKey, nick})
-channel.once('ready', (channel) => {
+import Channel from './channel'
+import initUI from './ui'
+
+const channel = new Channel(nick, channelKey)
+channel.once('ready', () => {
   initUI(channel)
 })
+channel.ready()
