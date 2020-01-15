@@ -1,28 +1,29 @@
 /// <reference types="../../../src/types/hyperswarm" />
 
-import { Repo, DocUrl } from 'hypermerge'
 import { Doc } from 'automerge'
-import Hyperswarm from 'hyperswarm'
 import { EventEmitter } from 'events'
+import { DocUrl, Repo } from 'hypermerge'
+import Hyperswarm from 'hyperswarm'
 
-interface MyChannel {
+interface ChatChannel {
   messages: {
     [time: string]: Message
   }
 }
 
 interface Message {
-  nick: string
-  joined?: boolean
   content?: string
+  joined?: boolean
+  nick: string
 }
 
 class Channel extends EventEmitter {
-  nick: string
-  url: DocUrl
-  swarm?: any
-  doc?: Doc<MyChannel>
-  repo: Repo
+  public readonly nick: string
+  public readonly url: DocUrl
+
+  private _doc?: Doc<ChatChannel>
+  private repo: Repo
+  private swarm?: any
 
   constructor(nick: string, channelKey?: string) {
     super()
@@ -44,39 +45,39 @@ class Channel extends EventEmitter {
     }
   }
 
-  ready() {
-    this.repo.watch<MyChannel>(this.url, (state: any) => {
-      this.doc = state
-      this.emit('updated', this)
-    })
-
-    this.joinChannel()
+  get doc(): Doc<ChatChannel> | undefined {
+    return this._doc
   }
 
-  joinChannel() {
-    this.repo.change<MyChannel>(this.url, (state) => {
+  public ready() {
+    this.repo.watch<ChatChannel>(this.url, (state: any) => {
+      this._doc = state
+      this.emit('updated')
+    })
+
+    this.repo.change<ChatChannel>(this.url, (state) => {
       state.messages[Date.now()] = {
-        nick: this.nick,
         joined: true,
+        nick: this.nick,
       }
     })
 
     this.emit('ready')
   }
 
-  addMessageToDoc(line: string) {
+  public addMessageToDoc(line: string) {
     const message = line.trim()
-    if (message.length > 0 && this.url) {
-      this.repo.change<MyChannel>(this.url, (state) => {
+    if (message.length > 0) {
+      this.repo.change<ChatChannel>(this.url, (state) => {
         state.messages[Date.now()] = {
+          content: message,
           nick: this.nick,
-          content: line,
         }
       })
     }
   }
 
-  getNumConnections() {
+  public getNumConnections() {
     return this.swarm.peers
   }
 }

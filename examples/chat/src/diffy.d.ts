@@ -6,7 +6,9 @@ declare module 'diffy' {
   }
 
   export interface Diffy {
-    render(cb: () => string[])
+    render(cb: () => string)
+    width: number
+    height: number
   }
 }
 
