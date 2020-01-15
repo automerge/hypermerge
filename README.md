@@ -1,10 +1,10 @@
 # Hypermerge
 
 Hypermerge is a Node.js library for building p2p collaborative applications
-without any server infrastructure. It combines [Automerge][automerge], a CRDT,
-with [hypercore][hypercore], a distributed append-only log.
+without any server infrastructure. It combines [Automerge](https://github.com/automerge/automerge), 
+a CRDT, with [hypercore](https://github.com/mafintosh/hypercore), a distributed append-only log.
 
-If successful this project would provide a way to have apps data sets that are
+If project provides a way to have apps data sets that are
 conflict free and offline first (thanks to CRDT's) and serverless (thanks to
 hypercore/DAT).
 
@@ -14,6 +14,16 @@ concerns. Due to the secure nature of the tools its built upon a properly
 audited and secure version of this library would be possible in the future.
 
 ## How it works
+
+<TODO>
+
+## Examples
+
+There are several example repos in the `/examples` directory, including a very simple two-repo 
+code demo and a simple CLI-based chat application.
+
+The best demonstration of Hypermerge is PushPin, which shows Hypermerge in "full flight", including 
+taking advantage of splitting the fast, simple front-end from the more expensive, slower back-end. 
 
 ## Concepts
 
