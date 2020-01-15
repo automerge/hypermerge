@@ -1,6 +1,6 @@
-# hm-chat
+# hypermerge chat
 
-hm-chat is a simplified chat application for the console.
+hypermerge chat is a simple chat application for the console.
 
 It was built to serve as an real-world example of how to
 use the [hypermerge](https://github.com/automerge/hypermerge) library.
@@ -9,11 +9,11 @@ use the [hypermerge](https://github.com/automerge/hypermerge) library.
 
 To create a channel:
 
-`npx hm-chat`
+`yarn run chat --nick yourname`
 
 To join an existing channel:
 
-`npx hm-chat <key>`
+`yarn run chat --nick yourname hypermerge:/<your key here>`
 
 ## License
 
