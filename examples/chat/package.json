@@ -8,6 +8,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@types/prompt-sync": "^4.1.0",
     "diffy": "^2.1.0",
     "hypermerge": "github:automerge/hypermerge",
     "minimist": "^1.2.0",
@@ -16,12 +17,12 @@
   },
   "devDependencies": {
     "@types/bs58": "^4.0.1",
+    "@types/minimist": "^1.2.0",
     "@types/node": "^12.12.6",
     "@types/proper-lockfile": "^4.1.1",
+    "@types/strip-ansi": "^5.2.1",
     "@types/tape": "^4.2.32",
     "@types/uuid": "^3.4.5",
-    "@types/minimist": "^1.2.0",
-    "@types/strip-ansi": "^5.2.1",
     "hyperswarm": "^2.3.1",
     "prettier": "^1.19.1",
     "tape": "^4.11.0",

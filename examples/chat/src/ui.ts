@@ -1,9 +1,9 @@
 /// <reference path="./diffy.d.ts" />
 
-import Channel from './channel'
 import Diffy from 'diffy'
 import DiffyInput from 'diffy/input'
 import stripAnsi from 'strip-ansi'
+import Channel from './channel'
 
 const diffy = Diffy({ fullscreen: true })
 const input = DiffyInput({ showCursor: true })
@@ -13,7 +13,7 @@ function initUI(channel: Channel) {
 
   input.on('enter', (line: string) => channel.addMessageToDoc(line))
   input.on('update', () => render(channel))
-  channel.on('updated', (channel) => render(channel))
+  channel.on('updated', () => render(channel))
 
   // For network connection display
   setInterval(() => {
@@ -22,18 +22,18 @@ function initUI(channel: Channel) {
 }
 
 function render(channel: Channel) {
-  const nick = channel.nick
+  const userNick = channel.nick
   const url = channel.url
   const doc = channel.doc
 
   if (doc) {
     diffy.render(() => {
       let output = ''
-      output += `Join: npx hm-chat ${url}\n`
+      output += `Join: yarn run chat ${url}\n`
       output += `${channel.getNumConnections()} connections. `
       output += `Use Ctrl-C to exit.\n\n`
       const displayMessages: string[] = []
-      let { messages } = doc
+      const { messages } = doc
       Object.keys(messages)
         .sort()
         .forEach((key) => {
@@ -57,7 +57,7 @@ function render(channel: Channel) {
       for (let i = displayMessages.length; i < maxMessages; i++) {
         output += '\n'
       }
-      output += `\n[${nick}] ${input.line()}`
+      output += `\n[${userNick}] ${input.line()}`
       return output
     })
   }
