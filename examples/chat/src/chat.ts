@@ -1,5 +1,8 @@
 import minimist from 'minimist'
 
+import Channel from './channel'
+import initUI from './ui'
+
 const argv = minimist(process.argv.slice(2))
 if (argv.help || argv._.length > 1) {
   console.log('Usage: hm-chat --nick=<nick> [<channel-key>]\n')
@@ -13,9 +16,6 @@ if (!argv.nick) {
 }
 
 const channelKey = argv._[0]
-
-import Channel from './channel'
-import initUI from './ui'
 
 const channel = new Channel(nick, channelKey)
 channel.once('ready', () => {

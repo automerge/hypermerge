@@ -1,5 +1,6 @@
 declare module 'diffy' {
-  export default (options?: Options) => Diffy
+  function DiffyConstructor(options?: Options): Diffy
+  export default DiffyConstructor
   export interface Options {
     fullscreen?: boolean
   }
@@ -10,7 +11,8 @@ declare module 'diffy' {
 }
 
 declare module 'diffy/input' {
-  export default (options?: InputOptions) => DiffyInput
+  function DiffyConstructor(options?: InputOptions): DiffyInput
+  export default DiffyConstructor
 
   export interface InputOptions {
     showCursor?: boolean
