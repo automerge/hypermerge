@@ -34,7 +34,10 @@ class Channel extends EventEmitter {
     this.setMaxListeners(100)
     this.nick = nick
     this.swarm = Hyperswarm({ queue: { multiplex: true } })
-    this.repo = new Repo({ path: this.nick, memory: true })
+
+    // (Note that { memory: true } means none of this will be persisted to disk.)
+    this.repo = new Repo({ memory: true })
+
     this.repo.addSwarm(this.swarm, { announce: true })
 
     if (!channelKey) {
