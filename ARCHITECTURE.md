@@ -1,7 +1,7 @@
 # ARCHITECTURE
 
 Hypermerge is a distributed document store. It draws inspiration from databases like CouchDB and
-PouchDB. It is particular well-suited to funcional reactive programming languages and environments,
+PouchDB. It is particularly well-suited to funcional reactive programming languages and environments,
 but it does not prefer or require any particular external framework.
 
 The core concept in Hypermerge is a document. You can think of a document as a JSON document that
@@ -14,6 +14,11 @@ The core API for a hypermerge document has two-parts:
   `repo.watch(documentUrl, (doc) => {})`
 - a change function to update your local state (and publish the changes) to other readers
   `repo.change(documentUrl, (doc) => { doc.title = "Green Eggs and Ham"})`
+
+Importantly, repo.change does not return the new state of the document! Document changes flow back
+through the hypermerge update mechanism and are delivered as a new state from the watch function.
+This is very natural in a React or Elm-like system but can be surprising to new users, particularly
+because Automerge (the underlying CRDT) returns new results immediately.
 
 ## How it Works
 
