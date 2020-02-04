@@ -66,7 +66,7 @@ that clients can only recognize each other's shared data and don't leak the iden
 
 #### Advertising / Discovery
 
-There are two main strategies used by hyperswarm for discovery. For local connections, hyperswarm
+There are two main strategies used by hyperswarm for *discovery*. For local connections, hyperswarm
 broadcasts mDNS messages to a local multicast address. This strategy works well on many wifi networks
 and can enable totally internet-free local connectivity but breaks down in environments like cafes,
 public libraries, and corporate networks where peer-to-peer network traffic is viewed as a security
@@ -76,6 +76,19 @@ Over the broader internet, hyperswarm clients discover one another using a DHT. 
 DHTs is beyond the scope of this document, but the approximate design is of a lossy, decentralized
 database. Each client tells other peer nodes what data they know about and can route requests on
 behalf of other peers.
+
+##### Privacy of Advertising
+
+If clients broadcast the names of the data they were holding directly, any observer could simply request that data using those names. This would obviously violate users' privacy, so instead of advertising
+the real keys of their data, clients hash the keys to produce a predictable *discovery key*. This hash
+is a one-way function, which means that if you know the secret you can trivially produce the discovery key,but the discovery key does not allow you to produce the public key that identifies the data.
+
+Observers on the network *can* however see which discovery keys each client is broadcasting. This 
+means that any observer can see which data other clients have and their IP address even if they are unable to read the contents. It's a bit like being able to watch the mail-person delivering mail and read the
+from and to addresses on the envelopes without knowing the contents. *This is bad*, and research is
+ongoing into how to reduce the scope of this privacy leak but it represents the state of the art and
+we do not recommend high-risk-profile users use Hypermerge. A well-resourced motivated attacker would likely be able to observe other users' IP addresses over time throughout the network without exposing
+themselves and there would be few practical ways to counteract this.    
 
 #### Connectivity
 
