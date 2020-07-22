@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.iterativeDfs = exports.WARNING_STACK_SIZE = void 0;
 // This *must* be the automerge used by hypermerge, otherwise the instanceof
 // checks below will fail.
 const automerge_1 = __importDefault(require("automerge"));

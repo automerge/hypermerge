@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.CryptoClient = void 0;
 const Metadata_1 = require("./Metadata");
 class CryptoClient {
     constructor(request) {

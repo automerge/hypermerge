@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Timeout = exports.Interval = void 0;
 class Heartbeat {
     constructor(ms, { onBeat, onTimeout }) {
         this.ms = ms;

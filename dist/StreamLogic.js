@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.fromBuffers = exports.fromBuffer = exports.toBuffer = exports.InvalidPrefixError = exports.PrefixMatchPassThrough = exports.HashPassThrough = exports.ChunkSizeTransform = void 0;
 const stream_1 = require("stream");
 const crypto_1 = require("crypto");
 class ChunkSizeTransform extends stream_1.Transform {

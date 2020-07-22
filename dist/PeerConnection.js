@@ -60,11 +60,11 @@ class PeerConnection {
         return this.multiplex.openChannel(name);
     }
     close(reason = 'unknown') {
-        var _a, _b;
+        var _a;
         this.log('Closing connection: %s', reason);
         this.heartbeat.stop();
         this.rawSocket.destroy();
-        (_b = (_a = this).onClose) === null || _b === void 0 ? void 0 : _b.call(_a, reason);
+        (_a = this.onClose) === null || _a === void 0 ? void 0 : _a.call(this, reason);
     }
     closeOutdated(err) {
         const { remoteAddress, remotePort } = this.rawSocket;

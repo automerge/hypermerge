@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseAllValid = exports.bufferify = exports.parse = void 0;
 function parse(buffer) {
     // const decoder = new TextDecoder()
     return JSON.parse(buffer.toString());

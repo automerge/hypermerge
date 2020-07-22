@@ -20,9 +20,8 @@ class MessageRouter {
         }
     }
     sendToPeer(peer, msg) {
-        var _a;
         const bus = this.getBus(peer);
-        (_a = bus) === null || _a === void 0 ? void 0 : _a.send(msg);
+        bus === null || bus === void 0 ? void 0 : bus.send(msg);
     }
     getBus(peer) {
         if (!peer.connection)

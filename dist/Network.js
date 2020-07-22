@@ -28,9 +28,9 @@ class Network {
                 type: details.type,
             });
             conn.onClose = (reason) => {
-                var _a, _b;
+                var _a;
                 if (reason === 'outdated')
-                    (_b = (_a = details).ban) === null || _b === void 0 ? void 0 : _b.call(_a);
+                    (_a = details.ban) === null || _a === void 0 ? void 0 : _a.call(details);
             };
             const networkBus = conn.openBus('NetworkMsg');
             networkBus.send({

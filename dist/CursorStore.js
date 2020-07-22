@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.INFINITY_SEQ = void 0;
 const Queue_1 = __importDefault(require("./Queue"));
 exports.INFINITY_SEQ = Number.MAX_SAFE_INTEGER;
 class CursorStore {

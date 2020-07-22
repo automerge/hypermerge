@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.intersection = exports.addTo = exports.union = exports.equivalent = exports.clockDebug = exports.clock2strs = exports.strs2clock = exports.cmp = exports.equal = exports.gte = exports.actors = exports.isSatisfied = exports.sequenceTotal = exports.getMax = void 0;
 function getMax(clocks) {
     let maxClock;
     let max;

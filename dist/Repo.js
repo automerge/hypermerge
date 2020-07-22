@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Repo = void 0;
 const RepoBackend_1 = require("./RepoBackend");
 const RepoFrontend_1 = require("./RepoFrontend");
 class Repo {

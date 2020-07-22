@@ -12,6 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Channel = exports.MsgType = void 0;
 const streamx_1 = require("streamx");
 const simple_message_channels_1 = __importDefault(require("simple-message-channels"));
 const Misc_1 = require("./Misc");

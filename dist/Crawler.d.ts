@@ -1,7 +1,7 @@
-/// <reference types="automerge" />
 import { RepoFrontend } from './RepoFrontend';
 import { DocUrl, BaseUrl } from './Misc';
 import { Handle } from './Handle';
+import { Doc } from 'automerge';
 export declare class Crawler {
     repo: RepoFrontend;
     seen: Set<string>;
@@ -9,6 +9,6 @@ export declare class Crawler {
     constructor(repo: RepoFrontend);
     crawl(url: DocUrl): void;
     onUrl: (urlVal: BaseUrl) => void;
-    onDocumentUpdate: (doc: import("automerge").FreezeObject<any>) => void;
+    onDocumentUpdate: (doc: Doc<any>) => void;
     close(): void;
 }
