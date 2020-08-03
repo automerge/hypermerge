@@ -25,7 +25,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RepoFrontend = void 0;
 const Queue_1 = __importDefault(require("./Queue"));
 const MapSet_1 = __importDefault(require("./MapSet"));
-const automerge_1 = require("automerge");
+const cambriamerge_1 = require("cambriamerge");
 const DocFrontend_1 = require("./DocFrontend");
 const Clock_1 = require("./Clock");
 const Keys = __importStar(require("./Keys"));
@@ -43,13 +43,13 @@ class RepoFrontend {
         this.msgcb = new Map();
         this.readFiles = new MapSet_1.default();
         this.files = new FileServerClient_1.default();
-        this.create = (init) => {
+        this.create = (schema, init) => {
             const { publicKey, secretKey } = Keys.create();
             const docId = publicKey;
             const actorId = Misc_1.rootActorId(docId);
-            const doc = new DocFrontend_1.DocFrontend(this, { actorId, docId });
+            const doc = new DocFrontend_1.DocFrontend(this, { actorId, docId, schema });
             this.docs.set(docId, doc);
-            this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey: secretKey });
+            this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey: secretKey, schema });
             if (init) {
                 doc.change((state) => {
                     Object.assign(state, init);
@@ -57,8 +57,8 @@ class RepoFrontend {
             }
             return Misc_1.toDocUrl(docId);
         };
-        this.change = (url, fn) => {
-            this.open(url).change(fn);
+        this.change = (url, schema, fn) => {
+            this.open(url, schema).change(fn);
         };
         this.meta = (url, cb) => {
             const { id } = Metadata_1.validateURL(url);
@@ -86,18 +86,18 @@ class RepoFrontend {
                 clock: doc.clock,
             };
         };
-        this.merge = (url, target) => {
+        this.merge = (url, target, schema) => {
             const id = Metadata_1.validateDocURL(url);
             Metadata_1.validateDocURL(target);
-            this.doc(target, (_doc, clock) => {
+            this.doc(target, schema, (_doc, clock) => {
                 const actors = Clock_1.clock2strs(clock);
                 this.toBackend.push({ type: 'MergeMsg', id, actors });
             });
         };
-        this.fork = (url) => {
+        this.fork = (url, schema) => {
             Metadata_1.validateDocURL(url);
-            const fork = this.create();
-            this.merge(fork, url);
+            const fork = this.create(schema);
+            this.merge(fork, url, schema);
             return fork;
         };
         /*
@@ -106,9 +106,9 @@ class RepoFrontend {
           this.toBackend.push({ type: "FollowMsg", id, target });
         };
       */
-        this.watch = (url, cb) => {
+        this.watch = (url, schema, cb) => {
             Metadata_1.validateDocURL(url);
-            const handle = this.open(url);
+            const handle = this.open(url, schema);
             handle.subscribe(cb);
             return handle;
         };
@@ -116,10 +116,10 @@ class RepoFrontend {
             const id = Metadata_1.validateDocURL(url);
             this.toBackend.push({ type: 'DocumentMessage', id, contents });
         };
-        this.doc = (url, cb) => {
+        this.doc = (url, schema, cb) => {
             Metadata_1.validateDocURL(url);
             return new Promise((resolve) => {
-                const handle = this.open(url);
+                const handle = this.open(url, schema);
                 handle.subscribe((val, clock) => {
                     resolve(val);
                     if (cb)
@@ -138,8 +138,8 @@ class RepoFrontend {
                 throw new Error(`Invalid history ${history} for id ${id}`);
             }
             this.queryBackend({ type: 'MaterializeMsg', history, id }, (msg) => {
-                const doc = automerge_1.Frontend.init({ deferActorId: true });
-                cb(automerge_1.Frontend.applyPatch(doc, msg.patch));
+                const doc = cambriamerge_1.Frontend.init({ deferActorId: true });
+                cb(cambriamerge_1.Frontend.applyPatch(doc, msg.patch));
             });
         };
         this.queryBackend = (query, cb) => {
@@ -148,11 +148,11 @@ class RepoFrontend {
             this.cb.set(id, cb);
             this.toBackend.push({ type: 'Query', id, query });
         };
-        this.open = (url, crawl = true) => {
+        this.open = (url, schema, crawl = true) => {
             if (crawl)
                 this.crawler.crawl(url);
             const id = Metadata_1.validateDocURL(url);
-            const doc = this.docs.get(id) || this.openDocFrontend(id);
+            const doc = this.docs.get(id) || this.openDocFrontend(id, schema);
             return doc.handle();
         };
         this.subscribe = (subscriber) => {
@@ -245,6 +245,9 @@ class RepoFrontend {
         this.crypto = new CryptoClient_1.CryptoClient(this.queryBackend);
         this.crawler = new Crawler_1.Crawler(this);
     }
+    registerLens(lens) {
+        this.toBackend.push({ type: 'RegisterLensMsg', lens });
+    }
     debug(url) {
         const id = Metadata_1.validateDocURL(url);
         const doc = this.docs.get(id);
@@ -258,9 +261,9 @@ class RepoFrontend {
         }
         this.toBackend.push({ type: 'DebugMsg', id });
     }
-    openDocFrontend(id) {
-        const doc = new DocFrontend_1.DocFrontend(this, { docId: id });
-        this.toBackend.push({ type: 'OpenMsg', id });
+    openDocFrontend(id, schema) {
+        const doc = new DocFrontend_1.DocFrontend(this, { docId: id, schema });
+        this.toBackend.push({ type: 'OpenMsg', id, schema });
         this.docs.set(id, doc);
         return doc;
     }

@@ -1,11 +1,11 @@
-import { Patch, Change } from 'automerge';
+import { Patch, Request, RegisteredLens } from 'cambriamerge';
 import { PublicMetadata } from './Metadata';
 import { DocId, HyperfileId, ActorId } from './Misc';
 import { PublicId, SecretId } from './Keys';
 import * as Crypto from './Crypto';
 export declare type ToBackendQueryMsg = MaterializeMsg | MetadataMsg | SignMsg | VerifyMsg | BoxMsg | OpenBoxMsg | SealedBoxMsg | OpenSealedBoxMsg | EncryptionKeyPairMsg;
 export declare type ToFrontendReplyMsg = MaterializeReplyMsg | MetadataReplyMsg | SignReplyMsg | VerifyReplyMsg | BoxReplyMsg | OpenBoxReplyMsg | SealedBoxReplyMsg | OpenSealedBoxReplyMsg | EncryptionKeyPairReplyMsg;
-export declare type ToBackendRepoMsg = NeedsActorIdMsg | RequestMsg | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DocumentMsg | DestroyMsg | DebugMsg | QueryMsg;
+export declare type ToBackendRepoMsg = RegisterLensMsg | NeedsActorIdMsg | RequestMsg | CloseMsg | MergeMsg | CreateMsg | OpenMsg | DocumentMsg | DestroyMsg | DebugMsg | QueryMsg;
 export interface QueryMsg {
     type: 'Query';
     id: number;
@@ -134,11 +134,16 @@ export interface CreateMsg {
     type: 'CreateMsg';
     publicKey: PublicId;
     secretKey: SecretId;
+    schema: string;
 }
 export interface MergeMsg {
     type: 'MergeMsg';
     id: DocId;
     actors: string[];
+}
+export interface RegisterLensMsg {
+    type: 'RegisterLensMsg';
+    lens: RegisteredLens;
 }
 export interface DebugMsg {
     type: 'DebugMsg';
@@ -147,6 +152,7 @@ export interface DebugMsg {
 export interface OpenMsg {
     type: 'OpenMsg';
     id: DocId;
+    schema: string;
 }
 export interface DestroyMsg {
     type: 'DestroyMsg';
@@ -159,7 +165,7 @@ export interface NeedsActorIdMsg {
 export interface RequestMsg {
     type: 'RequestMsg';
     id: DocId;
-    request: Change;
+    request: Request;
 }
 export declare type ToFrontendRepoMsg = PatchMsg | ActorBlockDownloadedMsg | ActorIdMsg | ReadyMsg | ReplyMsg | DocumentMsg | FileServerReadyMsg;
 export interface PatchMsg {

@@ -1,8 +1,9 @@
-import { Clock, Doc, ChangeFn } from 'automerge';
+import { Clock, Doc, ChangeFn } from 'cambriamerge';
 import { RepoFrontend, ProgressEvent } from './RepoFrontend';
 import { DocUrl } from './Misc';
 export declare class Handle<T> {
     url: DocUrl;
+    schema: string;
     state: Doc<T> | null;
     clock: Clock | null;
     subscription?: (item: Doc<T>, clock?: Clock, index?: number) => void;
@@ -10,7 +11,7 @@ export declare class Handle<T> {
     messageSubscription?: (event: any) => void;
     private counter;
     private repo;
-    constructor(repo: RepoFrontend, url: DocUrl);
+    constructor(repo: RepoFrontend, url: DocUrl, schema: string);
     fork(): DocUrl;
     merge(other: Handle<T>): this;
     message: (contents: any) => this;

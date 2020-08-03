@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Handle = void 0;
 class Handle {
-    constructor(repo, url) {
+    constructor(repo, url, schema) {
         this.state = null;
         this.clock = null;
         this.counter = 0;
@@ -73,9 +73,10 @@ class Handle {
         };
         this.repo = repo;
         this.url = url;
+        this.schema = schema;
     }
     fork() {
-        return this.repo.fork(this.url);
+        return this.repo.fork(this.url, this.schema);
     }
     /*
     follow() {
@@ -85,7 +86,7 @@ class Handle {
     }
   */
     merge(other) {
-        this.repo.merge(this.url, other.url);
+        this.repo.merge(this.url, other.url, this.schema);
         return this;
     }
     debug() {

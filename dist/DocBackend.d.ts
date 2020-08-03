@@ -1,4 +1,4 @@
-import { Change, BackendState as BackDoc, Patch } from 'automerge';
+import { Change, BackDoc, Patch, Request, RegisteredLens } from 'cambriamerge';
 import Queue from './Queue';
 import { Clock } from './Clock';
 import { ActorId, DocId } from './Misc';
@@ -36,11 +36,13 @@ export declare class DocBackend {
     changes: Map<string, number>;
     ready: Queue<Function>;
     updateQ: Queue<DocBackendMessage>;
-    private localChangeQ;
+    schema: string;
+    lenses: RegisteredLens[];
+    private requestQ;
     private remoteChangesQ;
-    constructor(documentId: DocId, back?: BackDoc);
+    constructor(documentId: DocId, schema: string, lenses: RegisteredLens[], back?: BackDoc);
     applyRemoteChanges: (changes: Change[]) => void;
-    applyLocalChange: (change: Change) => void;
+    applyLocalChange: (request: Request) => void;
     initActor: (actorId: ActorId) => void;
     updateClock(changes: Change[]): void;
     init: (changes: Change[], actorId?: ActorId | undefined) => void;

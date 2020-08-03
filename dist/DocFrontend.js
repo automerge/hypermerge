@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DocFrontend = void 0;
-const automerge_1 = require("automerge");
+const cambriamerge_1 = require("cambriamerge");
 const Clock_1 = require("./Clock");
 const Queue_1 = __importDefault(require("./Queue"));
 const Handle_1 = require("./Handle");
@@ -39,7 +39,7 @@ class DocFrontend {
         this.setActorId = (actorId) => {
             log('setActorId', this.docId, actorId, this.mode);
             this.actorId = actorId;
-            this.front = automerge_1.Frontend.setActorId(this.front, actorId);
+            this.front = cambriamerge_1.Frontend.setActorId(this.front, actorId);
             if (this.mode === 'read') {
                 this.mode = 'write';
                 this.enableWrites(); // has to be after the queue
@@ -57,7 +57,7 @@ class DocFrontend {
         this.patch = (patch, minimumClockSatisfied, history) => {
             this.bench('patch', () => {
                 this.history = history;
-                this.front = automerge_1.Frontend.applyPatch(this.front, patch);
+                this.front = cambriamerge_1.Frontend.applyPatch(this.front, patch);
                 this.updateClockPatch(patch);
                 if (patch.diffs.length > 0 && minimumClockSatisfied) {
                     if (this.mode === 'pending') {
@@ -75,23 +75,24 @@ class DocFrontend {
         const docId = config.docId;
         const actorId = config.actorId;
         this.repo = repo;
+        this.schema = config.schema;
         this.clock = {};
         this.docId = docId;
         this.docUrl = Misc_1.toDocUrl(docId);
         //    this.toBackend = toBackend
         if (actorId) {
-            this.front = automerge_1.Frontend.init(actorId);
+            this.front = cambriamerge_1.Frontend.init(actorId);
             this.actorId = actorId;
             this.ready = true;
             this.mode = 'write';
             this.enableWrites();
         }
         else {
-            this.front = automerge_1.Frontend.init({ deferActorId: true });
+            this.front = cambriamerge_1.Frontend.init({ deferActorId: true });
         }
     }
     handle() {
-        let handle = new Handle_1.Handle(this.repo, this.docUrl);
+        let handle = new Handle_1.Handle(this.repo, this.docUrl, this.schema);
         this.handles.add(handle);
         handle.cleanup = () => this.handles.delete(handle);
         handle.changeFn = this.change;
@@ -119,7 +120,7 @@ class DocFrontend {
     }
     enableWrites() {
         this.changeQ.subscribe((fn) => {
-            const [doc, request] = automerge_1.Frontend.change(this.front, fn);
+            const [doc, request] = cambriamerge_1.Frontend.change(this.front, fn);
             this.front = doc;
             log(`change complete doc=${this.docId} seq=${request ? request.seq : 'null'}`);
             if (request) {
@@ -133,9 +134,9 @@ class DocFrontend {
             }
         });
     }
-    updateClockChange(change) {
-        const oldSeq = this.clock[change.actor] || 0;
-        this.clock[change.actor] = Math.max(change.seq, oldSeq);
+    updateClockChange(request) {
+        const oldSeq = this.clock[request.actor] || 0;
+        this.clock[request.actor] = Math.max(request.seq, oldSeq);
     }
     updateClockPatch(patch) {
         if (patch.clock)

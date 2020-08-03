@@ -1,8 +1,9 @@
+/// <reference types="automerge" />
 import Queue from './Queue';
 import MapSet from './MapSet';
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg';
 import { Handle } from './Handle';
-import { Doc, Patch, ChangeFn } from 'automerge';
+import { Doc, Patch, ChangeFn, RegisteredLens } from 'cambriamerge';
 import { DocFrontend } from './DocFrontend';
 import { Clock } from './Clock';
 import { PublicMetadata } from './Metadata';
@@ -31,18 +32,19 @@ export declare class RepoFrontend {
     crypto: CryptoClient;
     crawler: Crawler;
     constructor();
-    create: <T>(init?: T | undefined) => DocUrl;
-    change: <T>(url: DocUrl, fn: ChangeFn<T>) => void;
+    registerLens(lens: RegisteredLens): void;
+    create: <T>(schema: string, init?: T | undefined) => DocUrl;
+    change: <T>(url: DocUrl, schema: string, fn: ChangeFn<T>) => void;
     meta: (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void) => void;
     meta2: (url: DocUrl | HyperfileUrl) => DocMetadata | undefined;
-    merge: (url: DocUrl, target: DocUrl) => void;
-    fork: (url: DocUrl) => DocUrl;
-    watch: <T>(url: DocUrl, cb: (val: import("automerge").FreezeObject<T>, clock?: Clock | undefined, index?: number | undefined) => void) => Handle<T>;
+    merge: (url: DocUrl, target: DocUrl, schema: string) => void;
+    fork: (url: DocUrl, schema: string) => DocUrl;
+    watch: <T>(url: DocUrl, schema: string, cb: (val: import("automerge").FreezeObject<T>, clock?: Clock | undefined, index?: number | undefined) => void) => Handle<T>;
     message: <T>(url: DocUrl, contents: T) => void;
-    doc: <T>(url: DocUrl, cb?: ((val: import("automerge").FreezeObject<T>, clock?: Clock | undefined) => void) | undefined) => Promise<import("automerge").FreezeObject<T>>;
+    doc: <T>(url: DocUrl, schema: string, cb?: ((val: import("automerge").FreezeObject<T>, clock?: Clock | undefined) => void) | undefined) => Promise<import("automerge").FreezeObject<T>>;
     materialize: <T>(url: DocUrl, history: number, cb: (val: import("automerge").FreezeObject<T>) => void) => void;
     queryBackend: (query: ToBackendQueryMsg, cb: (arg: any) => void) => void;
-    open: <T>(url: DocUrl, crawl?: boolean) => Handle<T>;
+    open: <T>(url: DocUrl, schema: string, crawl?: boolean) => Handle<T>;
     debug(url: DocUrl): void;
     private openDocFrontend;
     subscribe: (subscriber: (message: ToBackendRepoMsg) => void) => void;

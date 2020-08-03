@@ -1,12 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.iterativeDfs = exports.WARNING_STACK_SIZE = void 0;
 // This *must* be the automerge used by hypermerge, otherwise the instanceof
 // checks below will fail.
-const automerge_1 = __importDefault(require("automerge"));
+const automerge_1 = require("automerge");
 const Misc_1 = require("./Misc");
 exports.WARNING_STACK_SIZE = 2000;
 // NOTE: no cycle detection. This function is intended to be used for traversing
@@ -26,7 +23,7 @@ function iterativeDfs(select, root) {
         // blow up the stack size (which may not actually matter, but there's no point
         // in checking Automerge.Text anyway)
         // TODO: genericize this, maybe with a skip function, e.g. `if (skip(obj)) {`
-        if (obj instanceof automerge_1.default.Text) {
+        if (obj instanceof automerge_1.Text) {
             // eslint-disable-next-line no-continue
             continue;
         }
