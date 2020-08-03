@@ -1,4 +1,4 @@
-import { Patch, Change, Request } from 'cambriamerge'
+import { Patch, Change, Request, RegisteredLens } from 'cambriamerge'
 import { PublicMetadata } from './Metadata'
 import { DocId, HyperfileId, ActorId } from './Misc'
 import { PublicId, SecretId } from './Keys'
@@ -27,6 +27,7 @@ export type ToFrontendReplyMsg =
   | EncryptionKeyPairReplyMsg
 
 export type ToBackendRepoMsg =
+  | RegisterLensMsg
   | NeedsActorIdMsg
   | RequestMsg
   | CloseMsg
@@ -208,6 +209,11 @@ export interface MergeMsg {
   type: 'MergeMsg'
   id: DocId
   actors: string[] // ActorId | `${ActorId}:${seq}` (result of clock2strs function)
+}
+
+export interface RegisterLensMsg {
+  type: 'RegisterLensMsg'
+  lens: RegisteredLens
 }
 
 /*

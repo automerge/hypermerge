@@ -1,4 +1,4 @@
-import { Backend, Change, BackendState as BackDoc, Patch, Request, RegisteredLens } from 'cambriamerge'
+import { Backend, Change, BackDoc, Patch, Request, RegisteredLens } from 'cambriamerge'
 import Queue from './Queue'
 import Debug from './Debug'
 import { Clock } from './Clock'
@@ -105,7 +105,7 @@ export class DocBackend {
       //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
       const schema = this.schema
       const lenses = this.lenses
-      const [back, patch] = Backend.applyChanges(Backend.init({schema, lenses}), changes)
+      const [back, patch] = Backend.applyChanges(Backend.init({ schema, lenses }), changes)
       this.actorId = this.actorId || actorId
       this.back = back
       this.updateClock(changes)

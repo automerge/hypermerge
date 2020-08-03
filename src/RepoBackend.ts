@@ -64,6 +64,10 @@ export interface Options {
   lenses: RegisteredLens[]
 }
 
+function assertUnreachable(x: never): never {
+  throw new Error("Didn't expect to get here" + x)
+}
+
 export class RepoBackend {
   path?: string
   storage: Function
@@ -143,6 +147,10 @@ export class RepoBackend {
         path,
       })
     })
+  }
+
+  private registerLens(lens: RegisteredLens) {
+    this.lenses.push(lens)
   }
 
   private create(keys: Keys.KeyBuffer, schema: string): DocBackend.DocBackend {
@@ -697,15 +705,21 @@ export class RepoBackend {
       }
       case 'MaterializeMsg': {
         const doc = this.docs.get(query.id)!
-        const changes : Change[] = doc.back ? doc.back.history.slice(0, query.history) : []
-/*
+        const changes: Change[] = doc.back ? doc.back.history.slice(0, query.history) : []
+        /*
           .getIn(['opSet', 'history'])
           .slice(0, query.history)
           .toArray()
 */
-        const [, patch] = Backend.applyChanges(Backend.init({ schema: doc.schema, lenses: doc.lenses }), changes)
+        const [, patch] = Backend.applyChanges(
+          Backend.init({ schema: doc.schema, lenses: doc.lenses }),
+          changes
+        )
         this.toFrontend.push({ type: 'Reply', id, payload: { type: 'MaterializeReplyMsg', patch } })
         break
+      }
+      default: {
+        return assertUnreachable(query)
       }
     }
   }
@@ -771,6 +785,12 @@ export class RepoBackend {
       case 'CloseMsg': {
         this.close()
         break
+      }
+      case 'RegisterLensMsg':
+        this.registerLens(msg.lens)
+        break
+      default: {
+        return assertUnreachable(msg)
       }
     }
   }

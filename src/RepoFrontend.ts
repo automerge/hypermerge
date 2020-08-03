@@ -8,7 +8,7 @@ import {
   MetadataReplyMsg,
 } from './RepoMsg'
 import { Handle } from './Handle'
-import { Doc, Patch, Frontend, ChangeFn } from 'cambriamerge'
+import { Doc, Patch, Frontend, ChangeFn, RegisteredLens } from 'cambriamerge'
 import { DocFrontend } from './DocFrontend'
 import { clock2strs, Clock, clockDebug } from './Clock'
 import * as Keys from './Keys'
@@ -48,6 +48,10 @@ export class RepoFrontend {
     this.crawler = new Crawler(this)
   }
 
+  registerLens(lens: RegisteredLens) {
+    this.toBackend.push({ type: 'RegisterLensMsg', lens })
+  }
+
   create = <T>(schema: string, init?: T): DocUrl => {
     const { publicKey, secretKey } = Keys.create()
     const docId = publicKey as DocId
@@ -66,7 +70,7 @@ export class RepoFrontend {
   }
 
   change = <T>(url: DocUrl, schema: string, fn: ChangeFn<T>) => {
-    this.open<T>(url,schema).change(fn)
+    this.open<T>(url, schema).change(fn)
   }
 
   meta = (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void): void => {
@@ -122,7 +126,11 @@ export class RepoFrontend {
   };
 */
 
-  watch = <T>(url: DocUrl, schema: string, cb: (val: Doc<T>, clock?: Clock, index?: number) => void): Handle<T> => {
+  watch = <T>(
+    url: DocUrl,
+    schema: string,
+    cb: (val: Doc<T>, clock?: Clock, index?: number) => void
+  ): Handle<T> => {
     validateDocURL(url)
     const handle = this.open<T>(url, schema)
     handle.subscribe(cb)
@@ -134,7 +142,11 @@ export class RepoFrontend {
     this.toBackend.push({ type: 'DocumentMessage', id, contents })
   }
 
-  doc = <T>(url: DocUrl, schema: string, cb?: (val: Doc<T>, clock?: Clock) => void): Promise<Doc<T>> => {
+  doc = <T>(
+    url: DocUrl,
+    schema: string,
+    cb?: (val: Doc<T>, clock?: Clock) => void
+  ): Promise<Doc<T>> => {
     validateDocURL(url)
     return new Promise((resolve) => {
       const handle = this.open<T>(url, schema)
