@@ -13,14 +13,15 @@ test('Share a doc between two repos', (t) => {
   repoA.addSwarm(testSwarm())
   repoB.addSwarm(testSwarm())
 
-  const id = repoA.create({ a: 1 })
+  const id = repoA.create("mu",{ a: 1 })
 
-  repoB.change<any>(id, (doc: any) => {
+  repoB.change<any>(id, "mu", (doc: any) => {
     doc.b = 2
   })
 
   repoA.watch<any>(
     id,
+    "mu",
     expectDocs(t, [
       [{ a: 1 }, 'repoA has the initial doc'],
       [{ a: 1, b: 2 }, 'repoA gets change from repoB'],
@@ -29,6 +30,7 @@ test('Share a doc between two repos', (t) => {
 
   repoB.watch<any>(
     id,
+    "mu",
     expectDocs(t, [[{ a: 1, b: 2 }, "repoB gets repoA's change and its local changes at once"]])
   )
 
@@ -52,14 +54,15 @@ test("Three way docs don't load until all changes are in", (t) => {
 
   // connect repos A and B
 
-  const id = repoA.create({ a: 1 })
+  const id = repoA.create("mu",{ a: 1 })
 
-  repoB.change<any>(id, (doc: any) => {
+  repoB.change<any>(id, "mu", (doc: any) => {
     doc.b = 2
   })
 
   repoA.watch<any>(
     id,
+    "mu",
     expectDocs(t, [
       [{ a: 1 }, 'repoA should have create(doc)'],
       [{ a: 1, b: 2 }, "repoA should have repoB's change"],
@@ -68,6 +71,7 @@ test("Three way docs don't load until all changes are in", (t) => {
 
   repoB.watch<any>(
     id,
+    "mu",
     expectDocs(t, [
       [
         { a: 1, b: 2 },
@@ -75,7 +79,7 @@ test("Three way docs don't load until all changes are in", (t) => {
         () => {
           repoC.addSwarm(testSwarm())
 
-          repoC.doc(id, (doc) => {
+          repoC.doc(id, "mu", (doc) => {
             t.deepEqual(doc, { a: 1, b: 2 }, "repoC gets repoA's and repoB's changes")
           })
         },
@@ -102,12 +106,12 @@ test('Message about a doc between two repos', (t) => {
 
   // connect the repos
 
-  const id = repoA.create({ irrelevant: 'data' })
+  const id = repoA.create("mu",{ irrelevant: 'data' })
 
   // XXX: names
   const expectedMessage = { hello: 'world' }
 
-  const handle = repoB.open(id)
+  const handle = repoB.open(id,"mu")
   handle.subscribeMessage((message) => {
     t.deepEqual(message, expectedMessage)
   })
