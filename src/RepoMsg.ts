@@ -1,4 +1,4 @@
-import { Patch, Change } from 'automerge'
+import { Patch, Change, Request } from 'cambriamerge'
 import { PublicMetadata } from './Metadata'
 import { DocId, HyperfileId, ActorId } from './Misc'
 import { PublicId, SecretId } from './Keys'
@@ -201,6 +201,7 @@ export interface CreateMsg {
   type: 'CreateMsg'
   publicKey: PublicId
   secretKey: SecretId
+  schema: string
 }
 
 export interface MergeMsg {
@@ -225,6 +226,7 @@ export interface DebugMsg {
 export interface OpenMsg {
   type: 'OpenMsg'
   id: DocId
+  schema: string
 }
 
 export interface DestroyMsg {
@@ -240,7 +242,7 @@ export interface NeedsActorIdMsg {
 export interface RequestMsg {
   type: 'RequestMsg'
   id: DocId
-  request: Change
+  request: Request
 }
 
 export type ToFrontendRepoMsg =

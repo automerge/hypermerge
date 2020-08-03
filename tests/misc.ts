@@ -1,6 +1,6 @@
 import test from 'tape'
 import { Duplex } from 'stream'
-import uuid from 'uuid/v4'
+import { v4 as uuid } from 'uuid'
 import ram from 'random-access-memory'
 import { Repo } from '../src'
 import Hyperswarm from 'hyperswarm'
@@ -11,6 +11,18 @@ import * as SqlDatabase from '../src/SqlDatabase'
 import NetworkPeer, { PeerId } from '../src/NetworkPeer'
 import PeerConnection from '../src/PeerConnection'
 import { inspect } from 'util'
+
+//export { inside, plungeProperty, removeProperty, hoistProperty, RegisteredLens } from 'cambriamerge'
+import { RegisteredLens, addProperty } from 'cambriamerge'
+
+export const testLenses : RegisteredLens[] = [{
+  from: "mu",
+  to: "v1",
+  lens: [
+    addProperty({ name: 'name', type: 'string' }),
+    addProperty({ name: 'summary', type: 'string' }),
+  ]
+}]
 
 type DocMsg = [any, string]
 type DocMsgCB = [any, string, any]
@@ -24,7 +36,7 @@ export function testRepo() {
   // path to each in-memory repo, they will all share a single
   // in-memory sqlite datbasae - which breaks the tests!
   const randomPath = uuid().toString()
-  return new Repo({ path: randomPath, memory: true })
+  return new Repo({ path: randomPath, memory: true, lenses: testLenses })
 }
 
 export function testDb(): SqlDatabase.Database {

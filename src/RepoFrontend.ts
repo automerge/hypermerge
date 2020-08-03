@@ -8,7 +8,7 @@ import {
   MetadataReplyMsg,
 } from './RepoMsg'
 import { Handle } from './Handle'
-import { Doc, Patch, Frontend, ChangeFn } from 'automerge'
+import { Doc, Patch, Frontend, ChangeFn } from 'cambriamerge'
 import { DocFrontend } from './DocFrontend'
 import { clock2strs, Clock, clockDebug } from './Clock'
 import * as Keys from './Keys'
@@ -48,14 +48,14 @@ export class RepoFrontend {
     this.crawler = new Crawler(this)
   }
 
-  create = <T>(init?: T): DocUrl => {
+  create = <T>(schema: string, init?: T): DocUrl => {
     const { publicKey, secretKey } = Keys.create()
     const docId = publicKey as DocId
     const actorId = rootActorId(docId)
-    const doc = new DocFrontend<T>(this, { actorId, docId })
+    const doc = new DocFrontend<T>(this, { actorId, docId, schema })
 
     this.docs.set(docId, doc)
-    this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey: secretKey! })
+    this.toBackend.push({ type: 'CreateMsg', publicKey, secretKey: secretKey!, schema })
 
     if (init) {
       doc.change((state) => {
@@ -65,8 +65,8 @@ export class RepoFrontend {
     return toDocUrl(docId)
   }
 
-  change = <T>(url: DocUrl, fn: ChangeFn<T>) => {
-    this.open<T>(url).change(fn)
+  change = <T>(url: DocUrl, schema: string, fn: ChangeFn<T>) => {
+    this.open<T>(url,schema).change(fn)
   }
 
   meta = (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void): void => {
@@ -99,19 +99,19 @@ export class RepoFrontend {
     }
   }
 
-  merge = (url: DocUrl, target: DocUrl) => {
+  merge = (url: DocUrl, target: DocUrl, schema: string) => {
     const id = validateDocURL(url)
     validateDocURL(target)
-    this.doc(target, (_doc, clock) => {
+    this.doc(target, schema, (_doc, clock) => {
       const actors = clock2strs(clock!)
       this.toBackend.push({ type: 'MergeMsg', id, actors })
     })
   }
 
-  fork = (url: DocUrl): DocUrl => {
+  fork = (url: DocUrl, schema: string): DocUrl => {
     validateDocURL(url)
-    const fork = this.create()
-    this.merge(fork, url)
+    const fork = this.create(schema)
+    this.merge(fork, url, schema)
     return fork
   }
 
@@ -122,9 +122,9 @@ export class RepoFrontend {
   };
 */
 
-  watch = <T>(url: DocUrl, cb: (val: Doc<T>, clock?: Clock, index?: number) => void): Handle<T> => {
+  watch = <T>(url: DocUrl, schema: string, cb: (val: Doc<T>, clock?: Clock, index?: number) => void): Handle<T> => {
     validateDocURL(url)
-    const handle = this.open<T>(url)
+    const handle = this.open<T>(url, schema)
     handle.subscribe(cb)
     return handle
   }
@@ -134,10 +134,10 @@ export class RepoFrontend {
     this.toBackend.push({ type: 'DocumentMessage', id, contents })
   }
 
-  doc = <T>(url: DocUrl, cb?: (val: Doc<T>, clock?: Clock) => void): Promise<Doc<T>> => {
+  doc = <T>(url: DocUrl, schema: string, cb?: (val: Doc<T>, clock?: Clock) => void): Promise<Doc<T>> => {
     validateDocURL(url)
     return new Promise((resolve) => {
-      const handle = this.open<T>(url)
+      const handle = this.open<T>(url, schema)
       handle.subscribe((val, clock) => {
         resolve(val)
         if (cb) cb(val, clock)
@@ -168,10 +168,10 @@ export class RepoFrontend {
     this.toBackend.push({ type: 'Query', id, query })
   }
 
-  open = <T>(url: DocUrl, crawl: boolean = true): Handle<T> => {
+  open = <T>(url: DocUrl, schema: string, crawl: boolean = true): Handle<T> => {
     if (crawl) this.crawler.crawl(url)
     const id = validateDocURL(url)
-    const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id)
+    const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id, schema)
     return doc.handle()
   }
 
@@ -189,9 +189,9 @@ export class RepoFrontend {
     this.toBackend.push({ type: 'DebugMsg', id })
   }
 
-  private openDocFrontend<T>(id: DocId): DocFrontend<T> {
-    const doc: DocFrontend<T> = new DocFrontend(this, { docId: id })
-    this.toBackend.push({ type: 'OpenMsg', id })
+  private openDocFrontend<T>(id: DocId, schema: string): DocFrontend<T> {
+    const doc: DocFrontend<T> = new DocFrontend(this, { docId: id, schema })
+    this.toBackend.push({ type: 'OpenMsg', id, schema })
     this.docs.set(id, doc)
     return doc
   }

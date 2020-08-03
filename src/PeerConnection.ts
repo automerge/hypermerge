@@ -4,7 +4,7 @@ import noise from 'noise-peer'
 import Multiplex, { Channel } from './Multiplex'
 import MessageBus from './MessageBus'
 import pump from 'pump'
-import uuid from 'uuid'
+import { v4 as uuid } from 'uuid'
 import { PrefixMatchPassThrough, InvalidPrefixError } from './StreamLogic'
 import Heartbeat from './Heartbeat'
 

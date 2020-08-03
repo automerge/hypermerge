@@ -1,10 +1,11 @@
-import { Clock, Doc, ChangeFn } from 'automerge'
+import { Clock, Doc, ChangeFn } from 'cambriamerge'
 import { RepoFrontend, ProgressEvent } from './RepoFrontend'
 import { DocUrl } from './Misc'
 
 export class Handle<T> {
   // id: DocId
   url: DocUrl
+  schema: string
   state: Doc<T> | null = null
   clock: Clock | null = null
   subscription?: (item: Doc<T>, clock?: Clock, index?: number) => void
@@ -13,13 +14,14 @@ export class Handle<T> {
   private counter: number = 0
   private repo: RepoFrontend
 
-  constructor(repo: RepoFrontend, url: DocUrl) {
+  constructor(repo: RepoFrontend, url: DocUrl, schema: string) {
     this.repo = repo
     this.url = url
+    this.schema = schema
   }
 
   fork(): DocUrl {
-    return this.repo.fork(this.url)
+    return this.repo.fork(this.url, this.schema)
   }
 
   /*
@@ -31,7 +33,7 @@ export class Handle<T> {
 */
 
   merge(other: Handle<T>): this {
-    this.repo.merge(this.url, other.url)
+    this.repo.merge(this.url, other.url, this.schema)
     return this
   }
 

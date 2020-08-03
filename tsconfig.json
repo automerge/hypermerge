@@ -13,7 +13,7 @@
     "strict": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "noUnusedParameters": true
   },
   "include": ["src"]

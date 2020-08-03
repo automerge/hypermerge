@@ -1,4 +1,4 @@
-import { Frontend, Patch, Doc, Change, ChangeFn } from 'automerge'
+import { Frontend, Patch, Doc, Request, ChangeFn } from 'cambriamerge'
 import { RepoFrontend, ProgressEvent } from './RepoFrontend'
 import { Clock, union } from './Clock'
 import Queue from './Queue'
@@ -17,12 +17,14 @@ type Mode = 'pending' | 'read' | 'write'
 
 interface Config {
   docId: DocId
+  schema: string
   actorId?: ActorId
 }
 
 export class DocFrontend<T> {
   private docId: DocId
   private docUrl: DocUrl
+  schema: string
   ready: boolean = false // do I need ready? -- covered my state !== pending?
   actorId?: ActorId
   history: number = 0
@@ -41,6 +43,7 @@ export class DocFrontend<T> {
     const docId = config.docId
     const actorId = config.actorId
     this.repo = repo
+    this.schema = config.schema
     this.clock = {}
     this.docId = docId
     this.docUrl = toDocUrl(docId)
@@ -59,7 +62,7 @@ export class DocFrontend<T> {
   }
 
   handle(): Handle<T> {
-    let handle = new Handle<T>(this.repo, this.docUrl)
+    let handle = new Handle<T>(this.repo, this.docUrl, this.schema)
     this.handles.add(handle)
     handle.cleanup = () => this.handles.delete(handle)
     handle.changeFn = this.change
@@ -149,9 +152,9 @@ export class DocFrontend<T> {
     })
   }
 
-  private updateClockChange(change: Change) {
-    const oldSeq = this.clock[change.actor] || 0
-    this.clock[change.actor] = Math.max(change.seq, oldSeq)
+  private updateClockChange(request: Request) {
+    const oldSeq = this.clock[request.actor] || 0
+    this.clock[request.actor] = Math.max(request.seq, oldSeq)
   }
 
   private updateClockPatch(patch: Patch) {

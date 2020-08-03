@@ -13,7 +13,7 @@
     "serve": "ts-node --files tools/Serve.ts",
     "meta": "ts-node --files tools/Meta.ts",
     "cat": "ts-node --files tools/Cat.ts",
-    "tape": "ts-node --files node_modules/tape/bin/tape tests/*.test.ts",
+    "tape": "ts-node --files node_modules/tape/bin/tape tests/repo.test.ts",
     "tape-only": "ts-node --files node_modules/tape/bin/tape",
     "tape-inspect": "node --inspect -r ts-node/register/transpile-only node_modules/tape/bin/tape"
   },
@@ -28,9 +28,10 @@
   },
   "homepage": "https://github.com/inkandswitch/hypermerge#readme",
   "dependencies": {
-    "automerge": "github:automerge/automerge#opaque-strings",
+    "@types/uuid": "^8.0.0",
     "better-sqlite3": "^5.4.3",
     "bs58": "^4.0.1",
+    "cambriamerge": "github:orionz/cambriamerge.git",
     "copyfiles": "^2.1.1",
     "debug": "^4.1.1",
     "hypercore": "^8.2.5",
@@ -46,7 +47,7 @@
     "simple-message-channels": "^1.2.1",
     "sodium-native": "^2.4.6",
     "streamx": "^2.5.0",
-    "uuid": "^3.3.3"
+    "uuid": "^8.3.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^5.4.0",
@@ -56,7 +57,6 @@
     "@types/proper-lockfile": "^4.1.1",
     "@types/pump": "^1.1.0",
     "@types/tape": "^4.2.32",
-    "@types/uuid": "^3.4.5",
     "@types/ws": "^6.0.3",
     "commander": "^5.1.0",
     "husky": "^3.0.5",

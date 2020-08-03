@@ -4,7 +4,7 @@ import { DocUrl, withoutQuery, isString, isDocUrl, BaseUrl } from './Misc'
 import { Handle } from './Handle'
 import { isHyperfileUrl } from './FileStore'
 import * as TraverseLogic from './TraverseLogic'
-import { Doc } from 'automerge'
+import { Doc } from 'cambriamerge'
 
 const log = Debug('Crawler')
 
@@ -28,7 +28,7 @@ export class Crawler {
     log(`Crawling ${url}`)
 
     if (isDocUrl(url)) {
-      const handle = this.repo.open(url, false)
+      const handle = this.repo.open(url, "mu", false) // FIXME
       this.seen.add(url)
       this.handles.set(url, handle)
       setImmediate(() => handle.subscribe(this.onDocumentUpdate))

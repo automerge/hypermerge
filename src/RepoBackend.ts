@@ -14,7 +14,7 @@ import {
   BoxReplyMsg,
   OpenBoxReplyMsg,
 } from './RepoMsg'
-import { Backend, Change } from 'automerge'
+import { Backend, Change, RegisteredLens } from 'cambriamerge'
 import * as DocBackend from './DocBackend'
 import path from 'path'
 import fs from 'fs'
@@ -61,6 +61,7 @@ export interface FeedData {
 export interface Options {
   path?: string
   memory?: boolean
+  lenses: RegisteredLens[]
 }
 
 export class RepoBackend {
@@ -80,6 +81,7 @@ export class RepoBackend {
   network: Network
   messages: MessageRouter<PeerMsg>
   replication: ReplicationManager
+  lenses: RegisteredLens[]
   lockRelease?: () => void
   swarmKey: Buffer // TODO: Remove this once we no longer use discovery-swarm/discovery-cloud
   private db: SqlDatabase.Database
@@ -88,6 +90,7 @@ export class RepoBackend {
   constructor(opts: Options) {
     this.opts = opts
     this.path = opts.path || 'default'
+    this.lenses = opts.lenses
 
     // initialize storage
     if (!opts.memory) {
@@ -142,10 +145,11 @@ export class RepoBackend {
     })
   }
 
-  private create(keys: Keys.KeyBuffer): DocBackend.DocBackend {
+  private create(keys: Keys.KeyBuffer, schema: string): DocBackend.DocBackend {
     const docId = encodeDocId(keys.publicKey)
     log('create', docId)
-    const doc = new DocBackend.DocBackend(docId, Backend.init())
+    const lenses = this.lenses
+    const doc = new DocBackend.DocBackend(docId, schema, lenses, Backend.init({ schema, lenses }))
     doc.updateQ.subscribe(this.documentNotify)
     // HACK: We set a clock value of zero so we have a clock in the clock store
     // TODO: This isn't right.
@@ -209,7 +213,7 @@ export class RepoBackend {
   // }
 
   // opening a file fucks it up
-  private open(docId: DocId): DocBackend.DocBackend {
+  private open(docId: DocId, schema: string): DocBackend.DocBackend {
     //    log("open", docId, this.meta.forDoc(docId));
     // TODO: FileStore should answer this.
     // NOTE: This isn't guaranteed to be correct. `meta.isFile` can return an incorrect answer
@@ -219,7 +223,7 @@ export class RepoBackend {
     }
     let doc = this.docs.get(docId)
     if (!doc) {
-      doc = new DocBackend.DocBackend(docId)
+      doc = new DocBackend.DocBackend(docId, schema, this.lenses)
       doc.updateQ.subscribe(this.documentNotify)
     }
     if (!this.docs.has(docId)) {
@@ -693,11 +697,13 @@ export class RepoBackend {
       }
       case 'MaterializeMsg': {
         const doc = this.docs.get(query.id)!
-        const changes = (doc.back as any)
+        const changes : Change[] = doc.back ? doc.back.history.slice(0, query.history) : []
+/*
           .getIn(['opSet', 'history'])
           .slice(0, query.history)
           .toArray()
-        const [, patch] = Backend.applyChanges(Backend.init(), changes)
+*/
+        const [, patch] = Backend.applyChanges(Backend.init({ schema: doc.schema, lenses: doc.lenses }), changes)
         this.toFrontend.push({ type: 'Reply', id, payload: { type: 'MaterializeReplyMsg', patch } })
         break
       }
@@ -724,7 +730,7 @@ export class RepoBackend {
         break
       }
       case 'CreateMsg': {
-        this.create(Keys.decodePair(msg))
+        this.create(Keys.decodePair(msg), msg.schema)
         break
       }
       case 'MergeMsg': {
@@ -738,7 +744,7 @@ export class RepoBackend {
         }
 */
       case 'OpenMsg': {
-        this.open(msg.id)
+        this.open(msg.id, msg.schema)
         break
       }
       case 'DocumentMessage': {

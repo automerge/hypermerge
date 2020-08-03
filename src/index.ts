@@ -1,4 +1,4 @@
-export { Patch, Doc, Proxy, Proxy as EditDoc, ChangeFn } from 'automerge'
+export { Patch, Doc, Proxy, Proxy as EditDoc, ChangeFn } from 'cambriamerge'
 
 export { Repo } from './Repo'
 export { Handle } from './Handle'

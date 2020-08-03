@@ -1,6 +1,6 @@
 // This *must* be the automerge used by hypermerge, otherwise the instanceof
 // checks below will fail.
-import Automerge from 'automerge'
+import { Text } from 'cambriamerge'
 import { isPlainObject } from './Misc'
 
 export const WARNING_STACK_SIZE = 2000
@@ -29,7 +29,7 @@ export function iterativeDfs<T>(select: SelectFn, root: unknown): T[] {
     // blow up the stack size (which may not actually matter, but there's no point
     // in checking Automerge.Text anyway)
     // TODO: genericize this, maybe with a skip function, e.g. `if (skip(obj)) {`
-    if (obj instanceof Automerge.Text) {
+    if (obj instanceof Text) {
       // eslint-disable-next-line no-continue
       continue
     } else if (isPlainObject(obj)) {

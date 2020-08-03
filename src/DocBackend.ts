@@ -1,4 +1,4 @@
-import { Backend, Change, BackendState as BackDoc, Patch } from 'automerge'
+import { Backend, Change, BackendState as BackDoc, Patch, Request, RegisteredLens } from 'cambriamerge'
 import Queue from './Queue'
 import Debug from './Debug'
 import { Clock } from './Clock'
@@ -46,11 +46,15 @@ export class DocBackend {
   ready = new Queue<Function>('doc:back:readyQ')
   updateQ = new Queue<DocBackendMessage>('doc:back:updateQ')
 
-  private localChangeQ = new Queue<Change>('doc:back:localChangeQ')
+  schema: string
+  lenses: RegisteredLens[]
+  private requestQ = new Queue<Request>('doc:back:requestQ')
   private remoteChangesQ = new Queue<Change[]>('doc:back:remoteChangesQ')
 
-  constructor(documentId: DocId, back?: BackDoc) {
+  constructor(documentId: DocId, schema: string, lenses: RegisteredLens[], back?: BackDoc) {
     this.id = documentId
+    this.schema = schema
+    this.lenses = lenses
 
     if (back) {
       this.back = back
@@ -58,7 +62,7 @@ export class DocBackend {
       this.ready.subscribe((f) => f())
       this.subscribeToRemoteChanges()
       this.subscribeToLocalChanges()
-      const history = (this.back as any).getIn(['opSet', 'history']).size
+      const history = (this.back as BackDoc).history.length
       this.updateQ.push({
         type: 'ReadyMsg',
         doc: this,
@@ -71,8 +75,8 @@ export class DocBackend {
     this.remoteChangesQ.push(changes)
   }
 
-  applyLocalChange = (change: Change): void => {
-    this.localChangeQ.push(change)
+  applyLocalChange = (request: Request): void => {
+    this.requestQ.push(request)
   }
 
   initActor = (actorId: ActorId) => {
@@ -99,7 +103,9 @@ export class DocBackend {
     this.bench('init', () => {
       //console.log("CHANGES MAX",changes[changes.length - 1])
       //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
-      const [back, patch] = Backend.applyChanges(Backend.init(), changes)
+      const schema = this.schema
+      const lenses = this.lenses
+      const [back, patch] = Backend.applyChanges(Backend.init({schema, lenses}), changes)
       this.actorId = this.actorId || actorId
       this.back = back
       this.updateClock(changes)
@@ -107,7 +113,7 @@ export class DocBackend {
       this.ready.subscribe((f) => f())
       this.subscribeToLocalChanges()
       this.subscribeToRemoteChanges()
-      const history = (this.back as any).getIn(['opSet', 'history']).size
+      const history = (this.back as BackDoc).history.length
       this.updateQ.push({
         type: 'ReadyMsg',
         doc: this,
@@ -123,7 +129,7 @@ export class DocBackend {
         const [back, patch] = Backend.applyChanges(this.back!, changes)
         this.back = back
         this.updateClock(changes)
-        const history = (this.back as any).getIn(['opSet', 'history']).size
+        const history = (this.back as BackDoc).history.length
         this.updateQ.push({
           type: 'RemotePatchMsg',
           doc: this,
@@ -135,12 +141,12 @@ export class DocBackend {
   }
 
   subscribeToLocalChanges() {
-    this.localChangeQ.subscribe((change) => {
-      this.bench(`applyLocalChange seq=${change.seq}`, () => {
-        const [back, patch] = Backend.applyLocalChange(this.back!, change)
+    this.requestQ.subscribe((request) => {
+      this.bench(`applyLocalChange seq=${request.seq}`, () => {
+        const [back, patch, change] = Backend.applyLocalChange(this.back!, request)
         this.back = back
         this.updateClock([change])
-        const history = (this.back as any).getIn(['opSet', 'history']).size
+        const history = (this.back as BackDoc).history.length
         this.updateQ.push({
           type: 'LocalPatchMsg',
           doc: this,
