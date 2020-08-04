@@ -8,7 +8,7 @@ const noise_peer_1 = __importDefault(require("noise-peer"));
 const Multiplex_1 = __importDefault(require("./Multiplex"));
 const MessageBus_1 = __importDefault(require("./MessageBus"));
 const pump_1 = __importDefault(require("pump"));
-const uuid_1 = __importDefault(require("uuid"));
+const uuid_1 = require("uuid");
 const StreamLogic_1 = require("./StreamLogic");
 const Heartbeat_1 = __importDefault(require("./Heartbeat"));
 const log = Debug_1.default('PeerConnection');
@@ -41,7 +41,7 @@ class PeerConnection {
         });
         this.internalBus = this.openBus('PeerConnection', this.onMsg);
         if (this.isClient) {
-            this.id = uuid_1.default();
+            this.id = uuid_1.v4();
             this.internalBus.send({ type: 'Id', id: this.id });
         }
     }

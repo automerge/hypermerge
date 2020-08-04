@@ -4,24 +4,24 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DocBackend = void 0;
-const automerge_1 = require("automerge");
+const cambriamerge_1 = require("cambriamerge");
 const Queue_1 = __importDefault(require("./Queue"));
 const Debug_1 = __importDefault(require("./Debug"));
 const Misc_1 = require("./Misc");
 const log = Debug_1.default('DocBackend');
 class DocBackend {
-    constructor(documentId, back) {
+    constructor(documentId, schema, lenses, back) {
         this.clock = {};
         this.changes = new Map();
         this.ready = new Queue_1.default('doc:back:readyQ');
         this.updateQ = new Queue_1.default('doc:back:updateQ');
-        this.localChangeQ = new Queue_1.default('doc:back:localChangeQ');
+        this.requestQ = new Queue_1.default('doc:back:requestQ');
         this.remoteChangesQ = new Queue_1.default('doc:back:remoteChangesQ');
         this.applyRemoteChanges = (changes) => {
             this.remoteChangesQ.push(changes);
         };
-        this.applyLocalChange = (change) => {
-            this.localChangeQ.push(change);
+        this.applyLocalChange = (request) => {
+            this.requestQ.push(request);
         };
         this.initActor = (actorId) => {
             log('initActor');
@@ -38,7 +38,9 @@ class DocBackend {
             this.bench('init', () => {
                 //console.log("CHANGES MAX",changes[changes.length - 1])
                 //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
-                const [back, patch] = automerge_1.Backend.applyChanges(automerge_1.Backend.init(), changes);
+                const schema = this.schema;
+                const lenses = this.lenses;
+                const [back, patch] = cambriamerge_1.Backend.applyChanges(cambriamerge_1.Backend.init({ schema, lenses }), changes);
                 this.actorId = this.actorId || actorId;
                 this.back = back;
                 this.updateClock(changes);
@@ -46,7 +48,7 @@ class DocBackend {
                 this.ready.subscribe((f) => f());
                 this.subscribeToLocalChanges();
                 this.subscribeToRemoteChanges();
-                const history = this.back.getIn(['opSet', 'history']).size;
+                const history = this.back.history.length;
                 this.updateQ.push({
                     type: 'ReadyMsg',
                     doc: this,
@@ -56,13 +58,15 @@ class DocBackend {
             });
         };
         this.id = documentId;
+        this.schema = schema;
+        this.lenses = lenses;
         if (back) {
             this.back = back;
             this.actorId = Misc_1.rootActorId(documentId);
             this.ready.subscribe((f) => f());
             this.subscribeToRemoteChanges();
             this.subscribeToLocalChanges();
-            const history = this.back.getIn(['opSet', 'history']).size;
+            const history = this.back.history.length;
             this.updateQ.push({
                 type: 'ReadyMsg',
                 doc: this,
@@ -80,10 +84,10 @@ class DocBackend {
     subscribeToRemoteChanges() {
         this.remoteChangesQ.subscribe((changes) => {
             this.bench('applyRemoteChanges', () => {
-                const [back, patch] = automerge_1.Backend.applyChanges(this.back, changes);
+                const [back, patch] = cambriamerge_1.Backend.applyChanges(this.back, changes);
                 this.back = back;
                 this.updateClock(changes);
-                const history = this.back.getIn(['opSet', 'history']).size;
+                const history = this.back.history.length;
                 this.updateQ.push({
                     type: 'RemotePatchMsg',
                     doc: this,
@@ -94,12 +98,12 @@ class DocBackend {
         });
     }
     subscribeToLocalChanges() {
-        this.localChangeQ.subscribe((change) => {
-            this.bench(`applyLocalChange seq=${change.seq}`, () => {
-                const [back, patch] = automerge_1.Backend.applyLocalChange(this.back, change);
+        this.requestQ.subscribe((request) => {
+            this.bench(`applyLocalChange seq=${request.seq}`, () => {
+                const [back, patch, change] = cambriamerge_1.Backend.applyLocalChange(this.back, request);
                 this.back = back;
                 this.updateClock([change]);
-                const history = this.back.getIn(['opSet', 'history']).size;
+                const history = this.back.history.length;
                 this.updateQ.push({
                     type: 'LocalPatchMsg',
                     doc: this,

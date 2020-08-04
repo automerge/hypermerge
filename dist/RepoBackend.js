@@ -37,7 +37,7 @@ const Queue_1 = __importDefault(require("./Queue"));
 const Metadata_1 = require("./Metadata");
 const Actor_1 = require("./Actor");
 const Clock = __importStar(require("./Clock"));
-const automerge_1 = require("automerge");
+const cambriamerge_1 = require("cambriamerge");
 const DocBackend = __importStar(require("./DocBackend"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
@@ -58,6 +58,9 @@ const KeyStore_1 = __importDefault(require("./KeyStore"));
 const ReplicationManager_1 = __importDefault(require("./ReplicationManager"));
 const Crypto = __importStar(require("./Crypto"));
 const log = Debug_1.default('RepoBackend');
+function assertUnreachable(x) {
+    throw new Error("Didn't expect to get here" + x);
+}
 class RepoBackend {
     constructor(opts) {
         this.actors = new Map();
@@ -443,13 +446,18 @@ class RepoBackend {
                 }
                 case 'MaterializeMsg': {
                     const doc = this.docs.get(query.id);
-                    const changes = doc.back
-                        .getIn(['opSet', 'history'])
-                        .slice(0, query.history)
-                        .toArray();
-                    const [, patch] = automerge_1.Backend.applyChanges(automerge_1.Backend.init(), changes);
+                    const changes = doc.back ? doc.back.history.slice(0, query.history) : [];
+                    /*
+                      .getIn(['opSet', 'history'])
+                      .slice(0, query.history)
+                      .toArray()
+            */
+                    const [, patch] = cambriamerge_1.Backend.applyChanges(cambriamerge_1.Backend.init({ schema: doc.schema, lenses: doc.lenses }), changes);
                     this.toFrontend.push({ type: 'Reply', id, payload: { type: 'MaterializeReplyMsg', patch } });
                     break;
+                }
+                default: {
+                    return assertUnreachable(query);
                 }
             }
         });
@@ -473,7 +481,7 @@ class RepoBackend {
                     break;
                 }
                 case 'CreateMsg': {
-                    this.create(Keys.decodePair(msg));
+                    this.create(Keys.decodePair(msg), msg.schema);
                     break;
                 }
                 case 'MergeMsg': {
@@ -487,7 +495,7 @@ class RepoBackend {
                   }
           */
                 case 'OpenMsg': {
-                    this.open(msg.id);
+                    this.open(msg.id, msg.schema);
                     break;
                 }
                 case 'DocumentMessage': {
@@ -514,10 +522,17 @@ class RepoBackend {
                     this.close();
                     break;
                 }
+                case 'RegisterLensMsg':
+                    this.registerLens(msg.lens);
+                    break;
+                default: {
+                    return assertUnreachable(msg);
+                }
             }
         };
         this.opts = opts;
         this.path = opts.path || 'default';
+        this.lenses = opts.lenses;
         // initialize storage
         if (!opts.memory) {
             ensureDirectoryExists(this.path);
@@ -554,10 +569,14 @@ class RepoBackend {
         this.replication.discoveryQ.subscribe(this.onDiscovery);
         this.network.peerQ.subscribe(this.onPeer);
     }
-    create(keys) {
+    registerLens(lens) {
+        this.lenses.push(lens);
+    }
+    create(keys, schema) {
         const docId = Misc_1.encodeDocId(keys.publicKey);
         log('create', docId);
-        const doc = new DocBackend.DocBackend(docId, automerge_1.Backend.init());
+        const lenses = this.lenses;
+        const doc = new DocBackend.DocBackend(docId, schema, lenses, cambriamerge_1.Backend.init({ schema, lenses }));
         doc.updateQ.subscribe(this.documentNotify);
         // HACK: We set a clock value of zero so we have a clock in the clock store
         // TODO: This isn't right.
@@ -614,7 +633,7 @@ class RepoBackend {
     //   })
     // }
     // opening a file fucks it up
-    open(docId) {
+    open(docId, schema) {
         //    log("open", docId, this.meta.forDoc(docId));
         // TODO: FileStore should answer this.
         // NOTE: This isn't guaranteed to be correct. `meta.isFile` can return an incorrect answer
@@ -624,7 +643,7 @@ class RepoBackend {
         }
         let doc = this.docs.get(docId);
         if (!doc) {
-            doc = new DocBackend.DocBackend(docId);
+            doc = new DocBackend.DocBackend(docId, schema, this.lenses);
             doc.updateQ.subscribe(this.documentNotify);
         }
         if (!this.docs.has(docId)) {

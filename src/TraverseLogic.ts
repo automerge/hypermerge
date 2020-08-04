@@ -1,6 +1,6 @@
 // This *must* be the automerge used by hypermerge, otherwise the instanceof
 // checks below will fail.
-import { Text } from 'cambriamerge'
+import { Text } from 'automerge'
 import { isPlainObject } from './Misc'
 
 export const WARNING_STACK_SIZE = 2000

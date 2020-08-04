@@ -1,7 +1,7 @@
 import { RepoFrontend } from './RepoFrontend';
 import { DocUrl, BaseUrl } from './Misc';
 import { Handle } from './Handle';
-import { Doc } from 'automerge';
+import { Doc } from 'cambriamerge';
 export declare class Crawler {
     repo: RepoFrontend;
     seen: Set<string>;

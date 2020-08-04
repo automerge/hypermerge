@@ -4,7 +4,7 @@ import { Metadata } from './Metadata';
 import { Actor } from './Actor';
 import * as Clock from './Clock';
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg';
-import { Change } from 'automerge';
+import { Change, RegisteredLens } from 'cambriamerge';
 import * as DocBackend from './DocBackend';
 import { ActorId, DocId, RepoId } from './Misc';
 import FeedStore from './FeedStore';
@@ -26,6 +26,7 @@ export interface FeedData {
 export interface Options {
     path?: string;
     memory?: boolean;
+    lenses: RegisteredLens[];
 }
 export declare class RepoBackend {
     path?: string;
@@ -44,12 +45,14 @@ export declare class RepoBackend {
     network: Network;
     messages: MessageRouter<PeerMsg>;
     replication: ReplicationManager;
+    lenses: RegisteredLens[];
     lockRelease?: () => void;
     swarmKey: Buffer;
     private db;
     private fileServer;
     constructor(opts: Options);
     startFileServer: (path: string) => void;
+    private registerLens;
     private create;
     localActorId(docId: DocId): ActorId | undefined;
     private debug;
@@ -77,7 +80,7 @@ export declare class RepoBackend {
     addSwarm: (swarm: Swarm, joinOptions?: JoinOptions | undefined) => void;
     removeSwarm: (swarm: Swarm) => void;
     subscribe: (subscriber: (message: ToFrontendRepoMsg) => void) => void;
-    handleQuery: (id: number, query: ToBackendQueryMsg) => Promise<void>;
-    receive: (msg: ToBackendRepoMsg) => void;
+    handleQuery: (id: number, query: ToBackendQueryMsg) => Promise<undefined>;
+    receive: (msg: ToBackendRepoMsg) => undefined;
     actor(id: ActorId): Actor | undefined;
 }

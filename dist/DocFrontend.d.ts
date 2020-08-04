@@ -1,4 +1,4 @@
-import { Patch, ChangeFn } from 'automerge';
+import { Patch, ChangeFn } from 'cambriamerge';
 import { RepoFrontend, ProgressEvent } from './RepoFrontend';
 import { Clock } from './Clock';
 import { Handle } from './Handle';
@@ -6,11 +6,13 @@ import { ActorId, DocId } from './Misc';
 export { Patch };
 interface Config {
     docId: DocId;
+    schema: string;
     actorId?: ActorId;
 }
 export declare class DocFrontend<T> {
     private docId;
     private docUrl;
+    schema: string;
     ready: boolean;
     actorId?: ActorId;
     history: number;
