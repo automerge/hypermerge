@@ -44,7 +44,7 @@ export declare class RepoFrontend {
     doc: <T>(url: DocUrl, cb?: ((val: import("automerge").FreezeObject<T>, clock?: Clock | undefined) => void) | undefined, schema?: string | undefined) => Promise<import("automerge").FreezeObject<T>>;
     materialize: <T>(url: DocUrl, history: number, cb: (val: import("automerge").FreezeObject<T>) => void) => void;
     queryBackend: (query: ToBackendQueryMsg, cb: (arg: any) => void) => void;
-    open: <T>(url: DocUrl, crawl?: boolean, schema?: string | undefined) => Handle<T>;
+    open: <T>(url: DocUrl, schema?: string | undefined, crawl?: boolean) => Handle<T>;
     debug(url: DocUrl): void;
     private openDocFrontend;
     subscribe: (subscriber: (message: ToBackendRepoMsg) => void) => void;

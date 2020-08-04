@@ -38,7 +38,7 @@ class Crawler {
                 return;
             log(`Crawling ${url}`);
             if (Misc_1.isDocUrl(url)) {
-                const handle = this.repo.open(url, false);
+                const handle = this.repo.open(url, undefined, false);
                 this.seen.add(url);
                 this.handles.set(url, handle);
                 setImmediate(() => handle.subscribe(this.onDocumentUpdate));

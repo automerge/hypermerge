@@ -58,7 +58,7 @@ class RepoFrontend {
             return Misc_1.toDocUrl(docId);
         };
         this.change = (url, fn, schema) => {
-            this.open(url, true, schema).change(fn);
+            this.open(url, schema).change(fn);
         };
         this.meta = (url, cb) => {
             const { id } = Metadata_1.validateURL(url);
@@ -108,7 +108,7 @@ class RepoFrontend {
       */
         this.watch = (url, cb, schema) => {
             Metadata_1.validateDocURL(url);
-            const handle = this.open(url, true, schema);
+            const handle = this.open(url, schema);
             handle.subscribe(cb);
             return handle;
         };
@@ -119,7 +119,7 @@ class RepoFrontend {
         this.doc = (url, cb, schema) => {
             Metadata_1.validateDocURL(url);
             return new Promise((resolve) => {
-                const handle = this.open(url, true, schema);
+                const handle = this.open(url, schema);
                 handle.subscribe((val, clock) => {
                     resolve(val);
                     if (cb)
@@ -148,7 +148,7 @@ class RepoFrontend {
             this.cb.set(id, cb);
             this.toBackend.push({ type: 'Query', id, query });
         };
-        this.open = (url, crawl = true, schema) => {
+        this.open = (url, schema, crawl = true) => {
             if (crawl)
                 this.crawler.crawl(url);
             const id = Metadata_1.validateDocURL(url);

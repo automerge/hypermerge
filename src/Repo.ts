@@ -15,7 +15,7 @@ export class Repo {
 
   id: RepoId
   create: <T>(init?: T, schema?: string) => DocUrl
-  open: <T>(id: DocUrl, crawl?: boolean, schema?: string) => Handle<T>
+  open: <T>(id: DocUrl, schema?: string, crawl?: boolean) => Handle<T>
   destroy: (id: DocUrl) => void
   //follow: (id: string, target: string) => void;
   /** @deprecated Use addSwarm */

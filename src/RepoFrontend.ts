@@ -70,7 +70,7 @@ export class RepoFrontend {
   }
 
   change = <T>(url: DocUrl, fn: ChangeFn<T>, schema?: string) => {
-    this.open<T>(url, true, schema).change(fn)
+    this.open<T>(url, schema).change(fn)
   }
 
   meta = (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void): void => {
@@ -132,7 +132,7 @@ export class RepoFrontend {
     schema?: string
   ): Handle<T> => {
     validateDocURL(url)
-    const handle = this.open<T>(url, true, schema)
+    const handle = this.open<T>(url, schema)
     handle.subscribe(cb)
     return handle
   }
@@ -149,7 +149,7 @@ export class RepoFrontend {
   ): Promise<Doc<T>> => {
     validateDocURL(url)
     return new Promise((resolve) => {
-      const handle = this.open<T>(url, true, schema)
+      const handle = this.open<T>(url, schema)
       handle.subscribe((val, clock) => {
         resolve(val)
         if (cb) cb(val, clock)
@@ -180,7 +180,7 @@ export class RepoFrontend {
     this.toBackend.push({ type: 'Query', id, query })
   }
 
-  open = <T>(url: DocUrl, crawl: boolean = true, schema?: string): Handle<T> => {
+  open = <T>(url: DocUrl, schema?: string, crawl: boolean = true): Handle<T> => {
     if (crawl) this.crawler.crawl(url)
     const id = validateDocURL(url)
     const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id, schema)
