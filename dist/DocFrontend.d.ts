@@ -6,13 +6,13 @@ import { ActorId, DocId } from './Misc';
 export { Patch };
 interface Config {
     docId: DocId;
-    schema: string;
+    schema?: string;
     actorId?: ActorId;
 }
 export declare class DocFrontend<T> {
     private docId;
     private docUrl;
-    schema: string;
+    schema?: string;
     ready: boolean;
     actorId?: ActorId;
     history: number;

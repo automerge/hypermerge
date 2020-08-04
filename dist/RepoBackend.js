@@ -572,10 +572,11 @@ class RepoBackend {
     registerLens(lens) {
         this.lenses.push(lens);
     }
-    create(keys, schema) {
+    create(keys, _schema) {
         const docId = Misc_1.encodeDocId(keys.publicKey);
         log('create', docId);
         const lenses = this.lenses;
+        const schema = _schema || "mu";
         const doc = new DocBackend.DocBackend(docId, schema, lenses, cambriamerge_1.Backend.init({ schema, lenses }));
         doc.updateQ.subscribe(this.documentNotify);
         // HACK: We set a clock value of zero so we have a clock in the clock store
@@ -643,7 +644,7 @@ class RepoBackend {
         }
         let doc = this.docs.get(docId);
         if (!doc) {
-            doc = new DocBackend.DocBackend(docId, schema, this.lenses);
+            doc = new DocBackend.DocBackend(docId, schema || "mu", this.lenses);
             doc.updateQ.subscribe(this.documentNotify);
         }
         if (!this.docs.has(docId)) {

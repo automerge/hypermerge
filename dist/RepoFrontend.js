@@ -43,7 +43,7 @@ class RepoFrontend {
         this.msgcb = new Map();
         this.readFiles = new MapSet_1.default();
         this.files = new FileServerClient_1.default();
-        this.create = (schema, init) => {
+        this.create = (init, schema) => {
             const { publicKey, secretKey } = Keys.create();
             const docId = publicKey;
             const actorId = Misc_1.rootActorId(docId);
@@ -57,8 +57,8 @@ class RepoFrontend {
             }
             return Misc_1.toDocUrl(docId);
         };
-        this.change = (url, schema, fn) => {
-            this.open(url, schema).change(fn);
+        this.change = (url, fn, schema) => {
+            this.open(url, true, schema).change(fn);
         };
         this.meta = (url, cb) => {
             const { id } = Metadata_1.validateURL(url);
@@ -89,10 +89,10 @@ class RepoFrontend {
         this.merge = (url, target, schema) => {
             const id = Metadata_1.validateDocURL(url);
             Metadata_1.validateDocURL(target);
-            this.doc(target, schema, (_doc, clock) => {
+            this.doc(target, (_doc, clock) => {
                 const actors = Clock_1.clock2strs(clock);
                 this.toBackend.push({ type: 'MergeMsg', id, actors });
-            });
+            }, schema);
         };
         this.fork = (url, schema) => {
             Metadata_1.validateDocURL(url);
@@ -106,9 +106,9 @@ class RepoFrontend {
           this.toBackend.push({ type: "FollowMsg", id, target });
         };
       */
-        this.watch = (url, schema, cb) => {
+        this.watch = (url, cb, schema) => {
             Metadata_1.validateDocURL(url);
-            const handle = this.open(url, schema);
+            const handle = this.open(url, true, schema);
             handle.subscribe(cb);
             return handle;
         };
@@ -116,10 +116,10 @@ class RepoFrontend {
             const id = Metadata_1.validateDocURL(url);
             this.toBackend.push({ type: 'DocumentMessage', id, contents });
         };
-        this.doc = (url, schema, cb) => {
+        this.doc = (url, cb, schema) => {
             Metadata_1.validateDocURL(url);
             return new Promise((resolve) => {
-                const handle = this.open(url, schema);
+                const handle = this.open(url, true, schema);
                 handle.subscribe((val, clock) => {
                     resolve(val);
                     if (cb)
@@ -148,7 +148,7 @@ class RepoFrontend {
             this.cb.set(id, cb);
             this.toBackend.push({ type: 'Query', id, query });
         };
-        this.open = (url, schema, crawl = true) => {
+        this.open = (url, crawl = true, schema) => {
             if (crawl)
                 this.crawler.crawl(url);
             const id = Metadata_1.validateDocURL(url);

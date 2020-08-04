@@ -12,8 +12,8 @@ export declare class Repo {
     front: RepoFrontend;
     back: RepoBackend;
     id: RepoId;
-    create: <T>(schema: string, init?: T) => DocUrl;
-    open: <T>(id: DocUrl, schema: string) => Handle<T>;
+    create: <T>(init?: T, schema?: string) => DocUrl;
+    open: <T>(id: DocUrl, crawl?: boolean, schema?: string) => Handle<T>;
     destroy: (id: DocUrl) => void;
     /** @deprecated Use addSwarm */
     setSwarm: (swarm: Swarm, joinOptions?: JoinOptions) => void;
@@ -23,11 +23,11 @@ export declare class Repo {
     crypto: CryptoClient;
     files: FileServerClient;
     startFileServer: (fileServerPath: string) => void;
-    fork: (url: DocUrl, schema: string) => DocUrl;
-    watch: <T>(url: DocUrl, schema: string, cb: (val: Doc<T>, clock?: Clock, index?: number) => void) => Handle<T>;
-    doc: <T>(url: DocUrl, schema: string, cb?: (val: Doc<T>, clock?: Clock) => void) => Promise<Doc<T>>;
-    merge: (url: DocUrl, target: DocUrl, schema: string) => void;
-    change: <T>(url: DocUrl, schema: string, fn: (state: Proxy<T>) => void) => void;
+    fork: (url: DocUrl, schema?: string) => DocUrl;
+    watch: <T>(url: DocUrl, cb: (val: Doc<T>, clock?: Clock, index?: number) => void, schema?: string) => Handle<T>;
+    doc: <T>(url: DocUrl, cb?: (val: Doc<T>, clock?: Clock) => void, schema?: string) => Promise<Doc<T>>;
+    merge: (url: DocUrl, target: DocUrl, schema?: string) => void;
+    change: <T>(url: DocUrl, fn: (state: Proxy<T>) => void, schema?: string) => void;
     materialize: <T>(url: DocUrl, seq: number, cb: (val: Doc<T>) => void) => void;
     meta: (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void) => void;
     close: () => void;

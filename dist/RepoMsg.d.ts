@@ -134,7 +134,7 @@ export interface CreateMsg {
     type: 'CreateMsg';
     publicKey: PublicId;
     secretKey: SecretId;
-    schema: string;
+    schema?: string;
 }
 export interface MergeMsg {
     type: 'MergeMsg';
@@ -152,7 +152,7 @@ export interface DebugMsg {
 export interface OpenMsg {
     type: 'OpenMsg';
     id: DocId;
-    schema: string;
+    schema?: string;
 }
 export interface DestroyMsg {
     type: 'DestroyMsg';
