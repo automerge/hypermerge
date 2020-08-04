@@ -5,7 +5,7 @@ import { DocUrl } from './Misc'
 export class Handle<T> {
   // id: DocId
   url: DocUrl
-  schema: string
+  schema?: string
   state: Doc<T> | null = null
   clock: Clock | null = null
   subscription?: (item: Doc<T>, clock?: Clock, index?: number) => void
@@ -14,7 +14,7 @@ export class Handle<T> {
   private counter: number = 0
   private repo: RepoFrontend
 
-  constructor(repo: RepoFrontend, url: DocUrl, schema: string) {
+  constructor(repo: RepoFrontend, url: DocUrl, schema?: string) {
     this.repo = repo
     this.url = url
     this.schema = schema

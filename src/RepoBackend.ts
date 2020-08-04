@@ -153,10 +153,11 @@ export class RepoBackend {
     this.lenses.push(lens)
   }
 
-  private create(keys: Keys.KeyBuffer, schema: string): DocBackend.DocBackend {
+  private create(keys: Keys.KeyBuffer, _schema?: string): DocBackend.DocBackend {
     const docId = encodeDocId(keys.publicKey)
     log('create', docId)
     const lenses = this.lenses
+    const schema = _schema || "mu"
     const doc = new DocBackend.DocBackend(docId, schema, lenses, Backend.init({ schema, lenses }))
     doc.updateQ.subscribe(this.documentNotify)
     // HACK: We set a clock value of zero so we have a clock in the clock store
@@ -221,7 +222,7 @@ export class RepoBackend {
   // }
 
   // opening a file fucks it up
-  private open(docId: DocId, schema: string): DocBackend.DocBackend {
+  private open(docId: DocId, schema?: string): DocBackend.DocBackend {
     //    log("open", docId, this.meta.forDoc(docId));
     // TODO: FileStore should answer this.
     // NOTE: This isn't guaranteed to be correct. `meta.isFile` can return an incorrect answer
@@ -231,7 +232,7 @@ export class RepoBackend {
     }
     let doc = this.docs.get(docId)
     if (!doc) {
-      doc = new DocBackend.DocBackend(docId, schema, this.lenses)
+      doc = new DocBackend.DocBackend(docId, schema || "mu", this.lenses)
       doc.updateQ.subscribe(this.documentNotify)
     }
     if (!this.docs.has(docId)) {

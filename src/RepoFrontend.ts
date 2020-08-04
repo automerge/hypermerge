@@ -52,7 +52,7 @@ export class RepoFrontend {
     this.toBackend.push({ type: 'RegisterLensMsg', lens })
   }
 
-  create = <T>(schema: string, init?: T): DocUrl => {
+  create = <T>(init?: T, schema?: string): DocUrl => {
     const { publicKey, secretKey } = Keys.create()
     const docId = publicKey as DocId
     const actorId = rootActorId(docId)
@@ -69,8 +69,8 @@ export class RepoFrontend {
     return toDocUrl(docId)
   }
 
-  change = <T>(url: DocUrl, schema: string, fn: ChangeFn<T>) => {
-    this.open<T>(url, schema).change(fn)
+  change = <T>(url: DocUrl, fn: ChangeFn<T>, schema?: string) => {
+    this.open<T>(url, true, schema).change(fn)
   }
 
   meta = (url: DocUrl | HyperfileUrl, cb: (meta: PublicMetadata | undefined) => void): void => {
@@ -103,16 +103,16 @@ export class RepoFrontend {
     }
   }
 
-  merge = (url: DocUrl, target: DocUrl, schema: string) => {
+  merge = (url: DocUrl, target: DocUrl, schema?: string) => {
     const id = validateDocURL(url)
     validateDocURL(target)
-    this.doc(target, schema, (_doc, clock) => {
+    this.doc(target, (_doc, clock) => {
       const actors = clock2strs(clock!)
       this.toBackend.push({ type: 'MergeMsg', id, actors })
-    })
+    }, schema)
   }
 
-  fork = (url: DocUrl, schema: string): DocUrl => {
+  fork = (url: DocUrl, schema?: string): DocUrl => {
     validateDocURL(url)
     const fork = this.create(schema)
     this.merge(fork, url, schema)
@@ -128,11 +128,11 @@ export class RepoFrontend {
 
   watch = <T>(
     url: DocUrl,
-    schema: string,
-    cb: (val: Doc<T>, clock?: Clock, index?: number) => void
+    cb: (val: Doc<T>, clock?: Clock, index?: number) => void,
+    schema?: string
   ): Handle<T> => {
     validateDocURL(url)
-    const handle = this.open<T>(url, schema)
+    const handle = this.open<T>(url, true, schema)
     handle.subscribe(cb)
     return handle
   }
@@ -144,12 +144,12 @@ export class RepoFrontend {
 
   doc = <T>(
     url: DocUrl,
-    schema: string,
-    cb?: (val: Doc<T>, clock?: Clock) => void
+    cb?: (val: Doc<T>, clock?: Clock) => void,
+    schema?: string,
   ): Promise<Doc<T>> => {
     validateDocURL(url)
     return new Promise((resolve) => {
-      const handle = this.open<T>(url, schema)
+      const handle = this.open<T>(url, true, schema)
       handle.subscribe((val, clock) => {
         resolve(val)
         if (cb) cb(val, clock)
@@ -180,7 +180,7 @@ export class RepoFrontend {
     this.toBackend.push({ type: 'Query', id, query })
   }
 
-  open = <T>(url: DocUrl, schema: string, crawl: boolean = true): Handle<T> => {
+  open = <T>(url: DocUrl, crawl: boolean = true, schema?: string): Handle<T> => {
     if (crawl) this.crawler.crawl(url)
     const id = validateDocURL(url)
     const doc: DocFrontend<T> = this.docs.get(id) || this.openDocFrontend(id, schema)
@@ -201,7 +201,7 @@ export class RepoFrontend {
     this.toBackend.push({ type: 'DebugMsg', id })
   }
 
-  private openDocFrontend<T>(id: DocId, schema: string): DocFrontend<T> {
+  private openDocFrontend<T>(id: DocId, schema?: string): DocFrontend<T> {
     const doc: DocFrontend<T> = new DocFrontend(this, { docId: id, schema })
     this.toBackend.push({ type: 'OpenMsg', id, schema })
     this.docs.set(id, doc)

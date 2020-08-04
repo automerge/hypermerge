@@ -28,7 +28,7 @@ export class Crawler {
     log(`Crawling ${url}`)
 
     if (isDocUrl(url)) {
-      const handle = this.repo.open(url, "mu", false) // FIXME
+      const handle = this.repo.open(url, false)
       this.seen.add(url)
       this.handles.set(url, handle)
       setImmediate(() => handle.subscribe(this.onDocumentUpdate))

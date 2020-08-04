@@ -8,10 +8,9 @@ import * as Crypto from '../src/Crypto'
 
 test('Simple create doc and make a change', (t) => {
   const repo = testRepo()
-  const url = repo.create("mu")
+  const url = repo.create()
   repo.watch<any>(
     url,
-    "mu",
     expectDocs(t, [
       [{}, 'blank started doc'],
       [{ foo: 'bar' }, 'change preview'],
@@ -19,7 +18,7 @@ test('Simple create doc and make a change', (t) => {
     ])
   )
 
-  repo.change<any>(url, "mu", (state: any) => {
+  repo.change<any>(url, (state: any) => {
     state.foo = 'bar'
   })
 
@@ -31,17 +30,16 @@ test('Create a doc backend - then wire it up to a frontend - make a change', (t)
   const front = new RepoFrontend()
   back.subscribe(front.receive)
   front.subscribe(back.receive)
-  const url = front.create("mu")
+  const url = front.create()
   front.watch<any>(
     url,
-    "mu",
     expectDocs(t, [
       [{}, 'blank started doc'],
       [{ foo: 'bar' }, 'change preview'],
       [{ foo: 'bar' }, 'change final'],
     ])
   )
-  front.change<any>(url, "mu", (state) => {
+  front.change<any>(url, (state) => {
     state.foo = 'bar'
   })
   test.onFinish(() => front.close())
@@ -50,14 +48,13 @@ test('Create a doc backend - then wire it up to a frontend - make a change', (t)
 test('Test document merging', (t) => {
   t.plan(5)
   const repo = testRepo()
-  const url1 = repo.create("mu",{ foo: 'bar' })
-  const url2 = repo.create("mu",{ baz: 'bah' })
+  const url1 = repo.create({ foo: 'bar' })
+  const url2 = repo.create({ baz: 'bah' })
 
   const id = validateDocURL(url1)
   const id2 = validateDocURL(url2)
   repo.watch<any>(
     url1,
-    "mu",
     expectDocs(t, [
       [
         { foo: 'bar' },
@@ -82,7 +79,6 @@ test('Test document merging', (t) => {
 
   repo.watch(
     url2,
-    "mu",
     expectDocs(t, [
       [{ baz: 'bah' }, 'initial value'],
       [{ baz: 'boo' }, 'change value'],
@@ -99,8 +95,8 @@ test('Test document merging', (t) => {
     ])
   )
 
-  repo.merge(url1, url2, "mu")
-  repo.change(url2, "mu", (doc: any) => {
+  repo.merge(url1, url2)
+  repo.change(url2, (doc: any) => {
     doc.baz = 'boo'
   })
 })
@@ -108,19 +104,18 @@ test('Test document merging', (t) => {
 test('Test document forking...', (t) => {
   t.plan(0)
   const repo = testRepo()
-  const id = repo.create("mu",{ foo: 'bar' })
-  repo.watch<any>(id, "mu", expectDocs(t, [[{ foo: 'bar' }, 'init val']]))
-  const id2 = repo.fork(id,"mu")
+  const id = repo.create({ foo: 'bar' })
+  repo.watch<any>(id, expectDocs(t, [[{ foo: 'bar' }, 'init val']]))
+  const id2 = repo.fork(id)
   repo.watch<any>(
     id2,
-    "mu",
     expectDocs(t, [
       [{}, 'hmm'],
       [
         { foo: 'bar' },
         'init val',
         () => {
-          repo.change<any>(id2, "mu", (state: any) => {
+          repo.change<any>(id2, (state: any) => {
             state.bar = 'foo'
           })
         },
@@ -135,10 +130,9 @@ test('Test document forking...', (t) => {
 test('Test materialize...', (t) => {
   t.plan(1)
   const repo = testRepo()
-  const url = repo.create("mu",{ foo: 'bar0' })
+  const url = repo.create({ foo: 'bar0' })
   repo.watch<any>(
     url,
-    "mu",
     expectDocs(t, [
       [{ foo: 'bar0' }, 'init val'],
       [{ foo: 'bar1' }, 'changed val'],
@@ -158,13 +152,13 @@ test('Test materialize...', (t) => {
     ])
   )
 
-  repo.change<any>(url, "mu", (state: any) => {
+  repo.change<any>(url, (state: any) => {
     state.foo = 'bar1'
   })
-  repo.change<any>(url, "mu", (state: any) => {
+  repo.change<any>(url, (state: any) => {
     state.foo = 'bar2'
   })
-  repo.change<any>(url, "mu", (state: any) => {
+  repo.change<any>(url, (state: any) => {
     state.foo = 'bar3'
   })
   test.onFinish(() => repo.close())
@@ -173,7 +167,7 @@ test('Test materialize...', (t) => {
 test('Test signing and verifying', async (t) => {
   t.plan(1)
   const repo = testRepo()
-  const url = repo.create("mu",{ foo: 'bar0' })
+  const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
   const signedMessage = await repo.crypto.sign(url, message)
   const success = await repo.crypto.verify(url, signedMessage)
@@ -184,7 +178,7 @@ test('Test signing and verifying', async (t) => {
 test("Test verifying garbage returns false and doesn't throw", async (t) => {
   t.plan(1)
   const repo = testRepo()
-  const url = repo.create("mu",{ foo: 'bar0' })
+  const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
   await repo.crypto.sign(url, message)
   const success = await repo.crypto.verify(url, {
@@ -198,8 +192,8 @@ test("Test verifying garbage returns false and doesn't throw", async (t) => {
 test('Test verifying with wrong signature fails', async (t) => {
   t.plan(1)
   const repo = testRepo()
-  const url1 = repo.create("mu",{ foo: 'bar0' })
-  const url2 = repo.create("mu",{ foo2: 'bar1' })
+  const url1 = repo.create({ foo: 'bar0' })
+  const url2 = repo.create({ foo2: 'bar1' })
   const message = 'test message'
   const signedMessage2 = await repo.crypto.sign(url2, message)
   const success = await repo.crypto.verify(url1, { message, signature: signedMessage2.signature })
@@ -211,7 +205,7 @@ test('Test signing as document from another repo', async (t) => {
   t.plan(1)
   const repo = testRepo()
   const repo2 = testRepo()
-  const url = repo.create("mu",{ foo: 'bar0' })
+  const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
   repo2.crypto.sign(url, message).then(
     () => t.fail('sign() promise should reject'),
@@ -227,7 +221,7 @@ test('Test verifying a signature from another repo succeeds', async (t) => {
   t.plan(1)
   const repo = testRepo()
   const repo2 = testRepo()
-  const url = repo.create("mu",{ foo: 'bar0' })
+  const url = repo.create({ foo: 'bar0' })
   const message = 'test message'
   const signedMessage = await repo.crypto.sign(url, message)
   const success = await repo2.crypto.verify(url, signedMessage)
@@ -298,8 +292,8 @@ test('Test encryption key pair', async (t) => {
 test('Test meta...', (t) => {
   t.plan(2)
   const repo = testRepo()
-  const id = repo.create("mu",{ foo: 'bar0' })
-  repo.watch<any>(id, "mu", (_state, _clock, index) => {
+  const id = repo.create({ foo: 'bar0' })
+  repo.watch<any>(id, (_state, _clock, index) => {
     repo.meta(id, (meta) => {
       if (meta && meta.type === 'Document') {
         if (index === 1) {
@@ -317,11 +311,11 @@ test('Test meta...', (t) => {
     })
   })
 
-  repo.change<any>(id, "mu", (state: any) => {
+  repo.change<any>(id,  (state: any) => {
     state.foo = 'bar1'
   })
 
-  repo.change<any>(id, "mu", (state: any) => {
+  repo.change<any>(id, (state: any) => {
     state.foo = 'bar2'
   })
 
@@ -347,7 +341,7 @@ test('Writing and reading files works', async (t) => {
 test('Changing a document updates the clock store', async (t) => {
   t.plan(1)
   const repo = testRepo()
-  const url = repo.create("mu")
+  const url = repo.create()
   const docId = validateDocURL(url)
 
   // We'll make one change
@@ -356,7 +350,6 @@ test('Changing a document updates the clock store', async (t) => {
   // Clock passed to `watch` matches expected clock.
   repo.watch<any>(
     url,
-    "mu",
     expect(t, arg2, [
       [{}, 'empty state'],
       [expectedClock, 'change preview'],
@@ -364,7 +357,7 @@ test('Changing a document updates the clock store', async (t) => {
     ])
   )
 
-  repo.change<any>(url, "mu", (state: any) => {
+  repo.change<any>(url, (state: any) => {
     state.foo = 'bar'
   })
 

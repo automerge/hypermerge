@@ -17,14 +17,14 @@ type Mode = 'pending' | 'read' | 'write'
 
 interface Config {
   docId: DocId
-  schema: string
+  schema?: string
   actorId?: ActorId
 }
 
 export class DocFrontend<T> {
   private docId: DocId
   private docUrl: DocUrl
-  schema: string
+  schema?: string
   ready: boolean = false // do I need ready? -- covered my state !== pending?
   actorId?: ActorId
   history: number = 0
