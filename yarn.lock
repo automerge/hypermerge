@@ -340,7 +340,7 @@ callsites@^2.0.0:
 
 "cambriamerge@github:orionz/cambriamerge.git":
   version "0.0.1"
-  resolved "https://codeload.github.com/orionz/cambriamerge/tar.gz/0a10e996528f6040e94b69a5cc537f19b45554e1"
+  resolved "https://codeload.github.com/orionz/cambriamerge/tar.gz/74724c3d2da9c6d9ddbe5b997a2ca401f5a1f945"
   dependencies:
     automerge "0.14.1"
     cloudina "ssh://git@github.com:inkandswitch/cloudina.git"
@@ -396,7 +396,7 @@ clone@^2.1.2:
 
 "cloudina@ssh://git@github.com:inkandswitch/cloudina.git":
   version "0.1.0"
-  resolved "ssh://git@github.com:inkandswitch/cloudina.git#866fc38e9f9c1140b78af2d28becb54a74ef6110"
+  resolved "ssh://git@github.com:inkandswitch/cloudina.git#bf17cbca5d7d61773439abe5eafa581dfcf752fb"
   dependencies:
     commander "^5.1.0"
     fast-json-patch "^3.0.0-1"
@@ -406,8 +406,6 @@ clone@^2.1.2:
     js-yaml "^3.14.0"
     json-schema "^0.2.5"
     quicktype-core "^6.0.66"
-    tsc "^1.20150623.0"
-    typescript "^3.9.6"
 
 codecs@^2.0.0:
   version "2.0.0"
@@ -2209,11 +2207,6 @@ ts-node@^8.3.0:
     source-map-support "^0.5.6"
     yn "^3.0.0"
 
-tsc@^1.20150623.0:
-  version "1.20150623.0"
-  resolved "https://registry.yarnpkg.com/tsc/-/tsc-1.20150623.0.tgz#4ebc3c774e169148cbc768a7342533f082c7a6e5"
-  integrity sha1-Trw8d04WkUjLx2inNCUz8ILHpuU=
-
 type-check@~0.3.2:
   version "0.3.2"
   resolved "https://registry.yarnpkg.com/type-check/-/type-check-0.3.2.tgz#5884cab512cf1d355e3fb784f30804b2b520db72"
@@ -2236,7 +2229,7 @@ typedarray@^0.0.6:
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
 
-typescript@^3.7.2, typescript@^3.9.6:
+typescript@^3.7.2:
   version "3.9.7"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.9.7.tgz#98d600a5ebdc38f40cb277522f12dc800e9e25fa"
   integrity sha512-BLbiRkiBzAwsjut4x/dsibSTB6yWpwT5qWmC2OfuCg3GgVQCSgMs4vEctYPhsaGtd0AeuuHMkjZ2h2WG8MSzRw==
@@ -2331,9 +2324,9 @@ vlq@^0.2.2:
   integrity sha512-DRibZL6DsNhIgYQ+wNdWDL2SL3bKPlVrRiBqV5yuMm++op8W4kGFtaQfCs4KEJn0wBZcHVHJ3eoywX8983k1ow==
 
 whatwg-fetch@>=0.10.0:
-  version "3.2.0"
-  resolved "https://registry.yarnpkg.com/whatwg-fetch/-/whatwg-fetch-3.2.0.tgz#8e134f701f0a4ab5fda82626f113e2b647fd16dc"
-  integrity sha512-SdGPoQMMnzVYThUbSrEvqTlkvC1Ux27NehaJ/GUHBfNrh5Mjg+1/uRyFMwVnxO2MrikMWvWAqUGgQOfVU4hT7w==
+  version "3.3.1"
+  resolved "https://registry.yarnpkg.com/whatwg-fetch/-/whatwg-fetch-3.3.1.tgz#6c1acf37dec176b0fd6bc9a74b616bec2f612935"
+  integrity sha512-faXTmGDcLuEPBpJwb5LQfyxvubKiE+RlbmmweFGKjvIPFj4uHTTfdtTIkdTRhC6OSH9S9eyYbx8kZ0UEaQqYTA==
 
 which-module@^2.0.0:
   version "2.0.0"
