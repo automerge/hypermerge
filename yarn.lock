@@ -340,7 +340,7 @@ callsites@^2.0.0:
 
 "cambriamerge@github:orionz/cambriamerge.git":
   version "0.0.1"
-  resolved "https://codeload.github.com/orionz/cambriamerge/tar.gz/74724c3d2da9c6d9ddbe5b997a2ca401f5a1f945"
+  resolved "https://codeload.github.com/orionz/cambriamerge/tar.gz/884dbea197486b3b7eb33b7c48c5a2c1abed5708"
   dependencies:
     automerge "0.14.1"
     cloudina "ssh://git@github.com:inkandswitch/cloudina.git"
