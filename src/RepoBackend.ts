@@ -45,12 +45,17 @@ import CursorStore from './CursorStore'
 import * as SqlDatabase from './SqlDatabase'
 import MessageRouter, { Routed } from './MessageRouter'
 import ram from 'random-access-memory'
-import raf from 'random-access-file'
+import RandomAccessManager from './RandomAccessManger'
+import RandomAccessFile from 'random-access-file'
 import KeyStore from './KeyStore'
 import ReplicationManager, { Discovery } from './ReplicationManager'
 import * as Crypto from './Crypto'
 
 const log = Debug('RepoBackend')
+const raf = RandomAccessManager(
+  { max: 500, maxAgeInMilliseconds: 30 * 60 * 1000 },
+  RandomAccessFile
+)
 
 export interface FeedData {
   actorId: ActorId
