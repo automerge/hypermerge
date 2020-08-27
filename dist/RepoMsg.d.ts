@@ -1,4 +1,4 @@
-import { Patch, Request, RegisteredLens } from 'cambriamerge';
+import { Patch, Request, RegisteredLens } from 'cambria-automerge';
 import { PublicMetadata } from './Metadata';
 import { DocId, HyperfileId, ActorId } from './Misc';
 import { PublicId, SecretId } from './Keys';

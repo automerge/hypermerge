@@ -37,7 +37,7 @@ const Queue_1 = __importDefault(require("./Queue"));
 const Metadata_1 = require("./Metadata");
 const Actor_1 = require("./Actor");
 const Clock = __importStar(require("./Clock"));
-const cambriamerge_1 = require("cambriamerge");
+const cambria_automerge_1 = require("cambria-automerge");
 const DocBackend = __importStar(require("./DocBackend"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
@@ -452,7 +452,7 @@ class RepoBackend {
                       .slice(0, query.history)
                       .toArray()
             */
-                    const [, patch] = cambriamerge_1.Backend.applyChanges(cambriamerge_1.Backend.init({ schema: doc.schema, lenses: doc.lenses }), changes);
+                    const [, patch] = cambria_automerge_1.Backend.applyChanges(cambria_automerge_1.Backend.init({ schema: doc.schema, lenses: doc.lenses }), changes);
                     this.toFrontend.push({ type: 'Reply', id, payload: { type: 'MaterializeReplyMsg', patch } });
                     break;
                 }
@@ -576,8 +576,8 @@ class RepoBackend {
         const docId = Misc_1.encodeDocId(keys.publicKey);
         log('create', docId);
         const lenses = this.lenses;
-        const schema = _schema || "mu";
-        const doc = new DocBackend.DocBackend(docId, schema, lenses, cambriamerge_1.Backend.init({ schema, lenses }));
+        const schema = _schema || 'mu';
+        const doc = new DocBackend.DocBackend(docId, schema, lenses, cambria_automerge_1.Backend.init({ schema, lenses }));
         doc.updateQ.subscribe(this.documentNotify);
         // HACK: We set a clock value of zero so we have a clock in the clock store
         // TODO: This isn't right.
@@ -644,7 +644,7 @@ class RepoBackend {
         }
         let doc = this.docs.get(docId);
         if (!doc) {
-            doc = new DocBackend.DocBackend(docId, schema || "mu", this.lenses);
+            doc = new DocBackend.DocBackend(docId, schema || 'mu', this.lenses);
             doc.updateQ.subscribe(this.documentNotify);
         }
         if (!this.docs.has(docId)) {

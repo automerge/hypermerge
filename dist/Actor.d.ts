@@ -1,4 +1,4 @@
-import { Change } from 'cambriamerge';
+import { Change } from 'cambria-automerge';
 import { ActorId, DiscoveryId } from './Misc';
 import * as Keys from './Keys';
 import FeedStore, { Feed } from './FeedStore';

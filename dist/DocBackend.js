@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DocBackend = void 0;
-const cambriamerge_1 = require("cambriamerge");
+const cambria_automerge_1 = require("cambria-automerge");
 const Queue_1 = __importDefault(require("./Queue"));
 const Debug_1 = __importDefault(require("./Debug"));
 const Misc_1 = require("./Misc");
@@ -40,7 +40,7 @@ class DocBackend {
                 //changes.forEach( (c,i) => console.log("CHANGES", i, c.actor, c.seq))
                 const schema = this.schema;
                 const lenses = this.lenses;
-                const [back, patch] = cambriamerge_1.Backend.applyChanges(cambriamerge_1.Backend.init({ schema, lenses }), changes);
+                const [back, patch] = cambria_automerge_1.Backend.applyChanges(cambria_automerge_1.Backend.init({ schema, lenses }), changes);
                 this.actorId = this.actorId || actorId;
                 this.back = back;
                 this.updateClock(changes);
@@ -84,7 +84,7 @@ class DocBackend {
     subscribeToRemoteChanges() {
         this.remoteChangesQ.subscribe((changes) => {
             this.bench('applyRemoteChanges', () => {
-                const [back, patch] = cambriamerge_1.Backend.applyChanges(this.back, changes);
+                const [back, patch] = cambria_automerge_1.Backend.applyChanges(this.back, changes);
                 this.back = back;
                 this.updateClock(changes);
                 const history = this.back.history.length;
@@ -100,7 +100,7 @@ class DocBackend {
     subscribeToLocalChanges() {
         this.requestQ.subscribe((request) => {
             this.bench(`applyLocalChange seq=${request.seq}`, () => {
-                const [back, patch, change] = cambriamerge_1.Backend.applyLocalChange(this.back, request);
+                const [back, patch, change] = cambria_automerge_1.Backend.applyLocalChange(this.back, request);
                 this.back = back;
                 this.updateClock([change]);
                 const history = this.back.history.length;

@@ -3,7 +3,7 @@ import Queue from './Queue';
 import MapSet from './MapSet';
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg';
 import { Handle } from './Handle';
-import { Doc, Patch, ChangeFn, RegisteredLens } from 'cambriamerge';
+import { Doc, Patch, ChangeFn, RegisteredLens } from 'cambria-automerge';
 import { DocFrontend } from './DocFrontend';
 import { Clock } from './Clock';
 import { PublicMetadata } from './Metadata';

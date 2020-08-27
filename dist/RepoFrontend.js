@@ -25,7 +25,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RepoFrontend = void 0;
 const Queue_1 = __importDefault(require("./Queue"));
 const MapSet_1 = __importDefault(require("./MapSet"));
-const cambriamerge_1 = require("cambriamerge");
+const cambria_automerge_1 = require("cambria-automerge");
 const DocFrontend_1 = require("./DocFrontend");
 const Clock_1 = require("./Clock");
 const Keys = __importStar(require("./Keys"));
@@ -138,8 +138,8 @@ class RepoFrontend {
                 throw new Error(`Invalid history ${history} for id ${id}`);
             }
             this.queryBackend({ type: 'MaterializeMsg', history, id }, (msg) => {
-                const doc = cambriamerge_1.Frontend.init({ deferActorId: true });
-                cb(cambriamerge_1.Frontend.applyPatch(doc, msg.patch));
+                const doc = cambria_automerge_1.Frontend.init({ deferActorId: true });
+                cb(cambria_automerge_1.Frontend.applyPatch(doc, msg.patch));
             });
         };
         this.queryBackend = (query, cb) => {

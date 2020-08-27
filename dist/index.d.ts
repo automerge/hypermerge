@@ -1,4 +1,4 @@
-export { Patch, Doc, Proxy, Proxy as EditDoc, ChangeFn } from 'cambriamerge';
+export { Patch, Doc, Proxy, Proxy as EditDoc, ChangeFn, RegisteredLens } from 'cambria-automerge';
 export { Repo } from './Repo';
 export { Handle } from './Handle';
 export { RepoBackend } from './RepoBackend';

@@ -4,7 +4,7 @@ import { Metadata } from './Metadata';
 import { Actor } from './Actor';
 import * as Clock from './Clock';
 import { ToBackendQueryMsg, ToBackendRepoMsg, ToFrontendRepoMsg } from './RepoMsg';
-import { Change, RegisteredLens } from 'cambriamerge';
+import { Change, RegisteredLens } from 'cambria-automerge';
 import * as DocBackend from './DocBackend';
 import { ActorId, DocId, RepoId } from './Misc';
 import FeedStore from './FeedStore';

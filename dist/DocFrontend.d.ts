@@ -1,4 +1,4 @@
-import { Patch, ChangeFn } from 'cambriamerge';
+import { Patch, ChangeFn } from 'cambria-automerge';
 import { RepoFrontend, ProgressEvent } from './RepoFrontend';
 import { Clock } from './Clock';
 import { Handle } from './Handle';

@@ -6,7 +6,7 @@ import { Clock } from './Clock';
 import { DocUrl, HyperfileUrl, RepoId } from './Misc';
 import FileServerClient from './FileServerClient';
 import { Swarm, JoinOptions } from './SwarmInterface';
-import { Doc, Proxy } from 'cambriamerge';
+import { Doc, Proxy } from 'cambria-automerge';
 import { CryptoClient } from './CryptoClient';
 export declare class Repo {
     front: RepoFrontend;
