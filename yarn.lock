@@ -307,7 +307,7 @@ callsites@^2.0.0:
 
 "cambria-automerge@github:inkandswitch/cambria-automerge.git":
   version "0.0.3"
-  resolved "https://codeload.github.com/inkandswitch/cambria-automerge/tar.gz/72916aca3047880187ccbb9d53163c7796e9ef0e"
+  resolved "https://codeload.github.com/inkandswitch/cambria-automerge/tar.gz/75f3b67558055687bd8dfd28edad6fe03bc82fed"
   dependencies:
     automerge "0.14.1"
     cambria "ssh://git@github.com:inkandswitch/cambria.git"
@@ -316,7 +316,7 @@ callsites@^2.0.0:
 
 "cambria@ssh://git@github.com:inkandswitch/cambria.git":
   version "0.1.1"
-  resolved "ssh://git@github.com:inkandswitch/cambria.git#83e9b2fc19473b3c10250ff783539aae8e57186a"
+  resolved "ssh://git@github.com:inkandswitch/cambria.git#332b06ba2f1f272a59432963cb1b3e0e31437d82"
   dependencies:
     commander "^5.1.0"
     fast-json-patch "^3.0.0-1"
