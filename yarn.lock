@@ -307,7 +307,7 @@ callsites@^2.0.0:
 
 "cambria-automerge@github:inkandswitch/cambria-automerge.git":
   version "0.0.1"
-  resolved "https://codeload.github.com/inkandswitch/cambria-automerge/tar.gz/a9f0eef5f29b4bf9d7756707df11a685ceb6f2f7"
+  resolved "https://codeload.github.com/inkandswitch/cambria-automerge/tar.gz/40c3fb8c43491298fc2c5e2d58cbb44ebf4f1b73"
   dependencies:
     automerge "0.14.1"
     cambria "ssh://git@github.com:inkandswitch/cambria.git"
@@ -316,7 +316,7 @@ callsites@^2.0.0:
 
 "cambria@ssh://git@github.com:inkandswitch/cambria.git":
   version "0.1.0"
-  resolved "ssh://git@github.com:inkandswitch/cambria.git#14e41861f7eacaccad9f98d188e060080c51e7d6"
+  resolved "ssh://git@github.com:inkandswitch/cambria.git#53c9415c1522ce1d0f5fc8690a0fde63caae99b5"
   dependencies:
     commander "^5.1.0"
     fast-json-patch "^3.0.0-1"
@@ -1046,9 +1046,9 @@ lodash.xor@^4.5.0:
   integrity sha1-TUjtfpgJWwYyWCunFNP/iuj7HbY=
 
 lodash@^4.17.15:
-  version "4.17.19"
-  resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.19.tgz#e48ddedbe30b3321783c5b4301fbd353bc1e4a4b"
-  integrity sha512-JNvd8XER9GQX0v2qJgsaN/mzFCNA5BRe/j8JN9d+tWyGLSodKQHKFicdwNYzWwI3wjRnaKPsGj1XkBjx/F96DQ==
+  version "4.17.20"
+  resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.20.tgz#b44a9b6297bcb698f1c51a3545a2b3b368d59c52"
+  integrity sha512-PlhdFcillOINfeV7Ni6oF1TAEayyZBoZ8bcshTHqOYJYlrqzRK5hagpagky5o4HfCzzd1TRkXPMFq6cKk9rGmA==
 
 make-error@^1.1.1:
   version "1.3.5"
