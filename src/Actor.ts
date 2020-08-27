@@ -1,4 +1,4 @@
-import { Change } from 'cambriamerge'
+import { Change } from 'cambria-automerge'
 import { ID, ActorId, DiscoveryId, encodeActorId } from './Misc'
 import Queue from './Queue'
 import * as Block from './Block'

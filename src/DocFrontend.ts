@@ -1,4 +1,4 @@
-import { Frontend, Patch, Doc, Request, ChangeFn } from 'cambriamerge'
+import { Frontend, Patch, Doc, Request, ChangeFn } from 'cambria-automerge'
 import { RepoFrontend, ProgressEvent } from './RepoFrontend'
 import { Clock, union } from './Clock'
 import Queue from './Queue'

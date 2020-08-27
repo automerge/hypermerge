@@ -14,7 +14,7 @@ import {
   BoxReplyMsg,
   OpenBoxReplyMsg,
 } from './RepoMsg'
-import { Backend, Change, RegisteredLens } from 'cambriamerge'
+import { Backend, Change, RegisteredLens } from 'cambria-automerge'
 import * as DocBackend from './DocBackend'
 import path from 'path'
 import fs from 'fs'
@@ -157,7 +157,7 @@ export class RepoBackend {
     const docId = encodeDocId(keys.publicKey)
     log('create', docId)
     const lenses = this.lenses
-    const schema = _schema || "mu"
+    const schema = _schema || 'mu'
     const doc = new DocBackend.DocBackend(docId, schema, lenses, Backend.init({ schema, lenses }))
     doc.updateQ.subscribe(this.documentNotify)
     // HACK: We set a clock value of zero so we have a clock in the clock store
@@ -232,7 +232,7 @@ export class RepoBackend {
     }
     let doc = this.docs.get(docId)
     if (!doc) {
-      doc = new DocBackend.DocBackend(docId, schema || "mu", this.lenses)
+      doc = new DocBackend.DocBackend(docId, schema || 'mu', this.lenses)
       doc.updateQ.subscribe(this.documentNotify)
     }
     if (!this.docs.has(docId)) {

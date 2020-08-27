@@ -1,4 +1,4 @@
-import { Clock, Doc, ChangeFn } from 'cambriamerge'
+import { Clock, Doc, ChangeFn } from 'cambria-automerge'
 import { RepoFrontend, ProgressEvent } from './RepoFrontend'
 import { DocUrl } from './Misc'
 

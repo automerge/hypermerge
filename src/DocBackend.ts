@@ -1,4 +1,11 @@
-import { Backend, Change, BackendState as BackDoc, Patch, Request, RegisteredLens } from 'cambriamerge'
+import {
+  Backend,
+  Change,
+  BackendState as BackDoc,
+  Patch,
+  Request,
+  RegisteredLens,
+} from 'cambria-automerge'
 import Queue from './Queue'
 import Debug from './Debug'
 import { Clock } from './Clock'

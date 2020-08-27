@@ -4,7 +4,7 @@ import { DocUrl, withoutQuery, isString, isDocUrl, BaseUrl } from './Misc'
 import { Handle } from './Handle'
 import { isHyperfileUrl } from './FileStore'
 import * as TraverseLogic from './TraverseLogic'
-import { Doc } from 'cambriamerge'
+import { Doc } from 'cambria-automerge'
 
 const log = Debug('Crawler')
 

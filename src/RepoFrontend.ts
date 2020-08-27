@@ -8,7 +8,7 @@ import {
   MetadataReplyMsg,
 } from './RepoMsg'
 import { Handle } from './Handle'
-import { Doc, Patch, Frontend, ChangeFn, RegisteredLens } from 'cambriamerge'
+import { Doc, Patch, Frontend, ChangeFn, RegisteredLens } from 'cambria-automerge'
 import { DocFrontend } from './DocFrontend'
 import { clock2strs, Clock, clockDebug } from './Clock'
 import * as Keys from './Keys'
@@ -106,10 +106,14 @@ export class RepoFrontend {
   merge = (url: DocUrl, target: DocUrl, schema?: string) => {
     const id = validateDocURL(url)
     validateDocURL(target)
-    this.doc(target, (_doc, clock) => {
-      const actors = clock2strs(clock!)
-      this.toBackend.push({ type: 'MergeMsg', id, actors })
-    }, schema)
+    this.doc(
+      target,
+      (_doc, clock) => {
+        const actors = clock2strs(clock!)
+        this.toBackend.push({ type: 'MergeMsg', id, actors })
+      },
+      schema
+    )
   }
 
   fork = (url: DocUrl, schema?: string): DocUrl => {
@@ -145,7 +149,7 @@ export class RepoFrontend {
   doc = <T>(
     url: DocUrl,
     cb?: (val: Doc<T>, clock?: Clock) => void,
-    schema?: string,
+    schema?: string
   ): Promise<Doc<T>> => {
     validateDocURL(url)
     return new Promise((resolve) => {

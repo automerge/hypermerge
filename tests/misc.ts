@@ -13,16 +13,18 @@ import PeerConnection from '../src/PeerConnection'
 import { inspect } from 'util'
 
 //export { inside, plungeProperty, removeProperty, hoistProperty, RegisteredLens } from 'cambriamerge'
-import { RegisteredLens, addProperty } from 'cambriamerge'
+import { RegisteredLens, addProperty } from 'cambria-automerge'
 
-export const testLenses : RegisteredLens[] = [{
-  from: "mu",
-  to: "v1",
-  lens: [
-    addProperty({ name: 'name', type: 'string' }),
-    addProperty({ name: 'summary', type: 'string' }),
-  ]
-}]
+export const testLenses: RegisteredLens[] = [
+  {
+    from: 'mu',
+    to: 'v1',
+    lens: [
+      addProperty({ name: 'name', type: 'string' }),
+      addProperty({ name: 'summary', type: 'string' }),
+    ],
+  },
+]
 
 type DocMsg = [any, string]
 type DocMsgCB = [any, string, any]
