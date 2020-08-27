@@ -32,7 +32,7 @@ export function iterativeDfs<T>(select: SelectFn, root: unknown): T[] {
     if (obj instanceof Text) {
       // eslint-disable-next-line no-continue
       continue
-    } else if (isPlainObject(obj)) {
+    } else if (obj && isPlainObject(obj)) {
       Object.entries(obj).forEach((entry: unknown) => stack.push(entry))
     } else if (obj && hasForEach(obj)) {
       obj.forEach((val: unknown) => stack.push(val))

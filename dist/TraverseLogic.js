@@ -27,7 +27,7 @@ function iterativeDfs(select, root) {
             // eslint-disable-next-line no-continue
             continue;
         }
-        else if (Misc_1.isPlainObject(obj)) {
+        else if (obj && Misc_1.isPlainObject(obj)) {
             Object.entries(obj).forEach((entry) => stack.push(entry));
         }
         else if (obj && hasForEach(obj)) {
