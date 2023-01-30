@@ -1,5 +1,10 @@
 # Hypermerge
 
+> **Warning**
+> Hypermerge is deprecated.
+> This library is no longer maintained and uses an ancient and slow version of Automerge.
+> We strongly recommend you adopt https://github.com/automerge/automerge-repo instead.
+
 Hypermerge is a Node.js library for building p2p collaborative applications
 without any server infrastructure. It combines [Automerge](https://github.com/automerge/automerge), 
 a CRDT, with [hypercore](https://github.com/mafintosh/hypercore), a distributed append-only log.
@@ -15,7 +20,16 @@ audited and secure version of this library would be possible in the future.
 
 ## How it works
 
-<TODO>
+Hypermerge stores an automerge document as a set of separate Hypercores, one per actor ID. Each
+actor ID in the document is the discovery key of a Hypercore, which allows recursive lookup.
+
+## Critique
+
+This strategy works for a small number of documents, but is very slow to synchronize due 
+to the vast number of Hypercores required for a large collection. It also doesn't work well with
+the new Automerge file format which consolidates sequential changes during storage: each change
+has its own Hypercore entry with all the attendant metadata. To put this in context, a single
+keystroke in a textfield will result in hundreds of bytes of data if you use Hypermerge.
 
 ## Examples
 
